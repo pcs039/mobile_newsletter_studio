@@ -1,59 +1,7 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
-
-const assets = [
-  {
-    name: "무안군청 전경 대표 이미지",
-    source: "기관 제공",
-    rights: "사용 가능",
-    quality: "원본 고화질",
-    usage: "표지·대표 이미지",
-    review: "검수 완료",
-    tone: "from-sky-100 to-blue-50",
-  },
-  {
-    name: "군정 주요 소식 카드 배너",
-    source: "디자이너 제작",
-    rights: "사용 가능",
-    quality: "웹용 적합",
-    usage: "기사 카드",
-    review: "검수 완료",
-    tone: "from-blue-100 to-indigo-50",
-  },
-  {
-    name: "생활 지원 안내 배경",
-    source: "AI 생성",
-    rights: "확인 필요",
-    quality: "웹용 적합",
-    usage: "섹션 배경",
-    review: "검수 필요",
-    tone: "from-cyan-100 to-slate-50",
-  },
-  {
-    name: "PDF 4쪽 행사 이미지 발췌",
-    source: "PDF 발췌",
-    rights: "확인 필요",
-    quality: "저화질 주의",
-    usage: "보조 이미지",
-    review: "교체 권장",
-    tone: "from-slate-100 to-amber-50",
-  },
-];
-
-const sourceTypes = [
-  { label: "기관 제공 원본", value: "최우선" },
-  { label: "디자이너 제작", value: "권장" },
-  { label: "AI 생성", value: "조건부" },
-  { label: "PDF 발췌", value: "보조" },
-];
-
-const reviewItems = [
-  "출처와 권리 확인 상태 입력",
-  "모바일 화면에서 흐림·잘림 여부 확인",
-  "실제 행사·인물처럼 보이는 AI 이미지는 사용 금지",
-  "모든 대표 이미지에 대체텍스트 작성",
-];
+import { imageAssets, imageReviewItems, imageSourceTypes } from "@/lib/newsletter-data";
 
 export default function ImageAssetsPage() {
   return (
@@ -139,7 +87,7 @@ export default function ImageAssetsPage() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-                  {assets.map((asset) => (
+                  {imageAssets.map((asset) => (
                     <article key={asset.name} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                       <div className={`h-40 rounded-lg bg-gradient-to-br ${asset.tone} p-4`}>
                         <div className="h-full rounded-md border border-white/70 bg-white/50 p-3">
@@ -167,7 +115,7 @@ export default function ImageAssetsPage() {
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">이미지 소스 기준</h3>
                 <div className="mt-4 space-y-3">
-                  {sourceTypes.map((source) => (
+                  {imageSourceTypes.map((source) => (
                     <div key={source.label} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-3">
                       <span className="text-sm font-bold text-slate-700">{source.label}</span>
                       <span className="text-xs font-black text-[#184a88]">{source.value}</span>
@@ -187,7 +135,7 @@ export default function ImageAssetsPage() {
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">검수 체크</h3>
                 <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-                  {reviewItems.map((item) => (
+                  {imageReviewItems.map((item) => (
                     <li key={item} className="rounded-lg bg-[#f4f8ff] px-3 py-2">
                       {item}
                     </li>

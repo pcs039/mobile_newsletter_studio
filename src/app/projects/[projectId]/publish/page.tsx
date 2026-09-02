@@ -1,15 +1,7 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
-import { sampleNewsletter } from "@/lib/newsletter-data";
-
-const readinessItems = [
-  { label: "기본 정보", status: "완료", detail: "소식지명·기관명·발행월 입력" },
-  { label: "PDF 페이지", status: "완료", detail: "16쪽 변환 샘플 확인" },
-  { label: "읽기 보기", status: "검수 중", detail: "4개 기사 편집 진행" },
-  { label: "이미지 자산", status: "검수 중", detail: "권리·화질 확인 필요" },
-  { label: "음성 MP3", status: "보완 필요", detail: "2개 기사 미등록" },
-];
+import { publishChecks, publishReadinessItems, sampleNewsletter } from "@/lib/newsletter-data";
 
 const distributionItems = [
   { label: "공개 URL", value: sampleNewsletter.publicUrl },
@@ -17,16 +9,6 @@ const distributionItems = [
   { label: "공개 상태", value: "검수 중" },
   { label: "최종 수정", value: "2026.09.02 16:05" },
 ];
-
-const publishChecks = [
-  "모바일 읽기 보기에서 제목, 본문, 버튼이 잘리지 않는지 확인",
-  "PC e-book에서 원본 지면 확대 보기 품질 확인",
-  "전화, URL, 지도, 내부 페이지 이동 링크 확인",
-  "이미지 출처, 권리, 대체텍스트 입력 상태 확인",
-  "음성 파일 재생과 대본 일치 여부 확인",
-];
-
-const mobileArticles = ["군정 주요 소식", "생활 지원 안내", "문화 행사 일정"];
 
 function QrMock() {
   const filled = new Set([0, 1, 2, 4, 6, 8, 10, 11, 14, 16, 18, 20, 21, 22, 24, 27, 30, 31, 32, 34, 36, 38, 40, 41, 42, 44, 46, 48]);
@@ -89,7 +71,7 @@ export default function PublishPage() {
                 </div>
 
                 <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                  {readinessItems.map((item) => (
+                  {publishReadinessItems.map((item) => (
                     <div key={item.label} className="rounded-lg border border-slate-200 bg-[#f9fbfe] p-4">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-black text-[#092046]">{item.label}</p>
@@ -125,9 +107,9 @@ export default function PublishPage() {
                       <div className="p-4">
                         <div className="h-28 rounded-xl bg-gradient-to-br from-sky-100 to-blue-50" />
                         <div className="mt-4 space-y-2">
-                          {mobileArticles.map((article) => (
-                            <div key={article} className="rounded-lg border border-slate-200 px-3 py-2">
-                              <p className="text-sm font-bold text-[#092046]">{article}</p>
+                          {sampleNewsletter.articles.map((article) => (
+                            <div key={article.id} className="rounded-lg border border-slate-200 px-3 py-2">
+                              <p className="text-sm font-bold text-[#092046]">{article.title}</p>
                               <div className="mt-2 h-2 w-4/5 rounded bg-slate-200" />
                             </div>
                           ))}

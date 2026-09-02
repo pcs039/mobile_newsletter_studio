@@ -1,33 +1,7 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
-
-const pageCards = Array.from({ length: 16 }, (_, index) => ({
-  number: index + 1,
-  title:
-    index === 0
-      ? "표지"
-      : index === 1
-        ? "군정 주요 소식"
-        : index === 15
-          ? "뒷표지"
-          : `기사 페이지 ${index + 1}`,
-  status: index < 4 ? "변환 완료" : index < 12 ? "검수 대기" : "제목 입력 필요",
-}));
-
-const conversionSteps = [
-  { label: "PDF 업로드", status: "대기" },
-  { label: "페이지 이미지 변환", status: "샘플 완료" },
-  { label: "PC e-book 구성", status: "준비됨" },
-  { label: "모바일 읽기 보기", status: "다음 단계" },
-];
-
-const qualityChecks = [
-  "페이지 순서가 원본 PDF와 같은지 확인",
-  "표지와 뒷표지가 잘리지 않았는지 확인",
-  "PC e-book에서 확대했을 때 글자와 이미지가 흐리지 않은지 확인",
-  "클릭 영역을 추가할 페이지를 미리 표시",
-];
+import { pageConversionSteps, pageQualityChecks, sampleNewsletterPages } from "@/lib/newsletter-data";
 
 export default function ProjectPagesPage() {
   return (
@@ -102,7 +76,7 @@ export default function ProjectPagesPage() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  {pageCards.map((page) => (
+                  {sampleNewsletterPages.map((page) => (
                     <article key={page.number} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
                       <div className="aspect-[3/4] rounded-md border border-slate-200 bg-gradient-to-br from-white to-sky-50 p-3">
                         <div className="h-full rounded border border-slate-200 bg-white p-3">
@@ -136,7 +110,7 @@ export default function ProjectPagesPage() {
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">변환 진행 상태</h3>
                 <div className="mt-4 space-y-3">
-                  {conversionSteps.map((step, index) => (
+                  {pageConversionSteps.map((step, index) => (
                     <div key={step.label} className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-3">
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#092046] text-xs font-bold text-white">
                         {index + 1}
@@ -153,7 +127,7 @@ export default function ProjectPagesPage() {
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">품질 확인</h3>
                 <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-                  {qualityChecks.map((check) => (
+                  {pageQualityChecks.map((check) => (
                     <li key={check} className="rounded-lg bg-[#f4f8ff] px-3 py-2">
                       {check}
                     </li>

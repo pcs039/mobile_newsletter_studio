@@ -1,4 +1,12 @@
 import Link from "next/link";
+import { StatusPill } from "@/components/status-pill";
+import {
+  assetChecks,
+  dashboardProjects,
+  dashboardSummaryCards,
+  dashboardSummaryDetails,
+  workflowSteps,
+} from "@/lib/newsletter-data";
 
 const navigationItems = [
   { label: "프로젝트", status: "active" },
@@ -8,77 +16,6 @@ const navigationItems = [
   { label: "음성 MP3", status: "ready" },
   { label: "미리보기·발행", status: "ready" },
 ];
-
-const summaryCards = [
-  { label: "전체 프로젝트", value: "8", detail: "샘플 포함" },
-  { label: "제작 중", value: "3", detail: "편집 필요" },
-  { label: "검수 중", value: "2", detail: "공개 전 확인" },
-  { label: "발행 완료", value: "3", detail: "URL·QR 생성" },
-];
-
-const projects = [
-  {
-    title: "황토골 무안소식지 2025년 제94호",
-    organization: "무안군",
-    issue: "2025년",
-    status: "제작 중",
-    pages: "16쪽",
-    reading: "편집 중",
-    audio: "미등록",
-    updated: "2026.09.02",
-  },
-  {
-    title: "승달소식지 2026년 5월호",
-    organization: "무안군",
-    issue: "2026년 5월",
-    status: "샘플 검토",
-    pages: "8쪽",
-    reading: "구조 확인",
-    audio: "보류",
-    updated: "2026.09.01",
-  },
-  {
-    title: "인천 마음건강 이음서비스 안내지",
-    organization: "인천광역시",
-    issue: "실증 샘플",
-    status: "기획안",
-    pages: "12쪽",
-    reading: "대기",
-    audio: "대기",
-    updated: "2026.08.31",
-  },
-];
-
-const workflowSteps = [
-  "프로젝트 생성",
-  "PDF 업로드",
-  "페이지 변환",
-  "읽기 보기 편집",
-  "이미지·링크·음성 연결",
-  "발행",
-];
-
-const assetChecks = [
-  { label: "기관 제공 원본 이미지", value: "최우선" },
-  { label: "디자이너 제작 배너", value: "권장" },
-  { label: "AI 생성 이미지", value: "조건부" },
-  { label: "PDF 발췌 이미지", value: "보조" },
-];
-
-function StatusBadge({ value }: { value: string }) {
-  const tone =
-    value === "제작 중"
-      ? "bg-sky-100 text-sky-800"
-      : value === "샘플 검토"
-        ? "bg-amber-100 text-amber-800"
-        : "bg-slate-100 text-slate-700";
-
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>
-      {value}
-    </span>
-  );
-}
 
 export default function Home() {
   return (
@@ -146,13 +83,13 @@ export default function Home() {
           </header>
 
           <section className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {summaryCards.map((card) => (
+            {dashboardSummaryCards.map((card) => (
               <article key={card.label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-sm font-semibold text-slate-500">{card.label}</p>
                 <div className="mt-3 flex items-end justify-between">
                   <strong className="text-3xl font-black text-[#092046]">{card.value}</strong>
                   <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-bold text-[#184a88]">
-                    {card.detail}
+                    {dashboardSummaryDetails[card.label]}
                   </span>
                 </div>
               </article>
@@ -196,13 +133,13 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {projects.map((project) => (
+                    {dashboardProjects.map((project) => (
                       <tr key={project.title} className="border-b border-slate-200 last:border-0">
                         <td className="px-4 py-4 font-bold text-[#092046]">{project.title}</td>
                         <td className="px-4 py-4 text-slate-700">{project.organization}</td>
                         <td className="px-4 py-4 text-slate-700">{project.issue}</td>
                         <td className="px-4 py-4">
-                          <StatusBadge value={project.status} />
+                          <StatusPill value={project.status} />
                         </td>
                         <td className="px-4 py-4 text-slate-700">{project.pages}</td>
                         <td className="px-4 py-4 text-slate-700">{project.reading}</td>

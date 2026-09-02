@@ -1,43 +1,10 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
-
-const articleItems = [
-  {
-    page: "2쪽",
-    title: "군정 주요 소식",
-    status: "편집 중",
-    summary: "군정 핵심 소식과 주요 정책 안내",
-  },
-  {
-    page: "4쪽",
-    title: "생활 지원 안내",
-    status: "검수 필요",
-    summary: "신청 기간, 문의처, 대상자 정보 정리",
-  },
-  {
-    page: "7쪽",
-    title: "문화 행사 일정",
-    status: "초안",
-    summary: "행사 일정과 장소, 지도 링크 준비",
-  },
-  {
-    page: "11쪽",
-    title: "보건·복지 소식",
-    status: "대기",
-    summary: "전화 연결과 음성 대본 정리 필요",
-  },
-];
-
-const editSections = [
-  "제목·요약",
-  "본문 문단",
-  "대표 이미지",
-  "문의처·버튼",
-  "음성 대본",
-];
+import { readingEditSections, sampleNewsletterArticles } from "@/lib/newsletter-data";
 
 const previewButtons = ["신청 안내", "전화 연결", "지도 보기"];
+const selectedArticle = sampleNewsletterArticles[0];
 
 function FieldLabel({ children }: { children: string }) {
   return <label className="mb-2 block text-sm font-bold text-[#092046]">{children}</label>;
@@ -86,12 +53,12 @@ export default function ReadingEditorPage() {
                   <p className="mt-1 text-sm text-slate-500">페이지별 추출 텍스트를 기사 단위로 정리</p>
                 </div>
                 <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-bold text-[#184a88]">
-                  4건
+                  {sampleNewsletterArticles.length}건
                 </span>
               </div>
 
               <div className="space-y-3">
-                {articleItems.map((article, index) => (
+                {sampleNewsletterArticles.map((article, index) => (
                   <button
                     key={article.title}
                     className={`w-full rounded-lg border p-4 text-left transition ${
@@ -120,7 +87,7 @@ export default function ReadingEditorPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {editSections.map((section) => (
+                  {readingEditSections.map((section) => (
                     <span key={section} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
                       {section}
                     </span>
@@ -132,7 +99,7 @@ export default function ReadingEditorPage() {
                 <div className="grid gap-5 md:grid-cols-2">
                   <div>
                     <FieldLabel>기사 제목</FieldLabel>
-                    <TextInput defaultValue="군정 주요 소식" placeholder="기사 제목 입력" />
+                    <TextInput defaultValue={selectedArticle.title} placeholder="기사 제목 입력" />
                   </div>
                   <div>
                     <FieldLabel>상태</FieldLabel>
@@ -146,13 +113,13 @@ export default function ReadingEditorPage() {
 
                 <div>
                   <FieldLabel>요약 문장</FieldLabel>
-                  <TextInput defaultValue="무안군의 주요 정책과 생활 정보를 한눈에 확인할 수 있는 소식입니다." placeholder="목차와 카드에 표시될 요약" />
+                  <TextInput defaultValue={selectedArticle.summary} placeholder="목차와 카드에 표시될 요약" />
                 </div>
 
                 <div>
                   <FieldLabel>본문</FieldLabel>
                   <textarea
-                    defaultValue={`무안군은 군민 생활과 밀접한 주요 정책을 안내하고, 각 부서별 신청 정보와 행사 일정을 모바일에서 쉽게 확인할 수 있도록 정리합니다.\n\nPDF 원본에 흩어져 있는 문장을 읽기 쉬운 문단으로 나누고, 필요한 경우 신청 버튼과 전화 연결 버튼을 함께 제공합니다.`}
+                    defaultValue={selectedArticle.body}
                     className="min-h-56 w-full resize-y rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
                   />
                 </div>

@@ -1,55 +1,7 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
-
-const audioItems = [
-  {
-    page: "2쪽",
-    title: "군정 주요 소식",
-    status: "업로드 완료",
-    file: "muan-main-news.mp3",
-    duration: "02:14",
-    script: "대본 확인 완료",
-  },
-  {
-    page: "4쪽",
-    title: "생활 지원 안내",
-    status: "미등록",
-    file: "파일 없음",
-    duration: "-",
-    script: "대본 수정 필요",
-  },
-  {
-    page: "7쪽",
-    title: "문화 행사 일정",
-    status: "교체 필요",
-    file: "culture-event-draft.mp3",
-    duration: "01:48",
-    script: "행사명 발음 확인",
-  },
-  {
-    page: "11쪽",
-    title: "보건·복지 소식",
-    status: "대기",
-    file: "파일 없음",
-    duration: "-",
-    script: "대본 작성 전",
-  },
-];
-
-const workflow = [
-  { label: "대본 정리", status: "읽기 보기 기준" },
-  { label: "외부 TTS 생성", status: "관리자 수동 작업" },
-  { label: "MP3 업로드", status: "기사별 연결" },
-  { label: "재생 검수", status: "공개 전 확인" },
-];
-
-const reviewChecks = [
-  "본문 내용과 음성 대본이 일치하는지 확인",
-  "기관명, 지명, 행사명 발음이 어색하지 않은지 확인",
-  "모바일에서 재생 버튼이 충분히 잘 보이는지 확인",
-  "파일 교체 후 이전 음성이 남아 있지 않은지 확인",
-];
+import { audioReviewChecks, audioTracks, audioWorkflow } from "@/lib/newsletter-data";
 
 export default function AudioManagementPage() {
   return (
@@ -147,7 +99,7 @@ export default function AudioManagementPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {audioItems.map((item) => (
+                      {audioTracks.map((item) => (
                         <tr key={item.title} className="border-b border-slate-200 last:border-0">
                           <td className="px-4 py-4">
                             <p className="text-xs font-black text-[#184a88]">{item.page}</p>
@@ -206,7 +158,7 @@ export default function AudioManagementPage() {
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">음성 제작 흐름</h3>
                 <div className="mt-4 space-y-3">
-                  {workflow.map((step, index) => (
+                  {audioWorkflow.map((step, index) => (
                     <div key={step.label} className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-3">
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#092046] text-xs font-bold text-white">
                         {index + 1}
@@ -223,7 +175,7 @@ export default function AudioManagementPage() {
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">검수 체크</h3>
                 <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-                  {reviewChecks.map((check) => (
+                  {audioReviewChecks.map((check) => (
                     <li key={check} className="rounded-lg bg-[#f4f8ff] px-3 py-2">
                       {check}
                     </li>
