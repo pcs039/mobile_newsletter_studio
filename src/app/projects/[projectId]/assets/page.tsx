@@ -105,9 +105,12 @@ export default function ImageAssetsPage() {
             <span className="flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20">
               이미지 자산
             </span>
-            <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
+            <Link
+              href="/projects/muan-2025-94/audio"
+              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+            >
               음성 MP3
-            </span>
+            </Link>
             <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
               미리보기·발행
             </span>
@@ -260,9 +263,12 @@ export default function ImageAssetsPage() {
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   이미지 자산을 정리한 뒤 음성 MP3 관리 화면으로 이동합니다. 외부 TTS로 제작한 음성 파일을 기사별로 연결합니다.
                 </p>
-                <button className="mt-5 w-full rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
+                <Link
+                  href="/projects/muan-2025-94/audio"
+                  className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+                >
                   음성 MP3 관리로 이동
-                </button>
+                </Link>
               </article>
             </aside>
           </div>
