@@ -2,10 +2,13 @@ import Link from "next/link";
 import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
-import { imageAssets, imageReviewItems, imageSourceTypes } from "@/lib/newsletter-data";
+import { imageReviewItems, imageSourceTypes } from "@/lib/newsletter-data";
+import { getProjectAssetFiles } from "@/lib/newsletter-repository";
 
 export default async function ImageAssetsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const assetData = await getProjectAssetFiles(projectId);
+  const assets = assetData.assets;
 
   return (
     <ProjectAdminShell
@@ -72,9 +75,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                 <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-[#092046]">등록 이미지 자산</h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      출처, 권리, 화질, 사용 위치, 검수 상태를 함께 봅니다.
-                    </p>
+                    <p className="mt-1 text-sm text-slate-500">{assetData.message}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
@@ -89,28 +90,41 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-                  {imageAssets.map((asset) => (
-                    <article key={asset.name} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                      <div className={`h-40 rounded-lg bg-gradient-to-br ${asset.tone} p-4`}>
-                        <div className="h-full rounded-md border border-white/70 bg-white/50 p-3">
-                          <div className="h-3 w-2/3 rounded bg-[#092046]" />
-                          <div className="mt-4 h-16 rounded bg-white/70" />
-                          <div className="mt-4 h-2 w-full rounded bg-white/80" />
-                          <div className="mt-2 h-2 w-3/4 rounded bg-white/80" />
+                {assets.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-12 text-center">
+                    <p className="text-base font-black text-[#092046]">등록된 이미지 자산이 없습니다.</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      위 업로드 영역에서 이미지를 저장하면 실제 파일 목록과 썸네일이 여기에 표시됩니다.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+                    {assets.map((asset) => (
+                      <article key={asset.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="h-40 overflow-hidden rounded-lg border border-slate-200 bg-[#eef4fb]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={asset.previewHref}
+                            alt={asset.title}
+                            className="h-full w-full object-cover"
+                          />
                         </div>
-                      </div>
-                      <h4 className="mt-4 text-sm font-black leading-6 text-[#092046]">{asset.name}</h4>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <StatusPill value={asset.source} />
-                        <StatusPill value={asset.rights} />
-                        <StatusPill value={asset.quality} />
-                        <StatusPill value={asset.review} />
-                      </div>
-                      <p className="mt-3 text-sm font-semibold text-slate-600">사용 위치: {asset.usage}</p>
-                    </article>
-                  ))}
-                </div>
+                        <h4 className="mt-4 text-sm font-black leading-6 text-[#092046]">{asset.title}</h4>
+                        <p className="mt-1 break-all text-xs font-semibold leading-5 text-slate-500">
+                          {asset.filePath}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <StatusPill value={asset.source} />
+                          <StatusPill value={asset.rights} />
+                          <StatusPill value={asset.quality} />
+                          <StatusPill value={asset.review} />
+                        </div>
+                        <p className="mt-3 text-sm font-semibold text-slate-600">사용 위치: {asset.usage}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">최근 수정 {asset.updated}</p>
+                      </article>
+                    ))}
+                  </div>
+                )}
               </article>
             </section>
 

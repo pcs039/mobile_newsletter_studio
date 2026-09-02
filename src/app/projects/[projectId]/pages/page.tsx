@@ -45,8 +45,8 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                       PDF는 원본 보관용으로 저장하고, PC e-book에 사용할 페이지 이미지는 별도로 등록합니다.
                     </p>
                   </div>
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
-                    실제 업로드 연동 전
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                    Supabase Storage 저장
                   </span>
                 </div>
 
@@ -113,19 +113,28 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {pages.map((page) => (
                       <article key={page.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-                        <div className="aspect-[3/4] rounded-md border border-slate-200 bg-[#eef4fb] p-3">
-                          <div className="flex h-full flex-col justify-between rounded border border-slate-200 bg-white p-3">
-                            <div>
-                              <div className="h-3 w-2/3 rounded bg-[#092046]" />
-                              <div className="mt-4 rounded-lg bg-sky-50 px-3 py-8 text-center">
-                                <p className="text-xs font-black text-[#184a88]">Storage 파일</p>
-                                <p className="mt-2 break-all text-xs font-semibold leading-5 text-slate-500">
-                                  {page.imagePath ?? "이미지 경로 없음"}
-                                </p>
+                        <div className="aspect-[3/4] overflow-hidden rounded-md border border-slate-200 bg-[#eef4fb]">
+                          {page.previewHref ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={page.previewHref}
+                              alt={`${page.pageNumber}쪽 페이지 이미지`}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full flex-col justify-between bg-white p-3">
+                              <div>
+                                <div className="h-3 w-2/3 rounded bg-[#092046]" />
+                                <div className="mt-4 rounded-lg bg-sky-50 px-3 py-8 text-center">
+                                  <p className="text-xs font-black text-[#184a88]">Storage 파일</p>
+                                  <p className="mt-2 break-all text-xs font-semibold leading-5 text-slate-500">
+                                    이미지 경로 없음
+                                  </p>
+                                </div>
                               </div>
+                              <p className="text-xs font-semibold text-slate-500">최근 수정 {page.updated}</p>
                             </div>
-                            <p className="text-xs font-semibold text-slate-500">최근 수정 {page.updated}</p>
-                          </div>
+                          )}
                         </div>
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <div>

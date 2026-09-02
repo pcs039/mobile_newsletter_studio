@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ProjectFileUploadKind } from "@/lib/newsletter-file-storage";
 
 type UploadStatus = "idle" | "selected" | "uploading" | "success" | "error";
@@ -34,6 +35,7 @@ export function FileUploadCard({
   projectSlug: string;
   title: string;
 }) {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef("");
   const [file, setFile] = useState<File | null>(null);
@@ -98,7 +100,8 @@ export function FileUploadCard({
     }
 
     setStatus("success");
-    setMessage(result.message ?? "파일 업로드가 완료됐습니다.");
+    setMessage(`${result.message ?? "파일 업로드가 완료됐습니다."} 아래 목록을 갱신했습니다.`);
+    router.refresh();
   }
 
   return (

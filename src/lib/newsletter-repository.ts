@@ -110,6 +110,29 @@ type NewsletterPageRow = {
   updated_at: string;
 };
 
+type NewsletterAssetRow = {
+  id: string;
+  title: string;
+  file_path: string;
+  mime_type: string | null;
+  source_type: string;
+  rights_status: string | null;
+  quality_status: string | null;
+  usage_note: string | null;
+  is_approved: boolean;
+  updated_at: string;
+};
+
+type NewsletterAudioFileRow = {
+  id: string;
+  title: string;
+  file_path: string;
+  duration_seconds: number | null;
+  script_status: string;
+  pronunciation_note: string | null;
+  updated_at: string;
+};
+
 type NewsletterDailyStatsRow = {
   project_id: string;
   stat_date: string;
@@ -137,12 +160,50 @@ export type ProjectPageImage = {
   pageNumber: number;
   title: string;
   imagePath: string | null;
+  previewHref: string | null;
   status: string;
   updated: string;
 };
 
 export type ProjectPageImagesResult = {
   pages: ProjectPageImage[];
+  source: "supabase" | "unconfigured" | "error" | "not_found";
+  message: string;
+};
+
+export type ProjectAssetFile = {
+  id: string;
+  title: string;
+  filePath: string;
+  previewHref: string;
+  mimeType: string;
+  source: string;
+  rights: string;
+  quality: string;
+  usage: string;
+  review: string;
+  updated: string;
+};
+
+export type ProjectAssetFilesResult = {
+  assets: ProjectAssetFile[];
+  source: "supabase" | "unconfigured" | "error" | "not_found";
+  message: string;
+};
+
+export type ProjectAudioFile = {
+  id: string;
+  title: string;
+  filePath: string;
+  previewHref: string;
+  duration: string;
+  scriptStatus: string;
+  note: string;
+  updated: string;
+};
+
+export type ProjectAudioFilesResult = {
+  files: ProjectAudioFile[];
   source: "supabase" | "unconfigured" | "error" | "not_found";
   message: string;
 };
@@ -218,6 +279,19 @@ const pageImageStatusLabels: Record<string, string> = {
   replace_needed: "교체 필요",
 };
 
+const assetSourceLabels: Record<string, string> = {
+  institution_original: "기관 제공",
+  designer_created: "디자이너 제작",
+  ai_generated: "AI 생성",
+  pdf_extract: "PDF 발췌",
+};
+
+const audioScriptStatusLabels: Record<string, string> = {
+  unchecked: "대본 검수 대기",
+  approved: "대본 확인 완료",
+  needs_revision: "대본 수정 필요",
+};
+
 function formatDate(value: string | null) {
   if (!value) {
     return "-";
@@ -273,6 +347,25 @@ function makeWorkload(project: NewsletterProjectRow) {
 
 function formatCount(value: number) {
   return value.toLocaleString("ko-KR");
+}
+
+function formatDuration(seconds: number | null) {
+  if (!seconds || seconds < 1) {
+    return "-";
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function makeStoragePreviewHref(bucket: string, path: string | null) {
+  if (!path) {
+    return null;
+  }
+
+  return `/api/project-files/preview?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}`;
 }
 
 function formatKoreanDateKey(date: Date) {
@@ -583,8 +676,38 @@ function mapPageRowToProjectPageImage(page: NewsletterPageRow): ProjectPageImage
     pageNumber: page.page_number,
     title: page.title || `${page.page_number}쪽`,
     imagePath: page.image_path,
+    previewHref: makeStoragePreviewHref("page-images", page.image_path),
     status: pageImageStatusLabels[page.image_status] ?? page.image_status,
     updated: formatDate(page.updated_at),
+  };
+}
+
+function mapAssetRowToProjectAssetFile(asset: NewsletterAssetRow): ProjectAssetFile {
+  return {
+    id: asset.id,
+    title: asset.title,
+    filePath: asset.file_path,
+    previewHref: makeStoragePreviewHref("mobile-assets", asset.file_path) ?? "",
+    mimeType: asset.mime_type || "image/*",
+    source: assetSourceLabels[asset.source_type] ?? asset.source_type,
+    rights: asset.rights_status || "권리 확인 필요",
+    quality: asset.quality_status || "검수 대기",
+    usage: asset.usage_note || "사용 위치 미지정",
+    review: asset.is_approved ? "검수 완료" : "검수 대기",
+    updated: formatDate(asset.updated_at),
+  };
+}
+
+function mapAudioRowToProjectAudioFile(file: NewsletterAudioFileRow): ProjectAudioFile {
+  return {
+    id: file.id,
+    title: file.title,
+    filePath: file.file_path,
+    previewHref: makeStoragePreviewHref("audio-files", file.file_path) ?? "",
+    duration: formatDuration(file.duration_seconds),
+    scriptStatus: audioScriptStatusLabels[file.script_status] ?? file.script_status,
+    note: file.pronunciation_note || "검수 메모 없음",
+    updated: formatDate(file.updated_at),
   };
 }
 
@@ -854,6 +977,118 @@ export async function getProjectPageImages(projectSlug: string): Promise<Project
       pages: [],
       source: "error",
       message: "페이지 이미지 목록 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function getProjectAssetFiles(projectSlug: string): Promise<ProjectAssetFilesResult> {
+  const workspace = await getProjectWorkspace(projectSlug);
+
+  if (!workspace.ok) {
+    return {
+      assets: [],
+      source: workspace.source,
+      message: workspace.message,
+    };
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_assets?select=id,title,file_path,mime_type,source_type,rights_status,quality_status,usage_note,is_approved,updated_at&project_id=eq.${encodeURIComponent(
+      workspace.project.id,
+    )}&order=updated_at.desc&limit=100`,
+  );
+  const headers = getRequestHeaders(true);
+
+  if (!endpoint || !headers) {
+    return {
+      assets: [],
+      source: "unconfigured",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 이미지 자산 목록을 표시합니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        assets: [],
+        source: "error",
+        message: "이미지 자산 목록 조회에 실패했습니다.",
+      };
+    }
+
+    const rows = (await response.json()) as NewsletterAssetRow[];
+
+    return {
+      assets: rows.map(mapAssetRowToProjectAssetFile),
+      source: "supabase",
+      message: rows.length > 0 ? "Supabase에 등록된 이미지 자산을 표시합니다." : "등록된 이미지 자산이 아직 없습니다.",
+    };
+  } catch {
+    return {
+      assets: [],
+      source: "error",
+      message: "이미지 자산 목록 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function getProjectAudioFiles(projectSlug: string): Promise<ProjectAudioFilesResult> {
+  const workspace = await getProjectWorkspace(projectSlug);
+
+  if (!workspace.ok) {
+    return {
+      files: [],
+      source: workspace.source,
+      message: workspace.message,
+    };
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_audio_files?select=id,title,file_path,duration_seconds,script_status,pronunciation_note,updated_at&project_id=eq.${encodeURIComponent(
+      workspace.project.id,
+    )}&order=updated_at.desc&limit=100`,
+  );
+  const headers = getRequestHeaders(true);
+
+  if (!endpoint || !headers) {
+    return {
+      files: [],
+      source: "unconfigured",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 MP3 목록과 재생기를 표시합니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        files: [],
+        source: "error",
+        message: "MP3 파일 목록 조회에 실패했습니다.",
+      };
+    }
+
+    const rows = (await response.json()) as NewsletterAudioFileRow[];
+
+    return {
+      files: rows.map(mapAudioRowToProjectAudioFile),
+      source: "supabase",
+      message: rows.length > 0 ? "Supabase에 등록된 MP3 파일을 표시합니다." : "등록된 MP3 파일이 아직 없습니다.",
+    };
+  } catch {
+    return {
+      files: [],
+      source: "error",
+      message: "MP3 파일 목록 조회 중 오류가 발생했습니다.",
     };
   }
 }

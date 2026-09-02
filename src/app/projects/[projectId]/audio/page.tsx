@@ -2,10 +2,11 @@ import Link from "next/link";
 import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
-import { audioReviewChecks, audioTracks, audioWorkflow } from "@/lib/newsletter-data";
+import { audioReviewChecks, audioWorkflow } from "@/lib/newsletter-data";
+import { getProjectAudioFiles } from "@/lib/newsletter-repository";
 
-function BrowserAudioControl({ title, enabled }: { title: string; enabled: boolean }) {
-  if (!enabled) {
+function BrowserAudioControl({ src, title }: { src: string; title: string }) {
+  if (!src) {
     return <span className="text-xs font-bold text-slate-500">MP3 등록 후 재생 가능</span>;
   }
 
@@ -15,12 +16,16 @@ function BrowserAudioControl({ title, enabled }: { title: string; enabled: boole
       className="h-10 w-full min-w-48 rounded-md"
       controls
       preload="metadata"
+      src={src}
     />
   );
 }
 
 export default async function AudioManagementPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const audioData = await getProjectAudioFiles(projectId);
+  const audioFiles = audioData.files;
+  const firstAudioFile = audioFiles[0];
 
   return (
     <ProjectAdminShell
@@ -87,9 +92,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                 <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-[#092046]">기사별 음성 연결</h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      파일명, 재생 시간, 대본 상태, 웹 재생 가능 여부를 함께 확인합니다.
-                    </p>
+                    <p className="mt-1 text-sm text-slate-500">{audioData.message}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
@@ -118,30 +121,45 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                       </tr>
                     </thead>
                     <tbody>
-                      {audioTracks.map((item) => (
-                        <tr key={item.title} className="border-b border-slate-200 last:border-0">
-                          <td className="px-4 py-4">
-                            <p className="text-xs font-black text-[#184a88]">{item.page}</p>
-                            <p className="mt-1 font-bold text-[#092046]">{item.title}</p>
-                          </td>
-                          <td className="px-4 py-4">
-                            <StatusPill value={item.status} />
-                          </td>
-                          <td className="px-4 py-4 font-semibold text-slate-600">{item.file}</td>
-                          <td className="px-4 py-4 text-slate-600">{item.duration}</td>
-                          <td className="px-4 py-4">
-                            <BrowserAudioControl title={item.title} enabled={item.file !== "파일 없음"} />
-                          </td>
-                          <td className="px-4 py-4">
-                            <StatusPill value={item.script} />
-                          </td>
-                          <td className="px-4 py-4">
-                            <button className="rounded-md border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]">
-                              연결 관리
-                            </button>
+                      {audioFiles.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-12 text-center">
+                            <p className="text-base font-black text-[#092046]">등록된 MP3 파일이 없습니다.</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">
+                              위 업로드 영역에서 MP3를 저장하면 실제 파일 목록과 재생기가 여기에 표시됩니다.
+                            </p>
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        audioFiles.map((item) => (
+                          <tr key={item.id} className="border-b border-slate-200 last:border-0">
+                            <td className="px-4 py-4">
+                              <p className="text-xs font-black text-[#184a88]">업로드 파일</p>
+                              <p className="mt-1 font-bold text-[#092046]">{item.title}</p>
+                            </td>
+                            <td className="px-4 py-4">
+                              <StatusPill value="업로드 완료" />
+                            </td>
+                            <td className="px-4 py-4">
+                              <p className="max-w-60 break-all font-semibold text-slate-600">{item.filePath}</p>
+                              <p className="mt-1 text-xs font-semibold text-slate-500">최근 수정 {item.updated}</p>
+                            </td>
+                            <td className="px-4 py-4 text-slate-600">{item.duration}</td>
+                            <td className="px-4 py-4">
+                              <BrowserAudioControl title={item.title} src={item.previewHref} />
+                            </td>
+                            <td className="px-4 py-4">
+                              <StatusPill value={item.scriptStatus} />
+                              <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{item.note}</p>
+                            </td>
+                            <td className="px-4 py-4">
+                              <button className="rounded-md border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]">
+                                연결 관리
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -164,8 +182,10 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
                 <h3 className="mt-1 text-lg font-bold text-[#092046]">재생 미리보기</h3>
                 <div className="mt-4 rounded-lg bg-[#092046] p-5 text-white">
-                  <p className="text-sm font-semibold text-sky-200">군정 주요 소식</p>
-                  <p className="mt-2 text-2xl font-black">02:14</p>
+                  <p className="text-sm font-semibold text-sky-200">
+                    {firstAudioFile?.title ?? "등록된 MP3 파일 없음"}
+                  </p>
+                  <p className="mt-2 text-2xl font-black">{firstAudioFile?.duration ?? "--:--"}</p>
                   <div className="mt-5 h-2 rounded-full bg-white/20">
                     <div className="h-2 w-2/5 rounded-full bg-sky-300" />
                   </div>
@@ -177,13 +197,14 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                   </div>
                   <div className="mt-4 rounded-lg bg-white/10 p-3">
                     <p className="mb-2 text-xs font-semibold text-sky-100">
-                      실제 연동 후에는 업로드된 MP3 URL을 아래 브라우저 플레이어에 연결합니다.
+                      업로드된 MP3는 private Storage에서 불러와 브라우저 플레이어로 검수합니다.
                     </p>
                     <audio
-                      aria-label="선택 MP3 파일 브라우저 재생 검수"
+                      aria-label={firstAudioFile ? `${firstAudioFile.title} 브라우저 재생 검수` : "MP3 파일 브라우저 재생 검수"}
                       className="h-10 w-full rounded-md"
                       controls
                       preload="metadata"
+                      src={firstAudioFile?.previewHref}
                     />
                   </div>
                 </div>
