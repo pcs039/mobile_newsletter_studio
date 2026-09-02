@@ -402,12 +402,13 @@ export const audioWorkflow: LabelStatus[] = [
   { label: "대본 정리", status: "읽기 보기 기준" },
   { label: "외부 TTS 생성", status: "관리자 수동 작업" },
   { label: "MP3 업로드", status: "기사별 연결" },
-  { label: "재생 검수", status: "공개 전 확인" },
+  { label: "재생 검수", status: "브라우저 플레이어 확인" },
 ];
 
 export const audioReviewChecks = [
   "본문 내용과 음성 대본이 일치하는지 확인",
   "기관명, 지명, 행사명 발음이 어색하지 않은지 확인",
+  "관리자 화면의 브라우저 플레이어에서 재생되는지 확인",
   "모바일에서 재생 버튼이 충분히 잘 보이는지 확인",
   "파일 교체 후 이전 음성이 남아 있지 않은지 확인",
 ];

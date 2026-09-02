@@ -3,6 +3,21 @@ import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
 import { audioReviewChecks, audioTracks, audioWorkflow } from "@/lib/newsletter-data";
 
+function BrowserAudioControl({ title, enabled }: { title: string; enabled: boolean }) {
+  if (!enabled) {
+    return <span className="text-xs font-bold text-slate-500">MP3 등록 후 재생 가능</span>;
+  }
+
+  return (
+    <audio
+      aria-label={`${title} MP3 재생 검수`}
+      className="h-10 w-full min-w-48 rounded-md"
+      controls
+      preload="metadata"
+    />
+  );
+}
+
 export default function AudioManagementPage() {
   return (
     <ProjectAdminShell
@@ -35,7 +50,7 @@ export default function AudioManagementPage() {
                   <div>
                     <h3 className="text-lg font-bold text-[#092046]">MP3 파일 업로드</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      기사 또는 페이지별로 외부 TTS에서 제작한 MP3 파일을 업로드합니다.
+                      기사 또는 페이지별로 외부 TTS에서 제작한 MP3 파일을 업로드하고, 브라우저 재생기로 바로 검수합니다.
                     </p>
                   </div>
                   <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800">
@@ -59,7 +74,7 @@ export default function AudioManagementPage() {
                       <span className="rounded-md bg-slate-50 px-3 py-2">대본 최종본 확인</span>
                       <span className="rounded-md bg-slate-50 px-3 py-2">발음·속도 검수</span>
                       <span className="rounded-md bg-slate-50 px-3 py-2">기사 연결 위치 선택</span>
-                      <span className="rounded-md bg-slate-50 px-3 py-2">재생 시간 확인</span>
+                      <span className="rounded-md bg-slate-50 px-3 py-2">브라우저 플레이어 재생 확인</span>
                     </div>
                   </div>
                 </div>
@@ -70,7 +85,7 @@ export default function AudioManagementPage() {
                   <div>
                     <h3 className="text-lg font-bold text-[#092046]">기사별 음성 연결</h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      파일명, 재생 시간, 대본 상태를 함께 확인합니다.
+                      파일명, 재생 시간, 대본 상태, 웹 재생 가능 여부를 함께 확인합니다.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -87,13 +102,14 @@ export default function AudioManagementPage() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+                  <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
                     <thead className="bg-[#092046] text-white">
                       <tr>
                         <th className="px-4 py-3 font-bold">기사</th>
                         <th className="px-4 py-3 font-bold">상태</th>
                         <th className="px-4 py-3 font-bold">파일명</th>
                         <th className="px-4 py-3 font-bold">재생 시간</th>
+                        <th className="px-4 py-3 font-bold">재생 검수</th>
                         <th className="px-4 py-3 font-bold">대본</th>
                         <th className="px-4 py-3 font-bold">관리</th>
                       </tr>
@@ -110,6 +126,9 @@ export default function AudioManagementPage() {
                           </td>
                           <td className="px-4 py-4 font-semibold text-slate-600">{item.file}</td>
                           <td className="px-4 py-4 text-slate-600">{item.duration}</td>
+                          <td className="px-4 py-4">
+                            <BrowserAudioControl title={item.title} enabled={item.file !== "파일 없음"} />
+                          </td>
                           <td className="px-4 py-4">
                             <StatusPill value={item.script} />
                           </td>
@@ -139,7 +158,8 @@ export default function AudioManagementPage() {
 
             <aside className="space-y-5">
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-[#092046]">재생 미리보기</h3>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
+                <h3 className="mt-1 text-lg font-bold text-[#092046]">재생 미리보기</h3>
                 <div className="mt-4 rounded-lg bg-[#092046] p-5 text-white">
                   <p className="text-sm font-semibold text-sky-200">군정 주요 소식</p>
                   <p className="mt-2 text-2xl font-black">02:14</p>
@@ -151,6 +171,17 @@ export default function AudioManagementPage() {
                       재생
                     </button>
                     <span className="text-xs font-semibold text-slate-300">외부 TTS 제작 파일</span>
+                  </div>
+                  <div className="mt-4 rounded-lg bg-white/10 p-3">
+                    <p className="mb-2 text-xs font-semibold text-sky-100">
+                      실제 연동 후에는 업로드된 MP3 URL을 아래 브라우저 플레이어에 연결합니다.
+                    </p>
+                    <audio
+                      aria-label="선택 MP3 파일 브라우저 재생 검수"
+                      className="h-10 w-full rounded-md"
+                      controls
+                      preload="metadata"
+                    />
                   </div>
                 </div>
               </article>

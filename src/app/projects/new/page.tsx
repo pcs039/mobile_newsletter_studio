@@ -25,6 +25,10 @@ const publishOptions = [
     title: "음성 듣기 준비",
     description: "외부 TTS로 만든 MP3를 나중에 기사별 또는 페이지별로 연결할 수 있게 둡니다.",
   },
+  {
+    title: "외부 AI·프로그램 결과물 등록",
+    description: "1차 MVP에서는 AI나 외부 제작 도구를 직접 실행하지 않고, 완성된 이미지·원고·음성·e-book 링크를 등록합니다.",
+  },
 ];
 
 function FieldLabel({ children, required = false }: { children: string; required?: boolean }) {
@@ -117,6 +121,15 @@ export default function NewProjectPage() {
 
           <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
             <form className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">작업 입력 영역</p>
+                  <h3 className="mt-1 text-lg font-bold text-[#092046]">프로젝트 기본값 입력</h3>
+                </div>
+                <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-bold text-[#184a88]">
+                  저장 전 샘플 UI
+                </span>
+              </div>
               <div className="grid gap-5 md:grid-cols-2">
                 <div>
                   <FieldLabel required>소식지명</FieldLabel>
@@ -225,7 +238,8 @@ export default function NewProjectPage() {
 
             <aside className="space-y-5">
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-[#092046]">상품 옵션 기준</h3>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
+                <h3 className="mt-1 text-lg font-bold text-[#092046]">상품 옵션 기준</h3>
                 <div className="mt-4 space-y-3">
                   {packageOptions.map((option) => (
                     <div key={option.label} className="rounded-lg bg-slate-50 p-4">
@@ -240,7 +254,8 @@ export default function NewProjectPage() {
               </article>
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-[#092046]">제작 방식 기준</h3>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
+                <h3 className="mt-1 text-lg font-bold text-[#092046]">제작 방식 기준</h3>
                 <div className="mt-4 space-y-3">
                   {productionModeOptions.map((option) => (
                     <div key={option.label} className="rounded-lg bg-slate-50 p-4">

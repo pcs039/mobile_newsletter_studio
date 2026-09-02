@@ -9,6 +9,13 @@
   --app-surface-soft-blue: #edf4ff;
   --app-text-muted: #40516a;
   --app-card-shadow: 0 1px 2px rgba(9, 32, 70, 0.08), 0 8px 18px rgba(9, 32, 70, 0.06);
+  --app-work-panel: #ffffff;
+  --app-work-panel-border: #9fb2c8;
+  --app-help-panel: #edf3fa;
+  --app-help-panel-border: #b4c5d9;
+  --app-help-accent: #2f6fb3;
+  --app-field-border: #9aaec6;
+  --app-upload-panel: #e7f5ff;
 }
 
 @theme inline {
@@ -69,6 +76,47 @@ body {
 
 .shadow-sm {
   box-shadow: var(--app-card-shadow);
+}
+
+/*
+  Workspace role colors.
+  Work panels are where editors upload, type, select, and manage data.
+  Help panels are reference notes, checklists, and workflow guidance.
+*/
+main form.rounded-lg.bg-white,
+main section.mb-7 > article.rounded-lg.bg-white,
+main section.space-y-5 > article.rounded-lg.bg-white,
+main section.rounded-lg.bg-white {
+  background-color: var(--app-work-panel);
+  border-color: var(--app-work-panel-border);
+  border-top: 3px solid #0b3f79;
+}
+
+main aside.space-y-5 > article.rounded-lg.bg-white {
+  background-color: var(--app-help-panel);
+  border-color: var(--app-help-panel-border);
+  border-left: 4px solid var(--app-help-accent);
+  border-top: 1px solid var(--app-help-panel-border);
+}
+
+main aside.space-y-5 .bg-slate-50,
+main aside.space-y-5 .bg-\[\#f4f8ff\] {
+  background-color: #f8fbff;
+  border: 1px solid #d3dfed;
+}
+
+input.bg-white,
+textarea.bg-white,
+select.bg-white {
+  border-color: var(--app-field-border);
+  background-color: #ffffff;
+}
+
+.border-dashed.bg-\[\#f4f8ff\],
+.border-dashed.bg-\[\#eaf2ff\] {
+  background-color: var(--app-upload-panel);
+  border-color: #56b8ee;
+  box-shadow: inset 0 0 0 1px rgba(86, 184, 238, 0.22);
 }
 
 .bg-white\/8 {
