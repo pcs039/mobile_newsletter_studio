@@ -1,6 +1,7 @@
 const statusTones: Record<string, string> = {
   "완료": "bg-emerald-100 text-emerald-800",
   "변환 완료": "bg-emerald-100 text-emerald-800",
+  "이미지 등록 완료": "bg-emerald-100 text-emerald-800",
   "업로드 완료": "bg-emerald-100 text-emerald-800",
   "검수 완료": "bg-emerald-100 text-emerald-800",
   "사용 가능": "bg-emerald-100 text-emerald-800",

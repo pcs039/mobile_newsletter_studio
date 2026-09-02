@@ -27,7 +27,7 @@ export const sampleNewsletterPages: NewsletterPage[] = Array.from({ length: 16 }
               : index === 15
                 ? "뒷표지"
                 : `기사 페이지 ${index + 1}`,
-  status: index < 4 ? "변환 완료" : index < 12 ? "검수 대기" : "제목 입력 필요",
+  status: index < 4 ? "이미지 등록 완료" : index < 12 ? "검수 대기" : "제목 입력 필요",
 }));
 
 export const sampleNewsletterArticles: NewsletterArticle[] = [
@@ -268,8 +268,8 @@ export const productionModeOptions: LabelStatusDetail[] = [
 
 export const workflowSteps = [
   "프로젝트 생성",
-  "PDF 업로드",
-  "페이지 변환",
+  "PDF 원본 보관",
+  "페이지 이미지 등록",
   "읽기 보기 편집",
   "이미지·링크·음성 연결",
   "발행",
@@ -283,17 +283,17 @@ export const assetChecks: LabelValue[] = [
 ];
 
 export const pageConversionSteps: LabelStatus[] = [
-  { label: "PDF 업로드", status: "대기" },
-  { label: "페이지 이미지 변환", status: "샘플 완료" },
-  { label: "PC e-book 구성", status: "준비됨" },
+  { label: "PDF 원본 업로드", status: "보관용" },
+  { label: "페이지 이미지 등록", status: "수동 업로드" },
+  { label: "PC e-book 구성", status: "등록 이미지 또는 외부 링크" },
   { label: "모바일 읽기 보기", status: "다음 단계" },
 ];
 
 export const pageQualityChecks = [
-  "페이지 순서가 원본 PDF와 같은지 확인",
+  "등록 이미지 순서가 원본 PDF와 같은지 확인",
   "표지와 뒷표지가 잘리지 않았는지 확인",
   "PC e-book에서 확대했을 때 글자와 이미지가 흐리지 않은지 확인",
-  "클릭 영역을 추가할 페이지를 미리 표시",
+  "1차 MVP에서는 PDF 자동 변환보다 수동 등록 품질을 우선 확인",
 ];
 
 export const readingEditSections = ["제목·요약", "본문 문단", "대표 이미지", "문의처·버튼", "음성 대본"];
@@ -414,7 +414,7 @@ export const audioReviewChecks = [
 
 export const publishReadinessItems: LabelStatusDetail[] = [
   { label: "기본 정보", status: "완료", detail: "소식지명·기관명·발행월 입력" },
-  { label: "PDF 페이지", status: "완료", detail: "16쪽 변환 샘플 확인" },
+  { label: "PDF·이미지", status: "완료", detail: "16쪽 등록 샘플 확인" },
   { label: "읽기 보기", status: "검수 중", detail: "4개 기사 편집 진행" },
   { label: "이미지 자산", status: "검수 중", detail: "권리·화질 확인 필요" },
   { label: "음성 MP3", status: "보완 필요", detail: "2개 기사 미등록" },

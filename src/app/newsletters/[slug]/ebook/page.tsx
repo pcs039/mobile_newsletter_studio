@@ -103,7 +103,7 @@ export default function PublicEbookPage() {
               </div>
               <div className="rounded-lg bg-slate-50 px-3 py-3">
                 <p className="text-xs font-black text-[#184a88]">품질 기준</p>
-                <p className="mt-1 text-sm font-bold text-slate-700">원본 PDF 변환 이미지</p>
+                <p className="mt-1 text-sm font-bold text-slate-700">등록된 페이지 이미지</p>
               </div>
             </div>
           </article>

@@ -13,7 +13,7 @@ import {
 
 const navigationItems = [
   { label: "프로젝트", href: "/", status: "active" },
-  { label: "PDF·페이지", href: "/projects/muan-2025-94/pages", status: "ready" },
+  { label: "PDF·이미지", href: "/projects/muan-2025-94/pages", status: "ready" },
   { label: "읽기 보기", href: "/projects/muan-2025-94/reading", status: "ready" },
   { label: "이미지 자산", href: "/projects/muan-2025-94/assets", status: "new" },
   { label: "음성 MP3", href: "/projects/muan-2025-94/audio", status: "ready" },
@@ -88,7 +88,7 @@ export default function Home() {
                 프로젝트 대시보드
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                PDF 기반 공공 소식지를 모바일 읽기 콘텐츠와 PC e-book으로 발행합니다.
+                PDF 원본과 등록 이미지를 바탕으로 모바일 읽기 콘텐츠와 PC e-book을 발행합니다.
               </p>
             </div>
             <Link

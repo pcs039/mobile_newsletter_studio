@@ -7,7 +7,7 @@ type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish";
 const projectPath = "/projects/muan-2025-94";
 
 const projectNavigation: Array<{ key: ProjectSection; label: string; href: string }> = [
-  { key: "pages", label: "PDF 업로드", href: `${projectPath}/pages` },
+  { key: "pages", label: "PDF·이미지", href: `${projectPath}/pages` },
   { key: "reading", label: "읽기 보기 편집", href: `${projectPath}/reading` },
   { key: "assets", label: "이미지 자산", href: `${projectPath}/assets` },
   { key: "audio", label: "음성 MP3", href: `${projectPath}/audio` },

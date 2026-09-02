@@ -59,7 +59,7 @@ export default function NewProjectPage() {
               만들기
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              상품 옵션과 제작 방식을 먼저 정한 뒤 PDF 업로드와 페이지 변환으로 넘어갑니다.
+              상품 옵션과 제작 방식을 먼저 정한 뒤 PDF 원본 보관과 페이지 이미지 등록으로 넘어갑니다.
             </p>
           </div>
 
@@ -74,7 +74,7 @@ export default function NewProjectPage() {
               새 소식지 생성
             </span>
             <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
-              PDF 업로드
+              PDF·이미지
             </span>
             <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
               읽기 보기 편집
@@ -200,10 +200,10 @@ export default function NewProjectPage() {
               </div>
 
               <div className="mt-7 rounded-lg border border-dashed border-sky-300 bg-[#eaf2ff] p-5">
-                <h3 className="text-base font-bold text-[#092046]">다음 단계: PDF 업로드</h3>
+                <h3 className="text-base font-bold text-[#092046]">다음 단계: PDF 원본·페이지 이미지 등록</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  프로젝트 정보를 만든 뒤 PDF 파일을 업로드합니다. 업로드된 PDF는 PC e-book용 페이지 이미지로 변환하고,
-                  이후 모바일 읽기 보기용 기사와 이미지 자산을 연결합니다.
+                  프로젝트 정보를 만든 뒤 PDF 파일은 원본 보관용으로 업로드합니다. PC e-book용 페이지 이미지는
+                  수동 등록하거나 외부 e-book 링크를 연결하고, 이후 모바일 읽기 보기용 기사와 이미지 자산을 연결합니다.
                 </p>
               </div>
 

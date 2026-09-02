@@ -33,9 +33,9 @@ export default function ReadingEditorPage() {
           편집
         </>
       }
-      sidebarDescription="PDF에서 추출한 텍스트를 모바일 기사형 콘텐츠로 다시 정리합니다."
+      sidebarDescription="PDF 원본 또는 제공 원고를 바탕으로 모바일 기사형 콘텐츠를 다시 정리합니다."
       sidebarNoteTitle="편집 기준"
-      sidebarNote="자동 추출 텍스트를 그대로 노출하지 않고, 제목·본문·문의처·버튼·대본을 사람이 정리합니다."
+      sidebarNote="OCR은 보조 수단으로만 두고, 제목·본문·문의처·버튼·대본은 사람이 검수해 정리합니다."
       actions={
         <Link
           href="/projects/muan-2025-94/pages"
@@ -83,7 +83,7 @@ export default function ReadingEditorPage() {
                 <div>
                   <h3 className="text-lg font-bold text-[#092046]">기사 편집</h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    PDF 추출 텍스트를 모바일 독자에게 맞게 다시 씁니다.
+                    PDF 원본 또는 제공 원고를 모바일 독자에게 맞게 다시 씁니다.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
