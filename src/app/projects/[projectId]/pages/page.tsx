@@ -98,15 +98,12 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                         >
                           다운로드
                         </Link>
-<<<<<<< ours
-=======
                         <ProjectFileDeleteButton
                           fileLabel={originalPdf.fileName}
                           kind="pdf_original"
                           path={originalPdf.path}
                           projectSlug={projectId}
                         />
->>>>>>> theirs
                       </div>
                     </div>
                   ) : (
