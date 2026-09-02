@@ -152,6 +152,63 @@ type NewsletterDailyStatsUpdateRow = {
   referrer_count: number;
 };
 
+type ContentBlockType =
+  | "paragraph"
+  | "image"
+  | "video_link"
+  | "map_link"
+  | "button_group"
+  | "audio"
+  | "overlay_notice";
+
+type LinkActionType = "url" | "phone" | "map" | "video" | "internal_page" | "download";
+type LinkDisplayStyle = "button" | "text_link" | "thumbnail_card" | "map_card";
+
+type NewsletterArticleRow = {
+  id: string;
+  project_id: string;
+  page_id: string | null;
+  sort_order: number;
+  title: string;
+  summary: string | null;
+  body: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  status: string;
+  representative_asset_id: string | null;
+  audio_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type NewsletterContentBlockRow = {
+  id: string;
+  project_id: string;
+  article_id: string | null;
+  block_type: ContentBlockType;
+  title: string | null;
+  body: string | null;
+  asset_id: string | null;
+  link_action_id: string | null;
+  sort_order: number;
+  metadata: Record<string, unknown>;
+  is_visible: boolean;
+  updated_at: string;
+};
+
+type NewsletterLinkActionRow = {
+  id: string;
+  project_id: string;
+  article_id: string | null;
+  label: string;
+  action_type: LinkActionType;
+  target_value: string;
+  display_style: LinkDisplayStyle;
+  sort_order: number;
+  is_visible: boolean;
+  updated_at: string;
+};
+
 type ProjectViewStats = {
   today: number;
   yesterday: number;
@@ -223,6 +280,81 @@ export type ProjectAudioFilesResult = {
   source: "supabase" | "unconfigured" | "error" | "not_found";
   message: string;
 };
+
+export type ProjectContentBlock = {
+  id: string;
+  type: ContentBlockType;
+  title: string;
+  body: string;
+  assetId: string | null;
+  linkActionId: string | null;
+  sortOrder: number;
+  isVisible: boolean;
+};
+
+export type ProjectLinkAction = {
+  id: string;
+  label: string;
+  actionType: LinkActionType;
+  targetValue: string;
+  displayStyle: LinkDisplayStyle;
+  sortOrder: number;
+  isVisible: boolean;
+};
+
+export type ProjectContentArticle = {
+  id: string;
+  pageId: string | null;
+  pageNumber: number | null;
+  sortOrder: number;
+  title: string;
+  summary: string;
+  body: string;
+  contactName: string;
+  contactPhone: string;
+  status: string;
+  updated: string;
+  blocks: ProjectContentBlock[];
+  links: ProjectLinkAction[];
+};
+
+export type ProjectContentResult = {
+  articles: ProjectContentArticle[];
+  source: "supabase" | "unconfigured" | "error" | "not_found";
+  message: string;
+};
+
+export type UpsertProjectArticleInput = {
+  projectSlug: string;
+  articleId?: string;
+  pageId?: string;
+  sortOrder?: number;
+  title: string;
+  summary?: string;
+  body?: string;
+  contactName?: string;
+  contactPhone?: string;
+  status?: string;
+  buttonLabel?: string;
+  buttonTarget?: string;
+  videoLabel?: string;
+  videoUrl?: string;
+  mapLabel?: string;
+  mapUrl?: string;
+  audioScript?: string;
+};
+
+export type UpsertProjectArticleResult =
+  | {
+      ok: true;
+      article: Pick<ProjectContentArticle, "id" | "title">;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "not_found" | "request_failed" | "invalid_input";
+      message: string;
+      httpStatus?: number;
+    };
 
 export type RecordNewsletterViewInput = {
   slug: string;
@@ -743,6 +875,89 @@ function mapAudioRowToProjectAudioFile(file: NewsletterAudioFileRow): ProjectAud
   };
 }
 
+function mapContentBlockRowToProjectBlock(block: NewsletterContentBlockRow): ProjectContentBlock {
+  return {
+    id: block.id,
+    type: block.block_type,
+    title: block.title || "",
+    body: block.body || "",
+    assetId: block.asset_id,
+    linkActionId: block.link_action_id,
+    sortOrder: block.sort_order,
+    isVisible: block.is_visible,
+  };
+}
+
+function mapLinkActionRowToProjectLink(action: NewsletterLinkActionRow): ProjectLinkAction {
+  return {
+    id: action.id,
+    label: action.label,
+    actionType: action.action_type,
+    targetValue: action.target_value,
+    displayStyle: action.display_style,
+    sortOrder: action.sort_order,
+    isVisible: action.is_visible,
+  };
+}
+
+function mapArticleRowToProjectContentArticle(
+  article: NewsletterArticleRow,
+  blocks: NewsletterContentBlockRow[],
+  links: NewsletterLinkActionRow[],
+  pageNumberById: Map<string, number>,
+): ProjectContentArticle {
+  return {
+    id: article.id,
+    pageId: article.page_id,
+    pageNumber: article.page_id ? pageNumberById.get(article.page_id) ?? null : null,
+    sortOrder: article.sort_order,
+    title: article.title,
+    summary: article.summary || "",
+    body: article.body || "",
+    contactName: article.contact_name || "",
+    contactPhone: article.contact_phone || "",
+    status: article.status,
+    updated: formatDate(article.updated_at),
+    blocks: blocks.map(mapContentBlockRowToProjectBlock),
+    links: links.map(mapLinkActionRowToProjectLink),
+  };
+}
+
+function cleanText(value: string | undefined) {
+  return value?.trim() ?? "";
+}
+
+function nullableText(value: string | undefined) {
+  const cleaned = cleanText(value);
+
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function normalizeArticleStatus(value: string | undefined) {
+  const allowed = ["draft", "editing", "review", "approved", "published", "needs_revision"];
+  const cleaned = cleanText(value);
+
+  return allowed.includes(cleaned) ? cleaned : "draft";
+}
+
+function normalizeArticleSortOrder(value: number | undefined) {
+  return Number.isInteger(value) && Number(value) >= 0 ? Number(value) : 0;
+}
+
+function detectLinkActionType(value: string, fallback: LinkActionType): LinkActionType {
+  const normalized = value.trim().toLowerCase();
+
+  if (/^tel:/.test(normalized) || /^[0-9-]{7,}$/.test(normalized)) {
+    return "phone";
+  }
+
+  return fallback;
+}
+
+function makeArticleIdFilter(articleIds: string[]) {
+  return encodeURIComponent(`in.(${articleIds.join(",")})`);
+}
+
 function getRequestHeaders(useServiceRole = false) {
   const config = getSupabaseConfigStatus();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -1179,6 +1394,498 @@ export async function getProjectAudioFiles(projectSlug: string): Promise<Project
       files: [],
       source: "error",
       message: "MP3 파일 목록 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+async function fetchArticleBlocks(articleIds: string[], headers: Record<string, string>) {
+  if (articleIds.length === 0) {
+    return [];
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_content_blocks?select=id,project_id,article_id,block_type,title,body,asset_id,link_action_id,sort_order,metadata,is_visible,updated_at&article_id=${makeArticleIdFilter(
+      articleIds,
+    )}&order=sort_order.asc`,
+  );
+
+  if (!endpoint) {
+    return [];
+  }
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  return (await response.json()) as NewsletterContentBlockRow[];
+}
+
+async function fetchArticleLinks(articleIds: string[], headers: Record<string, string>) {
+  if (articleIds.length === 0) {
+    return [];
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_link_actions?select=id,project_id,article_id,label,action_type,target_value,display_style,sort_order,is_visible,updated_at&article_id=${makeArticleIdFilter(
+      articleIds,
+    )}&order=sort_order.asc`,
+  );
+
+  if (!endpoint) {
+    return [];
+  }
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  return (await response.json()) as NewsletterLinkActionRow[];
+}
+
+async function fetchProjectPageNumbers(projectId: string, headers: Record<string, string>) {
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_pages?select=id,page_number&project_id=eq.${encodeURIComponent(projectId)}&order=page_number.asc`,
+  );
+
+  if (!endpoint) {
+    return new Map<string, number>();
+  }
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return new Map<string, number>();
+  }
+
+  const rows = (await response.json()) as Array<{ id: string; page_number: number }>;
+
+  return new Map(rows.map((row) => [row.id, row.page_number]));
+}
+
+export async function getProjectContent(projectSlug: string): Promise<ProjectContentResult> {
+  const workspace = await getProjectWorkspace(projectSlug);
+
+  if (!workspace.ok) {
+    return {
+      articles: [],
+      source: workspace.source,
+      message: workspace.message,
+    };
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,summary,body,contact_name,contact_phone,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+      workspace.project.id,
+    )}&order=sort_order.asc&order=updated_at.desc`,
+  );
+  const headers = getRequestHeaders(true);
+
+  if (!endpoint || !headers) {
+    return {
+      articles: [],
+      source: "unconfigured",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 기사 작성 데이터를 표시합니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        articles: [],
+        source: "error",
+        message: "기사 작성 데이터 조회에 실패했습니다.",
+      };
+    }
+
+    const articleRows = (await response.json()) as NewsletterArticleRow[];
+    const articleIds = articleRows.map((article) => article.id);
+    const [blockRows, linkRows, pageNumberById] = await Promise.all([
+      fetchArticleBlocks(articleIds, headers),
+      fetchArticleLinks(articleIds, headers),
+      fetchProjectPageNumbers(workspace.project.id, headers),
+    ]);
+
+    return {
+      articles: articleRows.map((article) =>
+        mapArticleRowToProjectContentArticle(
+          article,
+          blockRows.filter((block) => block.article_id === article.id),
+          linkRows.filter((link) => link.article_id === article.id),
+          pageNumberById,
+        ),
+      ),
+      source: "supabase",
+      message:
+        articleRows.length > 0
+          ? "Supabase에 저장된 모바일 기사 작성 데이터를 표시합니다."
+          : "등록된 모바일 기사 작성 데이터가 아직 없습니다.",
+    };
+  } catch {
+    return {
+      articles: [],
+      source: "error",
+      message: "기사 작성 데이터 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+async function insertArticleLinkAction(
+  projectId: string,
+  articleId: string,
+  action: {
+    label: string;
+    actionType: LinkActionType;
+    targetValue: string;
+    displayStyle: LinkDisplayStyle;
+    sortOrder: number;
+  },
+  headers: Record<string, string>,
+) {
+  const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_link_actions?select=id");
+
+  if (!endpoint) {
+    return null;
+  }
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      ...headers,
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      project_id: projectId,
+      article_id: articleId,
+      label: action.label,
+      action_type: action.actionType,
+      target_value: action.targetValue,
+      display_style: action.displayStyle,
+      sort_order: action.sortOrder,
+      is_visible: true,
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json()) as Array<{ id: string }>;
+
+  return rows[0]?.id ?? null;
+}
+
+async function replaceArticleBlocks(
+  projectId: string,
+  articleId: string,
+  input: UpsertProjectArticleInput,
+  headers: Record<string, string>,
+) {
+  const encodedArticleId = encodeURIComponent(articleId);
+  const blocksEndpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_content_blocks?article_id=eq.${encodedArticleId}`);
+  const linksEndpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_link_actions?article_id=eq.${encodedArticleId}`);
+
+  if (!blocksEndpoint || !linksEndpoint) {
+    return false;
+  }
+
+  const [deleteBlocksResponse, deleteLinksResponse] = await Promise.all([
+    fetch(blocksEndpoint, {
+      method: "DELETE",
+      headers,
+      cache: "no-store",
+    }),
+    fetch(linksEndpoint, {
+      method: "DELETE",
+      headers,
+      cache: "no-store",
+    }),
+  ]);
+
+  if (!deleteBlocksResponse.ok || !deleteLinksResponse.ok) {
+    return false;
+  }
+
+  const buttonTarget = cleanText(input.buttonTarget);
+  const videoUrl = cleanText(input.videoUrl);
+  const mapUrl = cleanText(input.mapUrl);
+  const blocks: Array<{
+    block_type: ContentBlockType;
+    title: string | null;
+    body: string | null;
+    link_action_id?: string | null;
+    sort_order: number;
+    metadata?: Record<string, unknown>;
+  }> = [];
+
+  if (cleanText(input.body)) {
+    blocks.push({
+      block_type: "paragraph",
+      title: "본문",
+      body: cleanText(input.body),
+      sort_order: 10,
+    });
+  }
+
+  if (buttonTarget && cleanText(input.buttonLabel)) {
+    const linkActionId = await insertArticleLinkAction(
+      projectId,
+      articleId,
+      {
+        label: cleanText(input.buttonLabel),
+        actionType: detectLinkActionType(buttonTarget, "url"),
+        targetValue: buttonTarget,
+        displayStyle: "button",
+        sortOrder: 20,
+      },
+      headers,
+    );
+
+    if (!linkActionId) {
+      return false;
+    }
+
+    blocks.push({
+      block_type: "button_group",
+      title: cleanText(input.buttonLabel),
+      body: buttonTarget,
+      link_action_id: linkActionId,
+      sort_order: 20,
+    });
+  }
+
+  if (videoUrl) {
+    const linkActionId = await insertArticleLinkAction(
+      projectId,
+      articleId,
+      {
+        label: cleanText(input.videoLabel) || "영상 보기",
+        actionType: "video",
+        targetValue: videoUrl,
+        displayStyle: "thumbnail_card",
+        sortOrder: 30,
+      },
+      headers,
+    );
+
+    if (!linkActionId) {
+      return false;
+    }
+
+    blocks.push({
+      block_type: "video_link",
+      title: cleanText(input.videoLabel) || "영상 보기",
+      body: videoUrl,
+      link_action_id: linkActionId,
+      sort_order: 30,
+    });
+  }
+
+  if (mapUrl) {
+    const linkActionId = await insertArticleLinkAction(
+      projectId,
+      articleId,
+      {
+        label: cleanText(input.mapLabel) || "지도 보기",
+        actionType: "map",
+        targetValue: mapUrl,
+        displayStyle: "map_card",
+        sortOrder: 40,
+      },
+      headers,
+    );
+
+    if (!linkActionId) {
+      return false;
+    }
+
+    blocks.push({
+      block_type: "map_link",
+      title: cleanText(input.mapLabel) || "지도 보기",
+      body: mapUrl,
+      link_action_id: linkActionId,
+      sort_order: 40,
+    });
+  }
+
+  if (cleanText(input.audioScript)) {
+    blocks.push({
+      block_type: "audio",
+      title: "음성 대본",
+      body: cleanText(input.audioScript),
+      sort_order: 50,
+    });
+  }
+
+  if (blocks.length === 0) {
+    return true;
+  }
+
+  const createBlocksEndpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_content_blocks");
+
+  if (!createBlocksEndpoint) {
+    return false;
+  }
+
+  const createBlocksResponse = await fetch(createBlocksEndpoint, {
+    method: "POST",
+    headers: {
+      ...headers,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(
+      blocks.map((block) => ({
+        project_id: projectId,
+        article_id: articleId,
+        block_type: block.block_type,
+        title: block.title,
+        body: block.body,
+        link_action_id: block.link_action_id ?? null,
+        sort_order: block.sort_order,
+        metadata: block.metadata ?? {},
+        is_visible: true,
+      })),
+    ),
+    cache: "no-store",
+  });
+
+  return createBlocksResponse.ok;
+}
+
+export async function upsertProjectArticle(
+  input: UpsertProjectArticleInput,
+): Promise<UpsertProjectArticleResult> {
+  const headers = getRequestHeaders(true);
+
+  if (!headers) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 기사 저장을 사용할 수 있습니다.",
+    };
+  }
+
+  const title = cleanText(input.title);
+  const projectSlug = cleanText(input.projectSlug);
+
+  if (!projectSlug || !title) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트와 기사 제목은 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "기사 저장 대상 프로젝트를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
+    const articleBody = {
+      project_id: project.id,
+      page_id: nullableText(input.pageId),
+      sort_order: normalizeArticleSortOrder(input.sortOrder),
+      title,
+      summary: nullableText(input.summary),
+      body: nullableText(input.body),
+      contact_name: nullableText(input.contactName),
+      contact_phone: nullableText(input.contactPhone),
+      status: normalizeArticleStatus(input.status),
+    };
+
+    const articleId = cleanText(input.articleId);
+    const endpoint = articleId
+      ? getSupabaseRestEndpoint(
+          `/rest/v1/newsletter_articles?id=eq.${encodeURIComponent(
+            articleId,
+          )}&project_id=eq.${encodeURIComponent(project.id)}&select=id,title`,
+        )
+      : getSupabaseRestEndpoint("/rest/v1/newsletter_articles?select=id,title");
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "not_configured",
+        message: "Supabase REST API 주소를 확인하지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: articleId ? "PATCH" : "POST",
+      headers: {
+        ...headers,
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(articleBody),
+      cache: "no-store",
+    });
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: responseText || "기사 저장 요청에 실패했습니다.",
+        httpStatus: response.status,
+      };
+    }
+
+    const rows = JSON.parse(responseText || "[]") as Array<Pick<ProjectContentArticle, "id" | "title">>;
+    const savedArticle = rows[0];
+
+    if (!savedArticle) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "저장할 기사를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
+    const blocksSaved = await replaceArticleBlocks(project.id, savedArticle.id, input, headers);
+
+    if (!blocksSaved) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "기사는 저장됐지만 콘텐츠 블록 저장에 실패했습니다.",
+      };
+    }
+
+    return {
+      ok: true,
+      article: savedArticle,
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "기사 저장 중 오류가 발생했습니다.",
     };
   }
 }
