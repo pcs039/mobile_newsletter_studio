@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 
 type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish";
@@ -11,30 +12,6 @@ const projectNavigation: Array<{ key: ProjectSection; label: string; path: strin
   { key: "audio", label: "음성 MP3", path: "audio", guide: "파일·대본" },
   { key: "publish", label: "미리보기·발행", path: "publish", guide: "URL·QR" },
 ];
-
-function SidebarItem({
-  active,
-  children,
-  href,
-}: {
-  active?: boolean;
-  children: ReactNode;
-  href: string;
-}) {
-  const className = active
-    ? "flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20"
-    : "flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10";
-
-  if (active) {
-    return <span className={className}>{children}</span>;
-  }
-
-  return (
-    <Link href={href} className={className}>
-      {children}
-    </Link>
-  );
-}
 
 export function ProjectAdminShell({
   active,
@@ -69,15 +46,7 @@ export function ProjectAdminShell({
             <p className="mt-3 text-sm leading-6 text-slate-300">{sidebarDescription}</p>
           </div>
 
-          <nav className="space-y-2">
-            <SidebarItem href="/">프로젝트 대시보드</SidebarItem>
-            <SidebarItem href="/projects/new">새 소식지 생성</SidebarItem>
-            {projectNavigation.map((item) => (
-              <SidebarItem key={item.key} href={`/projects/${projectId}/${item.path}`} active={active === item.key}>
-                {item.label}
-              </SidebarItem>
-            ))}
-          </nav>
+          <AdminMainNavigation active={active === "publish" ? "publish" : "edit"} projectId={projectId} />
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
             <p className="text-sm font-bold text-white">{sidebarNoteTitle}</p>

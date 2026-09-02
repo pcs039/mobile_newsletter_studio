@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { ProjectCreateForm } from "@/components/project-create-form";
 import { packageOptions, productionModeOptions } from "@/lib/newsletter-data";
@@ -49,26 +50,7 @@ export default function NewProjectPage() {
             </p>
           </div>
 
-          <nav className="space-y-2">
-            <Link
-              href="/"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              프로젝트 대시보드
-            </Link>
-            <span className="flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20">
-              새 소식지 생성
-            </span>
-            <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
-              PDF·이미지
-            </span>
-            <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
-              읽기 보기 편집
-            </span>
-            <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
-              미리보기·발행
-            </span>
-          </nav>
+          <AdminMainNavigation active="new" />
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
             <p className="text-sm font-bold text-white">필수 입력</p>
