@@ -107,9 +107,12 @@ export default function AudioManagementPage() {
             <span className="flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20">
               음성 MP3
             </span>
-            <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
+            <Link
+              href="/projects/muan-2025-94/publish"
+              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+            >
               미리보기·발행
-            </span>
+            </Link>
           </nav>
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
@@ -299,9 +302,12 @@ export default function AudioManagementPage() {
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   음성 파일 연결을 확인한 뒤 공개 모바일 화면과 PC e-book 미리보기, URL·QR 발행 화면으로 이동합니다.
                 </p>
-                <button className="mt-5 w-full rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
+                <Link
+                  href="/projects/muan-2025-94/publish"
+                  className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+                >
                   미리보기·발행 준비
-                </button>
+                </Link>
               </article>
             </aside>
           </div>

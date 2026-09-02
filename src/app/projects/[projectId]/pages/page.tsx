@@ -77,9 +77,12 @@ export default function ProjectPagesPage() {
             >
               읽기 보기 편집
             </Link>
-            <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
+            <Link
+              href="/projects/muan-2025-94/publish"
+              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+            >
               미리보기·발행
-            </span>
+            </Link>
           </nav>
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
