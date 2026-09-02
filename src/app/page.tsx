@@ -20,6 +20,9 @@ const navigationItems = [
   { label: "미리보기·발행", href: "/projects/muan-2025-94/publish", status: "ready" },
 ];
 
+const dashboardActionClass =
+  "inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]";
+
 function parseCount(value: string) {
   return Number(value.replace(/,/g, "")) || 0;
 }
@@ -207,7 +210,14 @@ export default async function Home() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">
+                  <colgroup>
+                    <col className="w-[34%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[23%]" />
+                  </colgroup>
                   <thead className="bg-[#092046] text-white">
                     <tr>
                       <th className="px-4 py-3 font-bold">소식지 정보</th>
@@ -280,39 +290,26 @@ export default async function Home() {
                         </td>
                         <td className="px-4 py-4 text-slate-500">{project.updated}</td>
                         <td className="px-4 py-4">
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <Link
                               href={project.actions.editHref}
-                              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
+                              className={dashboardActionClass}
                             >
                               수정
                             </Link>
                             <Link
                               href={project.actions.previewHref}
-                              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
+                              className={dashboardActionClass}
                             >
                               미리보기
                             </Link>
-                            <details className="relative">
-                              <summary className="cursor-pointer list-none rounded-md bg-[#092046] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#123a78]">
-                                더보기
-                              </summary>
-                              <div className="absolute right-0 z-10 mt-2 grid w-28 gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-                                <a
-                                  href={project.actions.analyticsHref}
-                                  className="rounded-md px-2 py-1.5 text-xs font-bold text-[#092046] hover:bg-[#eaf2ff]"
-                                >
-                                  통계
-                                </a>
-                                <Link
-                                  href={project.actions.duplicateHref}
-                                  className="rounded-md px-2 py-1.5 text-xs font-bold text-[#092046] hover:bg-[#eaf2ff]"
-                                >
-                                  복사
-                                </Link>
-                                <ProjectArchiveButton projectId={project.id} projectTitle={project.title} />
-                              </div>
-                            </details>
+                            <a href={project.actions.analyticsHref} className={dashboardActionClass}>
+                              통계
+                            </a>
+                            <Link href={project.actions.duplicateHref} className={dashboardActionClass}>
+                              복사
+                            </Link>
+                            <ProjectArchiveButton projectId={project.id} projectTitle={project.title} />
                           </div>
                         </td>
                       </tr>

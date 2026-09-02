@@ -39,12 +39,12 @@ export function ProjectArchiveButton({
   }
 
   return (
-    <div>
+    <div className="inline-flex flex-col">
       <button
         type="button"
         onClick={handleArchive}
         disabled={isArchiving}
-        className="w-full rounded-md px-2 py-1.5 text-left text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400"
+        className="inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff] disabled:cursor-not-allowed disabled:text-slate-400"
       >
         {isArchiving ? "보관 중" : "보관"}
       </button>

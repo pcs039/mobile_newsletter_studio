@@ -6,7 +6,7 @@ import { packageOptions, productionModeOptions } from "@/lib/newsletter-data";
 const requiredFields = [
   "소식지명",
   "기관명",
-  "발행월",
+  "발행일",
   "공개 주소",
   "대표 색상",
   "상품 옵션",

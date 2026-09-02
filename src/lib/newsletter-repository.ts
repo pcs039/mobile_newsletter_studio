@@ -28,7 +28,7 @@ type NewsletterProjectRow = {
 export type CreateNewsletterProjectInput = {
   title: string;
   organizationName: string;
-  publishedMonth: string;
+  publishedDate: string;
   slug: string;
   description?: string;
   primaryColor: string;
@@ -120,22 +120,35 @@ function formatDate(value: string | null) {
 }
 
 function makeIssueLabel(input: CreateNewsletterProjectInput) {
-  if (!input.publishedMonth) {
+  if (!input.publishedDate) {
     return null;
   }
 
-  const [year, month] = input.publishedMonth.split("-");
+  const [year, month, day] = input.publishedDate.split("-");
   const monthNumber = Number(month);
+  const dayNumber = Number(day);
 
   if (!year || !monthNumber) {
-    return input.publishedMonth;
+    return input.publishedDate;
+  }
+
+  if (dayNumber) {
+    return `${year}년 ${monthNumber}월 ${dayNumber}일`;
   }
 
   return `${year}년 ${monthNumber}월`;
 }
 
-function normalizePublishedDate(month: string) {
-  return /^\d{4}-\d{2}$/.test(month) ? `${month}-01` : null;
+function normalizePublishedDate(date: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+
+  if (/^\d{4}-\d{2}$/.test(date)) {
+    return `${date}-01`;
+  }
+
+  return null;
 }
 
 function makeWorkload(project: NewsletterProjectRow) {
@@ -262,7 +275,7 @@ export async function createNewsletterProject(
     title: input.title,
     organization_name: input.organizationName,
     issue_label: makeIssueLabel(input),
-    published_date: normalizePublishedDate(input.publishedMonth),
+    published_date: normalizePublishedDate(input.publishedDate),
     slug: input.slug,
     description: input.description || null,
     primary_color: input.primaryColor || "#092046",

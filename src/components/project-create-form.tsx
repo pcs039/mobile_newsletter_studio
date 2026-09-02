@@ -28,7 +28,7 @@ function TextInput({
 }: {
   name: string;
   placeholder: string;
-  type?: "text" | "month";
+  type?: "text" | "date";
   defaultValue?: string;
   required?: boolean;
 }) {
@@ -75,7 +75,7 @@ export function ProjectCreateForm() {
       body: JSON.stringify({
         title: getFormText(formData, "title"),
         organizationName: getFormText(formData, "organizationName"),
-        publishedMonth: getFormText(formData, "publishedMonth"),
+        publishedDate: getFormText(formData, "publishedDate"),
         slug: getFormText(formData, "slug"),
         description: getFormText(formData, "description"),
         primaryColor: getFormText(formData, "primaryColor"),
@@ -151,8 +151,8 @@ export function ProjectCreateForm() {
         </div>
 
         <div>
-          <FieldLabel required>발행월</FieldLabel>
-          <TextInput name="publishedMonth" type="month" placeholder="2026-09" required />
+          <FieldLabel required>발행일</FieldLabel>
+          <TextInput name="publishedDate" type="date" placeholder="2026-09-03" required />
         </div>
 
         <div>
