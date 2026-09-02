@@ -9,12 +9,12 @@ import {
 } from "@/lib/newsletter-data";
 
 const navigationItems = [
-  { label: "프로젝트", status: "active" },
-  { label: "PDF·페이지", status: "ready" },
-  { label: "읽기 보기", status: "ready" },
-  { label: "이미지 자산", status: "new" },
-  { label: "음성 MP3", status: "ready" },
-  { label: "미리보기·발행", status: "ready" },
+  { label: "프로젝트", href: "/", status: "active" },
+  { label: "PDF·페이지", href: "/projects/muan-2025-94/pages", status: "ready" },
+  { label: "읽기 보기", href: "/projects/muan-2025-94/reading", status: "ready" },
+  { label: "이미지 자산", href: "/projects/muan-2025-94/assets", status: "new" },
+  { label: "음성 MP3", href: "/projects/muan-2025-94/audio", status: "ready" },
+  { label: "미리보기·발행", href: "/projects/muan-2025-94/publish", status: "ready" },
 ];
 
 export default function Home() {
@@ -35,23 +35,37 @@ export default function Home() {
           </div>
 
           <nav className="space-y-2">
-            {navigationItems.map((item) => (
-              <button
-                key={item.label}
-                className={`flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold transition ${
+            {navigationItems.map((item) => {
+              const className = `flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold transition ${
                   item.status === "active"
                     ? "bg-white text-[#071f46] shadow-lg shadow-blue-950/20"
                     : "text-slate-200 hover:bg-white/10"
-                }`}
-              >
-                <span>{item.label}</span>
-                {item.status === "new" && (
-                  <span className="rounded-full bg-sky-300 px-2 py-0.5 text-[10px] font-bold text-[#071f46]">
-                    NEW
+                }`;
+              const content = (
+                <>
+                  <span>{item.label}</span>
+                  {item.status === "new" && (
+                    <span className="rounded-full bg-sky-300 px-2 py-0.5 text-[10px] font-bold text-[#071f46]">
+                      NEW
+                    </span>
+                  )}
+                </>
+              );
+
+              if (item.status === "active") {
+                return (
+                  <span key={item.label} className={className}>
+                    {content}
                   </span>
-                )}
-              </button>
-            ))}
+                );
+              }
+
+              return (
+                <Link key={item.label} href={item.href} className={className}>
+                  {content}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
