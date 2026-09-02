@@ -103,6 +103,12 @@ export default function ReadingEditorPage() {
             <span className="flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20">
               읽기 보기 편집
             </span>
+            <Link
+              href="/projects/muan-2025-94/assets"
+              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+            >
+              이미지 자산
+            </Link>
             <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
               미리보기·발행
             </span>
@@ -222,9 +228,12 @@ export default function ReadingEditorPage() {
                       <p className="mt-2 text-sm leading-6 text-slate-600">
                         기관 제공 원본 이미지 또는 디자이너 제작 이미지를 연결합니다.
                       </p>
-                      <button className="mt-4 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
+                      <Link
+                        href="/projects/muan-2025-94/assets"
+                        className="mt-4 inline-flex rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700"
+                      >
                         이미지 선택
-                      </button>
+                      </Link>
                     </div>
                   </div>
 
