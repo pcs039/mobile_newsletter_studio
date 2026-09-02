@@ -3,11 +3,15 @@ import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
 import { pageConversionSteps, pageQualityChecks } from "@/lib/newsletter-data";
-import { getProjectPageImages } from "@/lib/newsletter-repository";
+import { getProjectOriginalPdf, getProjectPageImages } from "@/lib/newsletter-repository";
 
 export default async function ProjectPagesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const pageImageData = await getProjectPageImages(projectId);
+  const [originalPdfData, pageImageData] = await Promise.all([
+    getProjectOriginalPdf(projectId),
+    getProjectPageImages(projectId),
+  ]);
+  const originalPdf = originalPdfData.pdf;
   const pages = pageImageData.pages;
 
   return (
@@ -58,6 +62,51 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   projectSlug={projectId}
                   title="PDF 파일을 선택하거나 이 영역에 끌어다 놓기"
                 />
+
+                <div className="mt-5 rounded-lg border border-slate-300 bg-[#f8fbff] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h4 className="text-base font-black text-[#092046]">PDF 원본 등록 현황</h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">{originalPdfData.message}</p>
+                    </div>
+                    <StatusPill value={originalPdf ? "업로드 완료" : "미등록"} />
+                  </div>
+
+                  {originalPdf ? (
+                    <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+                      <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-sm font-black text-[#092046]">{originalPdf.fileName}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">업로드일 {originalPdf.uploadedAt}</p>
+                        <p className="mt-2 break-all text-xs font-semibold leading-5 text-slate-500">
+                          Storage 경로: {originalPdf.path}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Link
+                          href={originalPdf.previewHref}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-lg bg-[#092046] px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
+                        >
+                          PDF 열기
+                        </Link>
+                        <Link
+                          href={originalPdf.previewHref}
+                          download
+                          className="rounded-lg border border-[#2f73b7] bg-white px-4 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                        >
+                          다운로드
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-5 text-center">
+                      <p className="text-sm font-bold text-slate-600">
+                        PDF를 업로드하면 파일명, 업로드일, Storage 경로가 이곳에 표시됩니다.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </article>
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

@@ -20,6 +20,9 @@ type NewsletterProjectRow = {
   production_mode: ProductionMode;
   estimated_hours: string | null;
   designer_hours_cap: string | null;
+  pdf_original_path: string | null;
+  pdf_original_file_name: string | null;
+  pdf_original_uploaded_at: string | null;
   page_count: number;
   created_at: string;
   updated_at: string;
@@ -171,6 +174,19 @@ export type ProjectPageImagesResult = {
   message: string;
 };
 
+export type ProjectOriginalPdf = {
+  fileName: string;
+  path: string;
+  previewHref: string;
+  uploadedAt: string;
+};
+
+export type ProjectOriginalPdfResult = {
+  pdf: ProjectOriginalPdf | null;
+  source: "supabase" | "unconfigured" | "error" | "not_found";
+  message: string;
+};
+
 export type ProjectAssetFile = {
   id: string;
   title: string;
@@ -243,6 +259,9 @@ const projectSelectColumns = [
   "production_mode",
   "estimated_hours",
   "designer_hours_cap",
+  "pdf_original_path",
+  "pdf_original_file_name",
+  "pdf_original_uploaded_at",
   "page_count",
   "created_at",
   "updated_at",
@@ -682,6 +701,19 @@ function mapPageRowToProjectPageImage(page: NewsletterPageRow): ProjectPageImage
   };
 }
 
+function mapProjectRowToOriginalPdf(project: NewsletterProjectRow): ProjectOriginalPdf | null {
+  if (!project.pdf_original_path) {
+    return null;
+  }
+
+  return {
+    fileName: project.pdf_original_file_name || "PDF 원본",
+    path: project.pdf_original_path,
+    previewHref: makeStoragePreviewHref("pdf-originals", project.pdf_original_path) ?? "",
+    uploadedAt: formatDate(project.pdf_original_uploaded_at),
+  };
+}
+
 function mapAssetRowToProjectAssetFile(asset: NewsletterAssetRow): ProjectAssetFile {
   return {
     id: asset.id,
@@ -977,6 +1009,64 @@ export async function getProjectPageImages(projectSlug: string): Promise<Project
       pages: [],
       source: "error",
       message: "페이지 이미지 목록 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function getProjectOriginalPdf(projectSlug: string): Promise<ProjectOriginalPdfResult> {
+  const config = getSupabaseConfigStatus();
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_projects?select=${projectSelectColumns}&slug=eq.${encodeURIComponent(
+      projectSlug,
+    )}&deleted_at=is.null&limit=1`,
+  );
+  const headers = getRequestHeaders(true);
+
+  if (!config.isConfigured || !endpoint || !headers) {
+    return {
+      pdf: null,
+      source: "unconfigured",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 PDF 원본 등록 현황을 표시합니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        pdf: null,
+        source: "error",
+        message: "PDF 원본 등록 현황 조회에 실패했습니다.",
+      };
+    }
+
+    const rows = (await response.json()) as NewsletterProjectRow[];
+    const project = rows[0];
+
+    if (!project) {
+      return {
+        pdf: null,
+        source: "not_found",
+        message: "해당 slug의 프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const pdf = mapProjectRowToOriginalPdf(project);
+
+    return {
+      pdf,
+      source: "supabase",
+      message: pdf ? "등록된 PDF 원본을 표시합니다." : "PDF 원본이 아직 등록되지 않았습니다.",
+    };
+  } catch {
+    return {
+      pdf: null,
+      source: "error",
+      message: "PDF 원본 등록 현황 조회 중 오류가 발생했습니다.",
     };
   }
 }
