@@ -23,7 +23,7 @@ const navigationItems = [
 export default function Home() {
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
-      <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
+      <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">
             <DatadictionBrand theme="light" />
@@ -80,7 +80,7 @@ export default function Home() {
           </div>
         </aside>
 
-        <section className="px-5 py-6 sm:px-8 lg:px-10">
+        <section className="min-w-0 px-5 py-6 sm:px-8 lg:px-10">
           <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-[#184a88]">DataDiction 1차 MVP 베이스</p>
@@ -99,7 +99,7 @@ export default function Home() {
             </Link>
           </header>
 
-          <section className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="mb-7 grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
             {dashboardSummaryCards.map((card) => (
               <article key={card.label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-sm font-semibold text-slate-500">{card.label}</p>
@@ -113,13 +113,13 @@ export default function Home() {
             ))}
           </section>
 
-          <section className="mb-7 grid gap-5 xl:grid-cols-[1fr_360px]">
-            <article className="rounded-lg border border-slate-200 bg-white shadow-sm">
+          <section className="mb-7 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_300px]">
+            <article className="min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-lg font-bold text-[#092046]">소식지 프로젝트</h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    가격 옵션, 제작 방식, 작업 현황, 접속자 요약, 복사·통계·보관 액션을 한 화면에서 확인합니다.
+                    핵심 진행 상태와 다음 작업 이동을 먼저 확인합니다. 세부 운영 기능은 보조 액션으로 접어 둡니다.
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -136,16 +136,14 @@ export default function Home() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[900px] border-collapse text-left text-sm">
                   <thead className="bg-[#092046] text-white">
                     <tr>
                       <th className="px-4 py-3 font-bold">소식지 정보</th>
-                      <th className="px-4 py-3 font-bold">상품·방식</th>
-                      <th className="px-4 py-3 font-bold">상태</th>
-                      <th className="px-4 py-3 font-bold">작업 현황</th>
+                      <th className="px-4 py-3 font-bold">상태·작업</th>
                       <th className="px-4 py-3 font-bold">접속자</th>
                       <th className="px-4 py-3 font-bold">최근 수정</th>
-                      <th className="px-4 py-3 font-bold">운영 액션</th>
+                      <th className="px-4 py-3 font-bold">액션</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -156,21 +154,18 @@ export default function Home() {
                           <p className="mt-1 text-xs font-semibold text-slate-500">
                             {project.organization} · {project.issue} · {project.slug}
                           </p>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="space-y-2">
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
                             <span className="inline-flex rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">
                               {project.packageTier}
                             </span>
-                            <p className="text-sm font-bold text-[#092046]">{project.productionMode}</p>
-                            <p className="text-xs leading-5 text-slate-500">{project.workload}</p>
+                            <span className="text-xs font-bold text-[#092046]">{project.productionMode}</span>
                           </div>
+                          <p className="mt-2 text-xs leading-5 text-slate-500">{project.workload}</p>
                         </td>
                         <td className="px-4 py-4">
-                          <StatusPill value={project.status} />
-                        </td>
-                        <td className="px-4 py-4 text-slate-700">
-                          <div className="space-y-1.5">
+                          <div className="space-y-3">
+                            <StatusPill value={project.status} />
+                            <div className="space-y-1.5 text-slate-700">
                             <p>
                               <span className="font-semibold text-[#092046]">페이지</span> {project.pages}
                             </p>
@@ -180,10 +175,11 @@ export default function Home() {
                             <p>
                               <span className="font-semibold text-[#092046]">음성</span> {project.audio}
                             </p>
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                          <div className="w-24 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                             <p>
                               오늘 <strong className="text-[#092046]">{project.views.today}</strong>
                             </p>
@@ -197,7 +193,7 @@ export default function Home() {
                         </td>
                         <td className="px-4 py-4 text-slate-500">{project.updated}</td>
                         <td className="px-4 py-4">
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Link
                               href={project.actions.editHref}
                               className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
@@ -210,24 +206,31 @@ export default function Home() {
                             >
                               미리보기
                             </Link>
-                            <a
-                              href={project.actions.analyticsHref}
-                              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
-                            >
-                              통계
-                            </a>
-                            <Link
-                              href={project.actions.duplicateHref}
-                              className="rounded-md bg-[#092046] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#123a78]"
-                            >
-                              복사
-                            </Link>
-                            <a
-                              href={project.actions.archiveHref}
-                              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:border-slate-400 hover:bg-slate-100"
-                            >
-                              보관
-                            </a>
+                            <details className="relative">
+                              <summary className="cursor-pointer list-none rounded-md bg-[#092046] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#123a78]">
+                                더보기
+                              </summary>
+                              <div className="absolute right-0 z-10 mt-2 grid w-28 gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                                <a
+                                  href={project.actions.analyticsHref}
+                                  className="rounded-md px-2 py-1.5 text-xs font-bold text-[#092046] hover:bg-[#eaf2ff]"
+                                >
+                                  통계
+                                </a>
+                                <Link
+                                  href={project.actions.duplicateHref}
+                                  className="rounded-md px-2 py-1.5 text-xs font-bold text-[#092046] hover:bg-[#eaf2ff]"
+                                >
+                                  복사
+                                </Link>
+                                <a
+                                  href={project.actions.archiveHref}
+                                  className="rounded-md px-2 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                                >
+                                  보관
+                                </a>
+                              </div>
+                            </details>
                           </div>
                         </td>
                       </tr>

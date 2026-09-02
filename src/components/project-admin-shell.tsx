@@ -61,7 +61,7 @@ export function ProjectAdminShell({
 }) {
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
-      <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
+      <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">
             <DatadictionBrand theme="light" />
@@ -85,7 +85,7 @@ export function ProjectAdminShell({
           </div>
         </aside>
 
-        <section className="px-5 py-6 sm:px-8 lg:px-10">
+        <section className="min-w-0 px-5 py-6 sm:px-8 lg:px-10">
           <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-[#184a88]">황토골 무안소식지 2025년 제94호</p>
