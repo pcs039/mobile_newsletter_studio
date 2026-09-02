@@ -32,13 +32,7 @@ function FieldLabel({ children, required = false }: { children: string; required
   );
 }
 
-function TextInput({
-  placeholder,
-  type = "text",
-}: {
-  placeholder: string;
-  type?: "text" | "month" | "color";
-}) {
+function TextInput({ placeholder, type = "text" }: { placeholder: string; type?: "text" | "month" }) {
   return (
     <input
       type={type}
@@ -150,8 +144,12 @@ export default function NewProjectPage() {
 
                 <div>
                   <FieldLabel required>대표 색상</FieldLabel>
-                  <div className="flex items-center gap-3">
-                    <TextInput type="color" placeholder="#092046" />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="h-11 w-16 rounded-lg border border-slate-200 bg-[#092046]" />
+                    <input
+                      defaultValue="#092046"
+                      className="h-12 min-w-36 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                    />
                     <span className="text-sm font-semibold text-slate-600">기본값: 딥블루</span>
                   </div>
                 </div>
@@ -181,12 +179,12 @@ export default function NewProjectPage() {
                 >
                   취소
                 </Link>
-                <button
-                  type="button"
+                <Link
+                  href="/projects/muan-2025-94/pages"
                   className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
                 >
                   프로젝트 정보 임시 저장
-                </button>
+                </Link>
               </div>
             </form>
 
