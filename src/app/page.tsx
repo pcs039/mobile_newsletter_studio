@@ -3,9 +3,11 @@ import { DatadictionBrand } from "@/components/datadiction-brand";
 import { StatusPill } from "@/components/status-pill";
 import {
   assetChecks,
+  dashboardAnalyticsNotes,
   dashboardProjects,
   dashboardSummaryCards,
   dashboardSummaryDetails,
+  projectOperationActions,
   workflowSteps,
 } from "@/lib/newsletter-data";
 
@@ -31,7 +33,7 @@ export default function Home() {
               제작 관리
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              작업설계도 v0.2 기준의 관리자 MVP 화면
+              작업설계도 v0.4 기준의 관리자 MVP 화면
             </p>
           </div>
 
@@ -117,7 +119,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-bold text-[#092046]">소식지 프로젝트</h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    상태, 페이지 수, 읽기 보기, 음성 등록 여부를 한 화면에서 확인합니다.
+                    상태, 작업 현황, 접속자 요약, 복사·통계·보관 액션을 한 화면에서 확인합니다.
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -134,32 +136,90 @@ export default function Home() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[920px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
                   <thead className="bg-[#092046] text-white">
                     <tr>
-                      <th className="px-4 py-3 font-bold">소식지명</th>
-                      <th className="px-4 py-3 font-bold">기관</th>
-                      <th className="px-4 py-3 font-bold">발행</th>
+                      <th className="px-4 py-3 font-bold">소식지 정보</th>
                       <th className="px-4 py-3 font-bold">상태</th>
-                      <th className="px-4 py-3 font-bold">페이지</th>
-                      <th className="px-4 py-3 font-bold">읽기 보기</th>
-                      <th className="px-4 py-3 font-bold">음성</th>
+                      <th className="px-4 py-3 font-bold">작업 현황</th>
+                      <th className="px-4 py-3 font-bold">접속자</th>
                       <th className="px-4 py-3 font-bold">최근 수정</th>
+                      <th className="px-4 py-3 font-bold">운영 액션</th>
                     </tr>
                   </thead>
                   <tbody>
                     {dashboardProjects.map((project) => (
                       <tr key={project.title} className="border-b border-slate-200 last:border-0">
-                        <td className="px-4 py-4 font-bold text-[#092046]">{project.title}</td>
-                        <td className="px-4 py-4 text-slate-700">{project.organization}</td>
-                        <td className="px-4 py-4 text-slate-700">{project.issue}</td>
+                        <td className="px-4 py-4">
+                          <p className="font-bold text-[#092046]">{project.title}</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            {project.organization} · {project.issue} · {project.slug}
+                          </p>
+                        </td>
                         <td className="px-4 py-4">
                           <StatusPill value={project.status} />
                         </td>
-                        <td className="px-4 py-4 text-slate-700">{project.pages}</td>
-                        <td className="px-4 py-4 text-slate-700">{project.reading}</td>
-                        <td className="px-4 py-4 text-slate-700">{project.audio}</td>
+                        <td className="px-4 py-4 text-slate-700">
+                          <div className="space-y-1.5">
+                            <p>
+                              <span className="font-semibold text-[#092046]">페이지</span> {project.pages}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-[#092046]">읽기 보기</span> {project.reading}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-[#092046]">음성</span> {project.audio}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                            <p>
+                              오늘 <strong className="text-[#092046]">{project.views.today}</strong>
+                            </p>
+                            <p>
+                              어제 <strong className="text-[#092046]">{project.views.yesterday}</strong>
+                            </p>
+                            <p>
+                              전체 <strong className="text-[#092046]">{project.views.total}</strong>
+                            </p>
+                          </div>
+                        </td>
                         <td className="px-4 py-4 text-slate-500">{project.updated}</td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={project.actions.editHref}
+                              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
+                            >
+                              수정
+                            </Link>
+                            <Link
+                              href={project.actions.previewHref}
+                              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
+                            >
+                              미리보기
+                            </Link>
+                            <a
+                              href={project.actions.analyticsHref}
+                              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
+                            >
+                              통계
+                            </a>
+                            <Link
+                              href={project.actions.duplicateHref}
+                              className="rounded-md bg-[#092046] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#123a78]"
+                            >
+                              복사
+                            </Link>
+                            <a
+                              href={project.actions.archiveHref}
+                              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:border-slate-400 hover:bg-slate-100"
+                            >
+                              보관
+                            </a>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -168,6 +228,26 @@ export default function Home() {
             </article>
 
             <aside className="space-y-5">
+              <article id="analytics-preview" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-bold text-[#092046]">접속 통계 요약</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Supabase 연동 전에는 샘플 수치로 구조를 먼저 확인합니다.
+                </p>
+                <div className="mt-4 space-y-3">
+                  {dashboardAnalyticsNotes.map((note) => (
+                    <div key={note.label} className="rounded-md bg-slate-50 px-3 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-bold text-[#092046]">{note.label}</span>
+                        <span className="rounded-full bg-[#eaf2ff] px-2.5 py-1 text-xs font-black text-[#184a88]">
+                          {note.status}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">{note.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">제작 흐름</h3>
                 <ol className="mt-4 space-y-3">
@@ -180,6 +260,21 @@ export default function Home() {
                     </li>
                   ))}
                 </ol>
+              </article>
+
+              <article id="archive-policy" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-bold text-[#092046]">운영 기능 v0.4</h3>
+                <div className="mt-4 space-y-3">
+                  {projectOperationActions.map((action) => (
+                    <div key={action.label} className="rounded-md bg-slate-50 px-3 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-bold text-[#092046]">{action.label}</span>
+                        <span className="text-xs font-bold text-[#184a88]">{action.status}</span>
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">{action.detail}</p>
+                    </div>
+                  ))}
+                </div>
               </article>
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

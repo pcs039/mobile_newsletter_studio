@@ -62,6 +62,8 @@ export type NewsletterProject = {
 };
 
 export type DashboardProject = {
+  id: string;
+  slug: string;
   title: string;
   organization: string;
   issue: string;
@@ -70,6 +72,18 @@ export type DashboardProject = {
   reading: string;
   audio: string;
   updated: string;
+  views: {
+    today: string;
+    yesterday: string;
+    total: string;
+  };
+  actions: {
+    editHref: string;
+    previewHref: string;
+    analyticsHref: string;
+    duplicateHref: string;
+    archiveHref: string;
+  };
 };
 
 export type ImageAsset = {

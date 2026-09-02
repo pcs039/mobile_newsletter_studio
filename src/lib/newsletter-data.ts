@@ -141,19 +141,21 @@ export const sampleNewsletter: NewsletterProject = {
 export const dashboardSummaryCards: LabelValue[] = [
   { label: "전체 프로젝트", value: "8" },
   { label: "제작 중", value: "3" },
-  { label: "검수 중", value: "2" },
+  { label: "오늘 접속", value: "428" },
   { label: "발행 완료", value: "3" },
 ];
 
 export const dashboardSummaryDetails: Record<string, string> = {
   "전체 프로젝트": "샘플 포함",
   "제작 중": "편집 필요",
-  "검수 중": "공개 전 확인",
+  "오늘 접속": "집계 예정",
   "발행 완료": "URL·QR 생성",
 };
 
 export const dashboardProjects: DashboardProject[] = [
   {
+    id: "muan-2025-94",
+    slug: "muan-2025-94",
     title: "황토골 무안소식지 2025년 제94호",
     organization: "무안군",
     issue: "2025년",
@@ -162,8 +164,22 @@ export const dashboardProjects: DashboardProject[] = [
     reading: "편집 중",
     audio: "미등록",
     updated: "2026.09.02",
+    views: {
+      today: "184",
+      yesterday: "96",
+      total: "1,284",
+    },
+    actions: {
+      editHref: "/projects/muan-2025-94/pages",
+      previewHref: "/newsletters/muan-2025-94",
+      analyticsHref: "#analytics-preview",
+      duplicateHref: "/projects/new?copyFrom=muan-2025-94",
+      archiveHref: "#archive-policy",
+    },
   },
   {
+    id: "seungdal-2026-05",
+    slug: "seungdal-2026-05",
     title: "승달소식지 2026년 5월호",
     organization: "무안군",
     issue: "2026년 5월",
@@ -172,8 +188,22 @@ export const dashboardProjects: DashboardProject[] = [
     reading: "구조 확인",
     audio: "보류",
     updated: "2026.09.01",
+    views: {
+      today: "62",
+      yesterday: "41",
+      total: "516",
+    },
+    actions: {
+      editHref: "/projects/muan-2025-94/pages",
+      previewHref: "/newsletters/muan-2025-94/ebook",
+      analyticsHref: "#analytics-preview",
+      duplicateHref: "/projects/new?copyFrom=seungdal-2026-05",
+      archiveHref: "#archive-policy",
+    },
   },
   {
+    id: "incheon-mind-link",
+    slug: "incheon-mind-link",
     title: "인천 마음건강 이음서비스 안내지",
     organization: "인천광역시",
     issue: "실증 샘플",
@@ -182,7 +212,31 @@ export const dashboardProjects: DashboardProject[] = [
     reading: "대기",
     audio: "대기",
     updated: "2026.08.31",
+    views: {
+      today: "0",
+      yesterday: "0",
+      total: "0",
+    },
+    actions: {
+      editHref: "/projects/muan-2025-94/reading",
+      previewHref: "/newsletters/muan-2025-94",
+      analyticsHref: "#analytics-preview",
+      duplicateHref: "/projects/new?copyFrom=incheon-mind-link",
+      archiveHref: "#archive-policy",
+    },
   },
+];
+
+export const dashboardAnalyticsNotes: LabelStatusDetail[] = [
+  { label: "오늘 접속", status: "428", detail: "발행된 공개 URL 기준 집계 예정" },
+  { label: "전체 접속", status: "1,800", detail: "Supabase 연동 후 실제 통계로 전환" },
+  { label: "상세 로그", status: "제한", detail: "IP는 해시 또는 마스킹 저장 권장" },
+];
+
+export const projectOperationActions: LabelStatusDetail[] = [
+  { label: "복사", status: "1.5차 핵심", detail: "월간 소식지는 전월 구성을 복제해 제작" },
+  { label: "통계", status: "MVP 보강", detail: "목록과 발행 화면에서 접속 현황 확인" },
+  { label: "보관", status: "삭제 대체", detail: "실제 삭제보다 복구 가능한 보관 상태 우선" },
 ];
 
 export const workflowSteps = [
