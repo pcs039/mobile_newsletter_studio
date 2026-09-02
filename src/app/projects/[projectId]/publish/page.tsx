@@ -120,6 +120,16 @@ export default function PublishPage() {
                             <div className="h-2 w-2/5 rounded-full bg-[#092046]" />
                           </div>
                         </div>
+                        <div className="mt-4 grid gap-2">
+                          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                            <p className="text-xs font-black text-[#184a88]">동영상 링크</p>
+                            <p className="mt-1 text-sm font-bold text-[#092046]">홍보 영상 보기</p>
+                          </div>
+                          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                            <p className="text-xs font-black text-[#184a88]">지도 링크</p>
+                            <p className="mt-1 text-sm font-bold text-[#092046]">지도 보기</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -21,6 +21,33 @@ export type NewsletterPageLink = {
   };
 };
 
+export type NewsletterLinkAction = {
+  id: string;
+  label: string;
+  type: "url" | "phone" | "map" | "video" | "internal_page" | "download";
+  target: string;
+  displayStyle: "button" | "text_link" | "thumbnail_card" | "map_card";
+};
+
+export type NewsletterContentBlock = {
+  id: string;
+  type: "paragraph" | "image" | "video_link" | "map_link" | "button_group" | "audio" | "overlay_notice";
+  title: string;
+  status: string;
+  description: string;
+};
+
+export type NewsletterImageOverlay = {
+  id: string;
+  label: string;
+  imageAssetId?: string;
+  linkActionId?: string;
+  xPercent: number;
+  yPercent: number;
+  widthPercent: number;
+  heightPercent: number;
+};
+
 export type NewsletterTocItem = {
   id: string;
   order: number;
@@ -41,6 +68,9 @@ export type NewsletterArticle = {
   audioStatus: string;
   audioDuration: string;
   buttons: string[];
+  linkActions?: NewsletterLinkAction[];
+  contentBlocks?: NewsletterContentBlock[];
+  overlays?: NewsletterImageOverlay[];
 };
 
 export type NewsletterProject = {

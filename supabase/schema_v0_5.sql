@@ -35,6 +35,32 @@ create type page_image_status as enum (
   'replace_required'
 );
 
+create type content_block_type as enum (
+  'paragraph',
+  'image',
+  'video_link',
+  'map_link',
+  'button_group',
+  'audio',
+  'overlay_notice'
+);
+
+create type link_action_type as enum (
+  'url',
+  'phone',
+  'map',
+  'video',
+  'internal_page',
+  'download'
+);
+
+create type link_display_style as enum (
+  'button',
+  'text_link',
+  'thumbnail_card',
+  'map_card'
+);
+
 create type asset_source_type as enum (
   'institution_original',
   'designer_created',
@@ -49,6 +75,9 @@ create type activity_action_type as enum (
   'uploaded_pdf_original',
   'uploaded_page_image',
   'linked_external_ebook',
+  'linked_external_video',
+  'linked_map',
+  'updated_overlay',
   'published',
   'unpublished',
   'archived',
@@ -192,6 +221,54 @@ create table if not exists newsletter_link_areas (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists newsletter_link_actions (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references newsletter_projects(id) on delete cascade,
+  article_id uuid references newsletter_articles(id) on delete cascade,
+  label text not null,
+  action_type link_action_type not null,
+  target_value text not null,
+  display_style link_display_style not null default 'button',
+  sort_order integer not null default 0,
+  is_visible boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists newsletter_content_blocks (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references newsletter_projects(id) on delete cascade,
+  article_id uuid references newsletter_articles(id) on delete cascade,
+  block_type content_block_type not null,
+  title text,
+  body text,
+  asset_id uuid references newsletter_assets(id) on delete set null,
+  link_action_id uuid references newsletter_link_actions(id) on delete set null,
+  sort_order integer not null default 0,
+  metadata jsonb not null default '{}'::jsonb,
+  is_visible boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists newsletter_image_overlays (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references newsletter_projects(id) on delete cascade,
+  page_id uuid references newsletter_pages(id) on delete cascade,
+  article_id uuid references newsletter_articles(id) on delete cascade,
+  image_asset_id uuid references newsletter_assets(id) on delete set null,
+  link_action_id uuid references newsletter_link_actions(id) on delete set null,
+  label text not null,
+  x_percent numeric(6,3) not null,
+  y_percent numeric(6,3) not null,
+  width_percent numeric(6,3) not null,
+  height_percent numeric(6,3) not null,
+  z_index integer not null default 0,
+  is_visible boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists newsletter_templates (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -328,6 +405,21 @@ create trigger newsletter_link_areas_set_updated_at
 before update on newsletter_link_areas
 for each row execute function set_updated_at();
 
+drop trigger if exists newsletter_link_actions_set_updated_at on newsletter_link_actions;
+create trigger newsletter_link_actions_set_updated_at
+before update on newsletter_link_actions
+for each row execute function set_updated_at();
+
+drop trigger if exists newsletter_content_blocks_set_updated_at on newsletter_content_blocks;
+create trigger newsletter_content_blocks_set_updated_at
+before update on newsletter_content_blocks
+for each row execute function set_updated_at();
+
+drop trigger if exists newsletter_image_overlays_set_updated_at on newsletter_image_overlays;
+create trigger newsletter_image_overlays_set_updated_at
+before update on newsletter_image_overlays
+for each row execute function set_updated_at();
+
 drop trigger if exists newsletter_templates_set_updated_at on newsletter_templates;
 create trigger newsletter_templates_set_updated_at
 before update on newsletter_templates
@@ -367,6 +459,9 @@ alter table newsletter_articles enable row level security;
 alter table newsletter_assets enable row level security;
 alter table newsletter_audio_files enable row level security;
 alter table newsletter_link_areas enable row level security;
+alter table newsletter_link_actions enable row level security;
+alter table newsletter_content_blocks enable row level security;
+alter table newsletter_image_overlays enable row level security;
 alter table newsletter_templates enable row level security;
 alter table newsletter_template_blocks enable row level security;
 alter table ai_task_logs enable row level security;

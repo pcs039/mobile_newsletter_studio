@@ -24,6 +24,40 @@ function AudioBar({ status, duration }: { status: string; duration: string }) {
   );
 }
 
+function ExternalLinkCards({
+  actions,
+}: {
+  actions: NonNullable<(typeof sampleNewsletter.articles)[number]["linkActions"]>;
+}) {
+  const richActions = actions.filter((action) => action.displayStyle === "thumbnail_card" || action.displayStyle === "map_card");
+
+  if (richActions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-4 grid gap-3">
+      {richActions.map((action) => (
+        <a
+          key={action.id}
+          href={action.target}
+          className="block rounded-xl border border-slate-200 bg-[#f4f8ff] p-3"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <p className="text-xs font-black text-[#184a88]">
+            {action.type === "video" ? "동영상 링크" : "지도 링크"}
+          </p>
+          <div className="mt-2 rounded-lg bg-white px-3 py-5 text-center text-xs font-bold text-slate-600">
+            {action.displayStyle === "thumbnail_card" ? "외부 영상 썸네일" : "지도 이미지"}
+          </div>
+          <p className="mt-3 text-sm font-black text-[#092046]">{action.label}</p>
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export default function PublicNewsletterPage() {
   return (
     <main className="min-h-screen bg-[#edf4fb] text-slate-950">
@@ -80,14 +114,21 @@ export default function PublicNewsletterPage() {
               <p className="mt-2 text-sm font-bold leading-6 text-slate-700">{article.summary}</p>
               <div className={`mt-4 h-36 rounded-xl bg-gradient-to-br ${article.imageTone}`} />
               <p className="mt-4 text-sm leading-7 text-slate-600">{article.body}</p>
+              {article.linkActions && <ExternalLinkCards actions={article.linkActions} />}
               <div className="mt-4">
                 <AudioBar status={article.audioStatus} duration={article.audioDuration} />
               </div>
               <div className="mt-4 grid gap-2">
-                {article.buttons.map((button) => (
-                  <button key={button} className="rounded-lg bg-[#092046] px-4 py-3 text-sm font-black text-white">
-                    {button}
-                  </button>
+                {(article.linkActions ?? []).filter((action) => action.displayStyle === "button").map((action) => (
+                  <a
+                    key={action.id}
+                    href={action.type === "phone" ? `tel:${action.target}` : action.target}
+                    className="rounded-lg bg-[#092046] px-4 py-3 text-center text-sm font-black text-white"
+                    target={action.type === "phone" ? undefined : "_blank"}
+                    rel={action.type === "phone" ? undefined : "noreferrer"}
+                  >
+                    {action.label}
+                  </a>
                 ))}
               </div>
             </article>

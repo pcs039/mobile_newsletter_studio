@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
-import { readingEditSections, sampleNewsletterArticles } from "@/lib/newsletter-data";
+import {
+  linkBlockGuidelines,
+  readingEditSections,
+  sampleContentBlocks,
+  sampleImageOverlays,
+  sampleNewsletterArticles,
+} from "@/lib/newsletter-data";
 
 const previewButtons = ["신청 안내", "전화 연결", "지도 보기"];
 const selectedArticle = sampleNewsletterArticles[0];
@@ -162,6 +168,51 @@ export default function ReadingEditorPage() {
                 </div>
 
                 <div>
+                  <FieldLabel>콘텐츠 블록 구성</FieldLabel>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {sampleContentBlocks.map((block) => (
+                      <div key={block.id} className="rounded-lg border border-slate-200 bg-[#f4f8ff] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-black text-[#092046]">{block.title}</p>
+                          <StatusPill value={block.status} />
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">{block.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div>
+                    <FieldLabel>동영상 링크 카드</FieldLabel>
+                    <div className="rounded-lg border border-dashed border-sky-200 bg-[#f4f8ff] p-5">
+                      <p className="text-sm font-bold text-[#092046]">YouTube 등 외부 영상 연결</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        1차 MVP에서는 영상을 직접 업로드하지 않고 썸네일 카드와 외부 URL을 연결합니다.
+                      </p>
+                      <div className="mt-4 grid gap-3">
+                        <TextInput defaultValue="홍보 영상 보기" placeholder="카드 제목" />
+                        <TextInput defaultValue="https://www.youtube.com" placeholder="YouTube 또는 외부 영상 URL" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <FieldLabel>지도 링크 카드</FieldLabel>
+                    <div className="rounded-lg border border-dashed border-sky-200 bg-[#f4f8ff] p-5">
+                      <p className="text-sm font-bold text-[#092046]">지도 이미지와 외부 지도 URL 연결</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        지도 이미지는 카드로 보여주고 카카오·네이버·구글 지도 URL로 이동합니다.
+                      </p>
+                      <div className="mt-4 grid gap-3">
+                        <TextInput defaultValue="행사장 지도 보기" placeholder="지도 카드 제목" />
+                        <TextInput defaultValue="https://map.kakao.com" placeholder="지도 URL" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
                   <FieldLabel>음성 대본</FieldLabel>
                   <textarea
                     defaultValue="무안군의 주요 정책과 생활 정보를 안내드립니다. 자세한 내용은 본문과 연결 버튼을 확인해 주세요."
@@ -203,6 +254,24 @@ export default function ReadingEditorPage() {
                           <div className="h-2 w-1/3 rounded-full bg-[#092046]" />
                         </div>
                       </div>
+                      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+                        <p className="text-xs font-black text-[#184a88]">동영상</p>
+                        <div className="mt-2 rounded-lg bg-slate-100 px-3 py-4 text-center text-xs font-bold text-slate-600">
+                          YouTube 썸네일 카드
+                        </div>
+                        <button className="mt-3 w-full rounded-lg bg-[#092046] px-4 py-2 text-sm font-bold text-white">
+                          홍보 영상 보기
+                        </button>
+                      </div>
+                      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+                        <p className="text-xs font-black text-[#184a88]">지도</p>
+                        <div className="mt-2 rounded-lg bg-sky-50 px-3 py-4 text-center text-xs font-bold text-slate-600">
+                          지도 이미지 카드
+                        </div>
+                        <button className="mt-3 w-full rounded-lg bg-[#092046] px-4 py-2 text-sm font-bold text-white">
+                          지도 보기
+                        </button>
+                      </div>
                       <div className="mt-4 grid gap-2">
                         {previewButtons.map((button) => (
                           <button key={button} className="rounded-lg bg-[#092046] px-4 py-2 text-sm font-bold text-white">
@@ -221,8 +290,41 @@ export default function ReadingEditorPage() {
                   <li className="rounded-lg bg-[#f4f8ff] px-3 py-2">문단이 모바일에서 너무 길지 않은지 확인</li>
                   <li className="rounded-lg bg-[#f4f8ff] px-3 py-2">대표 이미지 출처와 대체텍스트 확인</li>
                   <li className="rounded-lg bg-[#f4f8ff] px-3 py-2">전화번호, 지도, 신청 링크 동작 확인</li>
+                  <li className="rounded-lg bg-[#f4f8ff] px-3 py-2">YouTube 등 외부 링크가 정상 이동하는지 확인</li>
                   <li className="rounded-lg bg-[#f4f8ff] px-3 py-2">음성 대본이 본문과 일치하는지 확인</li>
                 </ul>
+              </article>
+
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-bold text-[#092046]">링크·오버레이 기준</h3>
+                <div className="mt-4 space-y-3">
+                  {linkBlockGuidelines.map((item) => (
+                    <div key={item.label} className="rounded-lg bg-slate-50 px-3 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-bold text-[#092046]">{item.label}</p>
+                        <span className="text-xs font-black text-[#184a88]">{item.status}</span>
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-bold text-[#092046]">이미지 오버레이 예고</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  이미지 위 클립과 클릭 영역은 2차 기능에서 좌표 기반 편집기로 확장합니다.
+                </p>
+                <div className="mt-4 space-y-3">
+                  {sampleImageOverlays.map((overlay) => (
+                    <div key={overlay.id} className="rounded-lg bg-slate-50 px-3 py-3">
+                      <p className="text-sm font-bold text-[#092046]">{overlay.label}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        x {overlay.xPercent}% · y {overlay.yPercent}% · w {overlay.widthPercent}% · h {overlay.heightPercent}%
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </article>
             </aside>
           </div>

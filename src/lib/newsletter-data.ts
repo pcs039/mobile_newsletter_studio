@@ -6,10 +6,98 @@ import type {
   LabelStatusDetail,
   LabelValue,
   NewsletterArticle,
+  NewsletterContentBlock,
+  NewsletterImageOverlay,
+  NewsletterLinkAction,
   NewsletterPage,
   NewsletterProject,
   NewsletterTocItem,
 } from "@/types/newsletter";
+
+export const sampleLinkActions: NewsletterLinkAction[] = [
+  {
+    id: "link-apply",
+    label: "신청 안내",
+    type: "url",
+    target: "https://www.muan.go.kr",
+    displayStyle: "button",
+  },
+  {
+    id: "link-map",
+    label: "지도 보기",
+    type: "map",
+    target: "https://map.kakao.com",
+    displayStyle: "map_card",
+  },
+  {
+    id: "link-video",
+    label: "홍보 영상 보기",
+    type: "video",
+    target: "https://www.youtube.com",
+    displayStyle: "thumbnail_card",
+  },
+  {
+    id: "link-phone",
+    label: "전화 연결",
+    type: "phone",
+    target: "061-000-0000",
+    displayStyle: "button",
+  },
+];
+
+export const sampleContentBlocks: NewsletterContentBlock[] = [
+  {
+    id: "block-text",
+    type: "paragraph",
+    title: "본문 문단",
+    status: "1차 포함",
+    description: "제공 원고를 모바일 문단으로 정리",
+  },
+  {
+    id: "block-video",
+    type: "video_link",
+    title: "동영상 링크 카드",
+    status: "1차 포함",
+    description: "YouTube 등 외부 영상은 썸네일 카드로 연결",
+  },
+  {
+    id: "block-map",
+    type: "map_link",
+    title: "지도 링크 카드",
+    status: "1차 포함",
+    description: "지도 이미지는 카드로 보여주고 외부 지도 URL로 이동",
+  },
+  {
+    id: "block-overlay",
+    type: "overlay_notice",
+    title: "이미지 위 오버레이",
+    status: "2차 예정",
+    description: "이미지 클립과 클릭 좌표를 % 기준으로 저장",
+  },
+];
+
+export const sampleImageOverlays: NewsletterImageOverlay[] = [
+  {
+    id: "overlay-map-pin",
+    label: "지도 핀 오버레이",
+    imageAssetId: "asset-life-support-bg",
+    linkActionId: "link-map",
+    xPercent: 66,
+    yPercent: 20,
+    widthPercent: 18,
+    heightPercent: 18,
+  },
+  {
+    id: "overlay-apply",
+    label: "신청 버튼 오버레이",
+    imageAssetId: "asset-main-news-banner",
+    linkActionId: "link-apply",
+    xPercent: 12,
+    yPercent: 72,
+    widthPercent: 38,
+    heightPercent: 14,
+  },
+];
 
 export const sampleNewsletterPages: NewsletterPage[] = Array.from({ length: 16 }, (_, index) => ({
   number: index + 1,
@@ -43,6 +131,9 @@ export const sampleNewsletterArticles: NewsletterArticle[] = [
     audioStatus: "음성 제공",
     audioDuration: "02:14",
     buttons: ["자세히 보기", "전화 연결"],
+    linkActions: [sampleLinkActions[0], sampleLinkActions[2], sampleLinkActions[3]],
+    contentBlocks: sampleContentBlocks,
+    overlays: [sampleImageOverlays[1]],
   },
   {
     id: "life-support",
@@ -56,6 +147,8 @@ export const sampleNewsletterArticles: NewsletterArticle[] = [
     audioStatus: "음성 준비 중",
     audioDuration: "-",
     buttons: ["신청 안내", "문의 전화"],
+    linkActions: [sampleLinkActions[0], sampleLinkActions[1], sampleLinkActions[3]],
+    contentBlocks: sampleContentBlocks.slice(0, 3),
   },
   {
     id: "culture-events",
@@ -69,6 +162,9 @@ export const sampleNewsletterArticles: NewsletterArticle[] = [
     audioStatus: "교체 필요",
     audioDuration: "01:48",
     buttons: ["지도 보기", "행사 정보"],
+    linkActions: [sampleLinkActions[1], sampleLinkActions[2]],
+    contentBlocks: sampleContentBlocks,
+    overlays: [sampleImageOverlays[0]],
   },
   {
     id: "health-welfare",
@@ -296,7 +392,14 @@ export const pageQualityChecks = [
   "1차 MVP에서는 PDF 자동 변환보다 수동 등록 품질을 우선 확인",
 ];
 
-export const readingEditSections = ["제목·요약", "본문 문단", "대표 이미지", "문의처·버튼", "음성 대본"];
+export const readingEditSections = ["제목·요약", "본문 문단", "이미지·영상", "지도·링크", "음성 대본"];
+
+export const linkBlockGuidelines: LabelStatusDetail[] = [
+  { label: "동영상", status: "썸네일 카드", detail: "YouTube 등 외부 영상 URL을 연결하고 새 창 또는 현재 창으로 이동" },
+  { label: "지도", status: "지도 카드", detail: "지도 이미지를 보여주고 카카오·네이버·구글 지도 URL로 이동" },
+  { label: "텍스트 링크", status: "버튼 우선", detail: "1차 MVP에서는 본문 중간 직접 링크보다 명확한 버튼 블록으로 처리" },
+  { label: "이미지 오버레이", status: "2차 예정", detail: "이미지 위 클립과 클릭 영역은 좌표 기반 편집기로 확장" },
+];
 
 export const imageAssets: ImageAsset[] = [
   {
@@ -425,6 +528,7 @@ export const publishChecks = [
   "모바일 읽기 보기에서 제목, 본문, 버튼이 잘리지 않는지 확인",
   "PC e-book에서 원본 지면 확대 보기 품질 확인",
   "전화, URL, 지도, 내부 페이지 이동 링크 확인",
+  "YouTube 등 외부 동영상 링크가 정상 이동하는지 확인",
   "이미지 출처, 권리, 대체텍스트 입력 상태 확인",
   "음성 파일 재생과 대본 일치 여부 확인",
 ];
