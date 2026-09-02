@@ -22,6 +22,8 @@ const navigationItems = [
 
 const dashboardActionClass =
   "inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]";
+const dashboardPrimaryActionClass =
+  "inline-flex h-8 items-center justify-center rounded-md bg-[#092046] px-3 text-xs font-black text-white shadow-sm shadow-blue-950/20 transition hover:bg-[#123a78]";
 
 function parseCount(value: string) {
   return Number(value.replace(/,/g, "")) || 0;
@@ -293,9 +295,9 @@ export default async function Home() {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <Link
                               href={project.actions.editHref}
-                              className={dashboardActionClass}
+                              className={dashboardPrimaryActionClass}
                             >
-                              수정
+                              작업 시작
                             </Link>
                             <Link
                               href={project.actions.previewHref}

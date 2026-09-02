@@ -4,12 +4,12 @@ import { DatadictionBrand } from "@/components/datadiction-brand";
 
 type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish";
 
-const projectNavigation: Array<{ key: ProjectSection; label: string; path: string }> = [
-  { key: "pages", label: "PDF·이미지", path: "pages" },
-  { key: "reading", label: "읽기 보기 편집", path: "reading" },
-  { key: "assets", label: "이미지 자산", path: "assets" },
-  { key: "audio", label: "음성 MP3", path: "audio" },
-  { key: "publish", label: "미리보기·발행", path: "publish" },
+const projectNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
+  { key: "pages", label: "PDF·이미지", path: "pages", guide: "원본·페이지" },
+  { key: "reading", label: "읽기 보기 편집", path: "reading", guide: "기사·본문" },
+  { key: "assets", label: "이미지 자산", path: "assets", guide: "대표·배너" },
+  { key: "audio", label: "음성 MP3", path: "audio", guide: "파일·대본" },
+  { key: "publish", label: "미리보기·발행", path: "publish", guide: "URL·QR" },
 ];
 
 function SidebarItem({
@@ -94,6 +94,45 @@ export function ProjectAdminShell({
             </div>
             {actions}
           </header>
+
+          <nav className="mb-7 rounded-lg border border-slate-200 bg-white p-3 shadow-sm" aria-label="프로젝트 작업 흐름">
+            <div className="mb-3 flex flex-col gap-1 px-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">작업 흐름</p>
+                <h3 className="text-base font-bold text-[#092046]">현재 프로젝트 제작 단계</h3>
+              </div>
+              <p className="text-xs font-semibold text-slate-500">
+                순서대로 진행하되, 필요한 단계는 언제든 다시 열 수 있습니다.
+              </p>
+            </div>
+            <div className="grid gap-2 md:grid-cols-5">
+              {projectNavigation.map((item, index) => {
+                const isActive = active === item.key;
+                const href = `/projects/${projectId}/${item.path}`;
+                const className = `rounded-lg border px-3 py-3 text-left transition ${
+                  isActive
+                    ? "border-[#092046] bg-[#092046] text-white shadow-sm shadow-blue-950/20"
+                    : "border-slate-200 bg-[#f8fbff] text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                }`;
+
+                return (
+                  <Link key={item.key} href={href} className={className}>
+                    <span
+                      className={`mb-2 flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ${
+                        isActive ? "bg-white text-[#092046]" : "bg-[#dfeaff] text-[#184a88]"
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
+                    <span className="block text-sm font-black">{item.label}</span>
+                    <span className={`mt-1 block text-xs font-semibold ${isActive ? "text-sky-100" : "text-slate-500"}`}>
+                      {item.guide}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
 
           {children}
         </section>

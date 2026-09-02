@@ -2,9 +2,41 @@ import Link from "next/link";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { sampleNewsletter } from "@/lib/newsletter-data";
 
-export default function PublicEbookPage() {
+type PublicEbookPageProps = {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ preview?: string | string[] }>;
+};
+
+export default async function PublicEbookPage({ params, searchParams }: PublicEbookPageProps) {
+  const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
+  const previewMode = resolvedSearchParams?.preview;
+  const isAdminPreview = Array.isArray(previewMode) ? previewMode.includes("admin") : previewMode === "admin";
+  const mobileHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : sampleNewsletter.publicUrl;
+
   return (
     <main className="min-h-screen bg-[#eef4fb] text-slate-950">
+      {isAdminPreview && (
+        <div className="border-b border-slate-300 bg-white px-6 py-3 shadow-sm">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">관리자 미리보기</p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/"
+                className="rounded-md border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+              >
+                대시보드로 돌아가기
+              </Link>
+              <Link
+                href={`/projects/${slug}/publish`}
+                className="rounded-md bg-[#092046] px-3 py-2 text-xs font-black text-white transition hover:bg-[#123a78]"
+              >
+                발행 관리
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -18,7 +50,7 @@ export default function PublicEbookPage() {
             </div>
           </div>
           <Link
-            href={sampleNewsletter.publicUrl}
+            href={mobileHref}
             className="rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
           >
             모바일 읽기 보기

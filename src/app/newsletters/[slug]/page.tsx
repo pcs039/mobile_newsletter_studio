@@ -2,6 +2,11 @@ import Link from "next/link";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { sampleNewsletter } from "@/lib/newsletter-data";
 
+type PublicNewsletterPageProps = {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ preview?: string | string[] }>;
+};
+
 function AudioBar({ status, duration }: { status: string; duration: string }) {
   const isReady = status === "음성 제공";
 
@@ -58,9 +63,36 @@ function ExternalLinkCards({
   );
 }
 
-export default function PublicNewsletterPage() {
+export default async function PublicNewsletterPage({ params, searchParams }: PublicNewsletterPageProps) {
+  const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
+  const previewMode = resolvedSearchParams?.preview;
+  const isAdminPreview = Array.isArray(previewMode) ? previewMode.includes("admin") : previewMode === "admin";
+  const ebookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : sampleNewsletter.ebookUrl;
+
   return (
     <main className="min-h-screen bg-[#edf4fb] text-slate-950">
+      {isAdminPreview && (
+        <div className="sticky top-0 z-20 border-b border-slate-300 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+          <div className="mx-auto flex max-w-[520px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">관리자 미리보기</p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/"
+                className="rounded-md border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+              >
+                대시보드로 돌아가기
+              </Link>
+              <Link
+                href={`/projects/${slug}/publish`}
+                className="rounded-md bg-[#092046] px-3 py-2 text-xs font-black text-white transition hover:bg-[#123a78]"
+              >
+                발행 관리
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
       <section className="mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10">
         <header className="bg-[#071f46] px-5 pb-7 pt-6 text-white">
           <div className="mb-6">
@@ -72,7 +104,7 @@ export default function PublicNewsletterPage() {
           <p className="mt-4 text-sm leading-6 text-slate-300">{sampleNewsletter.description}</p>
           <div className="mt-5 flex gap-2">
             <Link
-              href={sampleNewsletter.ebookUrl}
+              href={ebookHref}
               className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046]"
             >
               PC e-book 보기

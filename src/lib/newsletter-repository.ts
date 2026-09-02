@@ -180,7 +180,7 @@ function mapProjectRowToDashboardProject(project: NewsletterProjectRow): Dashboa
     },
     actions: {
       editHref: `/projects/${project.slug}/pages`,
-      previewHref: `/newsletters/${project.slug}`,
+      previewHref: `/newsletters/${project.slug}?preview=admin`,
       analyticsHref: "#analytics-preview",
       duplicateHref: `/projects/new?copyFrom=${project.slug}`,
       archiveHref: "#archive-policy",

@@ -27,6 +27,8 @@ function QrMock() {
 
 export default async function PublishPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const publicPreviewHref = `/newsletters/${projectId}?preview=admin`;
+  const ebookPreviewHref = `/newsletters/${projectId}/ebook?preview=admin`;
 
   return (
     <ProjectAdminShell
@@ -96,7 +98,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
                   <StatusPill value="검수 중" />
                 </div>
                 <Link
-                  href={sampleNewsletter.publicUrl}
+                  href={publicPreviewHref}
                   className="mb-4 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                 >
                   공개 화면 열기
@@ -147,7 +149,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
                   <StatusPill value="완료" />
                 </div>
                 <Link
-                  href={sampleNewsletter.ebookUrl}
+                  href={ebookPreviewHref}
                   className="mb-4 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                 >
                   PC e-book 열기
