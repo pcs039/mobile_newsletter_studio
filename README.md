@@ -1,5 +1,33 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Mobile Newsletter Studio
+
+DataDiction mobile newsletter production MVP.
+
+The first Supabase integration step is intentionally small:
+
+- keep the current sample UI working without database credentials
+- add environment variable checks
+- expose a read-only health check API
+- prepare the schema in `supabase/schema_v0_5.sql`
+
+## Supabase Setup
+
+1. Create a Supabase project.
+2. Run `supabase/schema_v0_5.sql` in the Supabase SQL editor.
+3. Copy `.env.example` to `.env.local`.
+4. Fill in:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
+
+5. Restart the local dev server.
+6. Open `/api/supabase/health`.
+
+The optional `SUPABASE_SERVICE_ROLE_KEY` must be used only in server-only code after access policies are finalized.
+
 ## Getting Started
 
 First, run the development server:

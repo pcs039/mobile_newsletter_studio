@@ -10,6 +10,7 @@ import {
   projectOperationActions,
   workflowSteps,
 } from "@/lib/newsletter-data";
+import { getSupabaseConfigStatus } from "@/lib/supabase-config";
 
 const navigationItems = [
   { label: "프로젝트", href: "/", status: "active" },
@@ -21,6 +22,8 @@ const navigationItems = [
 ];
 
 export default function Home() {
+  const supabaseConfig = getSupabaseConfigStatus();
+
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
       <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -111,6 +114,54 @@ export default function Home() {
                 </div>
               </article>
             ))}
+          </section>
+
+          <section className="mb-7 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">Supabase 연결 준비</p>
+                  <h3 className="mt-1 text-lg font-bold text-[#092046]">저장소 환경 설정</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    프로젝트·기사·이미지·음성·링크 데이터를 실제 DB로 옮기기 전 환경변수와 스키마 적용 상태를 확인합니다.
+                  </p>
+                </div>
+                <StatusPill value={supabaseConfig.isConfigured ? "환경변수 준비" : "설정 필요"} />
+              </div>
+              <div className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
+                <div className="rounded-lg bg-slate-50 px-3 py-3">
+                  <p className="font-bold text-[#092046]">URL</p>
+                  <p className="mt-1 text-xs font-semibold">
+                    {supabaseConfig.url ? "입력됨" : "NEXT_PUBLIC_SUPABASE_URL 필요"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-slate-50 px-3 py-3">
+                  <p className="font-bold text-[#092046]">Anon Key</p>
+                  <p className="mt-1 text-xs font-semibold">
+                    {supabaseConfig.anonKey ? "입력됨" : "NEXT_PUBLIC_SUPABASE_ANON_KEY 필요"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-slate-50 px-3 py-3">
+                  <p className="font-bold text-[#092046]">Service Key</p>
+                  <p className="mt-1 text-xs font-semibold">
+                    {supabaseConfig.hasServiceRoleKey ? "서버용 키 있음" : "선택 사항"}
+                  </p>
+                </div>
+              </div>
+            </article>
+
+            <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-lg font-bold text-[#092046]">연결 점검</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                스키마를 적용하고 Vercel 환경변수를 넣은 뒤 API 상태를 확인합니다.
+              </p>
+              <a
+                href="/api/supabase/health"
+                className="mt-4 inline-flex w-full justify-center rounded-lg bg-[#092046] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
+              >
+                Supabase 상태 확인
+              </a>
+            </article>
           </section>
 
           <section className="mb-7 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_300px]">

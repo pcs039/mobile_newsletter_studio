@@ -12,6 +12,8 @@ const statusTones: Record<string, string> = {
   "편집 중": "bg-sky-100 text-sky-800",
   "제작 중": "bg-sky-100 text-sky-800",
   "저장소 연동 전 UI": "bg-sky-100 text-sky-800",
+  "환경변수 준비": "bg-emerald-100 text-emerald-800",
+  "설정 필요": "bg-amber-100 text-amber-800",
   "초안": "bg-indigo-100 text-indigo-800",
   "기획안": "bg-indigo-100 text-indigo-800",
   "샘플 검토": "bg-amber-100 text-amber-800",
