@@ -1,12 +1,16 @@
 import Link from "next/link";
+import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
 import { pageConversionSteps, pageQualityChecks, sampleNewsletterPages } from "@/lib/newsletter-data";
 
-export default function ProjectPagesPage() {
+export default async function ProjectPagesPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+
   return (
     <ProjectAdminShell
       active="pages"
+      projectId={projectId}
       title="PDF 원본·페이지 이미지 관리"
       description="1차 MVP에서는 PDF 원본을 보관하고, PC e-book용 페이지 이미지는 수동 등록·검수 흐름으로 관리합니다."
       sidebarTitle={
@@ -22,7 +26,7 @@ export default function ProjectPagesPage() {
       actions={
         <Link
           href="/projects/new"
-          className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+          className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
           기본 정보 수정
         </Link>
@@ -43,15 +47,37 @@ export default function ProjectPagesPage() {
                   </span>
                 </div>
 
-                <div className="mt-5 rounded-lg border-2 border-dashed border-sky-200 bg-[#f4f8ff] px-5 py-8 text-center">
-                  <p className="text-base font-bold text-[#092046]">PDF 파일을 선택하거나 이 영역에 끌어다 놓기</p>
-                  <p className="mt-2 text-sm text-slate-600">
-                    권장: 10~20쪽 지자체 소식지 PDF, 페이지 이미지는 다음 카드 영역에서 별도 등록
-                  </p>
-                  <button className="mt-5 rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
-                    PDF 선택
-                  </button>
+                <FileUploadCard
+                  accept="application/pdf"
+                  buttonLabel="PDF 선택"
+                  description="권장: 10~20쪽 지자체 소식지 PDF. 페이지 이미지는 아래에서 별도 등록합니다."
+                  kind="pdf_original"
+                  projectSlug={projectId}
+                  title="PDF 파일을 선택하거나 이 영역에 끌어다 놓기"
+                />
+              </article>
+
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#092046]">페이지 이미지 업로드</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      일러스트 등에서 제작한 모바일·e-book용 페이지 이미지를 페이지 번호와 함께 저장합니다.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                    Supabase Storage 저장
+                  </span>
                 </div>
+
+                <FileUploadCard
+                  accept="image/png,image/jpeg,image/webp"
+                  buttonLabel="페이지 이미지 선택"
+                  description="페이지 번호를 먼저 확인한 뒤 PNG, JPG, WebP 파일을 업로드하세요."
+                  kind="page_image"
+                  projectSlug={projectId}
+                  title="페이지 이미지를 선택하거나 이 영역에 끌어다 놓기"
+                />
               </article>
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -142,8 +168,8 @@ export default function ProjectPagesPage() {
                   대표 이미지, 문의처, 음성 대본을 정리합니다.
                 </p>
                 <Link
-                  href="/projects/muan-2025-94/reading"
-                  className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+                  href={`/projects/${projectId}/reading`}
+                  className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
                 >
                   읽기 보기 편집으로 이동
                 </Link>

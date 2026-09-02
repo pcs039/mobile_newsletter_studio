@@ -4,14 +4,12 @@ import { DatadictionBrand } from "@/components/datadiction-brand";
 
 type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish";
 
-const projectPath = "/projects/muan-2025-94";
-
-const projectNavigation: Array<{ key: ProjectSection; label: string; href: string }> = [
-  { key: "pages", label: "PDF·이미지", href: `${projectPath}/pages` },
-  { key: "reading", label: "읽기 보기 편집", href: `${projectPath}/reading` },
-  { key: "assets", label: "이미지 자산", href: `${projectPath}/assets` },
-  { key: "audio", label: "음성 MP3", href: `${projectPath}/audio` },
-  { key: "publish", label: "미리보기·발행", href: `${projectPath}/publish` },
+const projectNavigation: Array<{ key: ProjectSection; label: string; path: string }> = [
+  { key: "pages", label: "PDF·이미지", path: "pages" },
+  { key: "reading", label: "읽기 보기 편집", path: "reading" },
+  { key: "assets", label: "이미지 자산", path: "assets" },
+  { key: "audio", label: "음성 MP3", path: "audio" },
+  { key: "publish", label: "미리보기·발행", path: "publish" },
 ];
 
 function SidebarItem({
@@ -43,6 +41,7 @@ export function ProjectAdminShell({
   actions,
   children,
   description,
+  projectId = "muan-2025-94",
   sidebarDescription,
   sidebarNote,
   sidebarNoteTitle,
@@ -53,6 +52,7 @@ export function ProjectAdminShell({
   actions?: ReactNode;
   children: ReactNode;
   description: string;
+  projectId?: string;
   sidebarDescription: string;
   sidebarNote: string;
   sidebarNoteTitle: string;
@@ -73,7 +73,7 @@ export function ProjectAdminShell({
             <SidebarItem href="/">프로젝트 대시보드</SidebarItem>
             <SidebarItem href="/projects/new">새 소식지 생성</SidebarItem>
             {projectNavigation.map((item) => (
-              <SidebarItem key={item.key} href={item.href} active={active === item.key}>
+              <SidebarItem key={item.key} href={`/projects/${projectId}/${item.path}`} active={active === item.key}>
                 {item.label}
               </SidebarItem>
             ))}

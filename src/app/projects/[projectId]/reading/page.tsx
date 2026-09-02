@@ -26,10 +26,13 @@ function TextInput({ placeholder, defaultValue }: { placeholder: string; default
   );
 }
 
-export default function ReadingEditorPage() {
+export default async function ReadingEditorPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+
   return (
     <ProjectAdminShell
       active="reading"
+      projectId={projectId}
       title="모바일 읽기 보기 편집"
       description="기사 단위로 텍스트, 이미지, 문의처, 버튼, 음성 대본을 정리합니다."
       sidebarTitle={
@@ -44,8 +47,8 @@ export default function ReadingEditorPage() {
       sidebarNote="OCR은 보조 수단으로만 두고, 제목·본문·문의처·버튼·대본은 사람이 검수해 정리합니다."
       actions={
         <Link
-          href="/projects/muan-2025-94/pages"
-          className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+          href={`/projects/${projectId}/pages`}
+          className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
           페이지 관리로 돌아가기
         </Link>
@@ -139,8 +142,8 @@ export default function ReadingEditorPage() {
                         기관 제공 원본 이미지 또는 디자이너 제작 이미지를 연결합니다.
                       </p>
                       <Link
-                        href="/projects/muan-2025-94/assets"
-                        className="mt-4 inline-flex rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700"
+                        href={`/projects/${projectId}/assets`}
+                        className="mt-4 inline-flex rounded-lg border border-[#2f73b7] bg-white px-4 py-2 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
                       >
                         이미지 선택
                       </Link>

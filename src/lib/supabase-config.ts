@@ -39,3 +39,16 @@ export function getSupabaseRestEndpoint(path: string) {
 
   return `${baseUrl}${normalizedPath}`;
 }
+
+export function getSupabaseStorageEndpoint(path: string) {
+  const config = getSupabaseConfigStatus();
+
+  if (!config.url) {
+    return null;
+  }
+
+  const baseUrl = config.url.replace(/\/$/, "");
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+  return `${baseUrl}/storage/v1${normalizedPath}`;
+}

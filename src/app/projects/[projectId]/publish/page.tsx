@@ -25,10 +25,13 @@ function QrMock() {
   );
 }
 
-export default function PublishPage() {
+export default async function PublishPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+
   return (
     <ProjectAdminShell
       active="publish"
+      projectId={projectId}
       title="미리보기·발행"
       description="공개 화면 품질과 배포 정보를 확인한 뒤 URL과 QR코드를 발행합니다."
       sidebarTitle={
@@ -44,12 +47,12 @@ export default function PublishPage() {
       actions={
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
-            href="/projects/muan-2025-94/audio"
-            className="rounded-lg border border-slate-200 px-5 py-3 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+            href={`/projects/${projectId}/audio`}
+            className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
             음성 관리로 돌아가기
           </Link>
-          <button className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
+          <button className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]">
             검수 요청
           </button>
         </div>

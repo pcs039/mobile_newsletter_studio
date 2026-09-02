@@ -1,12 +1,16 @@
 import Link from "next/link";
+import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
 import { imageAssets, imageReviewItems, imageSourceTypes } from "@/lib/newsletter-data";
 
-export default function ImageAssetsPage() {
+export default async function ImageAssetsPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+
   return (
     <ProjectAdminShell
       active="assets"
+      projectId={projectId}
       title="이미지 자산 관리"
       description="모바일 읽기 화면에 입힐 대표 이미지, 배경 이미지, 배너의 품질과 권리 상태를 관리합니다."
       sidebarTitle={
@@ -21,8 +25,8 @@ export default function ImageAssetsPage() {
       sidebarNote="PDF 발췌 이미지는 보조 수단으로만 두고, 기관 제공 원본 또는 별도 제작 이미지를 우선 사용합니다."
       actions={
         <Link
-          href="/projects/muan-2025-94/reading"
-          className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+          href={`/projects/${projectId}/reading`}
+          className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
           읽기 보기로 돌아가기
         </Link>
@@ -38,21 +42,20 @@ export default function ImageAssetsPage() {
                       기관 제공 원본 사진, 디자이너 제작 배너, AI 생성 이미지, PDF 발췌 이미지를 자산으로 등록합니다.
                     </p>
                   </div>
-                  <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800">
-                    저장소 연동 전 UI
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                    Supabase Storage 저장
                   </span>
                 </div>
 
                 <div className="mt-5 grid gap-4 md:grid-cols-[1fr_280px]">
-                  <div className="rounded-lg border-2 border-dashed border-sky-200 bg-[#f4f8ff] px-5 py-8 text-center">
-                    <p className="text-base font-bold text-[#092046]">이미지 파일을 선택하거나 이 영역에 끌어다 놓기</p>
-                    <p className="mt-2 text-sm text-slate-600">
-                      권장: 원본 사진, 웹용 배너, 카드 이미지. PDF 발췌 이미지는 품질 확인 후 사용합니다.
-                    </p>
-                    <button className="mt-5 rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
-                      이미지 선택
-                    </button>
-                  </div>
+                  <FileUploadCard
+                    accept="image/png,image/jpeg,image/webp"
+                    buttonLabel="이미지 선택"
+                    description="권장: 원본 사진, 웹용 배너, 카드 이미지. PDF 발췌 이미지는 품질 확인 후 사용합니다."
+                    kind="asset_image"
+                    projectSlug={projectId}
+                    title="이미지 파일을 선택하거나 이 영역에 끌어다 놓기"
+                  />
                   <div className="rounded-lg border border-slate-200 bg-white p-4">
                     <p className="text-sm font-bold text-[#092046]">등록 시 필수 정보</p>
                     <div className="mt-3 grid gap-2 text-sm text-slate-600">
@@ -149,8 +152,8 @@ export default function ImageAssetsPage() {
                   이미지 자산을 정리한 뒤 음성 MP3 관리 화면으로 이동합니다. 외부 TTS로 제작한 음성 파일을 기사별로 연결합니다.
                 </p>
                 <Link
-                  href="/projects/muan-2025-94/audio"
-                  className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+                  href={`/projects/${projectId}/audio`}
+                  className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
                 >
                   음성 MP3 관리로 이동
                 </Link>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
 import { audioReviewChecks, audioTracks, audioWorkflow } from "@/lib/newsletter-data";
@@ -18,10 +19,13 @@ function BrowserAudioControl({ title, enabled }: { title: string; enabled: boole
   );
 }
 
-export default function AudioManagementPage() {
+export default async function AudioManagementPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = await params;
+
   return (
     <ProjectAdminShell
       active="audio"
+      projectId={projectId}
       title="음성 MP3 관리"
       description="읽기 보기에서 정리한 음성 대본을 기준으로 MP3 파일을 연결하고 검수합니다."
       sidebarTitle={
@@ -36,8 +40,8 @@ export default function AudioManagementPage() {
       sidebarNote="음성 생성 기능은 만들지 않고, 외부 TTS에서 제작한 MP3를 업로드해 연결합니다."
       actions={
         <Link
-          href="/projects/muan-2025-94/assets"
-          className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+          href={`/projects/${projectId}/assets`}
+          className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
           이미지 자산으로 돌아가기
         </Link>
@@ -53,21 +57,20 @@ export default function AudioManagementPage() {
                       기사 또는 페이지별로 외부 TTS에서 제작한 MP3 파일을 업로드하고, 브라우저 재생기로 바로 검수합니다.
                     </p>
                   </div>
-                  <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800">
-                    저장소 연동 전 UI
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                    Supabase Storage 저장
                   </span>
                 </div>
 
                 <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_280px]">
-                  <div className="rounded-lg border-2 border-dashed border-sky-200 bg-[#f4f8ff] px-5 py-8 text-center">
-                    <p className="text-base font-bold text-[#092046]">MP3 파일을 선택하거나 이 영역에 끌어다 놓기</p>
-                    <p className="mt-2 text-sm text-slate-600">
-                      권장: 기사별 1개 파일, 파일명은 기사명이나 페이지 번호를 포함합니다.
-                    </p>
-                    <button className="mt-5 rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
-                      MP3 선택
-                    </button>
-                  </div>
+                  <FileUploadCard
+                    accept="audio/mpeg,audio/mp3"
+                    buttonLabel="MP3 선택"
+                    description="권장: 기사별 1개 파일, 파일명은 기사명이나 페이지 번호를 포함합니다."
+                    kind="audio_mp3"
+                    projectSlug={projectId}
+                    title="MP3 파일을 선택하거나 이 영역에 끌어다 놓기"
+                  />
                   <div className="rounded-lg border border-slate-200 bg-white p-4">
                     <p className="text-sm font-bold text-[#092046]">업로드 전 확인</p>
                     <div className="mt-3 grid gap-2 text-sm text-slate-600">
@@ -133,7 +136,7 @@ export default function AudioManagementPage() {
                             <StatusPill value={item.script} />
                           </td>
                           <td className="px-4 py-4">
-                            <button className="rounded-md border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">
+                            <button className="rounded-md border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]">
                               연결 관리
                             </button>
                           </td>
@@ -220,8 +223,8 @@ export default function AudioManagementPage() {
                   음성 파일 연결을 확인한 뒤 공개 모바일 화면과 PC e-book 미리보기, URL·QR 발행 화면으로 이동합니다.
                 </p>
                 <Link
-                  href="/projects/muan-2025-94/publish"
-                  className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+                  href={`/projects/${projectId}/publish`}
+                  className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
                 >
                   미리보기·발행 준비
                 </Link>
