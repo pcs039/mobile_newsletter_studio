@@ -7,11 +7,11 @@ import { getProjectWorkspace } from "@/lib/newsletter-repository";
 type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish";
 
 const projectNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
-  { key: "pages", label: "PDF·이미지", path: "pages", guide: "원본·페이지" },
-  { key: "reading", label: "읽기 보기 편집", path: "reading", guide: "기사·본문" },
-  { key: "assets", label: "이미지 자산", path: "assets", guide: "대표·배너" },
-  { key: "audio", label: "음성 MP3", path: "audio", guide: "파일·대본" },
-  { key: "publish", label: "미리보기·발행", path: "publish", guide: "URL·QR" },
+  { key: "pages", label: "원본 자료", path: "pages", guide: "PDF·지면" },
+  { key: "reading", label: "모바일 페이지 작성", path: "reading", guide: "페이지·섹션" },
+  { key: "assets", label: "소재 보관함", path: "assets", guide: "이미지·링크" },
+  { key: "audio", label: "음성·대본", path: "audio", guide: "MP3·검수" },
+  { key: "publish", label: "검수·발행", path: "publish", guide: "URL·QR" },
 ];
 
 export async function ProjectAdminShell({

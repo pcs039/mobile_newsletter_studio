@@ -6,10 +6,10 @@ import { StatusPill } from "@/components/status-pill";
 import { getEditableProjects } from "@/lib/newsletter-repository";
 
 const editSteps = [
-  { label: "PDF·이미지", path: "pages", detail: "원본 보관과 페이지 이미지" },
-  { label: "읽기 보기", path: "reading", detail: "기사, 본문, 버튼" },
-  { label: "이미지 자산", path: "assets", detail: "대표 이미지와 링크 이미지" },
-  { label: "음성 MP3", path: "audio", detail: "외부 TTS 파일 연결" },
+  { label: "원본 자료", path: "pages", detail: "PDF와 지면 이미지" },
+  { label: "모바일 페이지 작성", path: "reading", detail: "페이지, 섹션, 블록" },
+  { label: "소재 보관함", path: "assets", detail: "이미지와 링크 소재" },
+  { label: "음성·대본", path: "audio", detail: "MP3와 기사 대본" },
 ];
 
 export default async function EditProjectsPage() {

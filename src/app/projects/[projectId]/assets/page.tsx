@@ -15,18 +15,18 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
     <ProjectAdminShell
       active="assets"
       projectId={projectId}
-      title="이미지 자산 관리"
-      description="모바일 읽기 화면에 입힐 대표 이미지, 배경 이미지, 배너의 품질과 권리 상태를 관리합니다."
+      title="소재 보관함"
+      description="모바일 페이지에 연결할 이미지, 배너, 지도 이미지, 링크용 썸네일의 품질과 권리 상태를 관리합니다."
       sidebarTitle={
         <>
-          이미지 자산
+          소재
           <br />
-          관리
+          보관함
         </>
       }
-      sidebarDescription="기사 대표 이미지, 배경, 배너, PDF 발췌 이미지를 출처와 권리 기준으로 관리합니다."
+      sidebarDescription="작성 화면에서 가져다 쓸 이미지와 링크 소재를 출처, 권리, 품질 기준으로 정리합니다."
       sidebarNoteTitle="v0.5 반영"
-      sidebarNote="PDF 발췌 이미지는 보조 수단으로만 두고, 기관 제공 원본 또는 별도 제작 이미지를 우선 사용합니다."
+      sidebarNote="이 화면은 독립 산출물이 아니라 모바일 페이지 작성 화면에 붙는 소재 창입니다."
       actions={
         <Link
           href={`/projects/${projectId}/reading`}
@@ -41,7 +41,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-[#092046]">이미지 업로드</h3>
+                    <h3 className="text-lg font-bold text-[#092046]">소재 이미지 업로드</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                       기관 제공 원본 사진, 디자이너 제작 배너, AI 생성 이미지, PDF 발췌 이미지를 자산으로 등록합니다.
                     </p>
@@ -75,7 +75,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-[#092046]">등록 이미지 자산</h3>
+                    <h3 className="text-lg font-bold text-[#092046]">등록 소재 목록</h3>
                     <p className="mt-1 text-sm text-slate-500">{assetData.message}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">

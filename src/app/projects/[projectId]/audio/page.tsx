@@ -32,18 +32,18 @@ export default async function AudioManagementPage({ params }: { params: Promise<
     <ProjectAdminShell
       active="audio"
       projectId={projectId}
-      title="음성 MP3 관리"
-      description="읽기 보기에서 정리한 음성 대본을 기준으로 MP3 파일을 연결하고 검수합니다."
+      title="음성·대본 관리"
+      description="모바일 페이지별 음성 대본을 확인하고 외부 TTS로 제작한 MP3 파일을 연결합니다."
       sidebarTitle={
         <>
           음성 MP3
           <br />
-          관리
+          대본
         </>
       }
-      sidebarDescription="외부 TTS로 만든 음성 파일을 기사별로 업로드하고 재생 상태를 검수합니다."
+      sidebarDescription="작성된 페이지와 기사에 맞춰 대본, MP3, 재생 상태를 함께 검수합니다."
       sidebarNoteTitle="운영 기준"
-      sidebarNote="음성 생성 기능은 만들지 않고, 외부 TTS에서 제작한 MP3를 업로드해 연결합니다."
+      sidebarNote="음성은 별도 산출물이 아니라 모바일 페이지를 보완하는 접근성 콘텐츠로 관리합니다."
       actions={
         <Link
           href={`/projects/${projectId}/assets`}

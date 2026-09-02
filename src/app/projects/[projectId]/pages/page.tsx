@@ -19,18 +19,18 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
     <ProjectAdminShell
       active="pages"
       projectId={projectId}
-      title="PDF 원본·페이지 이미지 관리"
-      description="PDF 원본을 보관하고, PC e-book용 페이지 이미지는 수동 등록·검수 흐름으로 관리합니다."
+      title="원본 자료 등록"
+      description="기관에서 받은 PDF 원본과 지면 이미지를 프로젝트의 기준 자료로 보관합니다."
       sidebarTitle={
         <>
-          PDF·이미지
+          원본 자료
           <br />
-          관리
+          등록
         </>
       }
-      sidebarDescription="원본 PDF는 보관하고, 페이지 이미지는 별도 등록해 PC e-book과 검수 화면에 사용합니다."
+      sidebarDescription="원본 PDF와 지면 이미지를 먼저 정리해 이후 모바일 페이지 작성의 기준으로 사용합니다."
       sidebarNoteTitle="운영 기준"
-      sidebarNote="PDF 자동 변환보다 실제 지면 이미지 품질, 페이지 번호, 공개 흐름을 먼저 정확히 관리합니다."
+      sidebarNote="원본 자료는 제작 기준입니다. 실제 모바일 산출물은 다음 단계의 페이지 작성 화면에서 섹션과 블록으로 조립합니다."
       actions={
         <Link
           href="/projects/new"

@@ -36,16 +36,16 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     <ProjectAdminShell
       active="publish"
       projectId={projectId}
-      title="미리보기·발행"
-      description="공개 화면 품질과 배포 정보를 확인한 뒤 URL과 QR코드를 발행합니다."
+      title="검수·발행"
+      description="모바일 페이지, PC e-book, 링크, 음성 상태를 최종 확인한 뒤 URL과 QR코드를 발행합니다."
       sidebarTitle={
         <>
-          미리보기
+          검수
           <br />
           발행
         </>
       }
-      sidebarDescription="공개 전 모바일 읽기 보기, PC e-book, URL·QR 발행 상태를 최종 확인합니다."
+      sidebarDescription="공개 전 모바일 산출물, PC e-book, URL·QR 발행 상태를 최종 확인합니다."
       sidebarNoteTitle="공개 기준"
       sidebarNote="모바일은 읽기 보기와 음성 듣기 중심, PC는 원본 e-book 확인 중심으로 발행합니다."
       actions={
