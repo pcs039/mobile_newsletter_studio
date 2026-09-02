@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { DatadictionBrand } from "@/components/datadiction-brand";
 
 type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish";
 
@@ -63,8 +64,8 @@ export function ProjectAdminShell({
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">
-            <p className="text-sm font-semibold text-sky-200">Newsletter Studio</p>
-            <h1 className="mt-3 text-2xl font-bold leading-tight">{sidebarTitle}</h1>
+            <DatadictionBrand theme="light" />
+            <h1 className="mt-6 text-2xl font-bold leading-tight">{sidebarTitle}</h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">{sidebarDescription}</p>
           </div>
 

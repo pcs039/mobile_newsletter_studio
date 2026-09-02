@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DatadictionBrand } from "@/components/datadiction-brand";
 
 const requiredFields = [
   "소식지명",
@@ -48,8 +49,8 @@ export default function NewProjectPage() {
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">
-            <p className="text-sm font-semibold text-sky-200">Newsletter Studio</p>
-            <h1 className="mt-3 text-2xl font-bold leading-tight">
+            <DatadictionBrand theme="light" />
+            <h1 className="mt-6 text-2xl font-bold leading-tight">
               새 소식지
               <br />
               만들기

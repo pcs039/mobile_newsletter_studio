@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DatadictionBrand } from "@/components/datadiction-brand";
 import { sampleNewsletter } from "@/lib/newsletter-data";
 
 export default function PublicEbookPage() {
@@ -6,12 +7,15 @@ export default function PublicEbookPage() {
     <main className="min-h-screen bg-[#eef4fb] text-slate-950">
       <header className="border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-[#184a88]">{sampleNewsletter.organization}</p>
-            <h1 className="mt-1 text-2xl font-black text-[#092046]">
-              {sampleNewsletter.title} {sampleNewsletter.issue}
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">PC 화면에서 원본 PDF 지면을 확인하는 e-book 보기입니다.</p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <DatadictionBrand compact />
+            <div className="border-slate-200 sm:border-l sm:pl-4">
+              <p className="text-sm font-semibold text-[#184a88]">{sampleNewsletter.organization}</p>
+              <h1 className="mt-1 text-2xl font-black text-[#092046]">
+                {sampleNewsletter.title} {sampleNewsletter.issue}
+              </h1>
+              <p className="mt-1 text-sm text-slate-600">PC 화면에서 원본 PDF 지면을 확인하는 e-book 보기입니다.</p>
+            </div>
           </div>
           <Link
             href={sampleNewsletter.publicUrl}

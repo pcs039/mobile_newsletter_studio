@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DatadictionBrand } from "@/components/datadiction-brand";
 import { sampleNewsletter } from "@/lib/newsletter-data";
 
 function AudioBar({ status, duration }: { status: string; duration: string }) {
@@ -28,6 +29,9 @@ export default function PublicNewsletterPage() {
     <main className="min-h-screen bg-[#edf4fb] text-slate-950">
       <section className="mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10">
         <header className="bg-[#071f46] px-5 pb-7 pt-6 text-white">
+          <div className="mb-6">
+            <DatadictionBrand compact theme="light" />
+          </div>
           <p className="text-sm font-semibold text-sky-200">{sampleNewsletter.organization}</p>
           <h1 className="mt-3 text-3xl font-black leading-tight">{sampleNewsletter.title}</h1>
           <p className="mt-2 text-lg font-bold text-white/95">{sampleNewsletter.issue}</p>
@@ -89,6 +93,12 @@ export default function PublicNewsletterPage() {
             </article>
           ))}
         </section>
+
+        <footer className="border-t border-slate-200 px-5 py-5 text-center">
+          <p className="text-xs font-semibold text-slate-500">
+            제작·운영 DataDiction Newsletter Studio
+          </p>
+        </footer>
       </section>
     </main>
   );

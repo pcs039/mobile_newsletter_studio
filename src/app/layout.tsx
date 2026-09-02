@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "모바일 소식지 제작 관리",
-  description: "PDF 기반 공공 소식지를 모바일 읽기 콘텐츠와 PC e-book으로 제작하는 관리자 도구",
+  title: "DataDiction Newsletter Studio",
+  description: "DataDiction의 PDF 기반 공공 모바일 소식지 제작 관리자 도구",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

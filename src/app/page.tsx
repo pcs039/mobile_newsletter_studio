@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DatadictionBrand } from "@/components/datadiction-brand";
 import { StatusPill } from "@/components/status-pill";
 import {
   assetChecks,
@@ -23,8 +24,8 @@ export default function Home() {
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">
-            <p className="text-sm font-semibold text-sky-200">Newsletter Studio</p>
-            <h1 className="mt-3 text-2xl font-bold leading-tight">
+            <DatadictionBrand theme="light" />
+            <h1 className="mt-6 text-2xl font-bold leading-tight">
               모바일 소식지
               <br />
               제작 관리
@@ -80,7 +81,7 @@ export default function Home() {
         <section className="px-5 py-6 sm:px-8 lg:px-10">
           <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#184a88]">1차 MVP 베이스</p>
+              <p className="text-sm font-semibold text-[#184a88]">DataDiction 1차 MVP 베이스</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
                 프로젝트 대시보드
               </h2>
