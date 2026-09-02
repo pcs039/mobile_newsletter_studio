@@ -121,6 +121,7 @@ export default async function EditProjectsPage() {
                       <p className="mt-1 text-xs font-semibold text-slate-500">
                         {project.organization} · {project.issue} · {project.slug}
                       </p>
+                      <p className="mt-1 text-xs font-black text-[#184a88]">담당: {project.assigneeName}</p>
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold">
                         <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-[#184a88]">{project.packageTier}</span>
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{project.productionMode}</span>

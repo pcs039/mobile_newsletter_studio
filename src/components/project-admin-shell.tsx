@@ -43,7 +43,7 @@ export async function ProjectAdminShell({
     ? `${project.organization} · ${project.issue}`
     : "프로젝트 정보 확인 필요";
   const projectDescription = project
-    ? `${project.title} · ${project.status} · ${project.pageCount}쪽`
+    ? `${project.title} · 담당: ${project.assigneeName} · ${project.status} · ${project.pageCount}쪽`
     : workspace.message;
 
   return (

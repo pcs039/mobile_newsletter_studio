@@ -249,6 +249,7 @@ export default async function Home() {
                           <p className="mt-1 text-xs font-semibold text-slate-500">
                             {project.organization} · {project.issue} · {project.slug}
                           </p>
+                          <p className="mt-1 text-xs font-black text-[#184a88]">담당: {project.assigneeName}</p>
                           <div className="mt-3 flex flex-wrap items-center gap-2">
                             <span className="inline-flex rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">
                               {project.packageTier}

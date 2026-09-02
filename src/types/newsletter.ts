@@ -78,6 +78,7 @@ export type NewsletterProject = {
   title: string;
   issue: string;
   organization: string;
+  assigneeName?: string;
   publishDate: string;
   description: string;
   packageTier?: "basic" | "standard" | "advanced" | "premium" | "retainer";
@@ -100,6 +101,7 @@ export type DashboardProject = {
   slug: string;
   title: string;
   organization: string;
+  assigneeName: string;
   issue: string;
   status: string;
   pages: string;

@@ -40,13 +40,14 @@ export async function POST(request: Request) {
 
   const title = asOptionalText(payload.title);
   const organizationName = asOptionalText(payload.organizationName);
+  const assigneeName = asOptionalText(payload.assigneeName);
   const publishedDate = asOptionalText(payload.publishedDate) || asOptionalText(payload.publishedMonth);
   const slug = normalizeSlug(asOptionalText(payload.slug));
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
 
-  if (!title || !organizationName || !publishedDate || !slug) {
+  if (!title || !organizationName || !assigneeName || !publishedDate || !slug) {
     return NextResponse.json(
-      { ok: false, message: "소식지명, 기관명, 발행일, 공개 주소 slug는 필수입니다." },
+      { ok: false, message: "소식지명, 기관명, 작업자명, 발행일, 공개 주소 slug는 필수입니다." },
       { status: 400 },
     );
   }
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
   const input: CreateNewsletterProjectInput = {
     title,
     organizationName,
+    assigneeName,
     publishedDate,
     slug,
     description: asOptionalText(payload.description),

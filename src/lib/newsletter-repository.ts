@@ -9,6 +9,7 @@ type NewsletterProjectRow = {
   id: string;
   title: string;
   organization_name: string;
+  assignee_name: string | null;
   issue_label: string | null;
   published_date: string | null;
   slug: string;
@@ -27,6 +28,7 @@ type NewsletterProjectRow = {
 export type CreateNewsletterProjectInput = {
   title: string;
   organizationName: string;
+  assigneeName?: string;
   publishedDate: string;
   slug: string;
   description?: string;
@@ -73,6 +75,7 @@ export type ProjectWorkspaceInfo = {
   slug: string;
   title: string;
   organization: string;
+  assigneeName: string;
   issue: string;
   description: string;
   primaryColor: string;
@@ -168,6 +171,7 @@ const projectSelectColumns = [
   "id",
   "title",
   "organization_name",
+  "assignee_name",
   "issue_label",
   "published_date",
   "slug",
@@ -334,6 +338,7 @@ function mapProjectRowToDashboardProject(
     slug: project.slug,
     title: project.title,
     organization: project.organization_name,
+    assigneeName: project.assignee_name?.trim() || "담당자 미지정",
     issue: project.issue_label ?? formatDate(project.published_date),
     status: statusLabels[project.status],
     pages: `${project.page_count}쪽`,
@@ -560,6 +565,7 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     slug: project.slug,
     title: project.title,
     organization: project.organization_name,
+    assigneeName: project.assignee_name?.trim() || "담당자 미지정",
     issue,
     description: project.description || "등록된 프로젝트 설명이 없습니다.",
     primaryColor: project.primary_color || "#092046",
@@ -869,6 +875,7 @@ export async function createNewsletterProject(
   const body = {
     title: input.title,
     organization_name: input.organizationName,
+    assignee_name: input.assigneeName || null,
     issue_label: makeIssueLabel(input),
     published_date: normalizePublishedDate(input.publishedDate),
     slug: input.slug,

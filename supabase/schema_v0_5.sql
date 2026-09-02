@@ -88,6 +88,7 @@ create table if not exists newsletter_projects (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   organization_name text not null,
+  assignee_name text,
   issue_label text,
   published_date date,
   slug text not null unique,
@@ -112,6 +113,9 @@ create table if not exists newsletter_projects (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table newsletter_projects
+  add column if not exists assignee_name text;
 
 create table if not exists newsletter_pages (
   id uuid primary key default gen_random_uuid(),

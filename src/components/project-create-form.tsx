@@ -75,6 +75,7 @@ export function ProjectCreateForm() {
       body: JSON.stringify({
         title: getFormText(formData, "title"),
         organizationName: getFormText(formData, "organizationName"),
+        assigneeName: getFormText(formData, "assigneeName"),
         publishedDate: getFormText(formData, "publishedDate"),
         slug: getFormText(formData, "slug"),
         description: getFormText(formData, "description"),
@@ -148,6 +149,11 @@ export function ProjectCreateForm() {
         <div>
           <FieldLabel required>기관명</FieldLabel>
           <TextInput name="organizationName" placeholder="예: 무안군" required />
+        </div>
+
+        <div>
+          <FieldLabel required>작업자명</FieldLabel>
+          <TextInput name="assigneeName" placeholder="예: 박춘수 또는 디자인팀 김OO" required />
         </div>
 
         <div>
