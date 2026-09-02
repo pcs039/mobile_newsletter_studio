@@ -51,6 +51,18 @@ export type CreateNewsletterProjectResult =
       httpStatus?: number;
     };
 
+export type ArchiveNewsletterProjectResult =
+  | {
+      ok: true;
+      project: Pick<NewsletterProjectRow, "id" | "slug" | "title">;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "request_failed" | "not_found";
+      message: string;
+      httpStatus?: number;
+    };
+
 const projectSelectColumns = [
   "id",
   "title",
@@ -305,6 +317,71 @@ export async function createNewsletterProject(
       ok: false,
       status: "request_failed",
       message: "Supabase 저장 요청 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function archiveNewsletterProject(projectId: string): Promise<ArchiveNewsletterProjectResult> {
+  const encodedProjectId = encodeURIComponent(projectId);
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_projects?id=eq.${encodedProjectId}&select=id,slug,title`,
+  );
+  const headers = getRequestHeaders(true);
+
+  if (!endpoint || !headers) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY가 설정되어야 프로젝트 보관을 사용할 수 있습니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: {
+        ...headers,
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        status: "archived",
+        archived_at: new Date().toISOString(),
+        deleted_at: new Date().toISOString(),
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: responseText || "Supabase 프로젝트 보관 요청에 실패했습니다.",
+        httpStatus: response.status,
+      };
+    }
+
+    const rows = JSON.parse(responseText || "[]") as Array<Pick<NewsletterProjectRow, "id" | "slug" | "title">>;
+
+    if (!rows[0]) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "보관할 프로젝트를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
+    return {
+      ok: true,
+      project: rows[0],
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "Supabase 보관 요청 중 오류가 발생했습니다.",
     };
   }
 }

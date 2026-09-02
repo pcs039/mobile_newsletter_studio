@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { ProjectArchiveButton } from "@/components/project-archive-button";
 import { StatusPill } from "@/components/status-pill";
 import {
   assetChecks,
@@ -309,12 +310,7 @@ export default async function Home() {
                                 >
                                   복사
                                 </Link>
-                                <a
-                                  href={project.actions.archiveHref}
-                                  className="rounded-md px-2 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100"
-                                >
-                                  보관
-                                </a>
+                                <ProjectArchiveButton projectId={project.id} projectTitle={project.title} />
                               </div>
                             </details>
                           </div>

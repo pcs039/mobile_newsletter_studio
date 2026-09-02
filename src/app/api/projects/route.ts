@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  archiveNewsletterProject,
   createNewsletterProject,
   type CreateNewsletterProjectInput,
 } from "@/lib/newsletter-repository";
@@ -91,4 +92,31 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(result, { status: 201 });
+}
+
+export async function DELETE(request: Request) {
+  const url = new URL(request.url);
+  const projectId = url.searchParams.get("projectId")?.trim();
+
+  if (!projectId) {
+    return NextResponse.json(
+      { ok: false, message: "보관할 프로젝트 ID가 필요합니다." },
+      { status: 400 },
+    );
+  }
+
+  const result = await archiveNewsletterProject(projectId);
+
+  if (!result.ok) {
+    return NextResponse.json(result, {
+      status:
+        result.status === "not_configured"
+          ? 503
+          : result.status === "not_found"
+            ? 404
+            : result.httpStatus ?? 500,
+    });
+  }
+
+  return NextResponse.json(result);
 }
