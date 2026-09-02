@@ -10,6 +10,21 @@ type SubmitState =
   | { status: "success"; message: string }
   | { status: "error"; message: string };
 
+const primaryColorOptions = [
+  { label: "딥블루", value: "#092046" },
+  { label: "공공 블루", value: "#184A88" },
+  { label: "시안 블루", value: "#0E7490" },
+  { label: "포레스트", value: "#166534" },
+  { label: "와인", value: "#7F1D1D" },
+  { label: "인디고", value: "#3730A3" },
+  { label: "차콜", value: "#1F2937" },
+  { label: "브라운", value: "#7C2D12" },
+];
+
+function isHexColor(value: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
 function FieldLabel({ children, required = false }: { children: string; required?: boolean }) {
   return (
     <label className="mb-2 block text-sm font-bold text-[#092046]">
@@ -52,6 +67,7 @@ function getFormText(formData: FormData, key: string) {
 
 export function ProjectCreateForm() {
   const router = useRouter();
+  const [primaryColor, setPrimaryColor] = useState("#092046");
   const [submitState, setSubmitState] = useState<SubmitState>({
     status: "idle",
     message: "Supabase 저장 연결 준비됨",
@@ -175,18 +191,55 @@ export function ProjectCreateForm() {
           />
         </div>
 
-        <div>
+        <div className="md:col-span-2">
           <FieldLabel required>대표 색상</FieldLabel>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="h-11 w-16 rounded-lg border border-slate-300 bg-[#092046]" />
-            <input
-              name="primaryColor"
-              defaultValue="#092046"
-              required
-              pattern="^#[0-9a-fA-F]{6}$"
-              className="h-12 min-w-36 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            />
-            <span className="text-sm font-semibold text-slate-600">기본값: 딥블루</span>
+          <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
+            <div className="flex flex-wrap gap-2">
+              {primaryColorOptions.map((option) => {
+                const isSelected = primaryColor.toLowerCase() === option.value.toLowerCase();
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setPrimaryColor(option.value)}
+                    className={`inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs font-black transition ${
+                      isSelected
+                        ? "border-[#092046] bg-white text-[#092046] shadow-sm"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-[#2f73b7] hover:text-[#092046]"
+                    }`}
+                  >
+                    <span
+                      className="h-5 w-5 rounded-full border border-black/10"
+                      style={{ backgroundColor: option.value }}
+                    />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)_auto] sm:items-center">
+              <label className="inline-flex h-12 cursor-pointer items-center gap-3 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-[#092046] transition hover:border-[#184a88]">
+                <input
+                  type="color"
+                  value={isHexColor(primaryColor) ? primaryColor : "#092046"}
+                  onChange={(event) => setPrimaryColor(event.target.value)}
+                  className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent p-0"
+                />
+                직접 선택
+              </label>
+              <input
+                name="primaryColor"
+                value={primaryColor}
+                onChange={(event) => setPrimaryColor(event.target.value)}
+                required
+                pattern="^#[0-9a-fA-F]{6}$"
+                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              />
+              <span className="text-sm font-semibold text-slate-600">공개 화면 헤더와 버튼 기준 색상</span>
+            </div>
           </div>
         </div>
 
