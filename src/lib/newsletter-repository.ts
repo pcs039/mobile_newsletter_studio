@@ -212,9 +212,9 @@ export async function getDashboardProjects() {
 
     if (rows.length === 0) {
       return {
-        projects: dashboardProjects,
-        source: "sample" as const,
-        message: "Supabase 프로젝트가 아직 없어 샘플 데이터를 표시합니다.",
+        projects: [],
+        source: "supabase" as const,
+        message: "Supabase에 등록된 프로젝트가 아직 없습니다.",
       };
     }
 
