@@ -1,9 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f3f7fc;
+  --background: #e9eff7;
   --foreground: #0f172a;
   --font-app-sans: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", Arial, Helvetica, sans-serif;
+  --app-surface-border: #c8d4e3;
+  --app-surface-muted: #f1f5fa;
+  --app-surface-soft-blue: #edf4ff;
+  --app-text-muted: #40516a;
+  --app-card-shadow: 0 1px 2px rgba(9, 32, 70, 0.08), 0 8px 18px rgba(9, 32, 70, 0.06);
 }
 
 @theme inline {
@@ -21,6 +26,57 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-app-sans);
+}
+
+/*
+  Display contrast tuning.
+  Several team monitors render pale gray borders too softly, so the core
+  workspace colors are lifted slightly while preserving the deep-blue brand.
+*/
+.bg-\[\#f3f7fc\],
+.bg-\[\#eef4fb\],
+.bg-\[\#edf4fb\] {
+  background-color: var(--background);
+}
+
+.border-slate-200 {
+  border-color: var(--app-surface-border);
+}
+
+.border-sky-200 {
+  border-color: #8fd3f5;
+}
+
+.bg-slate-50 {
+  background-color: var(--app-surface-muted);
+}
+
+.bg-\[\#f4f8ff\] {
+  background-color: var(--app-surface-soft-blue);
+}
+
+.bg-\[\#eaf2ff\] {
+  background-color: #dfeaff;
+}
+
+.text-slate-500 {
+  color: #52657f;
+}
+
+.text-slate-600 {
+  color: var(--app-text-muted);
+}
+
+.shadow-sm {
+  box-shadow: var(--app-card-shadow);
+}
+
+.bg-white\/8 {
+  background-color: rgba(255, 255, 255, 0.11);
+}
+
+.border-white\/15 {
+  border-color: rgba(255, 255, 255, 0.26);
 }
 
 button,
