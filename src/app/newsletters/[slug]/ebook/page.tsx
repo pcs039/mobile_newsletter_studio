@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type PublicEbookPageProps = {
@@ -18,6 +19,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
 
   return (
     <main className="min-h-screen bg-[#eef4fb] text-slate-950">
+      <NewsletterViewTracker slug={slug} viewMode="ebook" disabled={isAdminPreview || !project} />
       {isAdminPreview && (
         <div className="border-b border-slate-300 bg-white px-6 py-3 shadow-sm">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

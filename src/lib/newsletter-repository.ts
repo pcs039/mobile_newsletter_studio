@@ -113,6 +113,16 @@ type NewsletterDailyStatsRow = {
   view_count: number;
 };
 
+type NewsletterDailyStatsUpdateRow = {
+  id: string;
+  view_count: number;
+  mobile_count: number;
+  pc_count: number;
+  tablet_count: number;
+  direct_count: number;
+  referrer_count: number;
+};
+
 type ProjectViewStats = {
   today: number;
   yesterday: number;
@@ -133,6 +143,26 @@ export type ProjectPageImagesResult = {
   source: "supabase" | "unconfigured" | "error" | "not_found";
   message: string;
 };
+
+export type RecordNewsletterViewInput = {
+  slug: string;
+  viewMode: "reading" | "ebook";
+  routePath?: string;
+  referrer?: string | null;
+  userAgent?: string | null;
+};
+
+export type RecordNewsletterViewResult =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "not_found" | "request_failed";
+      message: string;
+      httpStatus?: number;
+    };
 
 const projectSelectColumns = [
   "id",
@@ -269,6 +299,32 @@ function makeEmptyStats(): ProjectViewStats {
   };
 }
 
+function detectDeviceType(userAgent: string | null | undefined) {
+  const normalized = userAgent?.toLowerCase() ?? "";
+
+  if (/ipad|tablet/.test(normalized)) {
+    return "tablet";
+  }
+
+  if (/mobi|iphone|android/.test(normalized)) {
+    return "mobile";
+  }
+
+  return "pc";
+}
+
+function getReferrerDomain(referrer: string | null | undefined) {
+  if (!referrer) {
+    return null;
+  }
+
+  try {
+    return new URL(referrer).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
 function mapProjectRowToDashboardProject(
   project: NewsletterProjectRow,
   stats: ProjectViewStats = makeEmptyStats(),
@@ -300,6 +356,30 @@ function mapProjectRowToDashboardProject(
       archiveHref: "#archive-policy",
     },
   };
+}
+
+async function getProjectRowBySlug(slug: string, headers: Record<string, string>) {
+  const encodedSlug = encodeURIComponent(slug);
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_projects?select=${projectSelectColumns}&slug=eq.${encodedSlug}&deleted_at=is.null&limit=1`,
+  );
+
+  if (!endpoint) {
+    return null;
+  }
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json()) as NewsletterProjectRow[];
+
+  return rows[0] ?? null;
 }
 
 async function getProjectViewStatsByProjectId(
@@ -354,6 +434,122 @@ async function getProjectViewStatsByProjectId(
   }
 
   return statsByProjectId;
+}
+
+async function insertViewEvent(
+  projectId: string,
+  input: RecordNewsletterViewInput,
+  deviceType: string,
+  referrerDomain: string | null,
+  headers: Record<string, string>,
+) {
+  const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_view_events");
+
+  if (!endpoint) {
+    return;
+  }
+
+  await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      ...headers,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      project_id: projectId,
+      route_path: input.routePath || `/newsletters/${input.slug}`,
+      view_mode: input.viewMode,
+      device_type: deviceType,
+      referrer_domain: referrerDomain,
+    }),
+    cache: "no-store",
+  }).catch(() => null);
+}
+
+async function incrementDailyStats(
+  projectId: string,
+  deviceType: string,
+  referrerDomain: string | null,
+  headers: Record<string, string>,
+) {
+  const statDate = formatKoreanDateKey(new Date());
+  const encodedProjectId = encodeURIComponent(projectId);
+  const statsEndpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_daily_stats?select=id,view_count,mobile_count,pc_count,tablet_count,direct_count,referrer_count&project_id=eq.${encodedProjectId}&stat_date=eq.${statDate}&limit=1`,
+  );
+
+  if (!statsEndpoint) {
+    return false;
+  }
+
+  const response = await fetch(statsEndpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return false;
+  }
+
+  const rows = (await response.json()) as NewsletterDailyStatsUpdateRow[];
+  const current = rows[0];
+  const deviceField =
+    deviceType === "mobile" ? "mobile_count" : deviceType === "tablet" ? "tablet_count" : "pc_count";
+  const sourceField = referrerDomain ? "referrer_count" : "direct_count";
+
+  if (!current) {
+    const createEndpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_daily_stats");
+
+    if (!createEndpoint) {
+      return false;
+    }
+
+    const createResponse = await fetch(createEndpoint, {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        project_id: projectId,
+        stat_date: statDate,
+        view_count: 1,
+        mobile_count: deviceField === "mobile_count" ? 1 : 0,
+        pc_count: deviceField === "pc_count" ? 1 : 0,
+        tablet_count: deviceField === "tablet_count" ? 1 : 0,
+        direct_count: sourceField === "direct_count" ? 1 : 0,
+        referrer_count: sourceField === "referrer_count" ? 1 : 0,
+      }),
+      cache: "no-store",
+    });
+
+    return createResponse.ok;
+  }
+
+  const updateEndpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_daily_stats?id=eq.${current.id}`);
+
+  if (!updateEndpoint) {
+    return false;
+  }
+
+  const updateResponse = await fetch(updateEndpoint, {
+    method: "PATCH",
+    headers: {
+      ...headers,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      view_count: current.view_count + 1,
+      mobile_count: current.mobile_count + (deviceField === "mobile_count" ? 1 : 0),
+      pc_count: current.pc_count + (deviceField === "pc_count" ? 1 : 0),
+      tablet_count: current.tablet_count + (deviceField === "tablet_count" ? 1 : 0),
+      direct_count: current.direct_count + (sourceField === "direct_count" ? 1 : 0),
+      referrer_count: current.referrer_count + (sourceField === "referrer_count" ? 1 : 0),
+    }),
+    cache: "no-store",
+  });
+
+  return updateResponse.ok;
 }
 
 function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWorkspaceInfo {
@@ -458,6 +654,67 @@ export async function getDashboardProjects(): Promise<DashboardProjectsResult> {
       projects: [],
       source: "error",
       message: "Supabase 요청 중 오류가 발생했습니다. 연결 상태를 확인하세요.",
+    };
+  }
+}
+
+export async function recordNewsletterView(input: RecordNewsletterViewInput): Promise<RecordNewsletterViewResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const slug = input.slug.trim();
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 접속 통계를 기록합니다.",
+    };
+  }
+
+  if (!slug) {
+    return {
+      ok: false,
+      status: "not_found",
+      message: "접속 통계를 기록할 프로젝트 주소가 필요합니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(slug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "접속 통계를 기록할 프로젝트를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
+    const deviceType = detectDeviceType(input.userAgent);
+    const referrerDomain = getReferrerDomain(input.referrer);
+
+    await insertViewEvent(project.id, input, deviceType, referrerDomain, headers);
+
+    const updated = await incrementDailyStats(project.id, deviceType, referrerDomain, headers);
+
+    if (!updated) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "접속 통계 일별 집계 저장에 실패했습니다.",
+      };
+    }
+
+    return {
+      ok: true,
+      message: "접속 통계를 기록했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "접속 통계 기록 중 오류가 발생했습니다.",
     };
   }
 }

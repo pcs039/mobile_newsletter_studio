@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type PublicNewsletterPageProps = {
@@ -18,6 +19,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
 
   return (
     <main className="min-h-screen bg-[#edf4fb] text-slate-950">
+      <NewsletterViewTracker slug={slug} viewMode="reading" disabled={isAdminPreview || !project} />
       {isAdminPreview && (
         <div className="sticky top-0 z-20 border-b border-slate-300 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
           <div className="mx-auto flex max-w-[520px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
