@@ -1,21 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #e9eff7;
+  --background: #e4edf7;
   --foreground: #0f172a;
   --font-app-sans: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", Arial, Helvetica, sans-serif;
-  --app-surface-border: #c8d4e3;
-  --app-surface-muted: #f1f5fa;
-  --app-surface-soft-blue: #edf4ff;
-  --app-text-muted: #40516a;
-  --app-card-shadow: 0 1px 2px rgba(9, 32, 70, 0.08), 0 8px 18px rgba(9, 32, 70, 0.06);
+  --app-surface-border: #a9bbd0;
+  --app-surface-muted: #eef3f9;
+  --app-surface-soft-blue: #eaf3ff;
+  --app-text-muted: #334762;
+  --app-card-shadow: 0 1px 2px rgba(9, 32, 70, 0.1), 0 10px 24px rgba(9, 32, 70, 0.08);
   --app-work-panel: #ffffff;
-  --app-work-panel-border: #9fb2c8;
-  --app-help-panel: #edf3fa;
-  --app-help-panel-border: #b4c5d9;
-  --app-help-accent: #2f6fb3;
-  --app-field-border: #9aaec6;
-  --app-upload-panel: #e7f5ff;
+  --app-work-panel-border: #7f96b2;
+  --app-work-panel-accent: #0b3f79;
+  --app-help-panel: #e7f0fa;
+  --app-help-panel-border: #8fa8c4;
+  --app-help-accent: #2f73b7;
+  --app-help-item: #f8fbff;
+  --app-field-border: #788eaa;
+  --app-upload-panel: #e0f2ff;
 }
 
 @theme inline {
@@ -40,41 +42,42 @@ body {
   Several team monitors render pale gray borders too softly, so the core
   workspace colors are lifted slightly while preserving the deep-blue brand.
 */
-.bg-\[\#f3f7fc\],
-.bg-\[\#eef4fb\],
-.bg-\[\#edf4fb\] {
+.admin-workspace.bg-\[\#f3f7fc\],
+.admin-workspace .bg-\[\#f3f7fc\],
+.admin-workspace .bg-\[\#eef4fb\],
+.admin-workspace .bg-\[\#edf4fb\] {
   background-color: var(--background);
 }
 
-.border-slate-200 {
+.admin-workspace .border-slate-200 {
   border-color: var(--app-surface-border);
 }
 
-.border-sky-200 {
+.admin-workspace .border-sky-200 {
   border-color: #8fd3f5;
 }
 
-.bg-slate-50 {
+.admin-workspace .bg-slate-50 {
   background-color: var(--app-surface-muted);
 }
 
-.bg-\[\#f4f8ff\] {
+.admin-workspace .bg-\[\#f4f8ff\] {
   background-color: var(--app-surface-soft-blue);
 }
 
-.bg-\[\#eaf2ff\] {
+.admin-workspace .bg-\[\#eaf2ff\] {
   background-color: #dfeaff;
 }
 
-.text-slate-500 {
+.admin-workspace .text-slate-500 {
   color: #52657f;
 }
 
-.text-slate-600 {
+.admin-workspace .text-slate-600 {
   color: var(--app-text-muted);
 }
 
-.shadow-sm {
+.admin-workspace .shadow-sm {
   box-shadow: var(--app-card-shadow);
 }
 
@@ -83,40 +86,58 @@ body {
   Work panels are where editors upload, type, select, and manage data.
   Help panels are reference notes, checklists, and workflow guidance.
 */
-main form.rounded-lg.bg-white,
-main section.mb-7 > article.rounded-lg.bg-white,
-main section.space-y-5 > article.rounded-lg.bg-white,
-main section.rounded-lg.bg-white {
+.admin-workspace form.rounded-lg.bg-white,
+.admin-workspace section.mb-7 > article.rounded-lg.bg-white,
+.admin-workspace section.space-y-5 > article.rounded-lg.bg-white,
+.admin-workspace section.rounded-lg.bg-white {
   background-color: var(--app-work-panel);
   border-color: var(--app-work-panel-border);
-  border-top: 3px solid #0b3f79;
+  border-top: 4px solid var(--app-work-panel-accent);
 }
 
-main aside.space-y-5 > article.rounded-lg.bg-white {
+.admin-workspace aside.space-y-5 > article.rounded-lg.bg-white {
   background-color: var(--app-help-panel);
   border-color: var(--app-help-panel-border);
-  border-left: 4px solid var(--app-help-accent);
+  border-left: 5px solid var(--app-help-accent);
   border-top: 1px solid var(--app-help-panel-border);
 }
 
-main aside.space-y-5 .bg-slate-50,
-main aside.space-y-5 .bg-\[\#f4f8ff\] {
-  background-color: #f8fbff;
-  border: 1px solid #d3dfed;
+.admin-workspace section.space-y-5 > article.rounded-lg.bg-white h3,
+.admin-workspace form.rounded-lg.bg-white h3 {
+  color: var(--app-work-panel-accent);
 }
 
-input.bg-white,
-textarea.bg-white,
-select.bg-white {
+.admin-workspace aside.space-y-5 > article.rounded-lg.bg-white h3 {
+  color: #143b68;
+}
+
+.admin-workspace aside.space-y-5 .bg-slate-50,
+.admin-workspace aside.space-y-5 .bg-\[\#f4f8ff\],
+.admin-workspace aside.space-y-5 li.rounded-lg {
+  background-color: var(--app-help-item);
+  border: 1px solid #ccd9e8;
+}
+
+.admin-workspace input.bg-white,
+.admin-workspace textarea.bg-white,
+.admin-workspace select.bg-white {
   border-color: var(--app-field-border);
   background-color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(9, 32, 70, 0.03);
 }
 
-.border-dashed.bg-\[\#f4f8ff\],
-.border-dashed.bg-\[\#eaf2ff\] {
+.admin-workspace input.bg-white:focus,
+.admin-workspace textarea.bg-white:focus,
+.admin-workspace select.bg-white:focus {
+  border-color: #175b9b;
+  box-shadow: 0 0 0 4px rgba(47, 115, 183, 0.16);
+}
+
+.admin-workspace .border-dashed.bg-\[\#f4f8ff\],
+.admin-workspace .border-dashed.bg-\[\#eaf2ff\] {
   background-color: var(--app-upload-panel);
   border-color: #56b8ee;
-  box-shadow: inset 0 0 0 1px rgba(86, 184, 238, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(86, 184, 238, 0.35);
 }
 
 .bg-white\/8 {
