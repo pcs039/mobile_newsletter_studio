@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { sampleNewsletter } from "@/lib/newsletter-data";
 
 const readinessItems = [
   { label: "기본 정보", status: "완료", detail: "소식지명·기관명·발행월 입력" },
@@ -9,7 +10,7 @@ const readinessItems = [
 ];
 
 const distributionItems = [
-  { label: "공개 URL", value: "newsletter.example.kr/muan-2025-94" },
+  { label: "공개 URL", value: sampleNewsletter.publicUrl },
   { label: "QR 코드", value: "발행 후 PNG 다운로드" },
   { label: "공개 상태", value: "검수 중" },
   { label: "최종 수정", value: "2026.09.02 16:05" },
@@ -169,13 +170,19 @@ export default function PublishPage() {
               <section className="grid gap-5 2xl:grid-cols-2">
                 <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-bold text-[#092046]">모바일 읽기 보기</h3>
-                      <p className="mt-1 text-sm text-slate-500">시민이 휴대전화에서 보는 기본 공개 화면</p>
-                    </div>
-                    <StatusPill value="검수 중" />
+                  <div>
+                    <h3 className="text-lg font-bold text-[#092046]">모바일 읽기 보기</h3>
+                    <p className="mt-1 text-sm text-slate-500">시민이 휴대전화에서 보는 기본 공개 화면</p>
                   </div>
-                  <div className="mx-auto max-w-[300px] rounded-[30px] border border-slate-200 bg-slate-950 p-3 shadow-sm">
+                  <StatusPill value="검수 중" />
+                </div>
+                <Link
+                  href={sampleNewsletter.publicUrl}
+                  className="mb-4 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                  공개 화면 열기
+                </Link>
+                <div className="mx-auto max-w-[300px] rounded-[30px] border border-slate-200 bg-slate-950 p-3 shadow-sm">
                     <div className="overflow-hidden rounded-[24px] bg-white">
                       <div className="bg-[#092046] px-4 py-4 text-white">
                         <p className="text-xs font-semibold text-sky-200">황토골 무안소식지</p>
@@ -204,13 +211,19 @@ export default function PublishPage() {
 
                 <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-bold text-[#092046]">PC e-book 보기</h3>
-                      <p className="mt-1 text-sm text-slate-500">원본 PDF 지면을 PC 화면에서 확인</p>
-                    </div>
-                    <StatusPill value="완료" />
+                  <div>
+                    <h3 className="text-lg font-bold text-[#092046]">PC e-book 보기</h3>
+                    <p className="mt-1 text-sm text-slate-500">원본 PDF 지면을 PC 화면에서 확인</p>
                   </div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-100 p-4">
+                  <StatusPill value="완료" />
+                </div>
+                <Link
+                  href={sampleNewsletter.ebookUrl}
+                  className="mb-4 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                  PC e-book 열기
+                </Link>
+                <div className="rounded-lg border border-slate-200 bg-slate-100 p-4">
                     <div className="rounded-t-lg bg-[#092046] px-4 py-3 text-sm font-bold text-white">
                       PC e-book 미리보기
                     </div>
