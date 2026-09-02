@@ -107,6 +107,18 @@ type NewsletterPageRow = {
   updated_at: string;
 };
 
+type NewsletterDailyStatsRow = {
+  project_id: string;
+  stat_date: string;
+  view_count: number;
+};
+
+type ProjectViewStats = {
+  today: number;
+  yesterday: number;
+  total: number;
+};
+
 export type ProjectPageImage = {
   id: string;
   pageNumber: number;
@@ -225,7 +237,42 @@ function makeWorkload(project: NewsletterProjectRow) {
   return `${estimated} · ${designer}`;
 }
 
-function mapProjectRowToDashboardProject(project: NewsletterProjectRow): DashboardProject {
+function formatCount(value: number) {
+  return value.toLocaleString("ko-KR");
+}
+
+function formatKoreanDateKey(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function getStatsDateKeys() {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  return {
+    today: formatKoreanDateKey(today),
+    yesterday: formatKoreanDateKey(yesterday),
+  };
+}
+
+function makeEmptyStats(): ProjectViewStats {
+  return {
+    today: 0,
+    yesterday: 0,
+    total: 0,
+  };
+}
+
+function mapProjectRowToDashboardProject(
+  project: NewsletterProjectRow,
+  stats: ProjectViewStats = makeEmptyStats(),
+): DashboardProject {
   return {
     id: project.id,
     slug: project.slug,
@@ -241,9 +288,9 @@ function mapProjectRowToDashboardProject(project: NewsletterProjectRow): Dashboa
     workload: makeWorkload(project),
     updated: formatDate(project.updated_at),
     views: {
-      today: "0",
-      yesterday: "0",
-      total: "0",
+      today: formatCount(stats.today),
+      yesterday: formatCount(stats.yesterday),
+      total: formatCount(stats.total),
     },
     actions: {
       editHref: `/projects/${project.slug}/pages`,
@@ -253,6 +300,60 @@ function mapProjectRowToDashboardProject(project: NewsletterProjectRow): Dashboa
       archiveHref: "#archive-policy",
     },
   };
+}
+
+async function getProjectViewStatsByProjectId(
+  projectIds: string[],
+  headers: Record<string, string>,
+): Promise<Map<string, ProjectViewStats> | null> {
+  if (projectIds.length === 0) {
+    return new Map();
+  }
+
+  const idFilter = encodeURIComponent(`in.(${projectIds.join(",")})`);
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_daily_stats?select=project_id,stat_date,view_count&project_id=${idFilter}&order=stat_date.desc&limit=5000`,
+  );
+
+  if (!endpoint) {
+    return null;
+  }
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json()) as NewsletterDailyStatsRow[];
+  const dateKeys = getStatsDateKeys();
+  const statsByProjectId = new Map<string, ProjectViewStats>();
+
+  for (const projectId of projectIds) {
+    statsByProjectId.set(projectId, makeEmptyStats());
+  }
+
+  for (const row of rows) {
+    const current = statsByProjectId.get(row.project_id) ?? makeEmptyStats();
+    const viewCount = Number(row.view_count) || 0;
+
+    current.total += viewCount;
+
+    if (row.stat_date === dateKeys.today) {
+      current.today += viewCount;
+    }
+
+    if (row.stat_date === dateKeys.yesterday) {
+      current.yesterday += viewCount;
+    }
+
+    statsByProjectId.set(row.project_id, current);
+  }
+
+  return statsByProjectId;
 }
 
 function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWorkspaceInfo {
@@ -340,10 +441,17 @@ export async function getDashboardProjects(): Promise<DashboardProjectsResult> {
       };
     }
 
+    const statsByProjectId = await getProjectViewStatsByProjectId(
+      rows.map((project) => project.id),
+      headers,
+    );
+
     return {
-      projects: rows.map(mapProjectRowToDashboardProject),
+      projects: rows.map((project) => mapProjectRowToDashboardProject(project, statsByProjectId?.get(project.id))),
       source: "supabase" as const,
-      message: "Supabase 프로젝트 데이터를 표시합니다.",
+      message: statsByProjectId
+        ? "Supabase 프로젝트와 접속 통계 데이터를 표시합니다."
+        : "Supabase 프로젝트 데이터를 표시합니다. 접속 통계 테이블 권한은 확인이 필요합니다.",
     };
   } catch {
     return {

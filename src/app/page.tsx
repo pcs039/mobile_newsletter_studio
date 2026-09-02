@@ -5,7 +5,6 @@ import { ProjectArchiveButton } from "@/components/project-archive-button";
 import { StatusPill } from "@/components/status-pill";
 import {
   assetChecks,
-  dashboardAnalyticsNotes,
   projectOperationActions,
   workflowSteps,
 } from "@/lib/newsletter-data";
@@ -25,21 +24,58 @@ export default async function Home() {
   const supabaseConfig = getSupabaseConfigStatus();
   const dashboardData = await getDashboardProjects();
   const projects = dashboardData.projects;
+  const totalTodayViews = projects.reduce((sum, project) => sum + parseCount(project.views.today), 0);
+  const totalYesterdayViews = projects.reduce((sum, project) => sum + parseCount(project.views.yesterday), 0);
+  const totalViews = projects.reduce((sum, project) => sum + parseCount(project.views.total), 0);
+  const hasAnyViewStats = totalTodayViews > 0 || totalYesterdayViews > 0 || totalViews > 0;
   const dashboardSummaryCards = [
     { label: "전체 프로젝트", value: String(projects.length) },
     { label: "제작 중", value: String(projects.filter((project) => project.status === "제작 중").length) },
     {
       label: "오늘 접속",
-      value: projects.reduce((sum, project) => sum + parseCount(project.views.today), 0).toLocaleString("ko-KR"),
+      value: totalTodayViews.toLocaleString("ko-KR"),
     },
     { label: "발행 완료", value: String(projects.filter((project) => project.status === "발행 완료").length) },
   ];
   const dashboardSummaryDetails: Record<string, string> = {
     "전체 프로젝트": dashboardData.source === "supabase" ? "DB 연동" : "연결 필요",
     "제작 중": "편집 필요",
-    "오늘 접속": "집계 예정",
+    "오늘 접속": dashboardData.source === "supabase" ? "실제 집계" : "연결 필요",
     "발행 완료": "URL·QR 생성",
   };
+  const dashboardAnalyticsNotes = [
+    {
+      label: "오늘 접속",
+      status: totalTodayViews.toLocaleString("ko-KR"),
+      detail:
+        dashboardData.source === "supabase"
+          ? "newsletter_daily_stats의 오늘 날짜 view_count 합계입니다."
+          : "Supabase 연결 후 실제 접속 수를 표시합니다.",
+    },
+    {
+      label: "어제 접속",
+      status: totalYesterdayViews.toLocaleString("ko-KR"),
+      detail:
+        dashboardData.source === "supabase"
+          ? "newsletter_daily_stats의 어제 날짜 view_count 합계입니다."
+          : "Supabase 연결 후 전일 접속 수를 표시합니다.",
+    },
+    {
+      label: "전체 접속",
+      status: totalViews.toLocaleString("ko-KR"),
+      detail:
+        dashboardData.source === "supabase"
+          ? "현재 조회된 프로젝트들의 누적 view_count 합계입니다."
+          : "Supabase 연결 후 전체 누적 접속 수를 표시합니다.",
+    },
+    {
+      label: "통계 상태",
+      status: hasAnyViewStats ? "집계 중" : "데이터 없음",
+      detail: hasAnyViewStats
+        ? "공개 URL 접속 기록을 기준으로 대시보드 수치를 갱신합니다."
+        : "아직 접속 통계 행이 없거나 공개 페이지 기록 기능 연결 전입니다.",
+    },
+  ];
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
@@ -285,7 +321,7 @@ export default async function Home() {
               <article id="analytics-preview" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">접속 통계 요약</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  접속 통계 테이블을 연결하면 실제 공개 URL 기준으로 집계합니다.
+                  공개 URL 접속 통계를 Supabase 일별 집계 테이블 기준으로 표시합니다.
                 </p>
                 <div className="mt-4 space-y-3">
                   {dashboardAnalyticsNotes.map((note) => (
