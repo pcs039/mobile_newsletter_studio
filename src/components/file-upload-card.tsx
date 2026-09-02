@@ -20,6 +20,20 @@ function formatFileSize(size: number) {
   return `${Math.max(1, Math.round(size / 1024))}KB`;
 }
 
+async function readUploadError(response: Response, fallbackMessage: string) {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const result = (await response.json().catch(() => null)) as { message?: string } | null;
+
+    return result?.message ?? fallbackMessage;
+  }
+
+  const text = await response.text().catch(() => "");
+
+  return text || fallbackMessage;
+}
+
 export function FileUploadCard({
   accept,
   buttonLabel,
@@ -75,32 +89,96 @@ export function FileUploadCard({
       return;
     }
 
-    const body = new FormData();
-    body.append("projectSlug", projectSlug);
-    body.append("kind", kind);
-    body.append("file", file);
+    setStatus("uploading");
+    setMessage("Supabase Storage 업로드 주소를 준비하는 중입니다.");
 
-    if (kind === "page_image") {
-      body.append("pageNumber", pageNumber);
+    const prepareResponse = await fetch("/api/project-files", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "prepare",
+        fileName: file.name,
+        kind,
+        mimeType: file.type,
+        pageNumber: kind === "page_image" ? Number(pageNumber) : undefined,
+        projectSlug,
+        size: file.size,
+      }),
+    });
+    const prepareResult = (await prepareResponse.json().catch(() => null)) as
+      | {
+          ok?: boolean;
+          bucket?: string;
+          fileName?: string;
+          message?: string;
+          mimeType?: string;
+          pageNumber?: number;
+          path?: string;
+          size?: number;
+          uploadUrl?: string;
+        }
+      | null;
+
+    if (!prepareResponse.ok || !prepareResult?.ok || !prepareResult.uploadUrl) {
+      setStatus("error");
+      setMessage(prepareResult?.message ?? "Supabase Storage 업로드 주소를 준비하지 못했습니다.");
+      return;
     }
 
-    setStatus("uploading");
-    setMessage("파일을 Supabase Storage에 업로드하는 중입니다.");
+    setMessage("파일을 Supabase Storage에 직접 업로드하는 중입니다.");
 
-    const response = await fetch("/api/project-files", {
-      method: "POST",
-      body,
+    const uploadResponse = await fetch(prepareResult.uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": prepareResult.mimeType || file.type || "application/octet-stream",
+      },
+      body: file,
     });
-    const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
 
-    if (!response.ok || !result?.ok) {
+    if (!uploadResponse.ok) {
       setStatus("error");
-      setMessage(result?.message ?? "파일 업로드에 실패했습니다.");
+      setMessage(
+        await readUploadError(
+          uploadResponse,
+          `Supabase Storage 직접 업로드에 실패했습니다. (${uploadResponse.status})`,
+        ),
+      );
+      return;
+    }
+
+    setMessage("업로드된 파일을 프로젝트 기록에 연결하는 중입니다.");
+
+    const completeResponse = await fetch("/api/project-files", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "complete",
+        bucket: prepareResult.bucket,
+        fileName: prepareResult.fileName ?? file.name,
+        kind,
+        mimeType: prepareResult.mimeType ?? file.type,
+        pageNumber: prepareResult.pageNumber,
+        path: prepareResult.path,
+        projectSlug,
+        size: prepareResult.size ?? file.size,
+      }),
+    });
+    const completeResult = (await completeResponse.json().catch(() => null)) as
+      | { ok?: boolean; message?: string }
+      | null;
+
+    if (!completeResponse.ok || !completeResult?.ok) {
+      setStatus("error");
+      setMessage(completeResult?.message ?? "파일은 올라갔지만 프로젝트 기록 연결에 실패했습니다.");
       return;
     }
 
     setStatus("success");
-    setMessage(`${result.message ?? "파일 업로드가 완료됐습니다."} 아래 목록을 갱신했습니다.`);
+    setMessage(`${completeResult.message ?? "파일 업로드가 완료됐습니다."} 아래 목록을 갱신했습니다.`);
     router.refresh();
   }
 

@@ -2,6 +2,12 @@ import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supab
 
 export type ProjectFileUploadKind = "pdf_original" | "page_image" | "asset_image" | "audio_mp3";
 
+type ProjectFileMetadata = {
+  name: string;
+  type: string;
+  size: number;
+};
+
 type NewsletterProjectReference = {
   id: string;
   slug: string;
@@ -18,6 +24,25 @@ export type ProjectFileUploadResult =
       fileName: string;
       mimeType: string;
       size: number;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "invalid_file" | "project_not_found" | "request_failed";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type ProjectSignedUploadPrepareResult =
+  | {
+      ok: true;
+      message: string;
+      bucket: string;
+      path: string;
+      uploadUrl: string;
+      fileName: string;
+      mimeType: string;
+      size: number;
+      pageNumber?: number;
     }
   | {
       ok: false;
@@ -66,6 +91,12 @@ const uploadSettings: Record<
   },
 };
 
+function getStorageBaseUrl() {
+  const endpoint = getSupabaseStorageEndpoint("/");
+
+  return endpoint?.replace(/\/$/, "") ?? null;
+}
+
 function getServiceHeaders(contentType = "application/json") {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
@@ -80,7 +111,7 @@ function getServiceHeaders(contentType = "application/json") {
   };
 }
 
-function isAllowedFile(kind: ProjectFileUploadKind, file: File) {
+function isAllowedFile(kind: ProjectFileUploadKind, file: ProjectFileMetadata) {
   const settings = uploadSettings[kind];
   const mimeType = file.type || settings.defaultMimeType;
 
@@ -99,8 +130,8 @@ function getExtension(fileName: string, fallbackExtension: string) {
   return extension.replace(/[^a-z0-9]/g, "") || fallbackExtension;
 }
 
-function makeStoragePath(projectSlug: string, file: File, fallbackExtension: string) {
-  const extension = getExtension(file.name, fallbackExtension);
+function makeStoragePath(projectSlug: string, fileName: string, fallbackExtension: string) {
+  const extension = getExtension(fileName, fallbackExtension);
   const token =
     typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
@@ -111,6 +142,26 @@ function makeStoragePath(projectSlug: string, file: File, fallbackExtension: str
 
 function encodeStoragePath(path: string) {
   return path.split("/").map(encodeURIComponent).join("/");
+}
+
+function makeAbsoluteUploadUrl(url: string) {
+  if (/^https?:\/\//.test(url)) {
+    return url;
+  }
+
+  const storageBaseUrl = getStorageBaseUrl();
+
+  if (!storageBaseUrl) {
+    return null;
+  }
+
+  const normalizedUrl = url.startsWith("/") ? url : `/${url}`;
+
+  if (normalizedUrl.startsWith("/storage/v1/")) {
+    return `${storageBaseUrl.replace(/\/storage\/v1$/, "")}${normalizedUrl}`;
+  }
+
+  return `${storageBaseUrl}${normalizedUrl}`;
 }
 
 async function ensureBucket(bucket: string, headers: Record<string, string>) {
@@ -180,7 +231,7 @@ async function findProjectBySlug(projectSlug: string, headers: Record<string, st
 
 async function patchProjectPdf(
   projectSlug: string,
-  file: File,
+  file: ProjectFileMetadata,
   storagePath: string,
   headers: Record<string, string>,
 ) {
@@ -268,7 +319,7 @@ async function upsertPageImage(
 
 async function insertAssetImage(
   project: NewsletterProjectReference,
-  file: File,
+  file: ProjectFileMetadata,
   storagePath: string,
   headers: Record<string, string>,
 ) {
@@ -302,7 +353,7 @@ async function insertAssetImage(
 
 async function insertAudioFile(
   project: NewsletterProjectReference,
-  file: File,
+  file: ProjectFileMetadata,
   storagePath: string,
   headers: Record<string, string>,
 ) {
@@ -328,6 +379,244 @@ async function insertAudioFile(
   });
 
   return response.ok;
+}
+
+async function fileExistsInStorage(bucket: string, path: string, headers: Record<string, string>) {
+  const endpoint = getSupabaseStorageEndpoint(`/object/${bucket}/${encodeStoragePath(path)}`);
+
+  if (!endpoint) {
+    return false;
+  }
+
+  const response = await fetch(endpoint, {
+    method: "HEAD",
+    headers,
+    cache: "no-store",
+  });
+
+  return response.ok;
+}
+
+async function updateProjectFileRecord({
+  bucket,
+  file,
+  kind,
+  pageNumber,
+  path,
+  projectSlug,
+}: {
+  bucket: string;
+  file: ProjectFileMetadata;
+  kind: ProjectFileUploadKind;
+  pageNumber?: number;
+  path: string;
+  projectSlug: string;
+}): Promise<ProjectFileUploadResult> {
+  const headers = getServiceHeaders();
+
+  if (!headers) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY가 설정되어야 파일 기록을 저장할 수 있습니다.",
+    };
+  }
+
+  const settings = uploadSettings[kind];
+
+  if (bucket !== settings.bucket || !isAllowedFile(kind, file)) {
+    return {
+      ok: false,
+      status: "invalid_file",
+      message: "파일 형식 또는 Storage 버킷 정보를 확인하세요.",
+    };
+  }
+
+  const project = await findProjectBySlug(projectSlug, headers);
+
+  if (!project) {
+    return {
+      ok: false,
+      status: "project_not_found",
+      message: "업로드할 프로젝트를 찾지 못했습니다. 대시보드에서 프로젝트를 다시 열어 주세요.",
+      httpStatus: 404,
+    };
+  }
+
+  if (!(await fileExistsInStorage(bucket, path, headers))) {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "Supabase Storage에 업로드된 파일을 확인하지 못했습니다.",
+    };
+  }
+
+  const recordUpdated =
+    kind === "pdf_original"
+      ? await patchProjectPdf(project.slug, file, path, headers)
+      : kind === "page_image"
+        ? await upsertPageImage(project, pageNumber && pageNumber > 0 ? pageNumber : 1, path, headers)
+        : kind === "asset_image"
+          ? await insertAssetImage(project, file, path, headers)
+          : await insertAudioFile(project, file, path, headers);
+
+  if (!recordUpdated) {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "파일은 저장됐지만 프로젝트 기록을 업데이트하지 못했습니다.",
+    };
+  }
+
+  return {
+    ok: true,
+    message: "파일을 Supabase Storage에 업로드하고 프로젝트 기록에 연결했습니다.",
+    bucket,
+    path,
+    fileName: file.name,
+    mimeType: file.type || settings.defaultMimeType,
+    size: file.size,
+  };
+}
+
+export async function prepareSignedProjectFileUpload({
+  fileName,
+  kind,
+  mimeType,
+  pageNumber,
+  projectSlug,
+  size,
+}: {
+  fileName: string;
+  kind: ProjectFileUploadKind;
+  mimeType: string;
+  pageNumber?: number;
+  projectSlug: string;
+  size: number;
+}): Promise<ProjectSignedUploadPrepareResult> {
+  const headers = getServiceHeaders();
+
+  if (!headers) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY가 설정되어야 파일 업로드를 사용할 수 있습니다.",
+    };
+  }
+
+  const settings = uploadSettings[kind];
+  const file = {
+    name: fileName,
+    type: mimeType || settings.defaultMimeType,
+    size,
+  };
+
+  if (!file.name || !file.size || file.size > settings.maxSizeBytes || !isAllowedFile(kind, file)) {
+    return {
+      ok: false,
+      status: "invalid_file",
+      message: "파일 형식 또는 용량을 확인하세요.",
+    };
+  }
+
+  const project = await findProjectBySlug(projectSlug, headers);
+
+  if (!project) {
+    return {
+      ok: false,
+      status: "project_not_found",
+      message: "업로드할 프로젝트를 찾지 못했습니다. 대시보드에서 프로젝트를 다시 열어 주세요.",
+      httpStatus: 404,
+    };
+  }
+
+  const storagePath = makeStoragePath(project.slug, file.name, settings.fallbackExtension);
+  const signEndpoint = getSupabaseStorageEndpoint(
+    `/object/upload/sign/${settings.bucket}/${encodeStoragePath(storagePath)}`,
+  );
+
+  if (!signEndpoint || !(await ensureBucket(settings.bucket, headers))) {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "Supabase Storage 버킷을 준비하지 못했습니다.",
+    };
+  }
+
+  const response = await fetch(signEndpoint, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ upsert: true }),
+    cache: "no-store",
+  });
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: responseText || "Supabase Storage 업로드 주소 발급에 실패했습니다.",
+      httpStatus: response.status,
+    };
+  }
+
+  const data = JSON.parse(responseText || "{}") as { signedURL?: string; signedUrl?: string; url?: string };
+  const uploadUrl = makeAbsoluteUploadUrl(data.signedURL ?? data.signedUrl ?? data.url ?? "");
+
+  if (!uploadUrl) {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "Supabase Storage 업로드 주소 응답을 확인하지 못했습니다.",
+    };
+  }
+
+  return {
+    ok: true,
+    message: "Supabase Storage 직접 업로드 주소를 발급했습니다.",
+    bucket: settings.bucket,
+    path: storagePath,
+    uploadUrl,
+    fileName: file.name,
+    mimeType: file.type,
+    size: file.size,
+    pageNumber: kind === "page_image" ? pageNumber && pageNumber > 0 ? pageNumber : 1 : undefined,
+  };
+}
+
+export async function completeSignedProjectFileUpload({
+  bucket,
+  fileName,
+  kind,
+  mimeType,
+  pageNumber,
+  path,
+  projectSlug,
+  size,
+}: {
+  bucket: string;
+  fileName: string;
+  kind: ProjectFileUploadKind;
+  mimeType: string;
+  pageNumber?: number;
+  path: string;
+  projectSlug: string;
+  size: number;
+}): Promise<ProjectFileUploadResult> {
+  const settings = uploadSettings[kind];
+
+  return updateProjectFileRecord({
+    bucket,
+    file: {
+      name: fileName,
+      type: mimeType || settings.defaultMimeType,
+      size,
+    },
+    kind,
+    pageNumber,
+    path,
+    projectSlug,
+  });
 }
 
 export async function uploadProjectFile({
@@ -372,7 +661,7 @@ export async function uploadProjectFile({
     };
   }
 
-  const storagePath = makeStoragePath(project.slug, file, settings.fallbackExtension);
+  const storagePath = makeStoragePath(project.slug, file.name, settings.fallbackExtension);
   const storageHeaders = getServiceHeaders(file.type || settings.defaultMimeType);
   const storageEndpoint = getSupabaseStorageEndpoint(
     `/object/${settings.bucket}/${encodeStoragePath(storagePath)}`,
@@ -405,30 +694,12 @@ export async function uploadProjectFile({
     };
   }
 
-  const recordUpdated =
-    kind === "pdf_original"
-      ? await patchProjectPdf(project.slug, file, storagePath, headers)
-      : kind === "page_image"
-        ? await upsertPageImage(project, pageNumber && pageNumber > 0 ? pageNumber : 1, storagePath, headers)
-        : kind === "asset_image"
-          ? await insertAssetImage(project, file, storagePath, headers)
-          : await insertAudioFile(project, file, storagePath, headers);
-
-  if (!recordUpdated) {
-    return {
-      ok: false,
-      status: "request_failed",
-      message: "파일은 저장됐지만 프로젝트 기록을 업데이트하지 못했습니다.",
-    };
-  }
-
-  return {
-    ok: true,
-    message: "파일을 Supabase Storage에 업로드하고 프로젝트 기록에 연결했습니다.",
+  return updateProjectFileRecord({
     bucket: settings.bucket,
+    file,
+    kind,
+    pageNumber,
     path: storagePath,
-    fileName: file.name,
-    mimeType: file.type || settings.defaultMimeType,
-    size: file.size,
-  };
+    projectSlug,
+  });
 }
