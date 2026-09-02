@@ -1,4 +1,3 @@
-import { dashboardProjects } from "@/lib/newsletter-data";
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import type { DashboardProject } from "@/types/newsletter";
 
@@ -62,6 +61,12 @@ export type ArchiveNewsletterProjectResult =
       message: string;
       httpStatus?: number;
     };
+
+export type DashboardProjectsResult = {
+  projects: DashboardProject[];
+  source: "supabase" | "unconfigured" | "error";
+  message: string;
+};
 
 const projectSelectColumns = [
   "id",
@@ -204,7 +209,7 @@ function getRequestHeaders(useServiceRole = false) {
   };
 }
 
-export async function getDashboardProjects() {
+export async function getDashboardProjects(): Promise<DashboardProjectsResult> {
   const config = getSupabaseConfigStatus();
   const endpoint = getSupabaseRestEndpoint(
     `/rest/v1/newsletter_projects?select=${projectSelectColumns}&deleted_at=is.null&order=updated_at.desc&limit=20`,
@@ -213,9 +218,9 @@ export async function getDashboardProjects() {
 
   if (!config.isConfigured || !endpoint || !headers) {
     return {
-      projects: dashboardProjects,
-      source: "sample" as const,
-      message: "Supabase 환경변수가 없어 샘플 데이터를 표시합니다.",
+      projects: [],
+      source: "unconfigured",
+      message: "Supabase 환경변수 설정 후 실제 프로젝트 데이터를 표시합니다.",
     };
   }
 
@@ -227,9 +232,9 @@ export async function getDashboardProjects() {
 
     if (!response.ok) {
       return {
-        projects: dashboardProjects,
-        source: "sample" as const,
-        message: "Supabase 조회에 실패해 샘플 데이터를 표시합니다.",
+        projects: [],
+        source: "error",
+        message: "Supabase 조회에 실패했습니다. 연결 상태와 권한을 확인하세요.",
       };
     }
 
@@ -250,11 +255,26 @@ export async function getDashboardProjects() {
     };
   } catch {
     return {
-      projects: dashboardProjects,
-      source: "sample" as const,
-      message: "Supabase 요청 중 오류가 발생해 샘플 데이터를 표시합니다.",
+      projects: [],
+      source: "error",
+      message: "Supabase 요청 중 오류가 발생했습니다. 연결 상태를 확인하세요.",
     };
   }
+}
+
+export async function getEditableProjects(): Promise<DashboardProjectsResult> {
+  const dashboardData = await getDashboardProjects();
+
+  return {
+    ...dashboardData,
+    projects: dashboardData.projects.filter(
+      (project) => project.status !== "발행 완료" && project.status !== "삭제됨",
+    ),
+    message:
+      dashboardData.source === "supabase"
+        ? "작성과 수정이 필요한 프로젝트만 표시합니다."
+        : dashboardData.message,
+  };
 }
 
 export async function createNewsletterProject(

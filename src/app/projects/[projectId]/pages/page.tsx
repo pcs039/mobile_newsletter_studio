@@ -85,7 +85,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   <div>
                     <h3 className="text-lg font-bold text-[#092046]">페이지 이미지 등록 현황</h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      샘플 기준 16쪽 페이지 카드와 등록 상태를 먼저 배치했습니다.
+                      등록된 페이지 이미지와 검수 상태를 기준으로 페이지별 작업 현황을 확인합니다.
                     </p>
                   </div>
                   <div className="flex gap-2">

@@ -35,7 +35,7 @@ export default async function Home() {
     { label: "발행 완료", value: String(projects.filter((project) => project.status === "발행 완료").length) },
   ];
   const dashboardSummaryDetails: Record<string, string> = {
-    "전체 프로젝트": dashboardData.source === "supabase" ? "DB 연동" : "샘플 표시",
+    "전체 프로젝트": dashboardData.source === "supabase" ? "DB 연동" : "연결 필요",
     "제작 중": "편집 필요",
     "오늘 접속": "집계 예정",
     "발행 완료": "URL·QR 생성",
@@ -285,7 +285,7 @@ export default async function Home() {
               <article id="analytics-preview" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">접속 통계 요약</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  접속 통계 테이블 연결 전까지는 샘플 수치로 구조를 먼저 확인합니다.
+                  접속 통계 테이블을 연결하면 실제 공개 URL 기준으로 집계합니다.
                 </p>
                 <div className="mt-4 space-y-3">
                   {dashboardAnalyticsNotes.map((note) => (

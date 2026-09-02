@@ -229,7 +229,7 @@ export const sampleNewsletter: NewsletterProject = {
   designerHoursCap: "6시간",
   previewTitle: "황토골 무안소식지 2025년 제94호",
   previewDescription: "무안군 주요 정책과 생활 정보를 모바일 읽기 보기와 PC e-book으로 확인합니다.",
-  popupNotice: "본 화면은 1차 MVP 검수용 샘플입니다.",
+  popupNotice: "본 화면은 발행 전 관리자 검수용 미리보기입니다.",
   pcEbookPageCount: 2,
   publicUrl: "/newsletters/muan-2025-94",
   ebookUrl: "/newsletters/muan-2025-94/ebook",
@@ -246,7 +246,7 @@ export const dashboardSummaryCards: LabelValue[] = [
 ];
 
 export const dashboardSummaryDetails: Record<string, string> = {
-  "전체 프로젝트": "샘플 포함",
+  "전체 프로젝트": "실데이터 기준",
   "제작 중": "편집 필요",
   "오늘 접속": "집계 예정",
   "발행 완료": "URL·QR 생성",
@@ -518,7 +518,7 @@ export const audioReviewChecks = [
 
 export const publishReadinessItems: LabelStatusDetail[] = [
   { label: "기본 정보", status: "완료", detail: "소식지명·기관명·발행월 입력" },
-  { label: "PDF·이미지", status: "완료", detail: "16쪽 등록 샘플 확인" },
+  { label: "PDF·이미지", status: "완료", detail: "등록 페이지 확인" },
   { label: "읽기 보기", status: "검수 중", detail: "4개 기사 편집 진행" },
   { label: "이미지 자산", status: "검수 중", detail: "권리·화질 확인 필요" },
   { label: "음성 MP3", status: "보완 필요", detail: "2개 기사 미등록" },

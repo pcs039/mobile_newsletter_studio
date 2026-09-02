@@ -80,7 +80,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-bold text-[#092046]">원본 지면 보기</h2>
-              <p className="mt-1 text-sm text-slate-500">2쪽과 3쪽 펼침 보기 샘플</p>
+              <p className="mt-1 text-sm text-slate-500">2쪽과 3쪽 펼침 보기</p>
             </div>
             <div className="flex gap-2">
               <button className="rounded-md border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700">이전</button>
