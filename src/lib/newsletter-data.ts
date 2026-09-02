@@ -253,10 +253,10 @@ export const projectOperationActions: LabelStatusDetail[] = [
 ];
 
 export const packageOptions: LabelStatusDetail[] = [
-  { label: "기본형", status: "70~150만원", detail: "템플릿 중심, 디자이너 투입 최소, 빠른 제작" },
-  { label: "표준형", status: "150~300만원", detail: "템플릿과 대표 이미지 제작을 혼합한 권장 상품" },
-  { label: "고급형", status: "300~500만원", detail: "맞춤 블록, 이미지 자산 보강, 검수 범위 확대" },
-  { label: "프리미엄", status: "별도 견적", detail: "전체 모바일 이미지 제작 등 디자인 대행형 옵션" },
+  { label: "기본형", status: "빠른 제작", detail: "템플릿 중심, 디자이너 투입 최소, 반복 소식지에 적합" },
+  { label: "표준형", status: "권장", detail: "템플릿과 대표 이미지 제작을 혼합한 기본 권장 상품" },
+  { label: "고급형", status: "검수 확대", detail: "맞춤 블록, 이미지 자산 보강, 검수 범위 확대" },
+  { label: "프리미엄", status: "별도 협의", detail: "전체 모바일 이미지 제작 등 디자인 대행형 옵션" },
 ];
 
 export const productionModeOptions: LabelStatusDetail[] = [

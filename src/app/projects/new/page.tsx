@@ -170,11 +170,11 @@ export default function NewProjectPage() {
                 <div>
                   <FieldLabel required>상품 옵션</FieldLabel>
                   <select className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100">
-                    <option>표준형 - 150~300만원</option>
-                    <option>기본형 - 70~150만원</option>
-                    <option>고급형 - 300~500만원</option>
-                    <option>프리미엄 - 별도 견적</option>
-                    <option>월간 운영형 - 별도 계약</option>
+                    <option>표준형</option>
+                    <option>기본형</option>
+                    <option>고급형</option>
+                    <option>프리미엄</option>
+                    <option>월간 운영형</option>
                   </select>
                 </div>
 
@@ -225,7 +225,7 @@ export default function NewProjectPage() {
 
             <aside className="space-y-5">
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-[#092046]">가격 옵션 기준</h3>
+                <h3 className="text-lg font-bold text-[#092046]">상품 옵션 기준</h3>
                 <div className="mt-4 space-y-3">
                   {packageOptions.map((option) => (
                     <div key={option.label} className="rounded-lg bg-slate-50 p-4">
