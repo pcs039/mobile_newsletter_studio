@@ -8,6 +8,7 @@ import type {
   NewsletterArticle,
   NewsletterPage,
   NewsletterProject,
+  NewsletterTocItem,
 } from "@/types/newsletter";
 
 export const sampleNewsletterPages: NewsletterPage[] = Array.from({ length: 16 }, (_, index) => ({
@@ -84,6 +85,41 @@ export const sampleNewsletterArticles: NewsletterArticle[] = [
   },
 ];
 
+export const sampleNewsletterTocItems: NewsletterTocItem[] = [
+  {
+    id: "toc-cover",
+    order: 1,
+    title: "표지",
+    targetType: "page",
+    targetId: "1",
+    isVisible: true,
+  },
+  {
+    id: "toc-main-news",
+    order: 2,
+    title: "군정 주요 소식",
+    targetType: "article",
+    targetId: "main-news",
+    isVisible: true,
+  },
+  {
+    id: "toc-life-support",
+    order: 3,
+    title: "생활 지원 안내",
+    targetType: "article",
+    targetId: "life-support",
+    isVisible: true,
+  },
+  {
+    id: "toc-culture-events",
+    order: 4,
+    title: "문화 행사 일정",
+    targetType: "article",
+    targetId: "culture-events",
+    isVisible: true,
+  },
+];
+
 export const sampleNewsletter: NewsletterProject = {
   slug: "muan-2025-94",
   title: "황토골 무안소식지",
@@ -91,9 +127,14 @@ export const sampleNewsletter: NewsletterProject = {
   organization: "무안군",
   publishDate: "2026.09.02",
   description: "군정 주요 소식, 생활 지원 안내, 문화 행사 일정을 모바일 읽기 보기와 PC e-book으로 제공합니다.",
+  previewTitle: "황토골 무안소식지 2025년 제94호",
+  previewDescription: "무안군 주요 정책과 생활 정보를 모바일 읽기 보기와 PC e-book으로 확인합니다.",
+  popupNotice: "본 화면은 1차 MVP 검수용 샘플입니다.",
+  pcEbookPageCount: 2,
   publicUrl: "/newsletters/muan-2025-94",
   ebookUrl: "/newsletters/muan-2025-94/ebook",
   pages: sampleNewsletterPages,
+  tocItems: sampleNewsletterTocItems,
   articles: sampleNewsletterArticles.slice(0, 3),
 };
 
@@ -178,6 +219,7 @@ export const readingEditSections = ["제목·요약", "본문 문단", "대표 �
 
 export const imageAssets: ImageAsset[] = [
   {
+    id: "asset-muan-office",
     name: "무안군청 전경 대표 이미지",
     source: "기관 제공",
     rights: "사용 가능",
@@ -185,8 +227,11 @@ export const imageAssets: ImageAsset[] = [
     usage: "표지·대표 이미지",
     review: "검수 완료",
     tone: "from-sky-100 to-blue-50",
+    altText: "무안군청 전경을 보여주는 대표 이미지",
+    publicGalleryEnabled: false,
   },
   {
+    id: "asset-main-news-banner",
     name: "군정 주요 소식 카드 배너",
     source: "디자이너 제작",
     rights: "사용 가능",
@@ -194,8 +239,11 @@ export const imageAssets: ImageAsset[] = [
     usage: "기사 카드",
     review: "검수 완료",
     tone: "from-blue-100 to-indigo-50",
+    altText: "군정 주요 소식을 소개하는 카드형 배너",
+    publicGalleryEnabled: true,
   },
   {
+    id: "asset-life-support-bg",
     name: "생활 지원 안내 배경",
     source: "AI 생성",
     rights: "확인 필요",
@@ -203,8 +251,11 @@ export const imageAssets: ImageAsset[] = [
     usage: "섹션 배경",
     review: "검수 필요",
     tone: "from-cyan-100 to-slate-50",
+    altText: "생활 지원 안내 섹션의 배경 이미지",
+    publicGalleryEnabled: false,
   },
   {
+    id: "asset-pdf-event-crop",
     name: "PDF 4쪽 행사 이미지 발췌",
     source: "PDF 발췌",
     rights: "확인 필요",
@@ -212,6 +263,8 @@ export const imageAssets: ImageAsset[] = [
     usage: "보조 이미지",
     review: "교체 권장",
     tone: "from-slate-100 to-amber-50",
+    altText: "PDF 지면에서 발췌한 행사 관련 보조 이미지",
+    publicGalleryEnabled: false,
   },
 ];
 
