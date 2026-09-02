@@ -13,6 +13,7 @@ type NewsletterProjectReference = {
   slug: string;
   title: string;
   page_count: number;
+  pdf_original_path: string | null;
 };
 
 export type ProjectFileUploadResult =
@@ -47,6 +48,22 @@ export type ProjectSignedUploadPrepareResult =
   | {
       ok: false;
       status: "not_configured" | "invalid_file" | "project_not_found" | "request_failed";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type ProjectFileDeleteResult =
+  | {
+      ok: true;
+      message: string;
+      bucket: string;
+      path: string;
+      kind: ProjectFileUploadKind;
+      recordId?: string;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "invalid_file" | "project_not_found" | "not_found" | "request_failed";
       message: string;
       httpStatus?: number;
     };
@@ -206,7 +223,7 @@ async function ensureBucket(bucket: string, headers: Record<string, string>) {
 
 async function findProjectBySlug(projectSlug: string, headers: Record<string, string>) {
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_projects?select=id,slug,title,page_count&slug=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_projects?select=id,slug,title,page_count,pdf_original_path&slug=eq.${encodeURIComponent(
       projectSlug,
     )}&deleted_at=is.null&limit=1`,
   );
@@ -227,6 +244,123 @@ async function findProjectBySlug(projectSlug: string, headers: Record<string, st
   const rows = (await response.json()) as NewsletterProjectReference[];
 
   return rows[0] ?? null;
+}
+
+function isSafeStoragePath(path: string) {
+  return Boolean(path) && !path.startsWith("/") && !path.includes("..");
+}
+
+async function deleteStorageObject(bucket: string, path: string, headers: Record<string, string>) {
+  const endpoint = getSupabaseStorageEndpoint(`/object/${encodeURIComponent(bucket)}`);
+
+  if (!endpoint) {
+    return {
+      ok: false,
+      message: "Supabase Storage 삭제 주소를 만들지 못했습니다.",
+      httpStatus: 500,
+    };
+  }
+
+  const response = await fetch(endpoint, {
+    method: "DELETE",
+    headers,
+    body: JSON.stringify({ prefixes: [path] }),
+    cache: "no-store",
+  });
+
+  if (response.ok || response.status === 404) {
+    return {
+      ok: true,
+      message: "Storage 파일을 삭제했습니다.",
+      httpStatus: response.status,
+    };
+  }
+
+  return {
+    ok: false,
+    message: (await response.text()) || "Supabase Storage 파일 삭제에 실패했습니다.",
+    httpStatus: response.status,
+  };
+}
+
+async function clearProjectPdf(project: NewsletterProjectReference, path: string, headers: Record<string, string>) {
+  if (project.pdf_original_path !== path) {
+    return false;
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_projects?id=eq.${encodeURIComponent(project.id)}`,
+  );
+
+  if (!endpoint) {
+    return false;
+  }
+
+  const response = await fetch(endpoint, {
+    method: "PATCH",
+    headers: {
+      ...headers,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      pdf_original_path: null,
+      pdf_original_file_name: null,
+      pdf_original_uploaded_at: null,
+    }),
+    cache: "no-store",
+  });
+
+  return response.ok;
+}
+
+async function deleteProjectFileRecord({
+  kind,
+  path,
+  project,
+  recordId,
+  headers,
+}: {
+  kind: ProjectFileUploadKind;
+  path: string;
+  project: NewsletterProjectReference;
+  recordId?: string;
+  headers: Record<string, string>;
+}) {
+  if (kind === "pdf_original") {
+    return clearProjectPdf(project, path, headers);
+  }
+
+  if (!recordId) {
+    return false;
+  }
+
+  const table =
+    kind === "page_image"
+      ? "newsletter_pages"
+      : kind === "asset_image"
+        ? "newsletter_assets"
+        : "newsletter_audio_files";
+  const pathColumn = kind === "page_image" ? "image_path" : "file_path";
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/${table}?id=eq.${encodeURIComponent(recordId)}&project_id=eq.${encodeURIComponent(
+      project.id,
+    )}&${pathColumn}=eq.${encodeURIComponent(path)}`,
+  );
+
+  if (!endpoint) {
+    return false;
+  }
+
+  const response = await fetch(endpoint, {
+    method: "DELETE",
+    headers: {
+      ...headers,
+      Prefer: "return=minimal",
+    },
+    cache: "no-store",
+  });
+
+  return response.ok;
 }
 
 async function patchProjectPdf(
@@ -617,6 +751,94 @@ export async function completeSignedProjectFileUpload({
     path,
     projectSlug,
   });
+}
+
+export async function deleteProjectFile({
+  kind,
+  path,
+  projectSlug,
+  recordId,
+}: {
+  kind: ProjectFileUploadKind;
+  path: string;
+  projectSlug: string;
+  recordId?: string;
+}): Promise<ProjectFileDeleteResult> {
+  const headers = getServiceHeaders();
+
+  if (!headers) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY가 설정되어야 파일 삭제를 사용할 수 있습니다.",
+    };
+  }
+
+  const settings = uploadSettings[kind];
+
+  if (!projectSlug || !isSafeStoragePath(path) || (kind !== "pdf_original" && !recordId)) {
+    return {
+      ok: false,
+      status: "invalid_file",
+      message: "삭제할 프로젝트, 파일 경로, 파일 기록을 확인해야 합니다.",
+    };
+  }
+
+  const project = await findProjectBySlug(projectSlug, headers);
+
+  if (!project) {
+    return {
+      ok: false,
+      status: "project_not_found",
+      message: "파일을 삭제할 프로젝트를 찾지 못했습니다. 대시보드에서 프로젝트를 다시 열어 주세요.",
+      httpStatus: 404,
+    };
+  }
+
+  if (kind === "pdf_original" && project.pdf_original_path !== path) {
+    return {
+      ok: false,
+      status: "not_found",
+      message: "현재 프로젝트에 연결된 PDF 원본 경로와 일치하지 않습니다.",
+      httpStatus: 404,
+    };
+  }
+
+  const storageDeleted = await deleteStorageObject(settings.bucket, path, headers);
+
+  if (!storageDeleted.ok) {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: storageDeleted.message,
+      httpStatus: storageDeleted.httpStatus,
+    };
+  }
+
+  const recordDeleted = await deleteProjectFileRecord({
+    headers,
+    kind,
+    path,
+    project,
+    recordId,
+  });
+
+  if (!recordDeleted) {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "Storage 파일은 삭제했지만 프로젝트 기록을 정리하지 못했습니다.",
+    };
+  }
+
+  return {
+    ok: true,
+    message: "파일과 프로젝트 연결 기록을 삭제했습니다.",
+    bucket: settings.bucket,
+    path,
+    kind,
+    recordId,
+  };
 }
 
 export async function uploadProjectFile({

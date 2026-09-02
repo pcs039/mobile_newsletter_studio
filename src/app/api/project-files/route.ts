@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   completeSignedProjectFileUpload,
+  deleteProjectFile,
   prepareSignedProjectFileUpload,
   uploadProjectFile,
   type ProjectFileUploadKind,
@@ -35,11 +36,39 @@ function isJsonUploadKind(value: unknown): value is ProjectFileUploadKind {
 function getErrorStatus(status: string, httpStatus?: number) {
   return status === "not_configured"
     ? 503
-    : status === "project_not_found"
+    : status === "project_not_found" || status === "not_found"
       ? 404
       : status === "invalid_file"
         ? 400
         : httpStatus ?? 500;
+}
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const kind = searchParams.get("kind");
+  const projectSlug = searchParams.get("projectSlug")?.trim() ?? "";
+  const path = searchParams.get("path")?.trim() ?? "";
+  const recordId = searchParams.get("recordId")?.trim() || undefined;
+
+  if (!isJsonUploadKind(kind) || !projectSlug || !path) {
+    return NextResponse.json(
+      { ok: false, message: "삭제할 프로젝트, 파일 종류, 파일 경로를 확인해야 합니다." },
+      { status: 400 },
+    );
+  }
+
+  const result = await deleteProjectFile({
+    kind,
+    path,
+    projectSlug,
+    recordId,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json(result, { status: getErrorStatus(result.status, result.httpStatus) });
+  }
+
+  return NextResponse.json(result);
 }
 
 export async function POST(request: Request) {

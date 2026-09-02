@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileUploadCard } from "@/components/file-upload-card";
+import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
 import { audioReviewChecks, audioWorkflow } from "@/lib/newsletter-data";
@@ -153,9 +154,18 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                               <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{item.note}</p>
                             </td>
                             <td className="px-4 py-4">
-                              <button className="rounded-md border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]">
-                                연결 관리
-                              </button>
+                              <div className="flex flex-wrap gap-2">
+                                <button className="rounded-lg border border-[#2f73b7] bg-white px-4 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]">
+                                  연결 관리
+                                </button>
+                                <ProjectFileDeleteButton
+                                  fileLabel={item.title}
+                                  kind="audio_mp3"
+                                  path={item.filePath}
+                                  projectSlug={projectId}
+                                  recordId={item.id}
+                                />
+                              </div>
                             </td>
                           </tr>
                         ))

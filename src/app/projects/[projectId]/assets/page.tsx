@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileUploadCard } from "@/components/file-upload-card";
+import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
 import { imageReviewItems, imageSourceTypes } from "@/lib/newsletter-data";
@@ -120,7 +121,16 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                           <StatusPill value={asset.review} />
                         </div>
                         <p className="mt-3 text-sm font-semibold text-slate-600">사용 위치: {asset.usage}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">최근 수정 {asset.updated}</p>
+                        <div className="mt-3 flex items-end justify-between gap-3">
+                          <p className="text-xs font-semibold text-slate-500">최근 수정 {asset.updated}</p>
+                          <ProjectFileDeleteButton
+                            fileLabel={asset.title}
+                            kind="asset_image"
+                            path={asset.filePath}
+                            projectSlug={projectId}
+                            recordId={asset.id}
+                          />
+                        </div>
                       </article>
                     ))}
                   </div>

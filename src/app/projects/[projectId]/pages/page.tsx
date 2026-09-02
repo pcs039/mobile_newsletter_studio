@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileUploadCard } from "@/components/file-upload-card";
+import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
 import { pageConversionSteps, pageQualityChecks } from "@/lib/newsletter-data";
@@ -97,6 +98,15 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                         >
                           다운로드
                         </Link>
+<<<<<<< ours
+=======
+                        <ProjectFileDeleteButton
+                          fileLabel={originalPdf.fileName}
+                          kind="pdf_original"
+                          path={originalPdf.path}
+                          projectSlug={projectId}
+                        />
+>>>>>>> theirs
                       </div>
                     </div>
                   ) : (
@@ -192,6 +202,17 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                           </div>
                           <StatusPill value={page.status} />
                         </div>
+                        {page.imagePath ? (
+                          <div className="mt-3 flex justify-end">
+                            <ProjectFileDeleteButton
+                              fileLabel={`${page.pageNumber}쪽 페이지 이미지`}
+                              kind="page_image"
+                              path={page.imagePath}
+                              projectSlug={projectId}
+                              recordId={page.id}
+                            />
+                          </div>
+                        ) : null}
                       </article>
                     ))}
                   </div>
