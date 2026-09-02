@@ -4,11 +4,13 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 DataDiction mobile newsletter production MVP.
 
-The first Supabase integration step is intentionally small:
+The first Supabase integration step keeps the sample UI stable while adding real project storage:
 
 - keep the current sample UI working without database credentials
 - add environment variable checks
 - expose a read-only health check API
+- read dashboard projects from Supabase when rows exist
+- create new newsletter projects through a server API route
 - prepare the schema in `supabase/schema_v0_5.sql`
 
 ## Supabase Setup
@@ -21,12 +23,17 @@ The first Supabase integration step is intentionally small:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 ```
 
 5. Restart the local dev server.
 6. Open `/api/supabase/health`.
 
-The optional `SUPABASE_SERVICE_ROLE_KEY` must be used only in server-only code after access policies are finalized.
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` can be stored as Vercel Config values.
+`SUPABASE_SERVICE_ROLE_KEY` must be stored as a Vercel Secret value and must never be exposed to browser code.
+
+The dashboard can read projects with the public anon key. The new project form uses
+`SUPABASE_SERVICE_ROLE_KEY` inside `/api/projects` so writes stay server-side.
 
 ## Getting Started
 

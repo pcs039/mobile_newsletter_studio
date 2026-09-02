@@ -4,12 +4,10 @@ import { StatusPill } from "@/components/status-pill";
 import {
   assetChecks,
   dashboardAnalyticsNotes,
-  dashboardProjects,
-  dashboardSummaryCards,
-  dashboardSummaryDetails,
   projectOperationActions,
   workflowSteps,
 } from "@/lib/newsletter-data";
+import { getDashboardProjects } from "@/lib/newsletter-repository";
 import { getSupabaseConfigStatus } from "@/lib/supabase-config";
 
 const navigationItems = [
@@ -21,8 +19,29 @@ const navigationItems = [
   { label: "미리보기·발행", href: "/projects/muan-2025-94/publish", status: "ready" },
 ];
 
-export default function Home() {
+function parseCount(value: string) {
+  return Number(value.replace(/,/g, "")) || 0;
+}
+
+export default async function Home() {
   const supabaseConfig = getSupabaseConfigStatus();
+  const dashboardData = await getDashboardProjects();
+  const projects = dashboardData.projects;
+  const dashboardSummaryCards = [
+    { label: "전체 프로젝트", value: String(projects.length) },
+    { label: "제작 중", value: String(projects.filter((project) => project.status === "제작 중").length) },
+    {
+      label: "오늘 접속",
+      value: projects.reduce((sum, project) => sum + parseCount(project.views.today), 0).toLocaleString("ko-KR"),
+    },
+    { label: "발행 완료", value: String(projects.filter((project) => project.status === "발행 완료").length) },
+  ];
+  const dashboardSummaryDetails: Record<string, string> = {
+    "전체 프로젝트": dashboardData.source === "supabase" ? "DB 연동" : "샘플 표시",
+    "제작 중": "편집 필요",
+    "오늘 접속": "집계 예정",
+    "발행 완료": "URL·QR 생성",
+  };
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
@@ -123,7 +142,7 @@ export default function Home() {
                   <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">Supabase 연결 준비</p>
                   <h3 className="mt-1 text-lg font-bold text-[#092046]">저장소 환경 설정</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    프로젝트·기사·이미지·음성·링크 데이터를 실제 DB로 옮기기 전 환경변수와 스키마 적용 상태를 확인합니다.
+                    프로젝트 조회와 생성에 필요한 Supabase 환경변수, 스키마, 서버 저장 키 상태를 확인합니다.
                   </p>
                 </div>
                 <StatusPill value={supabaseConfig.isConfigured ? "환경변수 준비" : "설정 필요"} />
@@ -170,7 +189,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-bold text-[#092046]">소식지 프로젝트</h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    핵심 진행 상태와 다음 작업 이동을 먼저 확인합니다. 세부 운영 기능은 보조 액션으로 접어 둡니다.
+                    {dashboardData.message} 핵심 진행 상태와 다음 작업 이동을 먼저 확인합니다.
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -198,7 +217,7 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {dashboardProjects.map((project) => (
+                    {projects.map((project) => (
                       <tr key={project.title} className="border-b border-slate-200 last:border-0">
                         <td className="px-4 py-4">
                           <p className="font-bold text-[#092046]">{project.title}</p>
@@ -295,7 +314,7 @@ export default function Home() {
               <article id="analytics-preview" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">접속 통계 요약</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Supabase 연동 전에는 샘플 수치로 구조를 먼저 확인합니다.
+                  접속 통계 테이블 연결 전까지는 샘플 수치로 구조를 먼저 확인합니다.
                 </p>
                 <div className="mt-4 space-y-3">
                   {dashboardAnalyticsNotes.map((note) => (
