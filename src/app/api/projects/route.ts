@@ -100,7 +100,7 @@ export async function DELETE(request: Request) {
 
   if (!projectId) {
     return NextResponse.json(
-      { ok: false, message: "보관할 프로젝트 ID가 필요합니다." },
+      { ok: false, message: "삭제할 프로젝트 ID가 필요합니다." },
       { status: 400 },
     );
   }

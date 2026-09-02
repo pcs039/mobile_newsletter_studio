@@ -345,7 +345,7 @@ export const dashboardAnalyticsNotes: LabelStatusDetail[] = [
 export const projectOperationActions: LabelStatusDetail[] = [
   { label: "복사", status: "1.5차 핵심", detail: "월간 소식지는 전월 구성을 복제해 제작" },
   { label: "통계", status: "MVP 보강", detail: "목록과 발행 화면에서 접속 현황 확인" },
-  { label: "보관", status: "삭제 대체", detail: "실제 삭제보다 복구 가능한 보관 상태 우선" },
+  { label: "삭제", status: "목록 제외", detail: "실제 데이터는 복구 가능한 상태로 숨김 처리" },
 ];
 
 export const packageOptions: LabelStatusDetail[] = [

@@ -87,7 +87,7 @@ const statusLabels: Record<ProjectStatus, string> = {
   in_review: "검수 중",
   published: "발행 완료",
   private: "비공개",
-  archived: "보관",
+  archived: "삭제됨",
 };
 
 const packageTierLabels: Record<PackageTier, string> = {
@@ -345,7 +345,7 @@ export async function archiveNewsletterProject(projectId: string): Promise<Archi
     return {
       ok: false,
       status: "not_configured",
-      message: "SUPABASE_SERVICE_ROLE_KEY가 설정되어야 프로젝트 보관을 사용할 수 있습니다.",
+      message: "SUPABASE_SERVICE_ROLE_KEY가 설정되어야 프로젝트 삭제를 사용할 수 있습니다.",
     };
   }
 
@@ -370,7 +370,7 @@ export async function archiveNewsletterProject(projectId: string): Promise<Archi
       return {
         ok: false,
         status: "request_failed",
-        message: responseText || "Supabase 프로젝트 보관 요청에 실패했습니다.",
+        message: responseText || "Supabase 프로젝트 삭제 요청에 실패했습니다.",
         httpStatus: response.status,
       };
     }
@@ -381,7 +381,7 @@ export async function archiveNewsletterProject(projectId: string): Promise<Archi
       return {
         ok: false,
         status: "not_found",
-        message: "보관할 프로젝트를 찾지 못했습니다.",
+        message: "삭제할 프로젝트를 찾지 못했습니다.",
         httpStatus: 404,
       };
     }
@@ -394,7 +394,7 @@ export async function archiveNewsletterProject(projectId: string): Promise<Archi
     return {
       ok: false,
       status: "request_failed",
-      message: "Supabase 보관 요청 중 오류가 발생했습니다.",
+      message: "Supabase 삭제 요청 중 오류가 발생했습니다.",
     };
   }
 }
