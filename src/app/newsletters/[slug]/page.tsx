@@ -1,74 +1,20 @@
 import Link from "next/link";
 import { DatadictionBrand } from "@/components/datadiction-brand";
-import { sampleNewsletter } from "@/lib/newsletter-data";
+import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type PublicNewsletterPageProps = {
   params: Promise<{ slug: string }>;
   searchParams?: Promise<{ preview?: string | string[] }>;
 };
 
-function AudioBar({ status, duration }: { status: string; duration: string }) {
-  const isReady = status === "음성 제공";
-
-  return (
-    <div className="rounded-xl bg-[#f4f8ff] px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-black text-[#184a88]">본문 듣기</p>
-          <p className="mt-1 text-xs font-semibold text-slate-500">{status}</p>
-        </div>
-        <button className="rounded-full bg-[#092046] px-4 py-2 text-xs font-black text-white disabled:bg-slate-300" disabled={!isReady}>
-          재생
-        </button>
-      </div>
-      <div className="mt-3 h-2 rounded-full bg-sky-100">
-        <div className={`h-2 rounded-full ${isReady ? "w-2/5 bg-[#092046]" : "w-1/5 bg-slate-300"}`} />
-      </div>
-      <p className="mt-2 text-right text-xs font-semibold text-slate-500">{duration}</p>
-    </div>
-  );
-}
-
-function ExternalLinkCards({
-  actions,
-}: {
-  actions: NonNullable<(typeof sampleNewsletter.articles)[number]["linkActions"]>;
-}) {
-  const richActions = actions.filter((action) => action.displayStyle === "thumbnail_card" || action.displayStyle === "map_card");
-
-  if (richActions.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="mt-4 grid gap-3">
-      {richActions.map((action) => (
-        <a
-          key={action.id}
-          href={action.target}
-          className="block rounded-xl border border-slate-200 bg-[#f4f8ff] p-3"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <p className="text-xs font-black text-[#184a88]">
-            {action.type === "video" ? "동영상 링크" : "지도 링크"}
-          </p>
-          <div className="mt-2 rounded-lg bg-white px-3 py-5 text-center text-xs font-bold text-slate-600">
-            {action.displayStyle === "thumbnail_card" ? "외부 영상 썸네일" : "지도 이미지"}
-          </div>
-          <p className="mt-3 text-sm font-black text-[#092046]">{action.label}</p>
-        </a>
-      ))}
-    </div>
-  );
-}
-
 export default async function PublicNewsletterPage({ params, searchParams }: PublicNewsletterPageProps) {
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
   const previewMode = resolvedSearchParams?.preview;
   const isAdminPreview = Array.isArray(previewMode) ? previewMode.includes("admin") : previewMode === "admin";
-  const ebookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : sampleNewsletter.ebookUrl;
+  const workspace = await getProjectWorkspace(slug);
+  const project = workspace.project;
+  const ebookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
 
   return (
     <main className="min-h-screen bg-[#edf4fb] text-slate-950">
@@ -98,10 +44,12 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           <div className="mb-6">
             <DatadictionBrand compact theme="light" />
           </div>
-          <p className="text-sm font-semibold text-sky-200">{sampleNewsletter.organization}</p>
-          <h1 className="mt-3 text-3xl font-black leading-tight">{sampleNewsletter.title}</h1>
-          <p className="mt-2 text-lg font-bold text-white/95">{sampleNewsletter.issue}</p>
-          <p className="mt-4 text-sm leading-6 text-slate-300">{sampleNewsletter.description}</p>
+          <p className="text-sm font-semibold text-sky-200">
+            {project?.organization ?? "프로젝트 정보 확인 필요"}
+          </p>
+          <h1 className="mt-3 text-3xl font-black leading-tight">{project?.title ?? slug}</h1>
+          <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
+          <p className="mt-4 text-sm leading-6 text-slate-300">{project?.description ?? workspace.message}</p>
           <div className="mt-5 flex gap-2">
             <Link
               href={ebookHref}
@@ -125,46 +73,23 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             </div>
           </div>
 
-          <nav className="mt-5 grid grid-cols-3 gap-2">
-            {sampleNewsletter.articles.map((article) => (
-              <a
-                key={article.id}
-                href={`#${article.id}`}
-                className="rounded-lg border border-slate-200 px-3 py-3 text-center text-xs font-black text-[#092046]"
-              >
-                {article.title}
-              </a>
-            ))}
-          </nav>
+          <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center">
+            <p className="text-sm font-black text-[#092046]">모바일 읽기 콘텐츠가 아직 등록되지 않았습니다.</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              작성/수정 화면에서 기사, 링크, 이미지, 음성을 저장하면 이 공개 화면에 표시됩니다.
+            </p>
+          </div>
         </section>
 
-        <section className="space-y-5 px-5 pb-8">
-          {sampleNewsletter.articles.map((article) => (
-            <article key={article.id} id={article.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-black text-[#184a88]">{article.page}</p>
-              <h2 className="mt-2 text-xl font-black text-[#092046]">{article.title}</h2>
-              <p className="mt-2 text-sm font-bold leading-6 text-slate-700">{article.summary}</p>
-              <div className={`mt-4 h-36 rounded-xl bg-gradient-to-br ${article.imageTone}`} />
-              <p className="mt-4 text-sm leading-7 text-slate-600">{article.body}</p>
-              {article.linkActions && <ExternalLinkCards actions={article.linkActions} />}
-              <div className="mt-4">
-                <AudioBar status={article.audioStatus} duration={article.audioDuration} />
-              </div>
-              <div className="mt-4 grid gap-2">
-                {(article.linkActions ?? []).filter((action) => action.displayStyle === "button").map((action) => (
-                  <a
-                    key={action.id}
-                    href={action.type === "phone" ? `tel:${action.target}` : action.target}
-                    className="rounded-lg bg-[#092046] px-4 py-3 text-center text-sm font-black text-white"
-                    target={action.type === "phone" ? undefined : "_blank"}
-                    rel={action.type === "phone" ? undefined : "noreferrer"}
-                  >
-                    {action.label}
-                  </a>
-                ))}
-              </div>
-            </article>
-          ))}
+        <section className="px-5 pb-8">
+          {isAdminPreview && (
+            <Link
+              href={`/projects/${slug}/reading`}
+              className="block rounded-lg bg-[#092046] px-4 py-3 text-center text-sm font-black text-white transition hover:bg-[#123a78]"
+            >
+              읽기 보기 작성/수정으로 이동
+            </Link>
+          )}
         </section>
 
         <footer className="border-t border-slate-200 px-5 py-5 text-center">

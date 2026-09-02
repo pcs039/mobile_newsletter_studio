@@ -29,7 +29,7 @@ const publishOptions = [
   },
   {
     title: "외부 AI·프로그램 결과물 등록",
-    description: "1차 MVP에서는 AI나 외부 제작 도구를 직접 실행하지 않고, 완성된 이미지·원고·음성·e-book 링크를 등록합니다.",
+    description: "운영 초기에는 AI나 외부 제작 도구를 직접 실행하지 않고, 완성된 이미지·원고·음성·e-book 링크를 등록합니다.",
   },
 ];
 

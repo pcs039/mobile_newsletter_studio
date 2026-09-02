@@ -53,7 +53,7 @@ export default async function Home() {
               제작 관리
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              작업설계도 v0.5 기준의 관리자 MVP 화면
+              실제 제작 운영을 위한 관리자 화면
             </p>
           </div>
 
@@ -71,7 +71,7 @@ export default async function Home() {
         <section className="min-w-0 px-5 py-6 sm:px-8 lg:px-10">
           <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#184a88]">DataDiction 1차 MVP 베이스</p>
+              <p className="text-sm font-semibold text-[#184a88]">DataDiction 운영 베이스</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
                 프로젝트 대시보드
               </h2>

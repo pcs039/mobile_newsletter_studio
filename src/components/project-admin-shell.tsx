@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish";
 
@@ -13,12 +14,12 @@ const projectNavigation: Array<{ key: ProjectSection; label: string; path: strin
   { key: "publish", label: "미리보기·발행", path: "publish", guide: "URL·QR" },
 ];
 
-export function ProjectAdminShell({
+export async function ProjectAdminShell({
   active,
   actions,
   children,
   description,
-  projectId = "muan-2025-94",
+  projectId,
   sidebarDescription,
   sidebarNote,
   sidebarNoteTitle,
@@ -29,13 +30,22 @@ export function ProjectAdminShell({
   actions?: ReactNode;
   children: ReactNode;
   description: string;
-  projectId?: string;
+  projectId: string;
   sidebarDescription: string;
   sidebarNote: string;
   sidebarNoteTitle: string;
   sidebarTitle: ReactNode;
   title: string;
 }) {
+  const workspace = await getProjectWorkspace(projectId);
+  const project = workspace.project;
+  const projectEyebrow = project
+    ? `${project.organization} · ${project.issue}`
+    : "프로젝트 정보 확인 필요";
+  const projectDescription = project
+    ? `${project.title} · ${project.status} · ${project.pageCount}쪽`
+    : workspace.message;
+
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
       <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -57,9 +67,10 @@ export function ProjectAdminShell({
         <section className="min-w-0 px-5 py-6 sm:px-8 lg:px-10">
           <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#184a88]">황토골 무안소식지 2025년 제94호</p>
+              <p className="text-sm font-semibold text-[#184a88]">{projectEyebrow}</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">{title}</h2>
               <p className="mt-2 text-sm text-slate-600">{description}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">{projectDescription}</p>
             </div>
             {actions}
           </header>

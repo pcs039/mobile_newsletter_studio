@@ -2,17 +2,20 @@ import Link from "next/link";
 import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
-import { pageConversionSteps, pageQualityChecks, sampleNewsletterPages } from "@/lib/newsletter-data";
+import { pageConversionSteps, pageQualityChecks } from "@/lib/newsletter-data";
+import { getProjectPageImages } from "@/lib/newsletter-repository";
 
 export default async function ProjectPagesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const pageImageData = await getProjectPageImages(projectId);
+  const pages = pageImageData.pages;
 
   return (
     <ProjectAdminShell
       active="pages"
       projectId={projectId}
       title="PDF 원본·페이지 이미지 관리"
-      description="1차 MVP에서는 PDF 원본을 보관하고, PC e-book용 페이지 이미지는 수동 등록·검수 흐름으로 관리합니다."
+      description="PDF 원본을 보관하고, PC e-book용 페이지 이미지는 수동 등록·검수 흐름으로 관리합니다."
       sidebarTitle={
         <>
           PDF·이미지
@@ -21,8 +24,8 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
         </>
       }
       sidebarDescription="원본 PDF는 보관하고, 페이지 이미지는 별도 등록해 PC e-book과 검수 화면에 사용합니다."
-      sidebarNoteTitle="1차 MVP 기준"
-      sidebarNote="PDF 자동 변환은 2차 기능으로 두고, 1차에서는 수동 등록 품질과 발행 흐름을 우선 검증합니다."
+      sidebarNoteTitle="운영 기준"
+      sidebarNote="PDF 자동 변환보다 실제 지면 이미지 품질, 페이지 번호, 공개 흐름을 먼저 정확히 관리합니다."
       actions={
         <Link
           href="/projects/new"
@@ -84,9 +87,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-[#092046]">페이지 이미지 등록 현황</h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      등록된 페이지 이미지와 검수 상태를 기준으로 페이지별 작업 현황을 확인합니다.
-                    </p>
+                    <p className="mt-1 text-sm text-slate-500">{pageImageData.message}</p>
                   </div>
                   <div className="flex gap-2">
                     <button className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
@@ -101,34 +102,42 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  {sampleNewsletterPages.map((page) => (
-                    <article key={page.number} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-                      <div className="aspect-[3/4] rounded-md border border-slate-200 bg-gradient-to-br from-white to-sky-50 p-3">
-                        <div className="h-full rounded border border-slate-200 bg-white p-3">
-                          <div className="h-3 w-2/3 rounded bg-[#092046]" />
-                          <div className="mt-3 space-y-2">
-                            <div className="h-2 rounded bg-slate-200" />
-                            <div className="h-2 rounded bg-slate-200" />
-                            <div className="h-2 w-4/5 rounded bg-slate-200" />
-                          </div>
-                          <div className="mt-5 h-16 rounded bg-sky-100" />
-                          <div className="mt-3 space-y-2">
-                            <div className="h-2 rounded bg-slate-200" />
-                            <div className="h-2 w-3/5 rounded bg-slate-200" />
+                {pages.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-12 text-center">
+                    <p className="text-base font-black text-[#092046]">등록된 페이지 이미지가 없습니다.</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      위 업로드 영역에서 페이지 번호와 이미지를 저장하면 이 목록에 실제 작업 현황이 표시됩니다.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {pages.map((page) => (
+                      <article key={page.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                        <div className="aspect-[3/4] rounded-md border border-slate-200 bg-[#eef4fb] p-3">
+                          <div className="flex h-full flex-col justify-between rounded border border-slate-200 bg-white p-3">
+                            <div>
+                              <div className="h-3 w-2/3 rounded bg-[#092046]" />
+                              <div className="mt-4 rounded-lg bg-sky-50 px-3 py-8 text-center">
+                                <p className="text-xs font-black text-[#184a88]">Storage 파일</p>
+                                <p className="mt-2 break-all text-xs font-semibold leading-5 text-slate-500">
+                                  {page.imagePath ?? "이미지 경로 없음"}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-xs font-semibold text-slate-500">최근 수정 {page.updated}</p>
                           </div>
                         </div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-black text-[#092046]">{page.number}쪽</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">{page.title}</p>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-black text-[#092046]">{page.pageNumber}쪽</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-500">{page.title}</p>
+                          </div>
+                          <StatusPill value={page.status} />
                         </div>
-                        <StatusPill value={page.status} />
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
               </article>
             </section>
 

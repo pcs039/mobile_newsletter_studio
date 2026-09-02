@@ -7,9 +7,7 @@ type AdminMainNavigationProps = {
   projectId?: string;
 };
 
-const defaultProjectId = "muan-2025-94";
-
-export function AdminMainNavigation({ active, projectId = defaultProjectId }: AdminMainNavigationProps) {
+export function AdminMainNavigation({ active, projectId }: AdminMainNavigationProps) {
   const items: Array<{
     key: AdminMainSection;
     label: string;
@@ -19,7 +17,12 @@ export function AdminMainNavigation({ active, projectId = defaultProjectId }: Ad
     { key: "dashboard", label: "프로젝트 현황", detail: "전체 목록", href: "/" },
     { key: "new", label: "새 프로젝트 생성", detail: "기본 정보", href: "/projects/new" },
     { key: "edit", label: "작성/수정", detail: "작업 대상", href: "/projects/edit" },
-    { key: "publish", label: "미리보기/발행", detail: "검수·URL·QR", href: `/projects/${projectId}/publish` },
+    {
+      key: "publish",
+      label: "미리보기/발행",
+      detail: projectId ? "검수·URL·QR" : "프로젝트 선택",
+      href: projectId ? `/projects/${projectId}/publish` : undefined,
+    },
     { key: "distribution", label: "배포/관리", detail: "준비중" },
     { key: "survey", label: "설문/이벤트", detail: "준비중" },
   ];

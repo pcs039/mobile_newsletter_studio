@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DatadictionBrand } from "@/components/datadiction-brand";
-import { sampleNewsletter } from "@/lib/newsletter-data";
+import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type PublicEbookPageProps = {
   params: Promise<{ slug: string }>;
@@ -12,7 +12,9 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
   const resolvedSearchParams = await searchParams;
   const previewMode = resolvedSearchParams?.preview;
   const isAdminPreview = Array.isArray(previewMode) ? previewMode.includes("admin") : previewMode === "admin";
-  const mobileHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : sampleNewsletter.publicUrl;
+  const workspace = await getProjectWorkspace(slug);
+  const project = workspace.project;
+  const mobileHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : project?.publicUrl ?? `/newsletters/${slug}`;
 
   return (
     <main className="min-h-screen bg-[#eef4fb] text-slate-950">
@@ -42,9 +44,11 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <DatadictionBrand compact />
             <div className="border-slate-200 sm:border-l sm:pl-4">
-              <p className="text-sm font-semibold text-[#184a88]">{sampleNewsletter.organization}</p>
+              <p className="text-sm font-semibold text-[#184a88]">
+                {project?.organization ?? "프로젝트 정보 확인 필요"}
+              </p>
               <h1 className="mt-1 text-2xl font-black text-[#092046]">
-                {sampleNewsletter.title} {sampleNewsletter.issue}
+                {project ? `${project.title} ${project.issue}` : slug}
               </h1>
               <p className="mt-1 text-sm text-slate-600">PC 화면에서 원본 PDF 지면을 확인하는 e-book 보기입니다.</p>
             </div>
@@ -61,18 +65,11 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
       <section className="mx-auto grid max-w-7xl gap-5 px-6 py-6 xl:grid-cols-[260px_1fr_300px]">
         <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-[#092046]">목차</h2>
-          <div className="mt-4 space-y-2">
-            {sampleNewsletter.pages.slice(0, 8).map((page) => (
-              <button
-                key={page.number}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm font-semibold ${
-                  page.number === 2 ? "bg-[#092046] text-white" : "bg-slate-50 text-slate-700"
-                }`}
-              >
-                <span>{page.title}</span>
-                <span>{page.number}쪽</span>
-              </button>
-            ))}
+          <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-6 text-center">
+            <p className="text-sm font-bold text-[#092046]">페이지 이미지 미등록</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              페이지 이미지 저장 연동 후 목차와 지면이 표시됩니다.
+            </p>
           </div>
         </aside>
 
@@ -80,7 +77,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-bold text-[#092046]">원본 지면 보기</h2>
-              <p className="mt-1 text-sm text-slate-500">2쪽과 3쪽 펼침 보기</p>
+              <p className="mt-1 text-sm text-slate-500">등록된 페이지 이미지를 PC 화면에서 확인합니다.</p>
             </div>
             <div className="flex gap-2">
               <button className="rounded-md border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700">이전</button>
@@ -90,26 +87,19 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
           </div>
 
           <div className="rounded-lg bg-[#dfeaf5] p-5">
-            <div className="grid gap-5 lg:grid-cols-2">
-              {[2, 3].map((page) => (
-                <article key={page} className="aspect-[3/4] rounded-lg border border-slate-200 bg-gradient-to-br from-white to-sky-50 p-5 shadow-sm">
-                  <div className="h-full rounded border border-slate-200 bg-white p-5">
-                    <div className="h-4 w-2/3 rounded bg-[#092046]" />
-                    <div className="mt-5 h-28 rounded bg-sky-100" />
-                    <div className="mt-5 space-y-3">
-                      <div className="h-3 rounded bg-slate-200" />
-                      <div className="h-3 rounded bg-slate-200" />
-                      <div className="h-3 w-4/5 rounded bg-slate-200" />
-                      <div className="h-3 w-2/3 rounded bg-slate-200" />
-                    </div>
-                    <div className="mt-8 grid grid-cols-2 gap-3">
-                      <div className="h-24 rounded bg-slate-100" />
-                      <div className="h-24 rounded bg-slate-100" />
-                    </div>
-                  </div>
-                  <p className="mt-3 text-center text-sm font-black text-[#092046]">{page}쪽</p>
-                </article>
-              ))}
+            <div className="rounded-lg border border-dashed border-slate-300 bg-white px-5 py-16 text-center">
+              <p className="text-base font-black text-[#092046]">등록된 e-book 페이지 이미지가 없습니다.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                PDF·이미지 관리 화면에서 페이지 이미지를 업로드하면 이 영역에 실제 지면을 표시합니다.
+              </p>
+              {isAdminPreview && (
+                <Link
+                  href={`/projects/${slug}/pages`}
+                  className="mt-5 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
+                >
+                  페이지 이미지 등록으로 이동
+                </Link>
+              )}
             </div>
           </div>
         </section>
@@ -127,11 +117,11 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
             <div className="mt-4 space-y-3">
               <div className="rounded-lg bg-slate-50 px-3 py-3">
                 <p className="text-xs font-black text-[#184a88]">전체 페이지</p>
-                <p className="mt-1 text-sm font-bold text-slate-700">16쪽</p>
+                <p className="mt-1 text-sm font-bold text-slate-700">{project?.pageCount ?? 0}쪽</p>
               </div>
               <div className="rounded-lg bg-slate-50 px-3 py-3">
                 <p className="text-xs font-black text-[#184a88]">현재 보기</p>
-                <p className="mt-1 text-sm font-bold text-slate-700">2쪽-3쪽</p>
+                <p className="mt-1 text-sm font-bold text-slate-700">페이지 선택 전</p>
               </div>
               <div className="rounded-lg bg-slate-50 px-3 py-3">
                 <p className="text-xs font-black text-[#184a88]">품질 기준</p>

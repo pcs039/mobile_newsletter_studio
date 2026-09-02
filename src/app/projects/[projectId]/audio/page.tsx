@@ -36,7 +36,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
         </>
       }
       sidebarDescription="외부 TTS로 만든 음성 파일을 기사별로 업로드하고 재생 상태를 검수합니다."
-      sidebarNoteTitle="MVP 기준"
+      sidebarNoteTitle="운영 기준"
       sidebarNote="음성 생성 기능은 만들지 않고, 외부 TTS에서 제작한 MP3를 업로드해 연결합니다."
       actions={
         <Link

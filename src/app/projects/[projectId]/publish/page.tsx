@@ -1,14 +1,8 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
-import { publishChecks, publishReadinessItems, sampleNewsletter } from "@/lib/newsletter-data";
-
-const distributionItems = [
-  { label: "공개 URL", value: sampleNewsletter.publicUrl },
-  { label: "QR 코드", value: "발행 후 PNG 다운로드" },
-  { label: "공개 상태", value: "검수 중" },
-  { label: "최종 수정", value: "2026.09.02 16:05" },
-];
+import { publishChecks, publishReadinessItems } from "@/lib/newsletter-data";
+import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
 function QrMock() {
   const filled = new Set([0, 1, 2, 4, 6, 8, 10, 11, 14, 16, 18, 20, 21, 22, 24, 27, 30, 31, 32, 34, 36, 38, 40, 41, 42, 44, 46, 48]);
@@ -27,8 +21,16 @@ function QrMock() {
 
 export default async function PublishPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const workspace = await getProjectWorkspace(projectId);
+  const project = workspace.project;
   const publicPreviewHref = `/newsletters/${projectId}?preview=admin`;
   const ebookPreviewHref = `/newsletters/${projectId}/ebook?preview=admin`;
+  const distributionItems = [
+    { label: "공개 URL", value: project?.publicUrl ?? `/newsletters/${projectId}` },
+    { label: "QR 코드", value: "발행 후 PNG 다운로드" },
+    { label: "공개 상태", value: project?.status ?? "프로젝트 확인 필요" },
+    { label: "최종 수정", value: project?.updated ?? "-" },
+  ];
 
   return (
     <ProjectAdminShell
@@ -106,18 +108,18 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
                 <div className="mx-auto max-w-[300px] rounded-[30px] border border-slate-200 bg-slate-950 p-3 shadow-sm">
                     <div className="overflow-hidden rounded-[24px] bg-white">
                       <div className="bg-[#092046] px-4 py-4 text-white">
-                        <p className="text-xs font-semibold text-sky-200">황토골 무안소식지</p>
-                        <h4 className="mt-2 text-lg font-black">2025년 제94호</h4>
+                        <p className="text-xs font-semibold text-sky-200">
+                          {project?.organization ?? "프로젝트 정보 확인 필요"}
+                        </p>
+                        <h4 className="mt-2 text-lg font-black">{project?.issue ?? projectId}</h4>
                       </div>
                       <div className="p-4">
                         <div className="h-28 rounded-xl bg-gradient-to-br from-sky-100 to-blue-50" />
-                        <div className="mt-4 space-y-2">
-                          {sampleNewsletter.articles.map((article) => (
-                            <div key={article.id} className="rounded-lg border border-slate-200 px-3 py-2">
-                              <p className="text-sm font-bold text-[#092046]">{article.title}</p>
-                              <div className="mt-2 h-2 w-4/5 rounded bg-slate-200" />
-                            </div>
-                          ))}
+                        <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-5 text-center">
+                          <p className="text-sm font-black text-[#092046]">등록된 모바일 기사가 없습니다.</p>
+                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                            읽기 보기 편집 저장 기능을 연결하면 실제 기사 카드가 표시됩니다.
+                          </p>
                         </div>
                         <div className="mt-4 rounded-xl bg-[#f4f8ff] px-4 py-3">
                           <p className="text-xs font-bold text-[#184a88]">본문 듣기</p>

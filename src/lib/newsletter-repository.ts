@@ -68,6 +68,60 @@ export type DashboardProjectsResult = {
   message: string;
 };
 
+export type ProjectWorkspaceInfo = {
+  id: string;
+  slug: string;
+  title: string;
+  organization: string;
+  issue: string;
+  description: string;
+  primaryColor: string;
+  status: string;
+  publicUrl: string;
+  ebookUrl: string;
+  pageCount: number;
+  updated: string;
+};
+
+export type ProjectWorkspaceResult =
+  | {
+      ok: true;
+      project: ProjectWorkspaceInfo;
+      source: "supabase";
+      message: string;
+    }
+  | {
+      ok: false;
+      project: null;
+      source: "unconfigured" | "error" | "not_found";
+      message: string;
+      httpStatus?: number;
+    };
+
+type NewsletterPageRow = {
+  id: string;
+  page_number: number;
+  title: string | null;
+  image_path: string | null;
+  image_status: string;
+  updated_at: string;
+};
+
+export type ProjectPageImage = {
+  id: string;
+  pageNumber: number;
+  title: string;
+  imagePath: string | null;
+  status: string;
+  updated: string;
+};
+
+export type ProjectPageImagesResult = {
+  pages: ProjectPageImage[];
+  source: "supabase" | "unconfigured" | "error" | "not_found";
+  message: string;
+};
+
 const projectSelectColumns = [
   "id",
   "title",
@@ -108,6 +162,14 @@ const productionModeLabels: Record<ProductionMode, string> = {
   hybrid: "템플릿+이미지 혼합",
   full_image: "전체 이미지형",
   external_ebook: "외부 e-book 연동",
+};
+
+const pageImageStatusLabels: Record<string, string> = {
+  not_uploaded: "미등록",
+  uploaded: "업로드 완료",
+  in_review: "검수 중",
+  approved: "검수 완료",
+  replace_needed: "교체 필요",
 };
 
 function formatDate(value: string | null) {
@@ -193,6 +255,36 @@ function mapProjectRowToDashboardProject(project: NewsletterProjectRow): Dashboa
   };
 }
 
+function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWorkspaceInfo {
+  const issue = project.issue_label ?? formatDate(project.published_date);
+
+  return {
+    id: project.id,
+    slug: project.slug,
+    title: project.title,
+    organization: project.organization_name,
+    issue,
+    description: project.description || "등록된 프로젝트 설명이 없습니다.",
+    primaryColor: project.primary_color || "#092046",
+    status: statusLabels[project.status],
+    publicUrl: `/newsletters/${project.slug}`,
+    ebookUrl: `/newsletters/${project.slug}/ebook`,
+    pageCount: project.page_count,
+    updated: formatDate(project.updated_at),
+  };
+}
+
+function mapPageRowToProjectPageImage(page: NewsletterPageRow): ProjectPageImage {
+  return {
+    id: page.id,
+    pageNumber: page.page_number,
+    title: page.title || `${page.page_number}쪽`,
+    imagePath: page.image_path,
+    status: pageImageStatusLabels[page.image_status] ?? page.image_status,
+    updated: formatDate(page.updated_at),
+  };
+}
+
 function getRequestHeaders(useServiceRole = false) {
   const config = getSupabaseConfigStatus();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -275,6 +367,124 @@ export async function getEditableProjects(): Promise<DashboardProjectsResult> {
         ? "작성과 수정이 필요한 프로젝트만 표시합니다."
         : dashboardData.message,
   };
+}
+
+export async function getProjectWorkspace(projectSlug: string): Promise<ProjectWorkspaceResult> {
+  const config = getSupabaseConfigStatus();
+  const encodedSlug = encodeURIComponent(projectSlug);
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_projects?select=${projectSelectColumns}&slug=eq.${encodedSlug}&deleted_at=is.null&limit=1`,
+  );
+  const headers = getRequestHeaders();
+
+  if (!config.isConfigured || !endpoint || !headers) {
+    return {
+      ok: false,
+      project: null,
+      source: "unconfigured",
+      message: "Supabase 환경변수 설정 후 실제 프로젝트 정보를 표시합니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        project: null,
+        source: "error",
+        message: "Supabase 프로젝트 조회에 실패했습니다.",
+        httpStatus: response.status,
+      };
+    }
+
+    const rows = (await response.json()) as NewsletterProjectRow[];
+    const project = rows[0];
+
+    if (!project) {
+      return {
+        ok: false,
+        project: null,
+        source: "not_found",
+        message: "해당 slug의 프로젝트를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
+    return {
+      ok: true,
+      project: mapProjectRowToWorkspaceInfo(project),
+      source: "supabase",
+      message: "Supabase 프로젝트 정보를 표시합니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      project: null,
+      source: "error",
+      message: "Supabase 프로젝트 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function getProjectPageImages(projectSlug: string): Promise<ProjectPageImagesResult> {
+  const workspace = await getProjectWorkspace(projectSlug);
+
+  if (!workspace.ok) {
+    return {
+      pages: [],
+      source: workspace.source,
+      message: workspace.message,
+    };
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_pages?select=id,page_number,title,image_path,image_status,updated_at&project_id=eq.${encodeURIComponent(
+      workspace.project.id,
+    )}&order=page_number.asc`,
+  );
+  const headers = getRequestHeaders();
+
+  if (!endpoint || !headers) {
+    return {
+      pages: [],
+      source: "unconfigured",
+      message: "Supabase 환경변수 설정 후 페이지 이미지 목록을 표시합니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        pages: [],
+        source: "error",
+        message: "페이지 이미지 목록 조회에 실패했습니다.",
+      };
+    }
+
+    const rows = (await response.json()) as NewsletterPageRow[];
+
+    return {
+      pages: rows.map(mapPageRowToProjectPageImage),
+      source: "supabase",
+      message: rows.length > 0 ? "등록된 페이지 이미지를 표시합니다." : "등록된 페이지 이미지가 아직 없습니다.",
+    };
+  } catch {
+    return {
+      pages: [],
+      source: "error",
+      message: "페이지 이미지 목록 조회 중 오류가 발생했습니다.",
+    };
+  }
 }
 
 export async function createNewsletterProject(

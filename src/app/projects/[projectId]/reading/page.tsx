@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
+import { getProjectWorkspace } from "@/lib/newsletter-repository";
 import {
   linkBlockGuidelines,
   readingEditSections,
@@ -28,6 +29,8 @@ function TextInput({ placeholder, defaultValue }: { placeholder: string; default
 
 export default async function ReadingEditorPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const workspace = await getProjectWorkspace(projectId);
+  const project = workspace.project;
 
   return (
     <ProjectAdminShell
@@ -191,7 +194,7 @@ export default async function ReadingEditorPage({ params }: { params: Promise<{ 
                     <div className="rounded-lg border border-dashed border-sky-200 bg-[#f4f8ff] p-5">
                       <p className="text-sm font-bold text-[#092046]">YouTube 등 외부 영상 연결</p>
                       <p className="mt-2 text-sm leading-6 text-slate-600">
-                        1차 MVP에서는 영상을 직접 업로드하지 않고 썸네일 카드와 외부 URL을 연결합니다.
+                        영상은 직접 업로드하지 않고 썸네일 카드와 외부 URL을 연결합니다.
                       </p>
                       <div className="mt-4 grid gap-3">
                         <TextInput defaultValue="홍보 영상 보기" placeholder="카드 제목" />
@@ -238,9 +241,11 @@ export default async function ReadingEditorPage({ params }: { params: Promise<{ 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">모바일 미리보기</h3>
                 <div className="mt-4 rounded-[28px] border border-slate-200 bg-slate-950 p-3 shadow-sm">
-                  <div className="overflow-hidden rounded-[22px] bg-white">
+                    <div className="overflow-hidden rounded-[22px] bg-white">
                     <div className="bg-[#092046] px-4 py-4 text-white">
-                      <p className="text-xs font-semibold text-sky-200">황토골 무안소식지</p>
+                      <p className="text-xs font-semibold text-sky-200">
+                        {project?.title ?? "프로젝트 정보 확인 필요"}
+                      </p>
                       <h4 className="mt-2 text-lg font-black">군정 주요 소식</h4>
                     </div>
                     <div className="p-4">
