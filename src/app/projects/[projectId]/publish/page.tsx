@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { StatusPill } from "@/components/status-pill";
 import { sampleNewsletter } from "@/lib/newsletter-data";
 
 const readinessItems = [
@@ -26,19 +28,6 @@ const publishChecks = [
 
 const mobileArticles = ["군정 주요 소식", "생활 지원 안내", "문화 행사 일정"];
 
-function StatusPill({ value }: { value: string }) {
-  const tone =
-    value === "완료"
-      ? "bg-emerald-100 text-emerald-800"
-      : value === "검수 중"
-        ? "bg-sky-100 text-sky-800"
-        : value === "보완 필요"
-          ? "bg-amber-100 text-amber-800"
-          : "bg-slate-100 text-slate-700";
-
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone}`}>{value}</span>;
-}
-
 function QrMock() {
   const filled = new Set([0, 1, 2, 4, 6, 8, 10, 11, 14, 16, 18, 20, 21, 22, 24, 27, 30, 31, 32, 34, 36, 38, 40, 41, 42, 44, 46, 48]);
 
@@ -56,89 +45,34 @@ function QrMock() {
 
 export default function PublishPage() {
   return (
-    <main className="min-h-screen bg-[#f3f7fc] text-slate-950">
-      <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
-        <aside className="bg-[#071f46] px-6 py-7 text-white">
-          <div className="mb-9">
-            <p className="text-sm font-semibold text-sky-200">Newsletter Studio</p>
-            <h1 className="mt-3 text-2xl font-bold leading-tight">
-              미리보기
-              <br />
-              발행
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              공개 전 모바일 읽기 보기, PC e-book, URL·QR 발행 상태를 최종 확인합니다.
-            </p>
-          </div>
-
-          <nav className="space-y-2">
-            <Link
-              href="/"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              프로젝트 대시보드
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/pages"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              PDF 업로드
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/reading"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              읽기 보기 편집
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/assets"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              이미지 자산
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/audio"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              음성 MP3
-            </Link>
-            <span className="flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20">
-              미리보기·발행
-            </span>
-          </nav>
-
-          <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
-            <p className="text-sm font-bold text-white">공개 기준</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              모바일은 읽기 보기와 음성 듣기 중심, PC는 원본 e-book 확인 중심으로 발행합니다.
-            </p>
-          </div>
-        </aside>
-
-        <section className="px-5 py-6 sm:px-8 lg:px-10">
-          <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-[#184a88]">황토골 무안소식지 2025년 제94호</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
-                미리보기·발행
-              </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                공개 화면 품질과 배포 정보를 확인한 뒤 URL과 QR코드를 발행합니다.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Link
-                href="/projects/muan-2025-94/audio"
-                className="rounded-lg border border-slate-200 px-5 py-3 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-              >
-                음성 관리로 돌아가기
-              </Link>
-              <button className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
-                검수 요청
-              </button>
-            </div>
-          </header>
-
+    <ProjectAdminShell
+      active="publish"
+      title="미리보기·발행"
+      description="공개 화면 품질과 배포 정보를 확인한 뒤 URL과 QR코드를 발행합니다."
+      sidebarTitle={
+        <>
+          미리보기
+          <br />
+          발행
+        </>
+      }
+      sidebarDescription="공개 전 모바일 읽기 보기, PC e-book, URL·QR 발행 상태를 최종 확인합니다."
+      sidebarNoteTitle="공개 기준"
+      sidebarNote="모바일은 읽기 보기와 음성 듣기 중심, PC는 원본 e-book 확인 중심으로 발행합니다."
+      actions={
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            href="/projects/muan-2025-94/audio"
+            className="rounded-lg border border-slate-200 px-5 py-3 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+          >
+            음성 관리로 돌아가기
+          </Link>
+          <button className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
+            검수 요청
+          </button>
+        </div>
+      }
+    >
           <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
             <section className="space-y-5">
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -307,8 +241,6 @@ export default function PublishPage() {
               </article>
             </aside>
           </div>
-        </section>
-      </div>
-    </main>
+    </ProjectAdminShell>
   );
 }

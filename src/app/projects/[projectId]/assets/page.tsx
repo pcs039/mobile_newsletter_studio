@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { StatusPill } from "@/components/status-pill";
 
 const assets = [
   {
@@ -53,99 +55,31 @@ const reviewItems = [
   "모든 대표 이미지에 대체텍스트 작성",
 ];
 
-function StatusPill({ value }: { value: string }) {
-  const tone =
-    value === "사용 가능" || value === "검수 완료" || value === "원본 고화질"
-      ? "bg-emerald-100 text-emerald-800"
-      : value === "확인 필요" || value === "검수 필요"
-        ? "bg-amber-100 text-amber-800"
-        : value === "교체 권장" || value === "저화질 주의"
-          ? "bg-rose-100 text-rose-800"
-          : "bg-sky-100 text-sky-800";
-
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone}`}>{value}</span>;
-}
-
 export default function ImageAssetsPage() {
   return (
-    <main className="min-h-screen bg-[#f3f7fc] text-slate-950">
-      <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
-        <aside className="bg-[#071f46] px-6 py-7 text-white">
-          <div className="mb-9">
-            <p className="text-sm font-semibold text-sky-200">Newsletter Studio</p>
-            <h1 className="mt-3 text-2xl font-bold leading-tight">
-              이미지 자산
-              <br />
-              관리
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              기사 대표 이미지, 배경, 배너, PDF 발췌 이미지를 출처와 권리 기준으로 관리합니다.
-            </p>
-          </div>
-
-          <nav className="space-y-2">
-            <Link
-              href="/"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              프로젝트 대시보드
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/pages"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              PDF 업로드
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/reading"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              읽기 보기 편집
-            </Link>
-            <span className="flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20">
-              이미지 자산
-            </span>
-            <Link
-              href="/projects/muan-2025-94/audio"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              음성 MP3
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/publish"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              미리보기·발행
-            </Link>
-          </nav>
-
-          <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
-            <p className="text-sm font-bold text-white">v0.2 반영</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              PDF 발췌 이미지는 보조 수단으로만 두고, 기관 제공 원본 또는 별도 제작 이미지를 우선 사용합니다.
-            </p>
-          </div>
-        </aside>
-
-        <section className="px-5 py-6 sm:px-8 lg:px-10">
-          <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-[#184a88]">황토골 무안소식지 2025년 제94호</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
-                이미지 자산 관리
-              </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                모바일 읽기 화면에 입힐 대표 이미지, 배경 이미지, 배너의 품질과 권리 상태를 관리합니다.
-              </p>
-            </div>
-            <Link
-              href="/projects/muan-2025-94/reading"
-              className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-            >
-              읽기 보기로 돌아가기
-            </Link>
-          </header>
-
+    <ProjectAdminShell
+      active="assets"
+      title="이미지 자산 관리"
+      description="모바일 읽기 화면에 입힐 대표 이미지, 배경 이미지, 배너의 품질과 권리 상태를 관리합니다."
+      sidebarTitle={
+        <>
+          이미지 자산
+          <br />
+          관리
+        </>
+      }
+      sidebarDescription="기사 대표 이미지, 배경, 배너, PDF 발췌 이미지를 출처와 권리 기준으로 관리합니다."
+      sidebarNoteTitle="v0.2 반영"
+      sidebarNote="PDF 발췌 이미지는 보조 수단으로만 두고, 기관 제공 원본 또는 별도 제작 이미지를 우선 사용합니다."
+      actions={
+        <Link
+          href="/projects/muan-2025-94/reading"
+          className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+        >
+          읽기 보기로 돌아가기
+        </Link>
+      }
+    >
           <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
             <section className="space-y-5">
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -275,8 +209,6 @@ export default function ImageAssetsPage() {
               </article>
             </aside>
           </div>
-        </section>
-      </div>
-    </main>
+    </ProjectAdminShell>
   );
 }

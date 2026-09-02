@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { StatusPill } from "@/components/status-pill";
 
 const audioItems = [
   {
@@ -49,99 +51,31 @@ const reviewChecks = [
   "파일 교체 후 이전 음성이 남아 있지 않은지 확인",
 ];
 
-function StatusPill({ value }: { value: string }) {
-  const tone =
-    value === "업로드 완료" || value === "대본 확인 완료"
-      ? "bg-emerald-100 text-emerald-800"
-      : value === "교체 필요" || value === "행사명 발음 확인" || value === "대본 수정 필요"
-        ? "bg-amber-100 text-amber-800"
-        : value === "미등록"
-          ? "bg-rose-100 text-rose-800"
-          : "bg-slate-100 text-slate-700";
-
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone}`}>{value}</span>;
-}
-
 export default function AudioManagementPage() {
   return (
-    <main className="min-h-screen bg-[#f3f7fc] text-slate-950">
-      <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
-        <aside className="bg-[#071f46] px-6 py-7 text-white">
-          <div className="mb-9">
-            <p className="text-sm font-semibold text-sky-200">Newsletter Studio</p>
-            <h1 className="mt-3 text-2xl font-bold leading-tight">
-              음성 MP3
-              <br />
-              관리
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              외부 TTS로 만든 음성 파일을 기사별로 업로드하고 재생 상태를 검수합니다.
-            </p>
-          </div>
-
-          <nav className="space-y-2">
-            <Link
-              href="/"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              프로젝트 대시보드
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/pages"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              PDF 업로드
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/reading"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              읽기 보기 편집
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/assets"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              이미지 자산
-            </Link>
-            <span className="flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20">
-              음성 MP3
-            </span>
-            <Link
-              href="/projects/muan-2025-94/publish"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              미리보기·발행
-            </Link>
-          </nav>
-
-          <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
-            <p className="text-sm font-bold text-white">MVP 기준</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              음성 생성 기능은 만들지 않고, 외부 TTS에서 제작한 MP3를 업로드해 연결합니다.
-            </p>
-          </div>
-        </aside>
-
-        <section className="px-5 py-6 sm:px-8 lg:px-10">
-          <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-[#184a88]">황토골 무안소식지 2025년 제94호</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
-                음성 MP3 관리
-              </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                읽기 보기에서 정리한 음성 대본을 기준으로 MP3 파일을 연결하고 검수합니다.
-              </p>
-            </div>
-            <Link
-              href="/projects/muan-2025-94/assets"
-              className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-            >
-              이미지 자산으로 돌아가기
-            </Link>
-          </header>
-
+    <ProjectAdminShell
+      active="audio"
+      title="음성 MP3 관리"
+      description="읽기 보기에서 정리한 음성 대본을 기준으로 MP3 파일을 연결하고 검수합니다."
+      sidebarTitle={
+        <>
+          음성 MP3
+          <br />
+          관리
+        </>
+      }
+      sidebarDescription="외부 TTS로 만든 음성 파일을 기사별로 업로드하고 재생 상태를 검수합니다."
+      sidebarNoteTitle="MVP 기준"
+      sidebarNote="음성 생성 기능은 만들지 않고, 외부 TTS에서 제작한 MP3를 업로드해 연결합니다."
+      actions={
+        <Link
+          href="/projects/muan-2025-94/assets"
+          className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+        >
+          이미지 자산으로 돌아가기
+        </Link>
+      }
+    >
           <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
             <section className="space-y-5">
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -311,8 +245,6 @@ export default function AudioManagementPage() {
               </article>
             </aside>
           </div>
-        </section>
-      </div>
-    </main>
+    </ProjectAdminShell>
   );
 }

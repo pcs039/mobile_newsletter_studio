@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { StatusPill } from "@/components/status-pill";
 
 const pageCards = Array.from({ length: 16 }, (_, index) => ({
   number: index + 1,
@@ -27,91 +29,31 @@ const qualityChecks = [
   "클릭 영역을 추가할 페이지를 미리 표시",
 ];
 
-function PageStatusBadge({ status }: { status: string }) {
-  const tone =
-    status === "변환 완료"
-      ? "bg-emerald-100 text-emerald-800"
-      : status === "검수 대기"
-        ? "bg-sky-100 text-sky-800"
-        : "bg-amber-100 text-amber-800";
-
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone}`}>{status}</span>;
-}
-
 export default function ProjectPagesPage() {
   return (
-    <main className="min-h-screen bg-[#f3f7fc] text-slate-950">
-      <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
-        <aside className="bg-[#071f46] px-6 py-7 text-white">
-          <div className="mb-9">
-            <p className="text-sm font-semibold text-sky-200">Newsletter Studio</p>
-            <h1 className="mt-3 text-2xl font-bold leading-tight">
-              PDF·페이지
-              <br />
-              관리
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              원본 PDF를 PC e-book용 페이지 이미지로 변환하고 페이지별 상태를 확인합니다.
-            </p>
-          </div>
-
-          <nav className="space-y-2">
-            <Link
-              href="/"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              프로젝트 대시보드
-            </Link>
-            <Link
-              href="/projects/new"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              새 소식지 생성
-            </Link>
-            <span className="flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20">
-              PDF 업로드
-            </span>
-            <Link
-              href="/projects/muan-2025-94/reading"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              읽기 보기 편집
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/publish"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              미리보기·발행
-            </Link>
-          </nav>
-
-          <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
-            <p className="text-sm font-bold text-white">현재 기준</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              PC는 e-book 원본 보기를 중심으로, 모바일은 다음 단계의 읽기 보기 편집을 중심으로 설계합니다.
-            </p>
-          </div>
-        </aside>
-
-        <section className="px-5 py-6 sm:px-8 lg:px-10">
-          <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-[#184a88]">황토골 무안소식지 2025년 제94호</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
-                PDF 업로드·페이지 관리
-              </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                1차 MVP에서는 실제 변환 전, 업로드 상태와 16쪽 페이지 관리 흐름을 먼저 구현합니다.
-              </p>
-            </div>
-            <Link
-              href="/projects/new"
-              className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-            >
-              기본 정보 수정
-            </Link>
-          </header>
-
+    <ProjectAdminShell
+      active="pages"
+      title="PDF 업로드·페이지 관리"
+      description="1차 MVP에서는 실제 변환 전, 업로드 상태와 16쪽 페이지 관리 흐름을 먼저 구현합니다."
+      sidebarTitle={
+        <>
+          PDF·페이지
+          <br />
+          관리
+        </>
+      }
+      sidebarDescription="원본 PDF를 PC e-book용 페이지 이미지로 변환하고 페이지별 상태를 확인합니다."
+      sidebarNoteTitle="현재 기준"
+      sidebarNote="PC는 e-book 원본 보기를 중심으로, 모바일은 다음 단계의 읽기 보기 편집을 중심으로 설계합니다."
+      actions={
+        <Link
+          href="/projects/new"
+          className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+        >
+          기본 정보 수정
+        </Link>
+      }
+    >
           <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
             <section className="space-y-5">
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -182,7 +124,7 @@ export default function ProjectPagesPage() {
                           <p className="text-sm font-black text-[#092046]">{page.number}쪽</p>
                           <p className="mt-1 text-xs font-semibold text-slate-500">{page.title}</p>
                         </div>
-                        <PageStatusBadge status={page.status} />
+                        <StatusPill value={page.status} />
                       </div>
                     </article>
                   ))}
@@ -234,8 +176,6 @@ export default function ProjectPagesPage() {
               </article>
             </aside>
           </div>
-        </section>
-      </div>
-    </main>
+    </ProjectAdminShell>
   );
 }

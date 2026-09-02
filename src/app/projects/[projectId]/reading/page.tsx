@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { StatusPill } from "@/components/status-pill";
 
 const articleItems = [
   {
@@ -37,19 +39,6 @@ const editSections = [
 
 const previewButtons = ["신청 안내", "전화 연결", "지도 보기"];
 
-function StatusBadge({ status }: { status: string }) {
-  const tone =
-    status === "편집 중"
-      ? "bg-sky-100 text-sky-800"
-      : status === "검수 필요"
-        ? "bg-amber-100 text-amber-800"
-        : status === "초안"
-          ? "bg-indigo-100 text-indigo-800"
-          : "bg-slate-100 text-slate-700";
-
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone}`}>{status}</span>;
-}
-
 function FieldLabel({ children }: { children: string }) {
   return <label className="mb-2 block text-sm font-bold text-[#092046]">{children}</label>;
 }
@@ -66,84 +55,29 @@ function TextInput({ placeholder, defaultValue }: { placeholder: string; default
 
 export default function ReadingEditorPage() {
   return (
-    <main className="min-h-screen bg-[#f3f7fc] text-slate-950">
-      <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
-        <aside className="bg-[#071f46] px-6 py-7 text-white">
-          <div className="mb-9">
-            <p className="text-sm font-semibold text-sky-200">Newsletter Studio</p>
-            <h1 className="mt-3 text-2xl font-bold leading-tight">
-              읽기 보기
-              <br />
-              편집
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              PDF에서 추출한 텍스트를 모바일 기사형 콘텐츠로 다시 정리합니다.
-            </p>
-          </div>
-
-          <nav className="space-y-2">
-            <Link
-              href="/"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              프로젝트 대시보드
-            </Link>
-            <Link
-              href="/projects/new"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              새 소식지 생성
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/pages"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              PDF 업로드
-            </Link>
-            <span className="flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20">
-              읽기 보기 편집
-            </span>
-            <Link
-              href="/projects/muan-2025-94/assets"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              이미지 자산
-            </Link>
-            <Link
-              href="/projects/muan-2025-94/publish"
-              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-            >
-              미리보기·발행
-            </Link>
-          </nav>
-
-          <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
-            <p className="text-sm font-bold text-white">편집 기준</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              자동 추출 텍스트를 그대로 노출하지 않고, 제목·본문·문의처·버튼·대본을 사람이 정리합니다.
-            </p>
-          </div>
-        </aside>
-
-        <section className="px-5 py-6 sm:px-8 lg:px-10">
-          <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-[#184a88]">황토골 무안소식지 2025년 제94호</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
-                모바일 읽기 보기 편집
-              </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                기사 단위로 텍스트, 이미지, 문의처, 버튼, 음성 대본을 정리합니다.
-              </p>
-            </div>
-            <Link
-              href="/projects/muan-2025-94/pages"
-              className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-            >
-              페이지 관리로 돌아가기
-            </Link>
-          </header>
-
+    <ProjectAdminShell
+      active="reading"
+      title="모바일 읽기 보기 편집"
+      description="기사 단위로 텍스트, 이미지, 문의처, 버튼, 음성 대본을 정리합니다."
+      sidebarTitle={
+        <>
+          읽기 보기
+          <br />
+          편집
+        </>
+      }
+      sidebarDescription="PDF에서 추출한 텍스트를 모바일 기사형 콘텐츠로 다시 정리합니다."
+      sidebarNoteTitle="편집 기준"
+      sidebarNote="자동 추출 텍스트를 그대로 노출하지 않고, 제목·본문·문의처·버튼·대본을 사람이 정리합니다."
+      actions={
+        <Link
+          href="/projects/muan-2025-94/pages"
+          className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+        >
+          페이지 관리로 돌아가기
+        </Link>
+      }
+    >
           <div className="grid gap-5 2xl:grid-cols-[300px_1fr_360px]">
             <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
@@ -168,7 +102,7 @@ export default function ReadingEditorPage() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs font-black text-[#184a88]">{article.page}</span>
-                      <StatusBadge status={article.status} />
+                      <StatusPill value={article.status} />
                     </div>
                     <p className="mt-3 text-sm font-black text-[#092046]">{article.title}</p>
                     <p className="mt-2 text-xs leading-5 text-slate-500">{article.summary}</p>
@@ -325,8 +259,6 @@ export default function ReadingEditorPage() {
               </article>
             </aside>
           </div>
-        </section>
-      </div>
-    </main>
+    </ProjectAdminShell>
   );
 }
