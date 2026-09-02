@@ -71,9 +71,12 @@ export default function ProjectPagesPage() {
             <span className="flex w-full items-center justify-between rounded-lg bg-white px-4 py-3 text-left text-sm font-semibold text-[#071f46] shadow-lg shadow-blue-950/20">
               PDF 업로드
             </span>
-            <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
+            <Link
+              href="/projects/muan-2025-94/reading"
+              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/10"
+            >
               읽기 보기 편집
-            </span>
+            </Link>
             <span className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-semibold text-slate-400">
               미리보기·발행
             </span>
@@ -219,9 +222,12 @@ export default function ProjectPagesPage() {
                   페이지 확인 후 모바일 읽기 보기 편집 화면으로 이동합니다. 이 단계에서 기사 제목, 본문,
                   대표 이미지, 문의처, 음성 대본을 정리합니다.
                 </p>
-                <button className="mt-5 w-full rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
+                <Link
+                  href="/projects/muan-2025-94/reading"
+                  className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+                >
                   읽기 보기 편집으로 이동
-                </button>
+                </Link>
               </article>
             </aside>
           </div>
