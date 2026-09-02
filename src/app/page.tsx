@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const navigationItems = [
   { label: "프로젝트", status: "active" },
   { label: "PDF·페이지", status: "ready" },
@@ -135,9 +137,12 @@ export default function Home() {
                 PDF 기반 공공 소식지를 모바일 읽기 콘텐츠와 PC e-book으로 발행합니다.
               </p>
             </div>
-            <button className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
+            <Link
+              href="/projects/new"
+              className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+            >
               + 새 소식지 만들기
-            </button>
+            </Link>
           </header>
 
           <section className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
