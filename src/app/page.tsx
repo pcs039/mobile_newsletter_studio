@@ -33,7 +33,7 @@ export default function Home() {
               제작 관리
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              작업설계도 v0.4 기준의 관리자 MVP 화면
+              작업설계도 v0.5 기준의 관리자 MVP 화면
             </p>
           </div>
 
@@ -119,7 +119,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-bold text-[#092046]">소식지 프로젝트</h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    상태, 작업 현황, 접속자 요약, 복사·통계·보관 액션을 한 화면에서 확인합니다.
+                    가격 옵션, 제작 방식, 작업 현황, 접속자 요약, 복사·통계·보관 액션을 한 화면에서 확인합니다.
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -136,10 +136,11 @@ export default function Home() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
                   <thead className="bg-[#092046] text-white">
                     <tr>
                       <th className="px-4 py-3 font-bold">소식지 정보</th>
+                      <th className="px-4 py-3 font-bold">상품·방식</th>
                       <th className="px-4 py-3 font-bold">상태</th>
                       <th className="px-4 py-3 font-bold">작업 현황</th>
                       <th className="px-4 py-3 font-bold">접속자</th>
@@ -155,6 +156,15 @@ export default function Home() {
                           <p className="mt-1 text-xs font-semibold text-slate-500">
                             {project.organization} · {project.issue} · {project.slug}
                           </p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="space-y-2">
+                            <span className="inline-flex rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">
+                              {project.packageTier}
+                            </span>
+                            <p className="text-sm font-bold text-[#092046]">{project.productionMode}</p>
+                            <p className="text-xs leading-5 text-slate-500">{project.workload}</p>
+                          </div>
                         </td>
                         <td className="px-4 py-4">
                           <StatusPill value={project.status} />
@@ -263,7 +273,7 @@ export default function Home() {
               </article>
 
               <article id="archive-policy" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-[#092046]">운영 기능 v0.4</h3>
+                <h3 className="text-lg font-bold text-[#092046]">운영 기능 v0.5</h3>
                 <div className="mt-4 space-y-3">
                   {projectOperationActions.map((action) => (
                     <div key={action.label} className="rounded-md bg-slate-50 px-3 py-3">

@@ -50,6 +50,10 @@ export type NewsletterProject = {
   organization: string;
   publishDate: string;
   description: string;
+  packageTier?: "basic" | "standard" | "advanced" | "premium" | "retainer";
+  productionMode?: "template" | "hybrid" | "full_image" | "external_ebook";
+  estimatedHours?: string;
+  designerHoursCap?: string;
   previewTitle: string;
   previewDescription: string;
   popupNotice?: string;
@@ -71,6 +75,9 @@ export type DashboardProject = {
   pages: string;
   reading: string;
   audio: string;
+  packageTier: string;
+  productionMode: string;
+  workload: string;
   updated: string;
   views: {
     today: string;

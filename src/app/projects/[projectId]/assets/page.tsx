@@ -17,7 +17,7 @@ export default function ImageAssetsPage() {
         </>
       }
       sidebarDescription="기사 대표 이미지, 배경, 배너, PDF 발췌 이미지를 출처와 권리 기준으로 관리합니다."
-      sidebarNoteTitle="v0.2 반영"
+      sidebarNoteTitle="v0.5 반영"
       sidebarNote="PDF 발췌 이미지는 보조 수단으로만 두고, 기관 제공 원본 또는 별도 제작 이미지를 우선 사용합니다."
       actions={
         <Link

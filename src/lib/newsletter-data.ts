@@ -127,6 +127,10 @@ export const sampleNewsletter: NewsletterProject = {
   organization: "무안군",
   publishDate: "2026.09.02",
   description: "군정 주요 소식, 생활 지원 안내, 문화 행사 일정을 모바일 읽기 보기와 PC e-book으로 제공합니다.",
+  packageTier: "standard",
+  productionMode: "hybrid",
+  estimatedHours: "18~24시간",
+  designerHoursCap: "6시간",
   previewTitle: "황토골 무안소식지 2025년 제94호",
   previewDescription: "무안군 주요 정책과 생활 정보를 모바일 읽기 보기와 PC e-book으로 확인합니다.",
   popupNotice: "본 화면은 1차 MVP 검수용 샘플입니다.",
@@ -163,6 +167,9 @@ export const dashboardProjects: DashboardProject[] = [
     pages: "16쪽",
     reading: "편집 중",
     audio: "미등록",
+    packageTier: "표준형",
+    productionMode: "템플릿+이미지 혼합",
+    workload: "예상 18~24h · 디자인 6h 상한",
     updated: "2026.09.02",
     views: {
       today: "184",
@@ -187,6 +194,9 @@ export const dashboardProjects: DashboardProject[] = [
     pages: "8쪽",
     reading: "구조 확인",
     audio: "보류",
+    packageTier: "기본형",
+    productionMode: "템플릿 중심",
+    workload: "예상 8~12h · 디자인 최소",
     updated: "2026.09.01",
     views: {
       today: "62",
@@ -211,6 +221,9 @@ export const dashboardProjects: DashboardProject[] = [
     pages: "12쪽",
     reading: "대기",
     audio: "대기",
+    packageTier: "고급형",
+    productionMode: "맞춤 블록 혼합",
+    workload: "예상 30~40h · 별도 검수",
     updated: "2026.08.31",
     views: {
       today: "0",
@@ -237,6 +250,20 @@ export const projectOperationActions: LabelStatusDetail[] = [
   { label: "복사", status: "1.5차 핵심", detail: "월간 소식지는 전월 구성을 복제해 제작" },
   { label: "통계", status: "MVP 보강", detail: "목록과 발행 화면에서 접속 현황 확인" },
   { label: "보관", status: "삭제 대체", detail: "실제 삭제보다 복구 가능한 보관 상태 우선" },
+];
+
+export const packageOptions: LabelStatusDetail[] = [
+  { label: "기본형", status: "70~150만원", detail: "템플릿 중심, 디자이너 투입 최소, 빠른 제작" },
+  { label: "표준형", status: "150~300만원", detail: "템플릿과 대표 이미지 제작을 혼합한 권장 상품" },
+  { label: "고급형", status: "300~500만원", detail: "맞춤 블록, 이미지 자산 보강, 검수 범위 확대" },
+  { label: "프리미엄", status: "별도 견적", detail: "전체 모바일 이미지 제작 등 디자인 대행형 옵션" },
+];
+
+export const productionModeOptions: LabelStatusDetail[] = [
+  { label: "템플릿 중심", status: "기본", detail: "반복 소식지에 적합하며 수익성 관리에 유리" },
+  { label: "템플릿+이미지 혼합", status: "권장", detail: "읽기 보기 블록과 이미지 자산을 함께 구성" },
+  { label: "전체 이미지형", status: "고급", detail: "고객 요구가 있을 때만 프리미엄 옵션으로 제한" },
+  { label: "외부 e-book 연동", status: "선택", detail: "PC e-book은 TOAST 등 외부 솔루션 병행 가능" },
 ];
 
 export const workflowSteps = [

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { packageOptions, productionModeOptions } from "@/lib/newsletter-data";
 
 const requiredFields = [
   "소식지명",
@@ -7,6 +8,8 @@ const requiredFields = [
   "발행월",
   "공개 주소",
   "대표 색상",
+  "상품 옵션",
+  "제작 방식",
 ];
 
 const publishOptions = [
@@ -56,7 +59,7 @@ export default function NewProjectPage() {
               만들기
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              프로젝트 정보를 먼저 정리한 뒤 PDF 업로드와 페이지 변환으로 넘어갑니다.
+              상품 옵션과 제작 방식을 먼저 정한 뒤 PDF 업로드와 페이지 변환으로 넘어갑니다.
             </p>
           </div>
 
@@ -101,7 +104,7 @@ export default function NewProjectPage() {
                 새 모바일 소식지 기본 정보
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                1차 MVP에서는 입력 화면과 이동 흐름을 먼저 만들고, 실제 저장은 이후 DB 단계에서 연결합니다.
+                1차 MVP에서는 입력 화면과 이동 흐름을 먼저 만들고, 실제 저장은 이후 Supabase 단계에서 연결합니다.
               </p>
             </div>
             <Link
@@ -163,9 +166,40 @@ export default function NewProjectPage() {
                     <option>비공개</option>
                   </select>
                 </div>
+
+                <div>
+                  <FieldLabel required>상품 옵션</FieldLabel>
+                  <select className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100">
+                    <option>표준형 - 150~300만원</option>
+                    <option>기본형 - 70~150만원</option>
+                    <option>고급형 - 300~500만원</option>
+                    <option>프리미엄 - 별도 견적</option>
+                    <option>월간 운영형 - 별도 계약</option>
+                  </select>
+                </div>
+
+                <div>
+                  <FieldLabel required>제작 방식</FieldLabel>
+                  <select className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100">
+                    <option>템플릿+이미지 혼합</option>
+                    <option>템플릿 중심</option>
+                    <option>전체 이미지형</option>
+                    <option>외부 e-book 연동형</option>
+                  </select>
+                </div>
+
+                <div>
+                  <FieldLabel>예상 작업시간</FieldLabel>
+                  <TextInput placeholder="예: 18~24시간" />
+                </div>
+
+                <div>
+                  <FieldLabel>디자이너 투입 상한</FieldLabel>
+                  <TextInput placeholder="예: 6시간 또는 별도 견적" />
+                </div>
               </div>
 
-              <div className="mt-7 rounded-lg border border-dashed border-sky-200 bg-[#f4f8ff] p-5">
+              <div className="mt-7 rounded-lg border border-dashed border-sky-300 bg-[#eaf2ff] p-5">
                 <h3 className="text-base font-bold text-[#092046]">다음 단계: PDF 업로드</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   프로젝트 정보를 만든 뒤 PDF 파일을 업로드합니다. 업로드된 PDF는 PC e-book용 페이지 이미지로 변환하고,
@@ -190,6 +224,36 @@ export default function NewProjectPage() {
             </form>
 
             <aside className="space-y-5">
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-bold text-[#092046]">가격 옵션 기준</h3>
+                <div className="mt-4 space-y-3">
+                  {packageOptions.map((option) => (
+                    <div key={option.label} className="rounded-lg bg-slate-50 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-bold text-[#092046]">{option.label}</p>
+                        <span className="text-xs font-black text-[#184a88]">{option.status}</span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{option.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-bold text-[#092046]">제작 방식 기준</h3>
+                <div className="mt-4 space-y-3">
+                  {productionModeOptions.map((option) => (
+                    <div key={option.label} className="rounded-lg bg-slate-50 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-bold text-[#092046]">{option.label}</p>
+                        <span className="text-xs font-black text-[#184a88]">{option.status}</span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{option.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">공개 화면 구성</h3>
                 <div className="mt-4 space-y-3">
