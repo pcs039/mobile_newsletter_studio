@@ -165,7 +165,8 @@ function mapProjectRowToDashboardProject(project: NewsletterProjectRow): Dashboa
 
 function getRequestHeaders(useServiceRole = false) {
   const config = getSupabaseConfigStatus();
-  const key = useServiceRole ? process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() : config.anonKey;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const key = useServiceRole ? serviceRoleKey : serviceRoleKey || config.anonKey;
 
   if (!key) {
     return null;

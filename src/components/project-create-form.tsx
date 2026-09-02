@@ -113,6 +113,7 @@ export function ProjectCreateForm() {
       message: "저장되었습니다. 대시보드 목록으로 이동합니다.",
     });
 
+    router.refresh();
     router.push("/");
   }
 
