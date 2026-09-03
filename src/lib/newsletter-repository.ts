@@ -138,10 +138,12 @@ export type ProjectDistributionGroup = {
 export type ProjectSendCampaign = {
   id: string;
   channel: string;
+  campaignType: string;
   targetGroupId: string;
   targetGroupName: string;
   messageTitle: string;
   publicUrl: string;
+  statusCode: DistributionStatus;
   status: string;
   sentAt: string;
   note: string;
@@ -166,6 +168,7 @@ export type CreateProjectRecipientGroupInput = {
 export type CreateProjectSendCampaignInput = {
   projectSlug: string;
   channel: DistributionChannel;
+  campaignType: DistributionCampaignType;
   targetGroupId?: string;
   targetGroupName?: string;
   messageTitle: string;
@@ -173,6 +176,17 @@ export type CreateProjectSendCampaignInput = {
   status: DistributionStatus;
   sentAt?: string;
   note?: string;
+};
+
+export type UpdateProjectSendCampaignStatusInput = {
+  projectSlug: string;
+  campaignId: string;
+  status: DistributionStatus;
+};
+
+export type ArchiveProjectSendCampaignInput = {
+  projectSlug: string;
+  campaignId: string;
 };
 
 export type CreateProjectDistributionResult =
@@ -459,6 +473,14 @@ type ProjectViewStats = {
 
 type DistributionChannel = "kakao" | "sms" | "email" | "qr" | "manual";
 type DistributionStatus = "draft" | "ready" | "sent" | "failed";
+type DistributionCampaignType =
+  | "first_notice"
+  | "second_notice"
+  | "reminder"
+  | "fallback_sms"
+  | "qr_share"
+  | "test"
+  | "other";
 type ProjectSurveyStatus = "draft" | "open" | "closed";
 type ProjectSurveyKind = "survey" | "event";
 type ProjectSurveyQuestionType = "single_choice" | "multiple_choice" | "short_text" | "long_text" | "scale";
@@ -478,6 +500,7 @@ type NewsletterSendCampaignRow = {
   id: string;
   project_id: string;
   channel: DistributionChannel;
+  campaign_type: DistributionCampaignType | null;
   target_group_id: string | null;
   target_group_name: string | null;
   message_title: string;
@@ -755,6 +778,16 @@ const distributionStatusLabels: Record<DistributionStatus, string> = {
   ready: "발송 준비",
   sent: "발송 완료",
   failed: "발송 실패",
+};
+
+const distributionCampaignTypeLabels: Record<DistributionCampaignType, string> = {
+  first_notice: "1차 안내",
+  second_notice: "2차 안내",
+  reminder: "재안내",
+  fallback_sms: "미수신자 문자",
+  qr_share: "QR·인쇄물 공유",
+  test: "테스트 기록",
+  other: "기타 공유",
 };
 
 const surveyKindLabels: Record<ProjectSurveyKind, string> = {
@@ -1255,13 +1288,17 @@ function mapRecipientGroupRow(row: NewsletterRecipientGroupRow): ProjectDistribu
 }
 
 function mapSendCampaignRow(row: NewsletterSendCampaignRow): ProjectSendCampaign {
+  const campaignType = row.campaign_type ?? "first_notice";
+
   return {
     id: row.id,
     channel: distributionChannelLabels[row.channel] ?? row.channel,
+    campaignType: distributionCampaignTypeLabels[campaignType] ?? campaignType,
     targetGroupId: row.target_group_id || "",
     targetGroupName: row.target_group_name || "대상 그룹 미지정",
     messageTitle: row.message_title,
     publicUrl: row.public_url || "",
+    statusCode: row.status,
     status: distributionStatusLabels[row.status] ?? row.status,
     sentAt: row.sent_at ? formatCompactDateTime(row.sent_at) : "발송일 미정",
     note: row.note || "메모 없음",
@@ -1844,7 +1881,7 @@ export async function getProjectDistribution(projectSlug: string): Promise<Proje
       `/rest/v1/newsletter_recipient_groups?select=id,project_id,name,description,recipient_count,channel_note,created_at,updated_at&project_id=eq.${encodedProjectId}&order=updated_at.desc`,
     );
     const campaignEndpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_send_campaigns?select=id,project_id,channel,target_group_id,target_group_name,message_title,public_url,status,sent_at,note,created_at,updated_at&project_id=eq.${encodedProjectId}&order=created_at.desc`,
+      `/rest/v1/newsletter_send_campaigns?select=id,project_id,channel,campaign_type,target_group_id,target_group_name,message_title,public_url,status,sent_at,note,created_at,updated_at&project_id=eq.${encodedProjectId}&deleted_at=is.null&order=created_at.desc`,
     );
 
     if (!groupEndpoint || !campaignEndpoint) {
@@ -2157,6 +2194,7 @@ export async function createProjectSendCampaign(
       body: JSON.stringify({
         project_id: project.id,
         channel: input.channel,
+        campaign_type: input.campaignType,
         target_group_id: targetGroupId,
         target_group_name: targetGroupName,
         message_title: messageTitle,
@@ -2187,6 +2225,175 @@ export async function createProjectSendCampaign(
       ok: false,
       status: "request_failed",
       message: "발송 기록 저장 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function updateProjectSendCampaignStatus(
+  input: UpdateProjectSendCampaignStatusInput,
+): Promise<CreateProjectDistributionResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const campaignId = input.campaignId.trim();
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 발송 상태를 변경합니다.",
+    };
+  }
+
+  if (!projectSlug || !campaignId) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트와 발송 기록 ID는 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_send_campaigns?id=eq.${encodeURIComponent(campaignId)}&project_id=eq.${encodeURIComponent(
+        project.id,
+      )}&deleted_at=is.null`,
+    );
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "발송 상태 변경 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        status: input.status,
+        updated_at: new Date().toISOString(),
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "발송 상태 변경에 실패했습니다. Supabase 테이블과 권한을 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "발송 상태를 변경했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "발송 상태 변경 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function archiveProjectSendCampaign(
+  input: ArchiveProjectSendCampaignInput,
+): Promise<CreateProjectDistributionResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const campaignId = input.campaignId.trim();
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 발송 기록을 보관합니다.",
+    };
+  }
+
+  if (!projectSlug || !campaignId) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트와 발송 기록 ID는 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_send_campaigns?id=eq.${encodeURIComponent(campaignId)}&project_id=eq.${encodeURIComponent(
+        project.id,
+      )}&deleted_at=is.null`,
+    );
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "발송 기록 보관 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const now = new Date().toISOString();
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        deleted_at: now,
+        updated_at: now,
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "발송 기록 보관에 실패했습니다. Supabase 테이블과 권한을 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "발송 기록을 보관했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "발송 기록 보관 중 오류가 발생했습니다.",
     };
   }
 }

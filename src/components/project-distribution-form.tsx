@@ -94,6 +94,7 @@ export function ProjectDistributionForm({ groups, projectSlug, publicUrl }: Proj
       action: "createCampaign",
       projectSlug,
       channel: getText(formData, "channel"),
+      campaignType: getText(formData, "campaignType"),
       targetGroupId,
       targetGroupName: selectedGroup?.name ?? getText(formData, "targetGroupName"),
       messageTitle: getText(formData, "messageTitle"),
@@ -179,6 +180,22 @@ export function ProjectDistributionForm({ groups, projectSlug, publicUrl }: Proj
         <div className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm font-bold text-[#092046]">
+              발송 구분
+              <select
+                name="campaignType"
+                defaultValue="first_notice"
+                className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#2f73b7] focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="first_notice">1차 안내</option>
+                <option value="second_notice">2차 안내</option>
+                <option value="reminder">재안내</option>
+                <option value="fallback_sms">미수신자 문자</option>
+                <option value="qr_share">QR·인쇄물 공유</option>
+                <option value="test">테스트 기록</option>
+                <option value="other">기타 공유</option>
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-[#092046]">
               채널
               <select
                 name="channel"
@@ -192,6 +209,8 @@ export function ProjectDistributionForm({ groups, projectSlug, publicUrl }: Proj
                 <option value="manual">직접 공유</option>
               </select>
             </label>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm font-bold text-[#092046]">
               상태
               <select

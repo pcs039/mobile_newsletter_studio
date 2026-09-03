@@ -17,6 +17,8 @@ create table if not exists newsletter_send_campaigns (
   project_id uuid not null references newsletter_projects(id) on delete cascade,
   channel text not null default 'kakao'
     check (channel in ('kakao', 'sms', 'email', 'qr', 'manual')),
+  campaign_type text not null default 'first_notice'
+    check (campaign_type in ('first_notice', 'second_notice', 'reminder', 'fallback_sms', 'qr_share', 'test', 'other')),
   target_group_id uuid references newsletter_recipient_groups(id) on delete set null,
   target_group_name text,
   message_title text not null,
@@ -25,12 +27,37 @@ create table if not exists newsletter_send_campaigns (
     check (status in ('draft', 'ready', 'sent', 'failed')),
   sent_at timestamptz,
   note text,
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
+alter table newsletter_send_campaigns
+  add column if not exists campaign_type text not null default 'first_notice';
+
+alter table newsletter_send_campaigns
+  add column if not exists deleted_at timestamptz;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'newsletter_send_campaigns_campaign_type_check'
+  ) then
+    alter table newsletter_send_campaigns
+      add constraint newsletter_send_campaigns_campaign_type_check
+      check (campaign_type in ('first_notice', 'second_notice', 'reminder', 'fallback_sms', 'qr_share', 'test', 'other'));
+  end if;
+end;
+$$;
+
 create index if not exists newsletter_send_campaigns_project_id_idx
   on newsletter_send_campaigns(project_id);
+
+create index if not exists newsletter_send_campaigns_active_project_id_idx
+  on newsletter_send_campaigns(project_id)
+  where deleted_at is null;
 
 create index if not exists newsletter_send_campaigns_target_group_id_idx
   on newsletter_send_campaigns(target_group_id);

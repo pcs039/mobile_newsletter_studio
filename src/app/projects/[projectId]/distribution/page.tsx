@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ProjectDistributionForm } from "@/components/project-distribution-form";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { ProjectSendCampaignActions } from "@/components/project-send-campaign-actions";
 import { StatusPill } from "@/components/status-pill";
 import { getProjectDistribution, getProjectWorkspace } from "@/lib/newsletter-repository";
 
@@ -186,10 +187,11 @@ export default async function ProjectDistributionPage({ params }: { params: Prom
 
                   return (
                     <article key={campaign.id} className="px-5 py-4">
-                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_130px_130px] lg:items-start">
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_130px_130px_180px] lg:items-start">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <h4 className="font-black text-[#092046] [word-break:keep-all]">{campaign.messageTitle}</h4>
+                            <StatusPill value={campaign.campaignType} />
                             <StatusPill value={campaign.channel} />
                             <StatusPill value={campaign.status} />
                           </div>
@@ -213,6 +215,11 @@ export default async function ProjectDistributionPage({ params }: { params: Prom
                           <p className="mt-1 whitespace-nowrap text-sm font-black text-[#092046]">{updated.date}</p>
                           <p className="whitespace-nowrap text-xs font-black text-[#184a88]">{updated.time}</p>
                         </div>
+                        <ProjectSendCampaignActions
+                          campaignId={campaign.id}
+                          projectSlug={projectId}
+                          statusCode={campaign.statusCode}
+                        />
                       </div>
                     </article>
                   );
