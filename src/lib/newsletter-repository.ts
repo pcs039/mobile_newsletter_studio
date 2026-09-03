@@ -905,8 +905,6 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     ebookUrl: `/newsletters/${project.slug}/ebook`,
     pageCount: project.page_count,
     updated: formatCompactDateTime(project.updated_at),
-<<<<<<< ours
-=======
   };
 }
 
@@ -925,7 +923,6 @@ function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicIn
     productionMode: project.production_mode,
     estimatedHours: project.estimated_hours || "",
     designerHoursCap: project.designer_hours_cap || "",
->>>>>>> theirs
   };
 }
 
