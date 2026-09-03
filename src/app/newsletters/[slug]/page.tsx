@@ -2,6 +2,7 @@ import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import {
   getProjectContent,
+  getPublicProjectSurveys,
   getProjectWorkspace,
   type ProjectContentArticle,
   type ProjectContentBlock,
@@ -70,24 +71,6 @@ function getYoutubeId(value: string) {
   }
 
   return "";
-}
-
-function PublicUnavailablePage({
-  title,
-  message,
-}: {
-  title: string;
-  message: string;
-}) {
-  return (
-    <main className="grid min-h-screen place-items-center bg-[#edf4fb] px-5 text-slate-950">
-      <section className="w-full max-w-[520px] rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-blue-950/10">
-        <p className="text-sm font-black text-[#184a88]">DataDiction Newsletter</p>
-        <h1 className="mt-3 text-2xl font-black leading-tight text-[#092046]">{title}</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600 [word-break:keep-all]">{message}</p>
-      </section>
-    </main>
-  );
 }
 
 function renderContentBlock(article: ProjectContentArticle, block: ProjectContentBlock) {
@@ -179,6 +162,24 @@ function renderContentBlock(article: ProjectContentArticle, block: ProjectConten
   return null;
 }
 
+function PublicUnavailablePage({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-[#edf4fb] px-5 text-slate-950">
+      <section className="w-full max-w-[520px] rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-blue-950/10">
+        <p className="text-sm font-black text-[#184a88]">DataDiction Newsletter</p>
+        <h1 className="mt-3 text-2xl font-black leading-tight text-[#092046]">{title}</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-600 [word-break:keep-all]">{message}</p>
+      </section>
+    </main>
+  );
+}
+
 export default async function PublicNewsletterPage({ params, searchParams }: PublicNewsletterPageProps) {
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
@@ -189,7 +190,11 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const backToEditorHref = previewArticleId
     ? `/projects/${slug}/reading?articleId=${previewArticleId}`
     : `/projects/${slug}/reading`;
-  const [workspace, contentData] = await Promise.all([getProjectWorkspace(slug), getProjectContent(slug)]);
+  const [workspace, contentData, surveyData] = await Promise.all([
+    getProjectWorkspace(slug),
+    getProjectContent(slug),
+    getPublicProjectSurveys(slug),
+  ]);
   const project = workspace.project;
   const isPublished = project?.status === "발행 완료";
   const isPubliclyVisible = isAdminPreview || isPublished;
@@ -322,6 +327,40 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               ) : null}
             </div>
           )}
+          {surveyData.surveys.length > 0 ? (
+            <section className="rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-5">
+              <p className="text-xs font-black text-[#184a88]">참여하기</p>
+              <h2 className="mt-2 text-xl font-black leading-tight text-[#092046]">설문·이벤트</h2>
+              <p className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">
+                모바일 소식지를 읽은 뒤 만족도 조사나 이벤트에 참여할 수 있습니다.
+              </p>
+              <div className="mt-4 grid gap-3">
+                {surveyData.surveys.map((survey) => (
+                  <Link
+                    key={survey.id}
+                    href={`/newsletters/${slug}/survey/${survey.id}`}
+                    className="block rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:border-[#2f73b7] hover:bg-white"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">
+                        {survey.kind}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                        {survey.questionCount}개 문항
+                      </span>
+                    </div>
+                    <h3 className="mt-3 text-base font-black leading-7 text-[#092046] [word-break:keep-all]">
+                      {survey.title}
+                    </h3>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">
+                      {survey.description}
+                    </p>
+                    <p className="mt-3 text-sm font-black text-[#184a88]">참여하기</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </section>
       </section>
     </main>

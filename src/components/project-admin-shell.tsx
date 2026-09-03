@@ -4,7 +4,7 @@ import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
-type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish" | "distribution";
+type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey";
 
 const projectNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
   { key: "pages", label: "원본 자료", path: "pages", guide: "PDF·지면" },
@@ -13,6 +13,7 @@ const projectNavigation: Array<{ key: ProjectSection; label: string; path: strin
   { key: "audio", label: "음성·대본", path: "audio", guide: "MP3·검수" },
   { key: "publish", label: "검수·발행", path: "publish", guide: "URL·QR" },
   { key: "distribution", label: "배포 운영", path: "distribution", guide: "대상·발송" },
+  { key: "survey", label: "설문·이벤트", path: "survey", guide: "참여·응답" },
 ];
 
 export async function ProjectAdminShell({
@@ -59,7 +60,9 @@ export async function ProjectAdminShell({
           </div>
 
           <AdminMainNavigation
-            active={active === "publish" ? "publish" : active === "distribution" ? "distribution" : "edit"}
+            active={
+              active === "publish" ? "publish" : active === "distribution" ? "distribution" : active === "survey" ? "survey" : "edit"
+            }
             projectId={projectId}
           />
 
@@ -105,7 +108,7 @@ export async function ProjectAdminShell({
                 순서대로 진행하되, 필요한 단계는 언제든 다시 열 수 있습니다.
               </p>
             </div>
-            <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+            <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-7">
               {projectNavigation.map((item, index) => {
                 const isActive = active === item.key;
                 const href = `/projects/${projectId}/${item.path}`;

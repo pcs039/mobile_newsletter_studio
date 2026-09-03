@@ -207,6 +207,7 @@ export type ProjectSurveyQuestion = {
   order: number;
   title: string;
   type: string;
+  typeCode: ProjectSurveyQuestionType;
   options: string[];
   isRequired: boolean;
   updated: string;
@@ -217,7 +218,9 @@ export type ProjectSurveyItem = {
   title: string;
   description: string;
   kind: string;
+  kindCode: ProjectSurveyKind;
   status: string;
+  statusCode: ProjectSurveyStatus;
   respondentTarget: string;
   startAt: string;
   endAt: string;
@@ -231,6 +234,12 @@ export type ProjectSurveyItem = {
 
 export type ProjectSurveyResult = {
   surveys: ProjectSurveyItem[];
+  source: "supabase" | "unconfigured" | "error" | "not_found";
+  message: string;
+};
+
+export type PublicProjectSurveyResult = {
+  survey: ProjectSurveyItem | null;
   source: "supabase" | "unconfigured" | "error" | "not_found";
   message: string;
 };
@@ -258,6 +267,12 @@ export type CreateProjectSurveyQuestionInput = {
   isRequired?: boolean;
 };
 
+export type SubmitProjectSurveyResponseInput = {
+  projectSlug: string;
+  surveyId: string;
+  answers: Record<string, string | string[]>;
+};
+
 export type CreateProjectSurveyResult =
   | {
       ok: true;
@@ -266,6 +281,18 @@ export type CreateProjectSurveyResult =
   | {
       ok: false;
       status: "not_configured" | "request_failed" | "not_found" | "invalid_input";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type SubmitProjectSurveyResponseResult =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "request_failed" | "not_found" | "invalid_input" | "closed";
       message: string;
       httpStatus?: number;
     };
@@ -481,9 +508,9 @@ type DistributionCampaignType =
   | "qr_share"
   | "test"
   | "other";
-type ProjectSurveyStatus = "draft" | "open" | "closed";
-type ProjectSurveyKind = "survey" | "event";
-type ProjectSurveyQuestionType = "single_choice" | "multiple_choice" | "short_text" | "long_text" | "scale";
+export type ProjectSurveyStatus = "draft" | "open" | "closed";
+export type ProjectSurveyKind = "survey" | "event";
+export type ProjectSurveyQuestionType = "single_choice" | "multiple_choice" | "short_text" | "long_text" | "scale";
 
 type NewsletterRecipientGroupRow = {
   id: string;
@@ -1317,6 +1344,7 @@ function mapSurveyQuestionRow(row: NewsletterSurveyQuestionRow): ProjectSurveyQu
     order: row.question_order,
     title: row.title,
     type: surveyQuestionTypeLabels[row.question_type] ?? row.question_type,
+    typeCode: row.question_type,
     options: Array.isArray(row.options) ? row.options : [],
     isRequired: row.is_required,
     updated: formatCompactDateTime(row.updated_at),
@@ -1333,7 +1361,9 @@ function mapSurveyRow(
     title: row.title,
     description: row.description || "설명 미입력",
     kind: surveyKindLabels[row.survey_kind] ?? row.survey_kind,
+    kindCode: row.survey_kind,
     status: surveyStatusLabels[row.status] ?? row.status,
+    statusCode: row.status,
     respondentTarget: row.respondent_target || "대상 미지정",
     startAt: formatOptionalCompactDateTime(row.start_at),
     endAt: formatOptionalCompactDateTime(row.end_at),
@@ -2488,6 +2518,28 @@ export async function getProjectSurveys(projectSlug: string): Promise<ProjectSur
   }
 }
 
+export async function getPublicProjectSurveys(projectSlug: string): Promise<ProjectSurveyResult> {
+  const result = await getProjectSurveys(projectSlug);
+
+  return {
+    ...result,
+    surveys: result.surveys.filter((survey) => survey.statusCode === "open" && survey.questions.length > 0),
+  };
+}
+
+export async function getPublicProjectSurvey(
+  projectSlug: string,
+  surveyId: string,
+): Promise<PublicProjectSurveyResult> {
+  const result = await getPublicProjectSurveys(projectSlug);
+
+  return {
+    survey: result.surveys.find((survey) => survey.id === surveyId) ?? null,
+    source: result.source,
+    message: result.source === "supabase" ? "공개 설문·이벤트 참여 화면을 표시합니다." : result.message,
+  };
+}
+
 export async function createProjectSurvey(input: CreateProjectSurveyInput): Promise<CreateProjectSurveyResult> {
   const config = getSupabaseConfigStatus();
   const headers = getRequestHeaders(true);
@@ -2657,6 +2709,174 @@ export async function createProjectSurveyQuestion(
       ok: false,
       status: "request_failed",
       message: "문항 저장 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+function normalizeSurveyAnswer(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
+  }
+
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isEmptySurveyAnswer(value: string | string[]) {
+  return Array.isArray(value) ? value.length === 0 : value.length === 0;
+}
+
+export async function submitProjectSurveyResponse(
+  input: SubmitProjectSurveyResponseInput,
+): Promise<SubmitProjectSurveyResponseResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const surveyId = input.surveyId.trim();
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 설문 응답을 저장합니다.",
+    };
+  }
+
+  if (!projectSlug || !surveyId) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트와 설문 ID는 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const encodedProjectId = encodeURIComponent(project.id);
+    const encodedSurveyId = encodeURIComponent(surveyId);
+    const surveyEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_surveys?select=id,project_id,status,start_at,end_at&project_id=eq.${encodedProjectId}&id=eq.${encodedSurveyId}&limit=1`,
+    );
+    const questionEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_survey_questions?select=id,survey_id,project_id,title,question_type,options,is_required&project_id=eq.${encodedProjectId}&survey_id=eq.${encodedSurveyId}&order=question_order.asc`,
+    );
+
+    if (!surveyEndpoint || !questionEndpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "설문 응답 저장 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const [surveyResponse, questionResponse] = await Promise.all([
+      fetch(surveyEndpoint, { headers, cache: "no-store" }),
+      fetch(questionEndpoint, { headers, cache: "no-store" }),
+    ]);
+
+    if (!surveyResponse.ok || !questionResponse.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "설문 상태와 문항을 확인하지 못했습니다.",
+        httpStatus: surveyResponse.ok ? questionResponse.status : surveyResponse.status,
+      };
+    }
+
+    const surveyRows = (await surveyResponse.json()) as Array<
+      Pick<NewsletterSurveyRow, "id" | "project_id" | "status" | "start_at" | "end_at">
+    >;
+    const questionRows = (await questionResponse.json()) as Array<
+      Pick<NewsletterSurveyQuestionRow, "id" | "title" | "question_type" | "options" | "is_required">
+    >;
+    const survey = surveyRows[0];
+
+    if (!survey || questionRows.length === 0) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "참여 가능한 설문을 찾지 못했습니다.",
+      };
+    }
+
+    const now = Date.now();
+    const startsAt = survey.start_at ? Date.parse(survey.start_at) : null;
+    const endsAt = survey.end_at ? Date.parse(survey.end_at) : null;
+
+    if (survey.status !== "open" || (startsAt && startsAt > now) || (endsAt && endsAt < now)) {
+      return {
+        ok: false,
+        status: "closed",
+        message: "현재 응답을 받을 수 없는 설문입니다.",
+      };
+    }
+
+    const answers = Object.fromEntries(
+      Object.entries(input.answers ?? {}).map(([questionId, value]) => [questionId, normalizeSurveyAnswer(value)]),
+    ) as Record<string, string | string[]>;
+    const missingRequired = questionRows.find((question) => question.is_required && isEmptySurveyAnswer(answers[question.id] ?? ""));
+
+    if (missingRequired) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: `"${missingRequired.title}" 문항에 응답해 주세요.`,
+      };
+    }
+
+    const responseEndpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_survey_responses");
+
+    if (!responseEndpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "설문 응답 저장 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(responseEndpoint, {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        project_id: project.id,
+        survey_id: survey.id,
+        response_payload: {
+          answers,
+          submittedAt: new Date().toISOString(),
+        },
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "설문 응답 저장에 실패했습니다. Supabase 테이블과 권한을 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "응답을 저장했습니다. 참여해 주셔서 감사합니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "설문 응답 저장 중 오류가 발생했습니다.",
     };
   }
 }
