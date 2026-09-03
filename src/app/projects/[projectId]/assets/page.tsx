@@ -122,7 +122,9 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                         </div>
                         <p className="mt-3 text-sm font-semibold text-slate-600">사용 위치: {asset.usage}</p>
                         <div className="mt-3 flex items-end justify-between gap-3">
-                          <p className="text-xs font-semibold text-slate-500">최근 수정 {asset.updated}</p>
+                          <p className="whitespace-nowrap text-xs font-semibold text-slate-500">
+                            최근 수정 {asset.updated}
+                          </p>
                           <ProjectFileDeleteButton
                             fileLabel={asset.title}
                             kind="asset_image"

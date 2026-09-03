@@ -457,7 +457,7 @@ function formatDate(value: string | null) {
     .replace(/\s/g, "");
 }
 
-function formatShortDate(value: string | null) {
+function formatCompactDateTime(value: string | null) {
   if (!value) {
     return "-";
   }
@@ -468,8 +468,14 @@ function formatShortDate(value: string | null) {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(value));
+  const timeKey = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
 
-  return dateKey.slice(2);
+  return `${dateKey.slice(2)} ${timeKey}`;
 }
 
 function makeIssueLabel(input: CreateNewsletterProjectInput) {
@@ -606,7 +612,7 @@ function mapProjectRowToDashboardProject(
     packageTier: packageTierLabels[project.package_tier],
     productionMode: productionModeLabels[project.production_mode],
     workload: makeWorkload(project),
-    updated: formatShortDate(project.updated_at),
+    updated: formatCompactDateTime(project.updated_at),
     views: {
       today: formatCount(stats.today),
       yesterday: formatCount(stats.yesterday),
@@ -832,7 +838,7 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     publicUrl: `/newsletters/${project.slug}`,
     ebookUrl: `/newsletters/${project.slug}/ebook`,
     pageCount: project.page_count,
-    updated: formatDate(project.updated_at),
+    updated: formatCompactDateTime(project.updated_at),
   };
 }
 
@@ -844,7 +850,7 @@ function mapPageRowToProjectPageImage(page: NewsletterPageRow): ProjectPageImage
     imagePath: page.image_path,
     previewHref: makeStoragePreviewHref("page-images", page.image_path),
     status: pageImageStatusLabels[page.image_status] ?? page.image_status,
-    updated: formatDate(page.updated_at),
+    updated: formatCompactDateTime(page.updated_at),
   };
 }
 
@@ -857,7 +863,7 @@ function mapProjectRowToOriginalPdf(project: NewsletterProjectRow): ProjectOrigi
     fileName: project.pdf_original_file_name || "PDF 원본",
     path: project.pdf_original_path,
     previewHref: makeStoragePreviewHref("pdf-originals", project.pdf_original_path) ?? "",
-    uploadedAt: formatDate(project.pdf_original_uploaded_at),
+    uploadedAt: formatCompactDateTime(project.pdf_original_uploaded_at),
   };
 }
 
@@ -873,7 +879,7 @@ function mapAssetRowToProjectAssetFile(asset: NewsletterAssetRow): ProjectAssetF
     quality: asset.quality_status || "검수 대기",
     usage: asset.usage_note || "사용 위치 미지정",
     review: asset.is_approved ? "검수 완료" : "검수 대기",
-    updated: formatDate(asset.updated_at),
+    updated: formatCompactDateTime(asset.updated_at),
   };
 }
 
@@ -886,7 +892,7 @@ function mapAudioRowToProjectAudioFile(file: NewsletterAudioFileRow): ProjectAud
     duration: formatDuration(file.duration_seconds),
     scriptStatus: audioScriptStatusLabels[file.script_status] ?? file.script_status,
     note: file.pronunciation_note || "검수 메모 없음",
-    updated: formatDate(file.updated_at),
+    updated: formatCompactDateTime(file.updated_at),
   };
 }
 
@@ -932,7 +938,7 @@ function mapArticleRowToProjectContentArticle(
     contactName: article.contact_name || "",
     contactPhone: article.contact_phone || "",
     status: article.status,
-    updated: formatDate(article.updated_at),
+    updated: formatCompactDateTime(article.updated_at),
     blocks: blocks.map(mapContentBlockRowToProjectBlock),
     links: links.map(mapLinkActionRowToProjectLink),
   };

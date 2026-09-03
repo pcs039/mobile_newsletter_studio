@@ -188,7 +188,9 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                                   </p>
                                 </div>
                               </div>
-                              <p className="text-xs font-semibold text-slate-500">최근 수정 {page.updated}</p>
+                              <p className="whitespace-nowrap text-xs font-semibold text-slate-500">
+                                최근 수정 {page.updated}
+                              </p>
                             </div>
                           )}
                         </div>
