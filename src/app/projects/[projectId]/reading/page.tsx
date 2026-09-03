@@ -41,6 +41,18 @@ function getArticleStatusLabel(status: string) {
   return statusLabels[status] ?? status;
 }
 
+function getArticleSourceLabel(article: ProjectContentArticle, index: number) {
+  if (article.pageNumber) {
+    return `${article.pageNumber}쪽 원본`;
+  }
+
+  return `${index + 1}번 기사`;
+}
+
+function getArticleSortLabel(article: ProjectContentArticle) {
+  return article.sortOrder > 0 ? `노출 ${article.sortOrder}` : "노출 순서 미정";
+}
+
 function getPreviewBody(article: ProjectContentArticle) {
   const paragraphBody = article.blocks
     .filter((block) => block.type === "paragraph" && block.isVisible)
@@ -82,6 +94,20 @@ export default async function ReadingEditorPage({
   const mobilePreviewHref = selectedArticle
     ? `/newsletters/${projectId}?preview=admin&articleId=${selectedArticle.id}`
     : `/newsletters/${projectId}?preview=admin`;
+  const listArticles = [...articles].sort((first, second) => {
+    const firstPage = first.pageNumber ?? Number.MAX_SAFE_INTEGER;
+    const secondPage = second.pageNumber ?? Number.MAX_SAFE_INTEGER;
+
+    if (firstPage !== secondPage) {
+      return firstPage - secondPage;
+    }
+
+    if (first.sortOrder !== second.sortOrder) {
+      return first.sortOrder - second.sortOrder;
+    }
+
+    return first.title.localeCompare(second.title, "ko");
+  });
 
   return (
     <ProjectAdminShell
@@ -130,8 +156,8 @@ export default async function ReadingEditorPage({
             </div>
 
             {articles.length > 0 ? (
-              <div className="space-y-3">
-                {articles.map((article, index) => {
+              <div className="max-h-[720px] space-y-3 overflow-y-auto pr-1">
+                {listArticles.map((article, index) => {
                   const isActive = selectedArticle?.id === article.id;
 
                   return (
@@ -144,16 +170,30 @@ export default async function ReadingEditorPage({
                           : "border-slate-200 bg-white hover:bg-slate-50"
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-black text-[#184a88]">
-                          {article.pageNumber ? `${article.pageNumber}쪽` : `${index + 1}번 기사`}
-                        </span>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-[#184a88]">{getArticleSourceLabel(article, index)}</p>
+                          <p className="mt-1 text-[11px] font-bold leading-4 text-slate-500">
+                            {getArticleSortLabel(article)}
+                          </p>
+                        </div>
                         <StatusPill value={getArticleStatusLabel(article.status)} />
                       </div>
-                      <p className="mt-3 text-sm font-black text-[#092046]">{article.title}</p>
+                      <p className="mt-3 line-clamp-2 text-sm font-black leading-6 text-[#092046]">{article.title}</p>
                       <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
                         {article.summary || "요약 미입력"}
                       </p>
+                      <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px] font-black text-slate-600">
+                        <span className="rounded-md bg-[#eef6ff] px-2 py-2">
+                          블록 <strong className="text-[#092046]">{article.blocks.length}</strong>
+                        </span>
+                        <span className="rounded-md bg-[#eef6ff] px-2 py-2">
+                          링크 <strong className="text-[#092046]">{article.links.length}</strong>
+                        </span>
+                        <span className="rounded-md bg-[#eef6ff] px-2 py-2">
+                          수정 <strong className="block text-[#092046]">{article.updated}</strong>
+                        </span>
+                      </div>
                     </Link>
                   );
                 })}
