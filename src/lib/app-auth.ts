@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 
 export const AUTH_COOKIE_NAME = "datadiction_newsletter_session";
 export const AUTH_SESSION_MAX_AGE = 60 * 60 * 12;
+export const PROJECT_UNLOCK_COOKIE_PREFIX = "datadiction_project_unlock_";
+export const PROJECT_UNLOCK_MAX_AGE = 60 * 60 * 8;
 
 export type AppUserRole = "admin" | "user";
 
@@ -23,6 +25,12 @@ type ProjectAccessLike = {
 };
 
 type SessionPayload = AppUser & {
+  exp: number;
+};
+
+type ProjectUnlockPayload = {
+  userId: string;
+  projectSlug: string;
   exp: number;
 };
 
@@ -143,10 +151,67 @@ export function readSessionValue(value?: string | null): AppUser | null {
   }
 }
 
+function getProjectUnlockCookieName(projectSlug: string) {
+  return `${PROJECT_UNLOCK_COOKIE_PREFIX}${projectSlug.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+}
+
+export function createProjectUnlockValue(user: AppUser, projectSlug: string) {
+  const payload: ProjectUnlockPayload = {
+    userId: user.id,
+    projectSlug,
+    exp: Math.floor(Date.now() / 1000) + PROJECT_UNLOCK_MAX_AGE,
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const signature = signPayload(encodedPayload);
+
+  return `${encodedPayload}.${signature}`;
+}
+
+export function readProjectUnlockValue(value: string | undefined, user: AppUser, projectSlug: string) {
+  if (!value) {
+    return false;
+  }
+
+  const [encodedPayload, signature] = value.split(".");
+
+  if (!encodedPayload || !signature || !safeCompare(signPayload(encodedPayload), signature)) {
+    return false;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as Partial<ProjectUnlockPayload>;
+
+    return (
+      payload.userId === user.id &&
+      payload.projectSlug === projectSlug &&
+      typeof payload.exp === "number" &&
+      payload.exp >= Math.floor(Date.now() / 1000)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function getCurrentUser() {
   const cookieStore = await cookies();
 
   return readSessionValue(cookieStore.get(AUTH_COOKIE_NAME)?.value);
+}
+
+export async function hasProjectUnlock(user: AppUser, projectSlug: string) {
+  const cookieStore = await cookies();
+
+  return readProjectUnlockValue(cookieStore.get(getProjectUnlockCookieName(projectSlug))?.value, user, projectSlug);
+}
+
+export function setProjectUnlockCookie(response: NextResponse, user: AppUser, projectSlug: string) {
+  response.cookies.set(getProjectUnlockCookieName(projectSlug), createProjectUnlockValue(user, projectSlug), {
+    httpOnly: true,
+    maxAge: PROJECT_UNLOCK_MAX_AGE,
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
 }
 
 export async function requireAppUser(nextPath = "/") {

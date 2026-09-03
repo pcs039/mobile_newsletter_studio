@@ -53,6 +53,13 @@ change-this-to-a-long-random-secret
 ## Permission Rule
 
 - `admin`: 모든 프로젝트 접근
-- `user`: 프로젝트의 작업자명과 로그인 사용자 `name`이 같은 프로젝트만 접근
+- `user`: 프로젝트의 작업자명과 로그인 사용자 `name`이 같은 프로젝트만 목록 접근
+- 프로젝트 비밀번호가 설정된 경우, 일반 사용자는 프로젝트 작업 화면 진입 시 비밀번호를 한 번 더 입력
 
 예를 들어 `name`이 `진준범`인 사용자는 프로젝트 기본 정보의 작업자명이 `진준범`인 프로젝트만 목록에서 볼 수 있습니다.
+
+## Project Password Columns
+
+프로젝트별 비밀번호 기능을 사용하려면 Supabase SQL Editor에서 `supabase_project_password_management.sql`을 한 번 실행해야 합니다.
+
+프로젝트 비밀번호는 평문이 아니라 해시 값으로 저장됩니다.

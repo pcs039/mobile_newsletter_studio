@@ -27,6 +27,8 @@ export type ProjectFormInitialValues = {
   productionMode?: string;
   estimatedHours?: string;
   designerHoursCap?: string;
+  hasProjectPassword?: boolean;
+  projectPasswordUpdatedAt?: string;
 };
 
 const primaryColorOptions = [
@@ -62,7 +64,7 @@ function TextInput({
 }: {
   name: string;
   placeholder: string;
-  type?: "text" | "date";
+  type?: "text" | "date" | "password";
   defaultValue?: string;
   required?: boolean;
 }) {
@@ -131,6 +133,8 @@ export function ProjectCreateForm({
         productionMode: getFormText(formData, "productionMode"),
         estimatedHours: getFormText(formData, "estimatedHours"),
         designerHoursCap: getFormText(formData, "designerHoursCap"),
+        projectPassword: getFormText(formData, "projectPassword"),
+        clearProjectPassword: formData.get("clearProjectPassword") === "on",
       }),
     });
 
@@ -371,6 +375,33 @@ export function ProjectCreateForm({
             placeholder="예: 6시간 또는 별도 견적"
             defaultValue={initialValues.designerHoursCap}
           />
+        </div>
+
+        <div className="md:col-span-2">
+          <FieldLabel required={!isEditMode}>프로젝트 비밀번호</FieldLabel>
+          <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
+            <TextInput
+              name="projectPassword"
+              type="password"
+              placeholder={isEditMode ? "새 비밀번호 입력 시 변경됩니다." : "이 프로젝트 작업 화면에 들어갈 비밀번호"}
+              required={!isEditMode}
+            />
+            <p className="mt-2 text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
+              {isEditMode
+                ? initialValues.hasProjectPassword
+                  ? `현재 프로젝트 비밀번호가 설정되어 있습니다.${
+                      initialValues.projectPasswordUpdatedAt ? ` 최근 변경: ${initialValues.projectPasswordUpdatedAt}` : ""
+                    }`
+                  : "현재 프로젝트 비밀번호가 설정되어 있지 않습니다."
+                : "일반 사용자가 만든 프로젝트는 이 비밀번호로 작업 화면 접근을 한 번 더 확인합니다. 관리자는 비밀번호 없이 접근합니다."}
+            </p>
+            {isEditMode && initialValues.hasProjectPassword ? (
+              <label className="mt-3 flex items-center gap-2 rounded-lg bg-white px-3 py-3 text-sm font-bold text-slate-700">
+                <input name="clearProjectPassword" type="checkbox" className="h-4 w-4 accent-[#092046]" />
+                프로젝트 비밀번호 해제
+              </label>
+            ) : null}
+          </div>
         </div>
       </div>
 

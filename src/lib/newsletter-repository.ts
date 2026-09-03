@@ -1,4 +1,5 @@
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
+import { hashProjectPassword, verifyProjectPasswordHash } from "@/lib/project-password";
 import type { DashboardProject } from "@/types/newsletter";
 
 type ProjectStatus = "draft" | "in_review" | "published" | "private" | "archived";
@@ -23,6 +24,8 @@ type NewsletterProjectRow = {
   pdf_original_path: string | null;
   pdf_original_file_name: string | null;
   pdf_original_uploaded_at: string | null;
+  project_password_hash: string | null;
+  project_password_updated_at: string | null;
   page_count: number;
   created_at: string;
   updated_at: string;
@@ -42,6 +45,8 @@ export type CreateNewsletterProjectInput = {
   productionMode: ProductionMode;
   estimatedHours?: string;
   designerHoursCap?: string;
+  projectPassword?: string;
+  clearProjectPassword?: boolean;
 };
 
 export type UpdateNewsletterProjectInput = CreateNewsletterProjectInput & {
@@ -349,6 +354,8 @@ export type ProjectWorkspaceInfo = {
   ebookUrl: string;
   pageCount: number;
   updated: string;
+  hasProjectPassword: boolean;
+  projectPasswordUpdatedAt: string;
 };
 
 export type ProjectWorkspaceResult =
@@ -381,6 +388,8 @@ export type ProjectBasicInfo = {
   productionMode: ProductionMode;
   estimatedHours: string;
   designerHoursCap: string;
+  hasProjectPassword: boolean;
+  projectPasswordUpdatedAt: string;
 };
 
 export type ProjectBasicInfoResult =
@@ -394,6 +403,18 @@ export type ProjectBasicInfoResult =
       ok: false;
       project: null;
       source: "unconfigured" | "error" | "not_found";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type VerifyProjectPasswordResult =
+  | {
+      ok: true;
+      project: Pick<NewsletterProjectRow, "id" | "slug" | "title">;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "not_found" | "password_not_set" | "invalid_password";
       message: string;
       httpStatus?: number;
     };
@@ -812,6 +833,8 @@ const projectSelectColumns = [
   "pdf_original_path",
   "pdf_original_file_name",
   "pdf_original_uploaded_at",
+  "project_password_hash",
+  "project_password_updated_at",
   "page_count",
   "created_at",
   "updated_at",
@@ -1304,6 +1327,8 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     ebookUrl: `/newsletters/${project.slug}/ebook`,
     pageCount: project.page_count,
     updated: formatCompactDateTime(project.updated_at),
+    hasProjectPassword: Boolean(project.project_password_hash),
+    projectPasswordUpdatedAt: project.project_password_updated_at ? formatCompactDateTime(project.project_password_updated_at) : "",
   };
 }
 
@@ -1323,6 +1348,8 @@ function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicIn
     productionMode: project.production_mode,
     estimatedHours: project.estimated_hours || "",
     designerHoursCap: project.designer_hours_cap || "",
+    hasProjectPassword: Boolean(project.project_password_hash),
+    projectPasswordUpdatedAt: project.project_password_updated_at ? formatCompactDateTime(project.project_password_updated_at) : "",
   };
 }
 
@@ -3331,6 +3358,64 @@ export async function getProjectPageImages(projectSlug: string): Promise<Project
   }
 }
 
+export async function verifyProjectPassword(projectSlug: string, password: string): Promise<VerifyProjectPasswordResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+
+  if (!config.isConfigured || !headers) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수 설정 후 프로젝트 비밀번호를 확인할 수 있습니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
+    if (!project.project_password_hash) {
+      return {
+        ok: false,
+        status: "password_not_set",
+        message: "이 프로젝트에는 비밀번호가 설정되어 있지 않습니다.",
+      };
+    }
+
+    if (!verifyProjectPasswordHash(password, project.project_password_hash)) {
+      return {
+        ok: false,
+        status: "invalid_password",
+        message: "프로젝트 비밀번호를 확인해 주세요.",
+        httpStatus: 401,
+      };
+    }
+
+    return {
+      ok: true,
+      project: {
+        id: project.id,
+        slug: project.slug,
+        title: project.title,
+      },
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "invalid_password",
+      message: "프로젝트 비밀번호 확인 중 오류가 발생했습니다.",
+    };
+  }
+}
+
 export async function getProjectOriginalPdf(projectSlug: string): Promise<ProjectOriginalPdfResult> {
   const config = getSupabaseConfigStatus();
   const endpoint = getSupabaseRestEndpoint(
@@ -4107,6 +4192,8 @@ export async function createNewsletterProject(
     production_mode: input.productionMode,
     estimated_hours: input.estimatedHours || null,
     designer_hours_cap: input.designerHoursCap || null,
+    project_password_hash: input.projectPassword ? hashProjectPassword(input.projectPassword) : null,
+    project_password_updated_at: input.projectPassword ? new Date().toISOString() : null,
   };
 
   try {
@@ -4173,7 +4260,7 @@ export async function updateNewsletterProject(
     };
   }
 
-  const body = {
+  const body: Partial<NewsletterProjectRow> = {
     title: input.title,
     organization_name: input.organizationName,
     assignee_name: input.assigneeName || null,
@@ -4189,6 +4276,14 @@ export async function updateNewsletterProject(
     designer_hours_cap: input.designerHoursCap || null,
     updated_at: new Date().toISOString(),
   };
+
+  if (input.clearProjectPassword) {
+    body.project_password_hash = null;
+    body.project_password_updated_at = null;
+  } else if (input.projectPassword) {
+    body.project_password_hash = hashProjectPassword(input.projectPassword);
+    body.project_password_updated_at = new Date().toISOString();
+  }
 
   try {
     const response = await fetch(endpoint, {

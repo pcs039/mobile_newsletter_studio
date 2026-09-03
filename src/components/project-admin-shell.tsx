@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
-import { canAccessProject, requireAppUser } from "@/lib/app-auth";
+import { canAccessProject, hasProjectUnlock, requireAppUser } from "@/lib/app-auth";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey";
@@ -62,6 +63,10 @@ export async function ProjectAdminShell({
         </section>
       </main>
     );
+  }
+
+  if (project && user.role !== "admin" && project.hasProjectPassword && !(await hasProjectUnlock(user, project.slug))) {
+    redirect(`/projects/${project.slug}/unlock?next=${encodeURIComponent(`/projects/${project.slug}/${active}`)}`);
   }
 
   const projectEyebrow = project

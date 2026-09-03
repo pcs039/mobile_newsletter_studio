@@ -54,10 +54,18 @@ export async function POST(request: Request) {
   const publishedDate = asOptionalText(payload.publishedDate) || asOptionalText(payload.publishedMonth);
   const slug = normalizeSlug(asOptionalText(payload.slug));
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
+  const projectPassword = asOptionalText(payload.projectPassword);
 
   if (!title || !organizationName || !assigneeName || !publishedDate || !slug) {
     return NextResponse.json(
       { ok: false, message: "소식지명, 기관명, 작업자명, 발행일, 공개 주소 slug는 필수입니다." },
+      { status: 400 },
+    );
+  }
+
+  if (user.role === "user" && !projectPassword) {
+    return NextResponse.json(
+      { ok: false, message: "일반 사용자가 새 프로젝트를 만들 때는 프로젝트 비밀번호를 입력해야 합니다." },
       { status: 400 },
     );
   }
@@ -94,6 +102,7 @@ export async function POST(request: Request) {
     productionMode: payload.productionMode,
     estimatedHours: asOptionalText(payload.estimatedHours),
     designerHoursCap: asOptionalText(payload.designerHoursCap),
+    projectPassword,
   };
 
   const result = await createNewsletterProject(input);
@@ -164,6 +173,8 @@ export async function PATCH(request: Request) {
   const publishedDate = asOptionalText(payload.publishedDate) || asOptionalText(payload.publishedMonth);
   const slug = normalizeSlug(asOptionalText(payload.slug));
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
+  const projectPassword = asOptionalText(payload.projectPassword);
+  const clearProjectPassword = payload.clearProjectPassword === true;
 
   if (!projectId) {
     return NextResponse.json(
@@ -212,6 +223,8 @@ export async function PATCH(request: Request) {
     productionMode: payload.productionMode,
     estimatedHours: asOptionalText(payload.estimatedHours),
     designerHoursCap: asOptionalText(payload.designerHoursCap),
+    projectPassword,
+    clearProjectPassword,
   };
 
   const result = await updateNewsletterProject(input);
