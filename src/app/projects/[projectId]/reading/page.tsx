@@ -75,8 +75,10 @@ export default async function ReadingEditorPage({
   ]);
   const project = workspace.project;
   const articles = contentData.articles;
-  const selectedArticle =
-    articles.find((article) => article.id === resolvedSearchParams.articleId) ?? articles[0] ?? null;
+  const requestedArticleId = resolvedSearchParams.articleId;
+  const selectedArticle = requestedArticleId
+    ? articles.find((article) => article.id === requestedArticleId) ?? null
+    : null;
 
   return (
     <ProjectAdminShell
