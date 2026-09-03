@@ -216,6 +216,7 @@ export default async function ReadingEditorPage({
             key={selectedArticle?.id ?? "new"}
             article={selectedArticle}
             pages={pageImageData.pages}
+            projectPageCount={project?.pageCount ?? 0}
             projectSlug={projectId}
           />
 

@@ -377,6 +377,7 @@ export type UpsertProjectArticleInput = {
   projectSlug: string;
   articleId?: string;
   pageId?: string;
+  sourcePageNumber?: number;
   sortOrder?: number;
   title: string;
   summary?: string;
@@ -1092,6 +1093,62 @@ function detectLinkActionType(value: string, fallback: LinkActionType): LinkActi
 
 function makeArticleIdFilter(articleIds: string[]) {
   return encodeURIComponent(`in.(${articleIds.join(",")})`);
+}
+
+async function ensureProjectPageReference(
+  projectId: string,
+  pageNumber: number,
+  currentPageCount: number,
+  headers: Record<string, string>,
+) {
+  if (!Number.isInteger(pageNumber) || pageNumber <= 0) {
+    return null;
+  }
+
+  const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_pages?on_conflict=project_id,page_number&select=id");
+
+  if (!endpoint) {
+    return null;
+  }
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      ...headers,
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify({
+      project_id: projectId,
+      page_number: pageNumber,
+      title: `${pageNumber}쪽`,
+      image_status: "not_uploaded",
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  if (pageNumber > currentPageCount) {
+    const projectEndpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_projects?id=eq.${encodeURIComponent(projectId)}`);
+
+    if (projectEndpoint) {
+      await fetch(projectEndpoint, {
+        method: "PATCH",
+        headers: {
+          ...headers,
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ page_count: pageNumber }),
+        cache: "no-store",
+      });
+    }
+  }
+
+  const rows = (await response.json()) as Array<{ id: string }>;
+
+  return rows[0]?.id ?? null;
 }
 
 function getRequestHeaders(useServiceRole = false) {
@@ -2063,9 +2120,16 @@ export async function upsertProjectArticle(
       };
     }
 
+    const requestedPageNumber = normalizeArticleSortOrder(input.sourcePageNumber);
+    const resolvedPageId =
+      nullableText(input.pageId) ??
+      (requestedPageNumber > 0
+        ? await ensureProjectPageReference(project.id, requestedPageNumber, project.page_count, headers)
+        : null);
+
     const articleBody = {
       project_id: project.id,
-      page_id: nullableText(input.pageId),
+      page_id: resolvedPageId,
       sort_order: normalizeArticleSortOrder(input.sortOrder),
       title,
       summary: nullableText(input.summary),

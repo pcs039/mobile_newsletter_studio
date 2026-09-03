@@ -89,6 +89,7 @@ export async function POST(request: Request) {
     projectSlug: asText(payload.projectSlug),
     articleId: asText(payload.articleId) || undefined,
     pageId: asText(payload.pageId) || undefined,
+    sourcePageNumber: asOptionalNumber(payload.sourcePageNumber),
     sortOrder: asOptionalNumber(payload.sortOrder),
     title: asText(payload.title),
     summary: asText(payload.summary),

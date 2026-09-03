@@ -8,6 +8,7 @@ import type { ProjectContentArticle, ProjectContentBlock, ProjectPageImage } fro
 type ProjectArticleEditorFormProps = {
   projectSlug: string;
   pages: ProjectPageImage[];
+  projectPageCount?: number;
   article: ProjectContentArticle | null;
 };
 
@@ -184,7 +185,12 @@ function shouldUseTextarea(type: EditorBlockType) {
   return type === "paragraph" || type === "audio";
 }
 
-export function ProjectArticleEditorForm({ projectSlug, pages, article }: ProjectArticleEditorFormProps) {
+export function ProjectArticleEditorForm({
+  projectSlug,
+  pages,
+  projectPageCount = 0,
+  article,
+}: ProjectArticleEditorFormProps) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -262,6 +268,7 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
       projectSlug,
       articleId: article?.id ?? "",
       pageId: getValue(formData, "pageId"),
+      sourcePageNumber: Number(getValue(formData, "sourcePageNumber")) || 0,
       sortOrder: Number(getValue(formData, "sortOrder")) || 0,
       title: getValue(formData, "title"),
       summary: getValue(formData, "summary"),
@@ -315,7 +322,7 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
           <StatusPill value={article ? "DB 저장됨" : "신규 작성"} />
         </div>
 
-        <div className="mt-5 grid gap-5 md:grid-cols-[180px_minmax(0,1fr)]">
+        <div className="mt-5 grid gap-5 lg:grid-cols-[140px_minmax(0,1fr)_180px]">
           <div>
             <FieldLabel>순서</FieldLabel>
             <input
@@ -340,6 +347,23 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
                 </option>
               ))}
             </select>
+            {pages.length === 0 ? (
+              <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                등록된 페이지 이미지가 없으면 오른쪽에 원본 PDF 쪽수를 직접 입력하세요.
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <FieldLabel>원본 PDF 쪽수 직접 입력</FieldLabel>
+            <input
+              name="sourcePageNumber"
+              type="number"
+              min="1"
+              max={projectPageCount > 0 ? projectPageCount : undefined}
+              defaultValue={article?.pageNumber ?? ""}
+              placeholder={projectPageCount > 0 ? `1~${projectPageCount}` : "예: 3"}
+              className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+            />
           </div>
         </div>
 
