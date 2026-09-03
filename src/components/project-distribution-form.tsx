@@ -35,7 +35,17 @@ export function ProjectDistributionForm({ groups, projectSlug, publicUrl }: Proj
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
-    });
+    }).catch(() => null);
+
+    if (!response) {
+      setSubmitState({
+        target: null,
+        message: "저장 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.",
+        isError: true,
+      });
+      return false;
+    }
+
     const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
 
     if (!response.ok || !result?.ok) {

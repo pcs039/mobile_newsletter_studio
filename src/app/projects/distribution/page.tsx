@@ -227,7 +227,7 @@ export default async function DistributionProjectsPage() {
                             href={`/projects/${project.slug}/distribution`}
                             className="inline-flex h-10 items-center justify-center rounded-md border border-[#092046] bg-[#eaf2ff] px-3 text-xs font-black text-[#092046] transition hover:bg-[#dbeafe]"
                           >
-                            배포 운영
+                            배포 입력
                           </Link>
                           <Link
                             href={`/newsletters/${project.slug}/ebook`}
@@ -267,7 +267,7 @@ export default async function DistributionProjectsPage() {
               <div className="border-b border-slate-200 px-5 py-4">
                 <h3 className="text-lg font-bold text-[#092046]">배포 대기 프로젝트</h3>
                 <p className="mt-1 text-sm leading-6 text-slate-500 [word-break:keep-all]">
-                  아직 발행 완료 처리되지 않은 프로젝트입니다. 검수 화면에서 부족한 항목을 확인하세요.
+                  아직 발행 완료 처리되지 않은 프로젝트입니다. 검수와 작성 보완을 진행하면서 배포 대상도 미리 입력할 수 있습니다.
                 </p>
               </div>
               <div className="divide-y divide-slate-200">
@@ -275,7 +275,7 @@ export default async function DistributionProjectsPage() {
                   const updated = splitDateTime(project.updated);
 
                   return (
-                    <article key={project.id} className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_140px_220px] lg:items-center">
+                    <article key={project.id} className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_140px_320px] lg:items-center">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h4 className="font-black text-[#092046] [word-break:keep-all]">{project.title}</h4>
@@ -291,12 +291,18 @@ export default async function DistributionProjectsPage() {
                         <p className="mt-1 whitespace-nowrap text-sm font-black text-[#092046]">{updated.date}</p>
                         <p className="whitespace-nowrap text-xs font-black text-[#184a88]">{updated.time}</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <Link
                           href={`/projects/${project.slug}/publish`}
                           className="inline-flex h-10 items-center justify-center rounded-md bg-[#092046] px-3 text-xs font-black text-white transition hover:bg-[#123a78]"
                         >
                           검수하기
+                        </Link>
+                        <Link
+                          href={`/projects/${project.slug}/distribution`}
+                          className="inline-flex h-10 items-center justify-center rounded-md border border-[#092046] bg-[#eaf2ff] px-3 text-xs font-black text-[#092046] transition hover:bg-[#dbeafe]"
+                        >
+                          배포 입력
                         </Link>
                         <Link
                           href={`/projects/${project.slug}/reading`}

@@ -133,7 +133,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
             href={`/projects/${projectId}/distribution`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
-            배포 운영으로 이동
+            배포 입력으로 이동
           </Link>
           <Link
             href={publicPreviewHref}

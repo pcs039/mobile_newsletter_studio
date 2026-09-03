@@ -34,3 +34,64 @@ create index if not exists newsletter_send_campaigns_project_id_idx
 
 create index if not exists newsletter_send_campaigns_target_group_id_idx
   on newsletter_send_campaigns(target_group_id);
+
+with ranked_groups as (
+  select
+    id,
+    first_value(id) over (
+      partition by project_id, lower(btrim(name))
+      order by updated_at desc, created_at desc, id desc
+    ) as keep_id,
+    row_number() over (
+      partition by project_id, lower(btrim(name))
+      order by updated_at desc, created_at desc, id desc
+    ) as duplicate_rank
+  from newsletter_recipient_groups
+)
+update newsletter_send_campaigns
+set
+  target_group_id = ranked_groups.keep_id,
+  updated_at = now()
+from ranked_groups
+where newsletter_send_campaigns.target_group_id = ranked_groups.id
+  and ranked_groups.duplicate_rank > 1;
+
+with ranked_groups as (
+  select
+    id,
+    row_number() over (
+      partition by project_id, lower(btrim(name))
+      order by updated_at desc, created_at desc, id desc
+    ) as duplicate_rank
+  from newsletter_recipient_groups
+)
+delete from newsletter_recipient_groups
+using ranked_groups
+where newsletter_recipient_groups.id = ranked_groups.id
+  and ranked_groups.duplicate_rank > 1;
+
+create unique index if not exists newsletter_recipient_groups_project_name_uidx
+  on newsletter_recipient_groups(project_id, lower(btrim(name)));
+
+create or replace function set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists newsletter_recipient_groups_set_updated_at on newsletter_recipient_groups;
+create trigger newsletter_recipient_groups_set_updated_at
+before update on newsletter_recipient_groups
+for each row execute function set_updated_at();
+
+drop trigger if exists newsletter_send_campaigns_set_updated_at on newsletter_send_campaigns;
+create trigger newsletter_send_campaigns_set_updated_at
+before update on newsletter_send_campaigns
+for each row execute function set_updated_at();
+
+alter table newsletter_recipient_groups enable row level security;
+alter table newsletter_send_campaigns enable row level security;

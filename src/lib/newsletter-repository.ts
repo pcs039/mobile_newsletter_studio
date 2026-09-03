@@ -126,7 +126,6 @@ export type PublishQueueProjectsResult = {
   message: string;
 };
 
-
 export type ProjectDistributionGroup = {
   id: string;
   name: string;
@@ -177,6 +176,75 @@ export type CreateProjectSendCampaignInput = {
 };
 
 export type CreateProjectDistributionResult =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "request_failed" | "not_found" | "invalid_input";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type ProjectSurveyQuestion = {
+  id: string;
+  surveyId: string;
+  order: number;
+  title: string;
+  type: string;
+  options: string[];
+  isRequired: boolean;
+  updated: string;
+};
+
+export type ProjectSurveyItem = {
+  id: string;
+  title: string;
+  description: string;
+  kind: string;
+  status: string;
+  respondentTarget: string;
+  startAt: string;
+  endAt: string;
+  eventPrize: string;
+  drawNote: string;
+  responseCount: number;
+  questionCount: number;
+  updated: string;
+  questions: ProjectSurveyQuestion[];
+};
+
+export type ProjectSurveyResult = {
+  surveys: ProjectSurveyItem[];
+  source: "supabase" | "unconfigured" | "error" | "not_found";
+  message: string;
+};
+
+export type CreateProjectSurveyInput = {
+  projectSlug: string;
+  title: string;
+  description?: string;
+  kind: ProjectSurveyKind;
+  status: ProjectSurveyStatus;
+  respondentTarget?: string;
+  startAt?: string;
+  endAt?: string;
+  eventPrize?: string;
+  drawNote?: string;
+};
+
+export type CreateProjectSurveyQuestionInput = {
+  projectSlug: string;
+  surveyId: string;
+  order?: number;
+  title: string;
+  type: ProjectSurveyQuestionType;
+  options?: string[];
+  isRequired?: boolean;
+};
+
+export type CreateProjectSurveyResult =
   | {
       ok: true;
       message: string;
@@ -389,9 +457,11 @@ type ProjectViewStats = {
   total: number;
 };
 
-
 type DistributionChannel = "kakao" | "sms" | "email" | "qr" | "manual";
 type DistributionStatus = "draft" | "ready" | "sent" | "failed";
+type ProjectSurveyStatus = "draft" | "open" | "closed";
+type ProjectSurveyKind = "survey" | "event";
+type ProjectSurveyQuestionType = "single_choice" | "multiple_choice" | "short_text" | "long_text" | "scale";
 
 type NewsletterRecipientGroupRow = {
   id: string;
@@ -417,6 +487,39 @@ type NewsletterSendCampaignRow = {
   note: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type NewsletterSurveyRow = {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  survey_kind: ProjectSurveyKind;
+  status: ProjectSurveyStatus;
+  respondent_target: string | null;
+  start_at: string | null;
+  end_at: string | null;
+  event_prize: string | null;
+  draw_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type NewsletterSurveyQuestionRow = {
+  id: string;
+  survey_id: string;
+  project_id: string;
+  question_order: number;
+  title: string;
+  question_type: ProjectSurveyQuestionType;
+  options: string[] | null;
+  is_required: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type NewsletterSurveyResponseCountRow = {
+  survey_id: string;
 };
 
 export type ProjectPageImage = {
@@ -639,7 +742,6 @@ const productionModeLabels: Record<ProductionMode, string> = {
   external_ebook: "외부 e-book 연동",
 };
 
-
 const distributionChannelLabels: Record<DistributionChannel, string> = {
   kakao: "카카오 알림톡",
   sms: "문자",
@@ -653,6 +755,25 @@ const distributionStatusLabels: Record<DistributionStatus, string> = {
   ready: "발송 준비",
   sent: "발송 완료",
   failed: "발송 실패",
+};
+
+const surveyKindLabels: Record<ProjectSurveyKind, string> = {
+  survey: "설문",
+  event: "이벤트",
+};
+
+const surveyStatusLabels: Record<ProjectSurveyStatus, string> = {
+  draft: "준비 중",
+  open: "진행 중",
+  closed: "마감",
+};
+
+const surveyQuestionTypeLabels: Record<ProjectSurveyQuestionType, string> = {
+  single_choice: "단일 선택",
+  multiple_choice: "복수 선택",
+  short_text: "단답형",
+  long_text: "서술형",
+  scale: "척도형",
 };
 
 const pageImageStatusLabels: Record<string, string> = {
@@ -1145,6 +1266,46 @@ function mapSendCampaignRow(row: NewsletterSendCampaignRow): ProjectSendCampaign
     sentAt: row.sent_at ? formatCompactDateTime(row.sent_at) : "발송일 미정",
     note: row.note || "메모 없음",
     updated: formatCompactDateTime(row.updated_at),
+  };
+}
+
+function formatOptionalCompactDateTime(value: string | null) {
+  return value ? formatCompactDateTime(value) : "미정";
+}
+
+function mapSurveyQuestionRow(row: NewsletterSurveyQuestionRow): ProjectSurveyQuestion {
+  return {
+    id: row.id,
+    surveyId: row.survey_id,
+    order: row.question_order,
+    title: row.title,
+    type: surveyQuestionTypeLabels[row.question_type] ?? row.question_type,
+    options: Array.isArray(row.options) ? row.options : [],
+    isRequired: row.is_required,
+    updated: formatCompactDateTime(row.updated_at),
+  };
+}
+
+function mapSurveyRow(
+  row: NewsletterSurveyRow,
+  questions: ProjectSurveyQuestion[],
+  responseCount: number,
+): ProjectSurveyItem {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description || "설명 미입력",
+    kind: surveyKindLabels[row.survey_kind] ?? row.survey_kind,
+    status: surveyStatusLabels[row.status] ?? row.status,
+    respondentTarget: row.respondent_target || "대상 미지정",
+    startAt: formatOptionalCompactDateTime(row.start_at),
+    endAt: formatOptionalCompactDateTime(row.end_at),
+    eventPrize: row.event_prize || "해당 없음",
+    drawNote: row.draw_note || "추첨·발표 메모 없음",
+    responseCount,
+    questionCount: questions.length,
+    updated: formatCompactDateTime(row.updated_at),
+    questions,
   };
 }
 
@@ -1738,6 +1899,13 @@ export async function createProjectRecipientGroup(
   const projectSlug = input.projectSlug.trim();
   const name = input.name.trim();
   const recipientCount = Number(input.recipientCount) || 0;
+  const distributionPayload = {
+    name,
+    description: input.description?.trim() || null,
+    recipient_count: recipientCount,
+    channel_note: input.channelNote?.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
 
   if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
     return {
@@ -1766,7 +1934,62 @@ export async function createProjectRecipientGroup(
       };
     }
 
-    const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_recipient_groups");
+    const projectId = project.id;
+    const requestHeaders = headers;
+
+    async function findExistingGroupId() {
+      const existingEndpoint = getSupabaseRestEndpoint(
+        `/rest/v1/newsletter_recipient_groups?select=id&project_id=eq.${encodeURIComponent(
+          projectId,
+        )}&name=ilike.${encodeURIComponent(name)}&limit=1`,
+      );
+
+      if (!existingEndpoint) {
+        return {
+          ok: false as const,
+          status: 500,
+          message: "대상 그룹 확인 주소를 만들지 못했습니다.",
+        };
+      }
+
+      const existingResponse = await fetch(existingEndpoint, {
+        headers: requestHeaders,
+        cache: "no-store",
+      });
+
+      if (!existingResponse.ok) {
+        return {
+          ok: false as const,
+          status: existingResponse.status,
+          message: "대상 그룹 중복 여부를 확인하지 못했습니다. Supabase 테이블과 권한을 확인하세요.",
+        };
+      }
+
+      const existingRows = (await existingResponse.json()) as Array<{ id: string }>;
+
+      return {
+        ok: true as const,
+        id: existingRows[0]?.id || "",
+      };
+    }
+
+    const existingGroup = await findExistingGroupId();
+
+    if (!existingGroup.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: existingGroup.message,
+        httpStatus: existingGroup.status,
+      };
+    }
+
+    let existingGroupId = existingGroup.id;
+    let endpoint = getSupabaseRestEndpoint(
+      existingGroupId
+        ? `/rest/v1/newsletter_recipient_groups?id=eq.${encodeURIComponent(existingGroupId)}`
+        : "/rest/v1/newsletter_recipient_groups",
+    );
 
     if (!endpoint) {
       return {
@@ -1776,21 +1999,41 @@ export async function createProjectRecipientGroup(
       };
     }
 
-    const response = await fetch(endpoint, {
-      method: "POST",
+    let response = await fetch(endpoint, {
+      method: existingGroupId ? "PATCH" : "POST",
       headers: {
         ...headers,
         Prefer: "return=minimal",
       },
       body: JSON.stringify({
-        project_id: project.id,
-        name,
-        description: input.description?.trim() || null,
-        recipient_count: recipientCount,
-        channel_note: input.channelNote?.trim() || null,
+        ...distributionPayload,
+        ...(existingGroupId ? {} : { project_id: projectId }),
       }),
       cache: "no-store",
     });
+
+    if (!response.ok && !existingGroupId && response.status === 409) {
+      const retryGroup = await findExistingGroupId();
+
+      if (retryGroup.ok && retryGroup.id) {
+        existingGroupId = retryGroup.id;
+        endpoint = getSupabaseRestEndpoint(
+          `/rest/v1/newsletter_recipient_groups?id=eq.${encodeURIComponent(existingGroupId)}`,
+        );
+
+        if (endpoint) {
+          response = await fetch(endpoint, {
+            method: "PATCH",
+            headers: {
+              ...headers,
+              Prefer: "return=minimal",
+            },
+            body: JSON.stringify(distributionPayload),
+            cache: "no-store",
+          });
+        }
+      }
+    }
 
     if (!response.ok) {
       return {
@@ -1803,7 +2046,7 @@ export async function createProjectRecipientGroup(
 
     return {
       ok: true,
-      message: "대상 그룹을 저장했습니다.",
+      message: existingGroupId ? "기존 대상 그룹을 업데이트했습니다." : "대상 그룹을 저장했습니다.",
     };
   } catch {
     return {
@@ -1849,6 +2092,52 @@ export async function createProjectSendCampaign(
       };
     }
 
+    let targetGroupName = input.targetGroupName?.trim() || null;
+    const targetGroupId = input.targetGroupId?.trim() || null;
+
+    if (targetGroupId) {
+      const groupEndpoint = getSupabaseRestEndpoint(
+        `/rest/v1/newsletter_recipient_groups?select=id,name&project_id=eq.${encodeURIComponent(
+          project.id,
+        )}&id=eq.${encodeURIComponent(targetGroupId)}&limit=1`,
+      );
+
+      if (!groupEndpoint) {
+        return {
+          ok: false,
+          status: "request_failed",
+          message: "대상 그룹 확인 주소를 만들지 못했습니다.",
+        };
+      }
+
+      const groupResponse = await fetch(groupEndpoint, {
+        headers,
+        cache: "no-store",
+      });
+
+      if (!groupResponse.ok) {
+        return {
+          ok: false,
+          status: "request_failed",
+          message: "발송 대상 그룹을 확인하지 못했습니다. Supabase 테이블과 권한을 확인하세요.",
+          httpStatus: groupResponse.status,
+        };
+      }
+
+      const groupRows = (await groupResponse.json()) as Array<{ id: string; name: string }>;
+      const group = groupRows[0];
+
+      if (!group) {
+        return {
+          ok: false,
+          status: "invalid_input",
+          message: "현재 프로젝트에 등록된 대상 그룹만 발송 기록에 연결할 수 있습니다.",
+        };
+      }
+
+      targetGroupName = group.name;
+    }
+
     const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_send_campaigns");
 
     if (!endpoint) {
@@ -1868,13 +2157,14 @@ export async function createProjectSendCampaign(
       body: JSON.stringify({
         project_id: project.id,
         channel: input.channel,
-        target_group_id: input.targetGroupId?.trim() || null,
-        target_group_name: input.targetGroupName?.trim() || null,
+        target_group_id: targetGroupId,
+        target_group_name: targetGroupName,
         message_title: messageTitle,
         public_url: input.publicUrl?.trim() || `/newsletters/${project.slug}`,
         status: input.status,
         sent_at: input.sentAt?.trim() || null,
         note: input.note?.trim() || null,
+        updated_at: new Date().toISOString(),
       }),
       cache: "no-store",
     });
@@ -1897,6 +2187,269 @@ export async function createProjectSendCampaign(
       ok: false,
       status: "request_failed",
       message: "발송 기록 저장 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function getProjectSurveys(projectSlug: string): Promise<ProjectSurveyResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      surveys: [],
+      source: "unconfigured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 설문·이벤트 데이터를 표시합니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        surveys: [],
+        source: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const encodedProjectId = encodeURIComponent(project.id);
+    const surveyEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_surveys?select=id,project_id,title,description,survey_kind,status,respondent_target,start_at,end_at,event_prize,draw_note,created_at,updated_at&project_id=eq.${encodedProjectId}&order=updated_at.desc`,
+    );
+    const questionEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_survey_questions?select=id,survey_id,project_id,question_order,title,question_type,options,is_required,created_at,updated_at&project_id=eq.${encodedProjectId}&order=question_order.asc`,
+    );
+    const responseEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_survey_responses?select=survey_id&project_id=eq.${encodedProjectId}&limit=5000`,
+    );
+
+    if (!surveyEndpoint || !questionEndpoint || !responseEndpoint) {
+      return {
+        surveys: [],
+        source: "error",
+        message: "설문·이벤트 데이터 조회 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const [surveyResponse, questionResponse, responseCountResponse] = await Promise.all([
+      fetch(surveyEndpoint, { headers, cache: "no-store" }),
+      fetch(questionEndpoint, { headers, cache: "no-store" }),
+      fetch(responseEndpoint, { headers, cache: "no-store" }),
+    ]);
+
+    if (!surveyResponse.ok || !questionResponse.ok || !responseCountResponse.ok) {
+      return {
+        surveys: [],
+        source: "error",
+        message: "설문·이벤트 테이블을 조회하지 못했습니다. Supabase SQL Editor에서 설문 관리 테이블을 먼저 생성하세요.",
+      };
+    }
+
+    const [surveyRows, questionRows, responseRows] = (await Promise.all([
+      surveyResponse.json(),
+      questionResponse.json(),
+      responseCountResponse.json(),
+    ])) as [NewsletterSurveyRow[], NewsletterSurveyQuestionRow[], NewsletterSurveyResponseCountRow[]];
+    const questionsBySurveyId = new Map<string, ProjectSurveyQuestion[]>();
+    const responseCountBySurveyId = new Map<string, number>();
+
+    for (const question of questionRows) {
+      const questions = questionsBySurveyId.get(question.survey_id) ?? [];
+      questions.push(mapSurveyQuestionRow(question));
+      questionsBySurveyId.set(question.survey_id, questions);
+    }
+
+    for (const response of responseRows) {
+      responseCountBySurveyId.set(response.survey_id, (responseCountBySurveyId.get(response.survey_id) ?? 0) + 1);
+    }
+
+    return {
+      surveys: surveyRows.map((survey) =>
+        mapSurveyRow(survey, questionsBySurveyId.get(survey.id) ?? [], responseCountBySurveyId.get(survey.id) ?? 0),
+      ),
+      source: "supabase",
+      message: "프로젝트별 설문·이벤트 운영 데이터를 표시합니다.",
+    };
+  } catch {
+    return {
+      surveys: [],
+      source: "error",
+      message: "설문·이벤트 데이터 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function createProjectSurvey(input: CreateProjectSurveyInput): Promise<CreateProjectSurveyResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const title = input.title.trim();
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 설문·이벤트를 저장합니다.",
+    };
+  }
+
+  if (!projectSlug || !title) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트와 설문·이벤트 제목은 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_surveys");
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "설문·이벤트 저장 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        project_id: project.id,
+        title,
+        description: input.description?.trim() || null,
+        survey_kind: input.kind,
+        status: input.status,
+        respondent_target: input.respondentTarget?.trim() || null,
+        start_at: input.startAt?.trim() || null,
+        end_at: input.endAt?.trim() || null,
+        event_prize: input.eventPrize?.trim() || null,
+        draw_note: input.drawNote?.trim() || null,
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "설문·이벤트 저장에 실패했습니다. Supabase 테이블과 권한을 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "설문·이벤트를 저장했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "설문·이벤트 저장 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function createProjectSurveyQuestion(
+  input: CreateProjectSurveyQuestionInput,
+): Promise<CreateProjectSurveyResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const surveyId = input.surveyId.trim();
+  const title = input.title.trim();
+  const order = Number(input.order) || 1;
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 문항을 저장합니다.",
+    };
+  }
+
+  if (!projectSlug || !surveyId || !title) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트, 설문, 문항 제목은 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_survey_questions");
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "문항 저장 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        project_id: project.id,
+        survey_id: surveyId,
+        question_order: order,
+        title,
+        question_type: input.type,
+        options: input.options ?? [],
+        is_required: Boolean(input.isRequired),
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "문항 저장에 실패했습니다. Supabase 테이블과 권한을 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "설문 문항을 저장했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "문항 저장 중 오류가 발생했습니다.",
     };
   }
 }
