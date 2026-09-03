@@ -111,6 +111,12 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       actions={
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
+            href="/projects/publish"
+            className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:border-[#184a88] hover:bg-[#f4f8ff]"
+          >
+            발행 목록으로 돌아가기
+          </Link>
+          <Link
             href={`/projects/${projectId}/reading`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
