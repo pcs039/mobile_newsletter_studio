@@ -42,8 +42,9 @@ export async function ProjectAdminShell({
   const projectEyebrow = project
     ? `${project.organization} · ${project.issue}`
     : "프로젝트 정보 확인 필요";
-  const projectDescription = project
-    ? `${project.title} · 담당: ${project.assigneeName} · ${project.status} · ${project.pageCount}쪽`
+  const projectTitle = project ? project.title : title;
+  const projectMeta = project
+    ? `담당: ${project.assigneeName} · ${project.status} · ${project.pageCount}쪽`
     : workspace.message;
 
   return (
@@ -65,14 +66,29 @@ export async function ProjectAdminShell({
         </aside>
 
         <section className="min-w-0 px-5 py-6 sm:px-8 lg:px-10">
-          <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
+          <header className="mb-7 flex flex-col gap-5 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-[#184a88]">{projectEyebrow}</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">{title}</h2>
-              <p className="mt-2 text-sm text-slate-600">{description}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">{projectDescription}</p>
+              <h2 className="mt-1 text-3xl font-black leading-tight tracking-tight text-[#092046] [word-break:keep-all]">
+                {projectTitle}
+              </h2>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">
+                  현재 화면: {title}
+                </span>
+                <span className="text-xs font-semibold text-slate-500">{projectMeta}</span>
+              </div>
+              <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600 [word-break:keep-all]">{description}</p>
             </div>
-            {actions}
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Link
+                href="/projects/edit"
+                className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+              >
+                작성/수정 목록
+              </Link>
+              {actions}
+            </div>
           </header>
 
           <nav className="mb-7 rounded-lg border border-slate-200 bg-white p-3 shadow-sm" aria-label="프로젝트 작업 흐름">
