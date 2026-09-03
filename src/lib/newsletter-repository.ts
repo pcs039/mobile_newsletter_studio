@@ -350,6 +350,8 @@ export type ProjectWorkspaceInfo = {
   description: string;
   primaryColor: string;
   status: string;
+  packageTier: string;
+  productionMode: string;
   publicUrl: string;
   ebookUrl: string;
   pageCount: number;
@@ -1323,6 +1325,8 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     description: project.description || "등록된 프로젝트 설명이 없습니다.",
     primaryColor: project.primary_color || "#092046",
     status: statusLabels[project.status],
+    packageTier: packageTierLabels[project.package_tier],
+    productionMode: productionModeLabels[project.production_mode],
     publicUrl: `/newsletters/${project.slug}`,
     ebookUrl: `/newsletters/${project.slug}/ebook`,
     pageCount: project.page_count,

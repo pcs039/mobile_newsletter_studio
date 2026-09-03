@@ -2,6 +2,7 @@ import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import {
   getProjectContent,
+  getProjectPageImages,
   getPublicProjectSurveys,
   getProjectWorkspace,
   type ProjectContentArticle,
@@ -192,9 +193,10 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const backToEditorHref = previewArticleId
     ? `/projects/${slug}/reading?articleId=${previewArticleId}`
     : `/projects/${slug}/reading`;
-  const [workspace, contentData, surveyData] = await Promise.all([
+  const [workspace, contentData, pageImageData, surveyData] = await Promise.all([
     getProjectWorkspace(slug),
     getProjectContent(slug),
+    getProjectPageImages(slug),
     getPublicProjectSurveys(slug),
   ]);
   const project = workspace.project;
@@ -222,6 +224,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const articles = contentData.articles.filter((article) =>
     isAdminPreview ? true : article.status === "approved" || article.status === "published",
   );
+  const pageImages = pageImageData.pages.filter((page) => page.previewHref);
+  const isPremiumImageMode = project?.packageTier === "프리미엄" || project?.productionMode === "전체 이미지형";
   const ebookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
   const headerColor = project?.primaryColor ?? "#071f46";
 
@@ -260,13 +264,33 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               PC e-book 보기
             </Link>
             <span className="rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-slate-200">
-              모바일 읽기 보기
+              {isPremiumImageMode ? "이미지형 모바일 보기" : "모바일 읽기 보기"}
             </span>
           </div>
         </header>
 
         <section className="space-y-5 px-5 py-5">
-          {articles.length > 0 ? (
+          {isPremiumImageMode && pageImages.length > 0 ? (
+            <section className="space-y-4">
+              {pageImages.map((page) => (
+                <article key={page.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  {isAdminPreview ? (
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-[#f8fbff] px-4 py-3">
+                      <p className="text-xs font-black text-[#184a88]">{page.pageNumber}쪽 이미지 페이지</p>
+                      <Link
+                        href={`/projects/${slug}/pages`}
+                        className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]"
+                      >
+                        페이지 관리
+                      </Link>
+                    </div>
+                  ) : null}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={page.previewHref ?? ""} alt={`${page.pageNumber}쪽 ${page.title}`} className="w-full" />
+                </article>
+              ))}
+            </section>
+          ) : articles.length > 0 ? (
             articles.map((article, index) => {
               const visibleBlocks = getVisibleBlocks(article);
 

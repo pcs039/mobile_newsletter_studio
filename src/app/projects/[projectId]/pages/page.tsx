@@ -4,23 +4,40 @@ import { ProjectFileDeleteButton } from "@/components/project-file-delete-button
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
 import { pageConversionSteps, pageQualityChecks } from "@/lib/newsletter-data";
-import { getProjectOriginalPdf, getProjectPageImages } from "@/lib/newsletter-repository";
+import { getProjectOriginalPdf, getProjectPageImages, getProjectWorkspace } from "@/lib/newsletter-repository";
+
+const premiumPageSpecs = [
+  { label: "권장 폭", value: "1080px", detail: "스마트폰 고해상도 기준" },
+  { label: "권장 형식", value: "PNG/JPG/WebP", detail: "텍스트가 많은 페이지는 PNG 권장" },
+  { label: "페이지 단위", value: "1쪽 = 이미지 1장", detail: "번호 순서대로 모바일에 표시" },
+  { label: "링크 처리", value: "다음 단계", detail: "클릭 영역 지정 기능으로 확장" },
+];
+
+const premiumWorkflow = [
+  "Adobe·Figma에서 모바일 규격 페이지 이미지 제작",
+  "페이지 번호에 맞춰 이미지 업로드",
+  "공개 화면에서 이미지 순서와 가독성 확인",
+  "이후 클릭 영역, URL, 영상 연결 기능 추가",
+];
 
 export default async function ProjectPagesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const [originalPdfData, pageImageData] = await Promise.all([
+  const [workspace, originalPdfData, pageImageData] = await Promise.all([
+    getProjectWorkspace(projectId),
     getProjectOriginalPdf(projectId),
     getProjectPageImages(projectId),
   ]);
+  const project = workspace.project;
   const originalPdf = originalPdfData.pdf;
   const pages = pageImageData.pages;
+  const isPremiumImageMode = project?.packageTier === "프리미엄" || project?.productionMode === "전체 이미지형";
 
   return (
     <ProjectAdminShell
       active="pages"
       projectId={projectId}
       title="원본 자료 등록"
-      description="기관에서 받은 PDF 원본과 지면 이미지를 프로젝트의 기준 자료로 보관합니다."
+      description="표준형은 PDF 원본과 기사 작성의 기준 자료를 보관하고, 프리미엄형은 완성된 모바일 페이지 이미지를 번호 순서대로 구성합니다."
       sidebarTitle={
         <>
           원본 자료
@@ -28,9 +45,9 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
           등록
         </>
       }
-      sidebarDescription="원본 PDF와 지면 이미지를 먼저 정리해 이후 모바일 페이지 작성의 기준으로 사용합니다."
+      sidebarDescription="표준형 원본 자료와 프리미엄형 모바일 이미지 페이지를 함께 관리합니다."
       sidebarNoteTitle="운영 기준"
-      sidebarNote="원본 자료는 제작 기준입니다. 실제 모바일 산출물은 다음 단계의 페이지 작성 화면에서 섹션과 블록으로 조립합니다."
+      sidebarNote="표준형은 기사 블록으로 조립하고, 프리미엄형은 페이지 이미지 자체를 모바일 산출물의 중심으로 사용합니다."
       actions={
         <Link
           href={`/projects/${projectId}/settings`}
@@ -42,6 +59,44 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
     >
           <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
             <section className="space-y-5">
+              <article className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5 shadow-sm">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프리미엄 페이지 구성</p>
+                    <h3 className="mt-1 text-lg font-black text-[#092046]">
+                      모바일 규격 이미지 파일을 페이지 순서대로 구성합니다.
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      프리미엄형은 Word식 편집이 아니라 디자이너가 완성한 페이지 이미지를 업로드하고, 공개 화면에서 이미지 중심으로
+                      보여주는 방식입니다.
+                    </p>
+                  </div>
+                  <StatusPill value={isPremiumImageMode ? "프리미엄 흐름" : "공통 자료 관리"} />
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {premiumPageSpecs.map((spec) => (
+                    <div key={spec.label} className="rounded-lg border border-[#d8e8ff] bg-white px-4 py-3">
+                      <p className="text-xs font-black text-slate-500">{spec.label}</p>
+                      <p className="mt-1 text-base font-black text-[#092046]">{spec.value}</p>
+                      <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{spec.detail}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
+                  <p className="text-sm font-black text-[#092046]">작업 순서</p>
+                  <ol className="mt-3 grid gap-2 lg:grid-cols-4">
+                    {premiumWorkflow.map((item, index) => (
+                      <li key={item} className="rounded-lg bg-[#f4f8ff] px-3 py-3 text-sm font-bold leading-6 text-slate-700">
+                        <span className="mr-2 font-black text-[#184a88]">{index + 1}.</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </article>
+
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
