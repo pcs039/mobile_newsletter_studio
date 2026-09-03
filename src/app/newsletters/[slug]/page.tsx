@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
-import { getProjectContent, getProjectWorkspace, type ProjectContentArticle } from "@/lib/newsletter-repository";
+import {
+  getProjectContent,
+  getProjectWorkspace,
+  type ProjectContentArticle,
+  type ProjectContentBlock,
+} from "@/lib/newsletter-repository";
 
 type PublicNewsletterPageProps = {
   params: Promise<{ slug: string }>;
@@ -17,14 +22,143 @@ function getPreviewBody(article: ProjectContentArticle) {
   return body;
 }
 
-function getParagraphBlocks(article: ProjectContentArticle) {
+function getVisibleBlocks(article: ProjectContentArticle) {
   return article.blocks
-    .filter((block) => block.type === "paragraph" && block.isVisible && (block.title || block.body))
+    .filter((block) => block.isVisible && (block.title || block.body))
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-function getAudioScript(article: ProjectContentArticle) {
-  return article.blocks.find((block) => block.type === "audio")?.body ?? "";
+function getBlockLink(article: ProjectContentArticle, block: ProjectContentBlock) {
+  if (block.linkActionId) {
+    return article.links.find((link) => link.id === block.linkActionId) ?? null;
+  }
+
+  if (block.type === "video_link") {
+    return article.links.find((link) => link.actionType === "video" && link.targetValue === block.body) ?? null;
+  }
+
+  if (block.type === "map_link") {
+    return article.links.find((link) => link.actionType === "map" && link.targetValue === block.body) ?? null;
+  }
+
+  if (block.type === "button_group") {
+    return article.links.find((link) => link.displayStyle === "button" && link.targetValue === block.body) ?? null;
+  }
+
+  return null;
+}
+
+function getYoutubeId(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    const url = new URL(trimmed);
+
+    if (url.hostname.includes("youtu.be")) {
+      return url.pathname.replace("/", "");
+    }
+
+    if (url.hostname.includes("youtube.com")) {
+      return url.searchParams.get("v") ?? url.pathname.split("/").filter(Boolean).pop() ?? "";
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+}
+
+function renderContentBlock(article: ProjectContentArticle, block: ProjectContentBlock) {
+  const link = getBlockLink(article, block);
+  const href = link?.targetValue || block.body;
+
+  if (block.type === "paragraph") {
+    return (
+      <section key={block.id}>
+        {block.title ? <h3 className="text-base font-black leading-7 text-[#092046]">{block.title}</h3> : null}
+        {block.body ? <p className="mt-2 whitespace-pre-line text-base leading-8 text-slate-700">{block.body}</p> : null}
+      </section>
+    );
+  }
+
+  if (block.type === "image") {
+    return (
+      <figure key={block.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+        {block.body ? <img src={block.body} alt={block.title || article.title} className="w-full object-cover" /> : null}
+        {block.title ? <figcaption className="px-4 py-3 text-sm font-bold leading-6 text-slate-700">{block.title}</figcaption> : null}
+      </figure>
+    );
+  }
+
+  if (block.type === "video_link") {
+    const youtubeId = getYoutubeId(href);
+
+    return (
+      <a
+        key={block.id}
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="block overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm"
+      >
+        {youtubeId ? (
+          <img
+            src={`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
+            alt={block.title || "영상 보기"}
+            className="aspect-video w-full object-cover opacity-90"
+          />
+        ) : null}
+        <div className="px-4 py-3">
+          <p className="text-xs font-black text-sky-200">영상 보기</p>
+          <p className="mt-1 text-sm font-black leading-6">{block.title || link?.label || "영상 보기"}</p>
+        </div>
+      </a>
+    );
+  }
+
+  if (block.type === "map_link") {
+    return (
+      <a
+        key={block.id}
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="block rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4"
+      >
+        <p className="text-xs font-black text-[#184a88]">지도 보기</p>
+        <p className="mt-1 text-base font-black leading-7 text-[#092046]">{block.title || link?.label || "위치 확인"}</p>
+      </a>
+    );
+  }
+
+  if (block.type === "button_group") {
+    return (
+      <a
+        key={block.id}
+        href={href.startsWith("tel:") || href.startsWith("http") ? href : `tel:${href}`}
+        target={href.startsWith("http") ? "_blank" : undefined}
+        rel={href.startsWith("http") ? "noreferrer" : undefined}
+        className="block rounded-xl bg-[#092046] px-4 py-3 text-center text-sm font-black text-white transition hover:bg-[#123a78]"
+      >
+        {block.title || link?.label || "바로가기"}
+      </a>
+    );
+  }
+
+  if (block.type === "audio") {
+    return (
+      <details key={block.id} className="rounded-xl bg-[#f4f8ff] px-4 py-3">
+        <summary className="cursor-pointer text-sm font-black text-[#092046]">{block.title || "음성 대본 보기"}</summary>
+        <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">{block.body}</p>
+      </details>
+    );
+  }
+
+  return null;
 }
 
 export default async function PublicNewsletterPage({ params, searchParams }: PublicNewsletterPageProps) {
@@ -65,10 +199,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
         </div>
       )}
       <section className="mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10">
-        <header className="px-5 pb-7 pt-6 text-white" style={{ backgroundColor: headerColor }}>
-          <p className="text-sm font-semibold text-sky-200">
-            {project?.organization ?? "프로젝트 정보 확인 필요"}
-          </p>
+        <header className="px-5 pb-7 pt-7 text-white" style={{ backgroundColor: headerColor }}>
+          <p className="text-sm font-semibold text-sky-200">{project?.organization ?? "프로젝트 정보 확인 필요"}</p>
           <h1 className="mt-3 text-3xl font-black leading-tight">{project?.title ?? slug}</h1>
           <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
           <p className="mt-4 text-sm leading-6 text-slate-200">{project?.description ?? workspace.message}</p>
@@ -85,8 +217,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
         <section className="space-y-5 px-5 py-5">
           {articles.length > 0 ? (
             articles.map((article, index) => {
-              const audioScript = getAudioScript(article);
-              const paragraphBlocks = getParagraphBlocks(article);
+              const visibleBlocks = getVisibleBlocks(article);
 
               return (
                 <article key={article.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -109,19 +240,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                       {article.summary}
                     </p>
                   ) : null}
-                  {paragraphBlocks.length > 0 ? (
-                    <div className="mt-4 space-y-5">
-                      {paragraphBlocks.map((block) => (
-                        <section key={block.id}>
-                          {block.title ? (
-                            <h3 className="text-base font-black leading-7 text-[#092046]">{block.title}</h3>
-                          ) : null}
-                          {block.body ? (
-                            <p className="mt-2 whitespace-pre-line text-base leading-8 text-slate-700">{block.body}</p>
-                          ) : null}
-                        </section>
-                      ))}
-                    </div>
+                  {visibleBlocks.length > 0 ? (
+                    <div className="mt-4 space-y-5">{visibleBlocks.map((block) => renderContentBlock(article, block))}</div>
                   ) : (
                     <div className="mt-4 whitespace-pre-line text-base leading-8 text-slate-700">
                       {getPreviewBody(article)}
@@ -133,27 +253,6 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                       <p className="mt-1 font-bold">
                         {[article.contactName, article.contactPhone].filter(Boolean).join(" · ")}
                       </p>
-                    </div>
-                  ) : null}
-                  {audioScript ? (
-                    <details className="mt-5 rounded-xl bg-[#f4f8ff] px-4 py-3">
-                      <summary className="cursor-pointer text-sm font-black text-[#092046]">음성 대본 보기</summary>
-                      <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">{audioScript}</p>
-                    </details>
-                  ) : null}
-                  {article.links.length > 0 ? (
-                    <div className="mt-5 grid gap-2">
-                      {article.links.map((link) => (
-                        <a
-                          key={link.id}
-                          href={link.targetValue}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-lg bg-[#092046] px-4 py-3 text-center text-sm font-black text-white transition hover:bg-[#123a78]"
-                        >
-                          {link.label}
-                        </a>
-                      ))}
                     </div>
                   ) : null}
                 </article>
@@ -180,10 +279,6 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             </div>
           )}
         </section>
-
-        <footer className="border-t border-slate-200 px-5 py-5 text-center">
-          <p className="text-xs font-semibold text-slate-500">제작·운영 DataDiction Newsletter Studio</p>
-        </footer>
       </section>
     </main>
   );

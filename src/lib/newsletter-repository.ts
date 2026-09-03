@@ -386,6 +386,13 @@ export type UpsertProjectArticleInput = {
     body?: string;
     sortOrder?: number;
   }>;
+  contentBlocks?: Array<{
+    type: Extract<ContentBlockType, "paragraph" | "image" | "video_link" | "map_link" | "button_group" | "audio">;
+    title?: string;
+    body?: string;
+    sortOrder?: number;
+    assetId?: string | null;
+  }>;
   contactName?: string;
   contactPhone?: string;
   status?: string;
@@ -1049,6 +1056,28 @@ function normalizeContentSections(sections: UpsertProjectArticleInput["contentSe
       sortOrder: normalizeArticleSortOrder(section.sortOrder) || (index + 1) * 10,
     }))
     .filter((section) => section.title || section.body);
+}
+
+function normalizeContentBlocks(blocks: UpsertProjectArticleInput["contentBlocks"]) {
+  return (blocks ?? [])
+    .map((block, index) => ({
+      type: block.type,
+      title: nullableText(block.title),
+      body: nullableText(block.body),
+      sortOrder: normalizeArticleSortOrder(block.sortOrder) || (index + 1) * 10,
+      assetId: block.assetId || null,
+    }))
+    .filter((block) => {
+      if (block.type === "paragraph") {
+        return block.title || block.body;
+      }
+
+      if (block.type === "audio") {
+        return block.body;
+      }
+
+      return block.body;
+    });
 }
 
 function detectLinkActionType(value: string, fallback: LinkActionType): LinkActionType {
@@ -1773,126 +1802,193 @@ async function replaceArticleBlocks(
     return false;
   }
 
-  const buttonTarget = cleanText(input.buttonTarget);
-  const videoUrl = cleanText(input.videoUrl);
-  const mapUrl = cleanText(input.mapUrl);
   const blocks: Array<{
     block_type: ContentBlockType;
     title: string | null;
     body: string | null;
+    asset_id?: string | null;
     link_action_id?: string | null;
     sort_order: number;
     metadata?: Record<string, unknown>;
   }> = [];
+  const contentBlocks = normalizeContentBlocks(input.contentBlocks);
 
-  const contentSections = normalizeContentSections(input.contentSections);
+  if (contentBlocks.length > 0) {
+    for (const block of contentBlocks) {
+      let linkActionId: string | null = null;
 
-  if (contentSections.length > 0) {
-    contentSections.forEach((section, index) => {
+      if (block.type === "button_group" && block.body) {
+        linkActionId = await insertArticleLinkAction(
+          projectId,
+          articleId,
+          {
+            label: block.title || "바로가기",
+            actionType: detectLinkActionType(block.body, "url"),
+            targetValue: block.body,
+            displayStyle: "button",
+            sortOrder: block.sortOrder,
+          },
+          headers,
+        );
+      }
+
+      if (block.type === "video_link" && block.body) {
+        linkActionId = await insertArticleLinkAction(
+          projectId,
+          articleId,
+          {
+            label: block.title || "영상 보기",
+            actionType: "video",
+            targetValue: block.body,
+            displayStyle: "thumbnail_card",
+            sortOrder: block.sortOrder,
+          },
+          headers,
+        );
+      }
+
+      if (block.type === "map_link" && block.body) {
+        linkActionId = await insertArticleLinkAction(
+          projectId,
+          articleId,
+          {
+            label: block.title || "지도 보기",
+            actionType: "map",
+            targetValue: block.body,
+            displayStyle: "map_card",
+            sortOrder: block.sortOrder,
+          },
+          headers,
+        );
+      }
+
+      if ((block.type === "button_group" || block.type === "video_link" || block.type === "map_link") && !linkActionId) {
+        return false;
+      }
+
+      blocks.push({
+        block_type: block.type,
+        title: block.title,
+        body: block.body,
+        asset_id: block.assetId,
+        link_action_id: linkActionId,
+        sort_order: block.sortOrder,
+      });
+    }
+  } else {
+    const contentSections = normalizeContentSections(input.contentSections);
+
+    if (contentSections.length > 0) {
+      contentSections.forEach((section, index) => {
+        blocks.push({
+          block_type: "paragraph",
+          title: section.title,
+          body: section.body,
+          sort_order: section.sortOrder || (index + 1) * 10,
+        });
+      });
+    } else if (cleanText(input.body)) {
       blocks.push({
         block_type: "paragraph",
-        title: section.title,
-        body: section.body,
-        sort_order: section.sortOrder || (index + 1) * 10,
+        title: null,
+        body: cleanText(input.body),
+        sort_order: 10,
       });
-    });
-  } else if (cleanText(input.body)) {
-    blocks.push({
-      block_type: "paragraph",
-      title: null,
-      body: cleanText(input.body),
-      sort_order: 10,
-    });
-  }
-
-  if (buttonTarget && cleanText(input.buttonLabel)) {
-    const linkActionId = await insertArticleLinkAction(
-      projectId,
-      articleId,
-      {
-        label: cleanText(input.buttonLabel),
-        actionType: detectLinkActionType(buttonTarget, "url"),
-        targetValue: buttonTarget,
-        displayStyle: "button",
-        sortOrder: 20,
-      },
-      headers,
-    );
-
-    if (!linkActionId) {
-      return false;
     }
 
-    blocks.push({
-      block_type: "button_group",
-      title: cleanText(input.buttonLabel),
-      body: buttonTarget,
-      link_action_id: linkActionId,
-      sort_order: 20,
-    });
-  }
+    const buttonTarget = cleanText(input.buttonTarget);
+    const videoUrl = cleanText(input.videoUrl);
+    const mapUrl = cleanText(input.mapUrl);
 
-  if (videoUrl) {
-    const linkActionId = await insertArticleLinkAction(
-      projectId,
-      articleId,
-      {
-        label: cleanText(input.videoLabel) || "영상 보기",
-        actionType: "video",
-        targetValue: videoUrl,
-        displayStyle: "thumbnail_card",
-        sortOrder: 30,
-      },
-      headers,
-    );
+    if (buttonTarget && cleanText(input.buttonLabel)) {
+      const linkActionId = await insertArticleLinkAction(
+        projectId,
+        articleId,
+        {
+          label: cleanText(input.buttonLabel),
+          actionType: detectLinkActionType(buttonTarget, "url"),
+          targetValue: buttonTarget,
+          displayStyle: "button",
+          sortOrder: 20,
+        },
+        headers,
+      );
 
-    if (!linkActionId) {
-      return false;
+      if (!linkActionId) {
+        return false;
+      }
+
+      blocks.push({
+        block_type: "button_group",
+        title: cleanText(input.buttonLabel),
+        body: buttonTarget,
+        link_action_id: linkActionId,
+        sort_order: 20,
+      });
     }
 
-    blocks.push({
-      block_type: "video_link",
-      title: cleanText(input.videoLabel) || "영상 보기",
-      body: videoUrl,
-      link_action_id: linkActionId,
-      sort_order: 30,
-    });
-  }
+    if (videoUrl) {
+      const linkActionId = await insertArticleLinkAction(
+        projectId,
+        articleId,
+        {
+          label: cleanText(input.videoLabel) || "영상 보기",
+          actionType: "video",
+          targetValue: videoUrl,
+          displayStyle: "thumbnail_card",
+          sortOrder: 30,
+        },
+        headers,
+      );
 
-  if (mapUrl) {
-    const linkActionId = await insertArticleLinkAction(
-      projectId,
-      articleId,
-      {
-        label: cleanText(input.mapLabel) || "지도 보기",
-        actionType: "map",
-        targetValue: mapUrl,
-        displayStyle: "map_card",
-        sortOrder: 40,
-      },
-      headers,
-    );
+      if (!linkActionId) {
+        return false;
+      }
 
-    if (!linkActionId) {
-      return false;
+      blocks.push({
+        block_type: "video_link",
+        title: cleanText(input.videoLabel) || "영상 보기",
+        body: videoUrl,
+        link_action_id: linkActionId,
+        sort_order: 30,
+      });
     }
 
-    blocks.push({
-      block_type: "map_link",
-      title: cleanText(input.mapLabel) || "지도 보기",
-      body: mapUrl,
-      link_action_id: linkActionId,
-      sort_order: 40,
-    });
-  }
+    if (mapUrl) {
+      const linkActionId = await insertArticleLinkAction(
+        projectId,
+        articleId,
+        {
+          label: cleanText(input.mapLabel) || "지도 보기",
+          actionType: "map",
+          targetValue: mapUrl,
+          displayStyle: "map_card",
+          sortOrder: 40,
+        },
+        headers,
+      );
 
-  if (cleanText(input.audioScript)) {
-    blocks.push({
-      block_type: "audio",
-      title: "음성 대본",
-      body: cleanText(input.audioScript),
-      sort_order: 50,
-    });
+      if (!linkActionId) {
+        return false;
+      }
+
+      blocks.push({
+        block_type: "map_link",
+        title: cleanText(input.mapLabel) || "지도 보기",
+        body: mapUrl,
+        link_action_id: linkActionId,
+        sort_order: 40,
+      });
+    }
+
+    if (cleanText(input.audioScript)) {
+      blocks.push({
+        block_type: "audio",
+        title: "음성 대본",
+        body: cleanText(input.audioScript),
+        sort_order: 50,
+      });
+    }
   }
 
   if (blocks.length === 0) {
@@ -1918,6 +2014,7 @@ async function replaceArticleBlocks(
         block_type: block.block_type,
         title: block.title,
         body: block.body,
+        asset_id: block.asset_id ?? null,
         link_action_id: block.link_action_id ?? null,
         sort_order: block.sort_order,
         metadata: block.metadata ?? {},

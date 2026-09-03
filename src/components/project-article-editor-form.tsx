@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { StatusPill } from "@/components/status-pill";
-import type { ProjectContentArticle, ProjectPageImage } from "@/lib/newsletter-repository";
+import type { ProjectContentArticle, ProjectContentBlock, ProjectPageImage } from "@/lib/newsletter-repository";
 
 type ProjectArticleEditorFormProps = {
   projectSlug: string;
@@ -11,8 +11,14 @@ type ProjectArticleEditorFormProps = {
   article: ProjectContentArticle | null;
 };
 
-type EditorSection = {
+type EditorBlockType = Extract<
+  ProjectContentBlock["type"],
+  "paragraph" | "image" | "video_link" | "map_link" | "button_group" | "audio"
+>;
+
+type EditorBlock = {
   id: string;
+  type: EditorBlockType;
   title: string;
   body: string;
 };
@@ -24,6 +30,24 @@ const articleStatuses = [
   { value: "approved", label: "검수 완료" },
   { value: "published", label: "발행 반영" },
 ];
+
+const editableBlockTypes: Array<{ type: EditorBlockType; label: string; help: string }> = [
+  { type: "paragraph", label: "본문", help: "소제목과 본문 단락" },
+  { type: "image", label: "이미지", help: "이미지 URL과 캡션" },
+  { type: "video_link", label: "유튜브", help: "영상 URL 카드" },
+  { type: "map_link", label: "지도", help: "지도 링크 카드" },
+  { type: "button_group", label: "버튼", help: "신청·문의 링크" },
+  { type: "audio", label: "음성", help: "음성 대본" },
+];
+
+const blockTypeLabels: Record<EditorBlockType, string> = {
+  paragraph: "본문",
+  image: "이미지",
+  video_link: "유튜브",
+  map_link: "지도",
+  button_group: "버튼",
+  audio: "음성",
+};
 
 function FieldLabel({ children, required = false }: { children: string; required?: boolean }) {
   return (
@@ -40,26 +64,124 @@ function getValue(formData: FormData, name: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function makeInitialSections(article: ProjectContentArticle | null): EditorSection[] {
-  const paragraphBlocks =
-    article?.blocks
-      .filter((block) => block.type === "paragraph")
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((block, index) => ({
-        id: block.id || `section-${index + 1}`,
-        title: block.title === "본문" ? "" : block.title,
-        body: block.body,
-      })) ?? [];
+function makeBlockId(type: EditorBlockType) {
+  return `${type}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
-  if (paragraphBlocks.length > 0) {
-    return paragraphBlocks;
+function isEditableBlockType(type: ProjectContentBlock["type"]): type is EditorBlockType {
+  return editableBlockTypes.some((item) => item.type === type);
+}
+
+function makeInitialBlocks(article: ProjectContentArticle | null): EditorBlock[] {
+  const blocks =
+    article?.blocks
+      .filter((block) => isEditableBlockType(block.type) && block.isVisible)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((block, index) => {
+        const link = block.linkActionId ? article.links.find((item) => item.id === block.linkActionId) : null;
+
+        return {
+          id: block.id || `${block.type}-${index + 1}`,
+          type: block.type as EditorBlockType,
+          title: block.type === "paragraph" && block.title === "본문" ? "" : block.title || link?.label || "",
+          body: block.body || link?.targetValue || "",
+        };
+      }) ?? [];
+
+  if (blocks.length > 0) {
+    return blocks;
   }
+
+  const fallbackBlocks: EditorBlock[] = [];
 
   if (article?.body) {
-    return [{ id: "section-1", title: "", body: article.body }];
+    fallbackBlocks.push({ id: "paragraph-1", type: "paragraph", title: "", body: article.body });
   }
 
-  return [{ id: "section-1", title: "", body: "" }];
+  const videoLink = article?.links.find((link) => link.actionType === "video");
+  const mapLink = article?.links.find((link) => link.actionType === "map");
+  const buttonLink = article?.links.find((link) => link.displayStyle === "button");
+
+  if (videoLink) {
+    fallbackBlocks.push({ id: "video-1", type: "video_link", title: videoLink.label, body: videoLink.targetValue });
+  }
+
+  if (mapLink) {
+    fallbackBlocks.push({ id: "map-1", type: "map_link", title: mapLink.label, body: mapLink.targetValue });
+  }
+
+  if (buttonLink) {
+    fallbackBlocks.push({ id: "button-1", type: "button_group", title: buttonLink.label, body: buttonLink.targetValue });
+  }
+
+  const audioScript = article?.blocks.find((block) => block.type === "audio")?.body;
+
+  if (audioScript) {
+    fallbackBlocks.push({ id: "audio-1", type: "audio", title: "음성 대본", body: audioScript });
+  }
+
+  return fallbackBlocks.length > 0 ? fallbackBlocks : [{ id: "paragraph-1", type: "paragraph", title: "", body: "" }];
+}
+
+function getBlockTitleLabel(type: EditorBlockType) {
+  switch (type) {
+    case "paragraph":
+      return "소제목";
+    case "image":
+      return "이미지 캡션";
+    case "video_link":
+      return "영상 제목";
+    case "map_link":
+      return "지도 제목";
+    case "button_group":
+      return "버튼명";
+    case "audio":
+      return "대본 제목";
+    default:
+      return "제목";
+  }
+}
+
+function getBlockBodyLabel(type: EditorBlockType) {
+  switch (type) {
+    case "paragraph":
+      return "본문";
+    case "image":
+      return "이미지 URL";
+    case "video_link":
+      return "YouTube URL";
+    case "map_link":
+      return "지도 URL";
+    case "button_group":
+      return "연결 URL 또는 전화번호";
+    case "audio":
+      return "음성 대본";
+    default:
+      return "내용";
+  }
+}
+
+function getBlockBodyPlaceholder(type: EditorBlockType) {
+  switch (type) {
+    case "paragraph":
+      return "모바일 독자가 읽기 쉽게 짧은 문단 중심으로 입력합니다.";
+    case "image":
+      return "https://... 또는 Supabase Storage 이미지 공개 URL";
+    case "video_link":
+      return "https://www.youtube.com/watch?v=...";
+    case "map_link":
+      return "카카오·네이버·구글 지도 URL";
+    case "button_group":
+      return "https://... 또는 061-000-0000";
+    case "audio":
+      return "MP3 제작 또는 검수에 사용할 대본을 입력합니다.";
+    default:
+      return "";
+  }
+}
+
+function shouldUseTextarea(type: EditorBlockType) {
+  return type === "paragraph" || type === "audio";
 }
 
 export function ProjectArticleEditorForm({ projectSlug, pages, article }: ProjectArticleEditorFormProps) {
@@ -67,35 +189,54 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [sections, setSections] = useState<EditorSection[]>(() => makeInitialSections(article));
-  const buttonLink = useMemo(
-    () => article?.links.find((link) => link.displayStyle === "button") ?? null,
-    [article],
-  );
-  const videoLink = useMemo(() => article?.links.find((link) => link.actionType === "video") ?? null, [article]);
-  const mapLink = useMemo(() => article?.links.find((link) => link.actionType === "map") ?? null, [article]);
-  const audioScript = useMemo(
-    () => article?.blocks.find((block) => block.type === "audio")?.body ?? "",
-    [article],
+  const [blocks, setBlocks] = useState<EditorBlock[]>(() => makeInitialBlocks(article));
+  const blockSummary = useMemo(
+    () =>
+      blocks
+        .map((block, index) => `${index + 1}. ${blockTypeLabels[block.type]}`)
+        .join(" / "),
+    [blocks],
   );
 
-  function updateSection(sectionId: string, field: "title" | "body", value: string) {
-    setSections((currentSections) =>
-      currentSections.map((section) => (section.id === sectionId ? { ...section, [field]: value } : section)),
+  function updateBlock(blockId: string, field: "title" | "body", value: string) {
+    setBlocks((currentBlocks) =>
+      currentBlocks.map((block) => (block.id === blockId ? { ...block, [field]: value } : block)),
     );
   }
 
-  function addSection() {
-    setSections((currentSections) => [
-      ...currentSections,
-      { id: `section-${Date.now()}`, title: "", body: "" },
+  function addBlock(type: EditorBlockType) {
+    setBlocks((currentBlocks) => [
+      ...currentBlocks,
+      {
+        id: makeBlockId(type),
+        type,
+        title: type === "audio" ? "음성 대본" : "",
+        body: "",
+      },
     ]);
   }
 
-  function removeSection(sectionId: string) {
-    setSections((currentSections) =>
-      currentSections.length === 1 ? currentSections : currentSections.filter((section) => section.id !== sectionId),
+  function removeBlock(blockId: string) {
+    setBlocks((currentBlocks) =>
+      currentBlocks.length === 1 ? currentBlocks : currentBlocks.filter((block) => block.id !== blockId),
     );
+  }
+
+  function moveBlock(blockId: string, direction: "up" | "down") {
+    setBlocks((currentBlocks) => {
+      const index = currentBlocks.findIndex((block) => block.id === blockId);
+      const nextIndex = direction === "up" ? index - 1 : index + 1;
+
+      if (index < 0 || nextIndex < 0 || nextIndex >= currentBlocks.length) {
+        return currentBlocks;
+      }
+
+      const nextBlocks = [...currentBlocks];
+      const [target] = nextBlocks.splice(index, 1);
+      nextBlocks.splice(nextIndex, 0, target);
+
+      return nextBlocks;
+    });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -105,15 +246,17 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
     setIsSaving(true);
 
     const formData = new FormData(event.currentTarget);
-    const contentSections = sections
-      .map((section, index) => ({
-        title: section.title.trim(),
-        body: section.body.trim(),
+    const contentBlocks = blocks
+      .map((block, index) => ({
+        type: block.type,
+        title: block.title.trim(),
+        body: block.body.trim(),
         sortOrder: (index + 1) * 10,
       }))
-      .filter((section) => section.title || section.body);
-    const body = contentSections
-      .map((section) => [section.title, section.body].filter(Boolean).join("\n"))
+      .filter((block) => block.title || block.body);
+    const body = contentBlocks
+      .filter((block) => block.type === "paragraph")
+      .map((block) => [block.title, block.body].filter(Boolean).join("\n"))
       .join("\n\n");
     const payload = {
       projectSlug,
@@ -123,17 +266,10 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
       title: getValue(formData, "title"),
       summary: getValue(formData, "summary"),
       body,
-      contentSections,
+      contentBlocks,
       contactName: getValue(formData, "contactName"),
       contactPhone: getValue(formData, "contactPhone"),
       status: getValue(formData, "status"),
-      buttonLabel: getValue(formData, "buttonLabel"),
-      buttonTarget: getValue(formData, "buttonTarget"),
-      videoLabel: getValue(formData, "videoLabel"),
-      videoUrl: getValue(formData, "videoUrl"),
-      mapLabel: getValue(formData, "mapLabel"),
-      mapUrl: getValue(formData, "mapUrl"),
-      audioScript: getValue(formData, "audioScript"),
     };
 
     if (!payload.title) {
@@ -161,7 +297,7 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
       return;
     }
 
-    setMessage("기사와 연결 블록을 Supabase에 저장했습니다.");
+    setMessage("기사와 콘텐츠 블록을 Supabase에 저장했습니다.");
     router.push(`/projects/${projectSlug}/reading?articleId=${result.article.id}`);
     router.refresh();
   }
@@ -242,145 +378,138 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
             className="min-h-24 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
           />
         </div>
+      </div>
 
-        <div className="mt-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <FieldLabel>본문 섹션</FieldLabel>
-              <p className="text-xs font-semibold leading-5 text-slate-500">
-                모바일 화면에서 나눠 보일 소제목과 본문 단락을 입력합니다.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={addSection}
-              className="rounded-lg border border-[#2f73b7] bg-white px-4 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
-            >
-              + 섹션 추가
-            </button>
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">콘텐츠 블록</p>
+            <h3 className="mt-1 text-lg font-black text-[#092046]">문단·이미지·영상·지도·버튼·음성 배치</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              블록 순서가 모바일 공개 화면의 표시 순서입니다. 필요한 요소를 추가한 뒤 위로·아래로 버튼으로 정렬합니다.
+            </p>
           </div>
+          <StatusPill value={blockSummary || "블록 없음"} />
+        </div>
 
-          <div className="mt-4 space-y-4">
-            {sections.map((section, index) => (
-              <div key={section.id} className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-xs font-black text-[#184a88]">본문 섹션 {index + 1}</p>
+        <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+          {editableBlockTypes.map((item) => (
+            <button
+              key={item.type}
+              type="button"
+              onClick={() => addBlock(item.type)}
+              className="rounded-lg border border-[#2f73b7] bg-white px-3 py-3 text-left transition hover:bg-[#eaf3ff]"
+            >
+              <span className="block text-sm font-black text-[#092046]">+ {item.label}</span>
+              <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{item.help}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-5 space-y-4">
+          {blocks.map((block, index) => (
+            <div key={block.id} className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-black text-[#184a88]">
+                    {index + 1}번 블록 · {blockTypeLabels[block.type]}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                    {block.type === "image"
+                      ? "현재 단계에서는 이미지 URL을 입력합니다. 다음 단계에서 소재 보관함 선택 기능을 붙입니다."
+                      : block.type === "video_link"
+                        ? "YouTube URL을 넣으면 공개 화면에서 썸네일 카드로 표시됩니다."
+                        : block.type === "map_link"
+                          ? "지도 URL을 넣으면 지도 보기 카드로 표시됩니다."
+                          : "모바일 화면에 표시할 내용을 입력합니다."}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => removeSection(section.id)}
-                    disabled={sections.length === 1}
-                    className="rounded-md border border-rose-200 px-3 py-1 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                    onClick={() => moveBlock(block.id, "up")}
+                    disabled={index === 0}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                  >
+                    위로
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveBlock(block.id, "down")}
+                    disabled={index === blocks.length - 1}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                  >
+                    아래로
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeBlock(block.id)}
+                    disabled={blocks.length === 1}
+                    className="rounded-md border border-rose-200 bg-white px-3 py-2 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
                   >
                     삭제
                   </button>
                 </div>
-                <input
-                  value={section.title}
-                  onChange={(event) => updateSection(section.id, "title", event.target.value)}
-                  placeholder="소제목 예: 주요 일정, 신청 방법, 문의 안내"
-                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                />
-                <textarea
-                  value={section.body}
-                  onChange={(event) => updateSection(section.id, "body", event.target.value)}
-                  placeholder="모바일 독자가 읽기 쉽게 짧은 문단 중심으로 입력합니다."
-                  className="mt-3 min-h-40 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                />
               </div>
-            ))}
-          </div>
+
+              <div className="mt-4 grid gap-3 xl:grid-cols-[240px_minmax(0,1fr)]">
+                <div>
+                  <FieldLabel>{getBlockTitleLabel(block.type)}</FieldLabel>
+                  <input
+                    value={block.title}
+                    onChange={(event) => updateBlock(block.id, "title", event.target.value)}
+                    placeholder={
+                      block.type === "button_group" ? "예: 신청하기" : block.type === "paragraph" ? "소제목" : "표시 제목"
+                    }
+                    className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                  />
+                </div>
+                <div>
+                  <FieldLabel>{getBlockBodyLabel(block.type)}</FieldLabel>
+                  {shouldUseTextarea(block.type) ? (
+                    <textarea
+                      value={block.body}
+                      onChange={(event) => updateBlock(block.id, "body", event.target.value)}
+                      placeholder={getBlockBodyPlaceholder(block.type)}
+                      className="min-h-32 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                    />
+                  ) : (
+                    <input
+                      value={block.body}
+                      onChange={(event) => updateBlock(block.id, "body", event.target.value)}
+                      placeholder={getBlockBodyPlaceholder(block.type)}
+                      className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">연결 블록</p>
-        <h3 className="mt-1 text-lg font-black text-[#092046]">버튼·영상·지도·음성 대본</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          비워 둔 항목은 저장하지 않습니다. 입력한 항목만 모바일 화면의 콘텐츠 블록으로 생성됩니다.
-        </p>
-
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">문의 정보</p>
+        <h3 className="mt-1 text-lg font-black text-[#092046]">기사 공통 연락처</h3>
         <div className="mt-5 grid gap-4 xl:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
-            <FieldLabel>행동 버튼</FieldLabel>
-            <div className="grid gap-3">
-              <input
-                name="buttonLabel"
-                defaultValue={buttonLink?.label ?? ""}
-                placeholder="버튼명 예: 신청하기, 전화 연결"
-                className="h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-              <input
-                name="buttonTarget"
-                defaultValue={buttonLink?.targetValue ?? ""}
-                placeholder="URL 또는 전화번호"
-                className="h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-            </div>
+          <div>
+            <FieldLabel>담당 부서 또는 담당자</FieldLabel>
+            <input
+              name="contactName"
+              defaultValue={article?.contactName ?? ""}
+              placeholder="예: 기획실 홍보팀"
+              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+            />
           </div>
-
-          <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
-            <FieldLabel>동영상 카드</FieldLabel>
-            <div className="grid gap-3">
-              <input
-                name="videoLabel"
-                defaultValue={videoLink?.label ?? ""}
-                placeholder="영상 카드 제목"
-                className="h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-              <input
-                name="videoUrl"
-                defaultValue={videoLink?.targetValue ?? ""}
-                placeholder="YouTube, Vimeo 등 영상 URL"
-                className="h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-            </div>
+          <div>
+            <FieldLabel>전화번호</FieldLabel>
+            <input
+              name="contactPhone"
+              defaultValue={article?.contactPhone ?? ""}
+              placeholder="예: 061-000-0000"
+              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+            />
           </div>
-
-          <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
-            <FieldLabel>지도 카드</FieldLabel>
-            <div className="grid gap-3">
-              <input
-                name="mapLabel"
-                defaultValue={mapLink?.label ?? ""}
-                placeholder="지도 카드 제목"
-                className="h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-              <input
-                name="mapUrl"
-                defaultValue={mapLink?.targetValue ?? ""}
-                placeholder="카카오·네이버·구글 지도 URL"
-                className="h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
-            <FieldLabel>연락처</FieldLabel>
-            <div className="grid gap-3">
-              <input
-                name="contactName"
-                defaultValue={article?.contactName ?? ""}
-                placeholder="담당 부서 또는 담당자"
-                className="h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-              <input
-                name="contactPhone"
-                defaultValue={article?.contactPhone ?? ""}
-                placeholder="전화번호"
-                className="h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <FieldLabel>음성 대본</FieldLabel>
-          <textarea
-            name="audioScript"
-            defaultValue={audioScript}
-            placeholder="MP3 제작 또는 검수에 사용할 대본을 입력합니다."
-            className="min-h-28 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-          />
         </div>
       </div>
 

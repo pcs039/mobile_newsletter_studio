@@ -3,6 +3,8 @@ import { upsertProjectArticle, type UpsertProjectArticleInput } from "@/lib/news
 
 export const dynamic = "force-dynamic";
 
+const allowedBlockTypes = new Set(["paragraph", "image", "video_link", "map_link", "button_group", "audio"]);
+
 function asText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -41,6 +43,38 @@ function asContentSections(value: unknown) {
     .filter((section): section is { title: string; body: string; sortOrder: number } => section !== null);
 }
 
+function asContentBlocks(value: unknown): NonNullable<UpsertProjectArticleInput["contentBlocks"]> {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const blocks: NonNullable<UpsertProjectArticleInput["contentBlocks"]> = [];
+
+  value.forEach((block, index) => {
+    if (!block || typeof block !== "object") {
+      return;
+    }
+
+    const blockRecord = block as Record<string, unknown>;
+    const type = asText(blockRecord.type);
+    const title = asText(blockRecord.title);
+    const body = asText(blockRecord.body);
+
+    if (!allowedBlockTypes.has(type) || (!title && !body)) {
+      return;
+    }
+
+    blocks.push({
+      type: type as NonNullable<UpsertProjectArticleInput["contentBlocks"]>[number]["type"],
+      title,
+      body,
+      sortOrder: asOptionalNumber(blockRecord.sortOrder) || (index + 1) * 10,
+    });
+  });
+
+  return blocks;
+}
+
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
@@ -60,6 +94,7 @@ export async function POST(request: Request) {
     summary: asText(payload.summary),
     body: asText(payload.body),
     contentSections: asContentSections(payload.contentSections),
+    contentBlocks: asContentBlocks(payload.contentBlocks),
     contactName: asText(payload.contactName),
     contactPhone: asText(payload.contactPhone),
     status: asText(payload.status),
