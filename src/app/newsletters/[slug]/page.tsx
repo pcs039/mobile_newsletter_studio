@@ -72,6 +72,24 @@ function getYoutubeId(value: string) {
   return "";
 }
 
+function PublicUnavailablePage({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-[#edf4fb] px-5 text-slate-950">
+      <section className="w-full max-w-[520px] rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-blue-950/10">
+        <p className="text-sm font-black text-[#184a88]">DataDiction Newsletter</p>
+        <h1 className="mt-3 text-2xl font-black leading-tight text-[#092046]">{title}</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-600 [word-break:keep-all]">{message}</p>
+      </section>
+    </main>
+  );
+}
+
 function renderContentBlock(article: ProjectContentArticle, block: ProjectContentBlock) {
   const link = getBlockLink(article, block);
   const href = link?.targetValue || block.body;
@@ -173,6 +191,27 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     : `/projects/${slug}/reading`;
   const [workspace, contentData] = await Promise.all([getProjectWorkspace(slug), getProjectContent(slug)]);
   const project = workspace.project;
+  const isPublished = project?.status === "발행 완료";
+  const isPubliclyVisible = isAdminPreview || isPublished;
+
+  if (!project) {
+    return (
+      <PublicUnavailablePage
+        title="공개 화면을 찾지 못했습니다."
+        message="프로젝트 주소가 변경됐거나 아직 공개 준비가 끝나지 않았습니다."
+      />
+    );
+  }
+
+  if (!isPubliclyVisible) {
+    return (
+      <PublicUnavailablePage
+        title="아직 공개 전입니다."
+        message="이 소식지는 현재 제작 또는 검수 중입니다. 발행 완료 처리 후 공개 화면이 열립니다."
+      />
+    );
+  }
+
   const articles = contentData.articles.filter((article) =>
     isAdminPreview ? true : article.status === "approved" || article.status === "published",
   );
@@ -181,7 +220,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
 
   return (
     <main className="min-h-screen bg-[#edf4fb] text-slate-950">
-      <NewsletterViewTracker slug={slug} viewMode="reading" disabled={isAdminPreview || !project} />
+      <NewsletterViewTracker slug={slug} viewMode="reading" disabled={isAdminPreview || !isPublished} />
       {isAdminPreview && (
         <div className="sticky top-0 z-20 border-b border-slate-300 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
           <div className="mx-auto flex max-w-[520px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
