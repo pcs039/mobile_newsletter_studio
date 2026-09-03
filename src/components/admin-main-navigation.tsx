@@ -23,7 +23,7 @@ export function AdminMainNavigation({ active, projectId }: AdminMainNavigationPr
       detail: projectId ? "검수·URL·QR" : "프로젝트 선택",
       href: projectId ? `/projects/${projectId}/publish` : "/projects/publish",
     },
-    { key: "distribution", label: "배포/관리", detail: "준비중" },
+    { key: "distribution", label: "배포/관리", detail: "공개 운영", href: "/projects/distribution" },
     { key: "survey", label: "설문/이벤트", detail: "준비중" },
   ];
 
