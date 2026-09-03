@@ -76,15 +76,15 @@ export function ProjectSendCampaignActions({
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-slate-200 bg-[#f8fbff] px-3 py-3">
-      <form onSubmit={handleStatusSubmit} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_80px]">
+    <div className="rounded-lg border border-slate-200 bg-[#f8fbff] px-3 py-3">
+      <form onSubmit={handleStatusSubmit} className="grid gap-2">
         <label className="grid gap-1 text-xs font-black text-[#092046]">
           상태 변경
           <select
             name="status"
             defaultValue={statusCode}
             disabled={state.isSaving}
-            className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs font-bold text-slate-800 outline-none transition focus:border-[#2f73b7] focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-bold text-slate-800 outline-none transition focus:border-[#2f73b7] focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="draft">초안</option>
             <option value="ready">발송 준비</option>
@@ -95,7 +95,7 @@ export function ProjectSendCampaignActions({
         <button
           type="submit"
           disabled={state.isSaving}
-          className="self-end rounded-md bg-[#092046] px-3 py-2 text-xs font-black text-white transition hover:bg-[#123a78] disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="w-full rounded-md bg-[#092046] px-3 py-2 text-xs font-black text-white transition hover:bg-[#123a78] disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           저장
         </button>
