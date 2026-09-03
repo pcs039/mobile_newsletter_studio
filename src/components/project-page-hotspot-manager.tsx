@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type PointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { ProjectPageHotspotLink, ProjectPageImage } from "@/lib/newsletter-repository";
 
@@ -34,6 +34,22 @@ const defaultForm = {
   heightPercent: 8,
 };
 
+type DraftBoxField = "xPercent" | "yPercent" | "widthPercent" | "heightPercent";
+
+type DraftBox = Pick<typeof defaultForm, DraftBoxField>;
+
+type DragMode = "move" | "resize-nw" | "resize-ne" | "resize-sw" | "resize-se";
+
+type DragState = {
+  mode: DragMode;
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startBox: DraftBox;
+};
+
+const minBoxSize = 3;
+
 function linkTypeLabel(type: string) {
   return linkTypes.find((item) => item.value === type)?.label ?? type;
 }
@@ -46,10 +62,75 @@ function makeHref(link: Pick<ProjectPageHotspotLink, "targetValue" | "type">) {
   return link.targetValue;
 }
 
+function roundPercent(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function clampPercent(value: number, min = 0, max = 100) {
+  return Math.min(max, Math.max(min, roundPercent(value)));
+}
+
+function clampDraftBox(box: DraftBox): DraftBox {
+  const widthPercent = clampPercent(box.widthPercent, minBoxSize, 100);
+  const heightPercent = clampPercent(box.heightPercent, minBoxSize, 100);
+
+  return {
+    widthPercent,
+    heightPercent,
+    xPercent: clampPercent(box.xPercent, 0, 100 - widthPercent),
+    yPercent: clampPercent(box.yPercent, 0, 100 - heightPercent),
+  };
+}
+
+function makeMovedBox(startBox: DraftBox, dxPercent: number, dyPercent: number) {
+  return clampDraftBox({
+    ...startBox,
+    xPercent: startBox.xPercent + dxPercent,
+    yPercent: startBox.yPercent + dyPercent,
+  });
+}
+
+function makeResizedBox(startBox: DraftBox, mode: DragMode, dxPercent: number, dyPercent: number) {
+  if (mode === "resize-se") {
+    return clampDraftBox({
+      ...startBox,
+      widthPercent: startBox.widthPercent + dxPercent,
+      heightPercent: startBox.heightPercent + dyPercent,
+    });
+  }
+
+  if (mode === "resize-sw") {
+    return clampDraftBox({
+      xPercent: startBox.xPercent + dxPercent,
+      yPercent: startBox.yPercent,
+      widthPercent: startBox.widthPercent - dxPercent,
+      heightPercent: startBox.heightPercent + dyPercent,
+    });
+  }
+
+  if (mode === "resize-ne") {
+    return clampDraftBox({
+      xPercent: startBox.xPercent,
+      yPercent: startBox.yPercent + dyPercent,
+      widthPercent: startBox.widthPercent + dxPercent,
+      heightPercent: startBox.heightPercent - dyPercent,
+    });
+  }
+
+  return clampDraftBox({
+    xPercent: startBox.xPercent + dxPercent,
+    yPercent: startBox.yPercent + dyPercent,
+    widthPercent: startBox.widthPercent - dxPercent,
+    heightPercent: startBox.heightPercent - dyPercent,
+  });
+}
+
 export function ProjectPageHotspotManager({ links, pages, projectSlug }: ProjectPageHotspotManagerProps) {
   const router = useRouter();
+  const imageFrameRef = useRef<HTMLDivElement>(null);
   const [selectedPageId, setSelectedPageId] = useState(pages[0]?.id ?? "");
   const [form, setForm] = useState(defaultForm);
+  const [dragState, setDragState] = useState<DragState | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -67,17 +148,71 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
   function updateNumberField(field: "xPercent" | "yPercent" | "widthPercent" | "heightPercent", value: string) {
     const numberValue = Number(value);
 
-    updateField(field, Number.isFinite(numberValue) ? numberValue : 0);
+    setForm((current) => ({
+      ...current,
+      ...clampDraftBox({ ...current, [field]: Number.isFinite(numberValue) ? numberValue : 0 }),
+    }));
   }
 
   function applyPreset(preset: (typeof positionPresets)[number]) {
     setForm((current) => ({
       ...current,
-      xPercent: preset.xPercent,
-      yPercent: preset.yPercent,
-      widthPercent: preset.widthPercent,
-      heightPercent: preset.heightPercent,
+      ...clampDraftBox({
+        xPercent: preset.xPercent,
+        yPercent: preset.yPercent,
+        widthPercent: preset.widthPercent,
+        heightPercent: preset.heightPercent,
+      }),
     }));
+  }
+
+  function startDraftDrag(event: PointerEvent<HTMLElement>, mode: DragMode) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragState({
+      mode,
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startBox: {
+        xPercent: form.xPercent,
+        yPercent: form.yPercent,
+        widthPercent: form.widthPercent,
+        heightPercent: form.heightPercent,
+      },
+    });
+  }
+
+  function updateDraftDrag(event: PointerEvent<HTMLElement>) {
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const frame = imageFrameRef.current;
+
+    if (!frame) {
+      return;
+    }
+
+    const rect = frame.getBoundingClientRect();
+    const dxPercent = ((event.clientX - dragState.startClientX) / rect.width) * 100;
+    const dyPercent = ((event.clientY - dragState.startClientY) / rect.height) * 100;
+    const nextBox =
+      dragState.mode === "move"
+        ? makeMovedBox(dragState.startBox, dxPercent, dyPercent)
+        : makeResizedBox(dragState.startBox, dragState.mode, dxPercent, dyPercent);
+
+    setForm((current) => ({
+      ...current,
+      ...nextBox,
+    }));
+  }
+
+  function endDraftDrag(event: PointerEvent<HTMLElement>) {
+    if (dragState?.pointerId === event.pointerId) {
+      setDragState(null);
+    }
   }
 
   async function handleSubmit() {
@@ -161,7 +296,7 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프리미엄 링크 영역</p>
           <h3 className="mt-1 text-lg font-bold text-[#092046]">이미지 위 클릭 영역 지정</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            이미지 안의 버튼, 배너, 전화번호처럼 눌러야 하는 위치를 퍼센트 좌표로 저장합니다.
+            프리셋으로 파란 박스를 만든 뒤 이미지 위에서 직접 드래그해 위치와 크기를 조정합니다.
           </p>
         </div>
         <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">
@@ -187,7 +322,10 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
           </label>
 
           {selectedPage?.previewHref ? (
-            <div className="relative overflow-hidden rounded-lg border border-slate-300 bg-slate-100">
+            <div
+              ref={imageFrameRef}
+              className="relative overflow-hidden rounded-lg border border-slate-300 bg-slate-100 touch-none select-none"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={selectedPage.previewHref} alt={`${selectedPage.pageNumber}쪽 페이지 이미지`} className="w-full" />
               {selectedLinks.map((link) => (
@@ -208,14 +346,41 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
                 </a>
               ))}
               <div
-                className="pointer-events-none absolute rounded-md border-2 border-[#184a88] bg-sky-400/20"
+                role="button"
+                tabIndex={0}
+                aria-label="새 클릭 영역 위치 조정"
+                onPointerDown={(event) => startDraftDrag(event, "move")}
+                onPointerMove={updateDraftDrag}
+                onPointerUp={endDraftDrag}
+                onPointerCancel={endDraftDrag}
+                className="absolute cursor-move rounded-md border-2 border-[#184a88] bg-sky-400/20 shadow-[0_0_0_1px_rgba(255,255,255,0.85)]"
                 style={{
                   left: `${form.xPercent}%`,
                   top: `${form.yPercent}%`,
                   width: `${form.widthPercent}%`,
                   height: `${form.heightPercent}%`,
                 }}
-              />
+              >
+                <span className="m-1 inline-flex rounded bg-[#184a88] px-2 py-1 text-[11px] font-black text-white">
+                  새 영역
+                </span>
+                {[
+                  { mode: "resize-nw" as const, className: "-left-2 -top-2 cursor-nwse-resize" },
+                  { mode: "resize-ne" as const, className: "-right-2 -top-2 cursor-nesw-resize" },
+                  { mode: "resize-sw" as const, className: "-bottom-2 -left-2 cursor-nesw-resize" },
+                  { mode: "resize-se" as const, className: "-bottom-2 -right-2 cursor-nwse-resize" },
+                ].map((handle) => (
+                  <span
+                    key={handle.mode}
+                    aria-hidden="true"
+                    onPointerDown={(event) => startDraftDrag(event, handle.mode)}
+                    onPointerMove={updateDraftDrag}
+                    onPointerUp={endDraftDrag}
+                    onPointerCancel={endDraftDrag}
+                    className={`absolute h-4 w-4 rounded-full border-2 border-white bg-[#184a88] shadow ${handle.className}`}
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center">
@@ -275,6 +440,9 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
                     </button>
                   ))}
                 </div>
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                  파란 박스 안을 잡으면 이동하고, 네 모서리 점을 잡으면 크기를 조정합니다. 아래 숫자는 미세 조정용입니다.
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
