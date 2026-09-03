@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { HomeButton } from "@/components/home-button";
 import { ProjectArchiveButton } from "@/components/project-archive-button";
 import { StatusPill } from "@/components/status-pill";
 import { filterProjectsForUser, requireAppUser } from "@/lib/app-auth";
@@ -55,12 +56,15 @@ export default async function EditProjectsPage() {
                 여러 소식지가 동시에 진행될 때 먼저 작업 대상을 고르고, 각 프로젝트의 세부 작업으로 들어갑니다.
               </p>
             </div>
-            <Link
-              href="/projects/new"
-              className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
-            >
-              + 새 프로젝트 생성
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <HomeButton />
+              <Link
+                href="/projects/new"
+                className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+              >
+                + 새 프로젝트 생성
+              </Link>
+            </div>
           </header>
 
           <section className="mb-7 grid gap-4 md:grid-cols-3">

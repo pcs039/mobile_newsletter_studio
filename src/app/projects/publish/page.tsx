@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { HomeButton } from "@/components/home-button";
 import { StatusPill } from "@/components/status-pill";
 import { filterProjectsForUser, requireAppUser } from "@/lib/app-auth";
 import { getPublishQueueProjects } from "@/lib/newsletter-repository";
@@ -75,12 +76,15 @@ export default async function PublishProjectsPage() {
                 발행을 앞둔 프로젝트를 목록에서 선택하고, 부족한 작업을 바로 보완합니다.
               </p>
             </div>
-            <Link
-              href="/projects/edit"
-              className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
-            >
-              작성/수정 목록 보기
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <HomeButton />
+              <Link
+                href="/projects/edit"
+                className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+              >
+                작성/수정 목록 보기
+              </Link>
+            </div>
           </header>
 
           <section className="mb-7 grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">

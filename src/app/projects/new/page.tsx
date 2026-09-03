@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { HomeButton } from "@/components/home-button";
 import { ProjectCreateForm } from "@/components/project-create-form";
 import { requireAppUser } from "@/lib/app-auth";
 import { packageOptions, productionModeOptions } from "@/lib/newsletter-data";
@@ -79,12 +79,7 @@ export default async function NewProjectPage() {
                 입력한 기본 정보를 Supabase 프로젝트 데이터로 저장하고 다음 제작 단계로 이동합니다.
               </p>
             </div>
-            <Link
-              href="/"
-              className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-            >
-              대시보드로 돌아가기
-            </Link>
+            <HomeButton />
           </header>
 
           <div className="grid gap-5 xl:grid-cols-[1fr_360px]">

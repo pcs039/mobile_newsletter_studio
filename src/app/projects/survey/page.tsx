@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { HomeButton } from "@/components/home-button";
 import { StatusPill } from "@/components/status-pill";
 import { filterProjectsForUser, requireAppUser } from "@/lib/app-auth";
 import { getPublishQueueProjects } from "@/lib/newsletter-repository";
@@ -59,12 +60,15 @@ export default async function SurveyProjectsPage() {
                 프로젝트를 선택해 독자 설문, 이벤트 참여, 신청 접수용 문항을 구성합니다.
               </p>
             </div>
-            <Link
-              href="/projects/distribution"
-              className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
-            >
-              배포/관리 목록
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <HomeButton />
+              <Link
+                href="/projects/distribution"
+                className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+              >
+                배포/관리 목록
+              </Link>
+            </div>
           </header>
 
           <section className="mb-7 grid gap-4 sm:grid-cols-3">

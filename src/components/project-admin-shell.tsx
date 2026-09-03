@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { HomeButton } from "@/components/home-button";
 import { canAccessProject, hasProjectUnlock, requireAppUser } from "@/lib/app-auth";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
@@ -116,6 +117,7 @@ export async function ProjectAdminShell({
               <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600 [word-break:keep-all]">{description}</p>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
+              <HomeButton />
               <Link
                 href="/projects/edit"
                 className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
