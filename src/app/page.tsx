@@ -3,6 +3,7 @@ import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { ProjectArchiveButton } from "@/components/project-archive-button";
 import { StatusPill } from "@/components/status-pill";
+import { SupabaseHealthCheckButton } from "@/components/supabase-health-check-button";
 import {
   assetChecks,
   projectOperationActions,
@@ -176,12 +177,7 @@ export default async function Home() {
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 스키마를 적용하고 Vercel 환경변수를 넣은 뒤 API 상태를 확인합니다.
               </p>
-              <a
-                href="/api/supabase/health"
-                className="mt-4 inline-flex w-full justify-center rounded-lg bg-[#092046] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
-              >
-                Supabase 상태 확인
-              </a>
+              <SupabaseHealthCheckButton />
             </article>
           </section>
 
