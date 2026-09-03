@@ -283,7 +283,7 @@ export default async function Home() {
                             </p>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-slate-500">{project.updated}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-slate-500">{project.updated}</td>
                         <td className="px-4 py-4">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <Link

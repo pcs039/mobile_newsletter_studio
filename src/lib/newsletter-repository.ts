@@ -457,6 +457,21 @@ function formatDate(value: string | null) {
     .replace(/\s/g, "");
 }
 
+function formatShortDate(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const dateKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+
+  return dateKey.slice(2);
+}
+
 function makeIssueLabel(input: CreateNewsletterProjectInput) {
   if (!input.publishedDate) {
     return null;
@@ -591,7 +606,7 @@ function mapProjectRowToDashboardProject(
     packageTier: packageTierLabels[project.package_tier],
     productionMode: productionModeLabels[project.production_mode],
     workload: makeWorkload(project),
-    updated: formatDate(project.updated_at),
+    updated: formatShortDate(project.updated_at),
     views: {
       today: formatCount(stats.today),
       yesterday: formatCount(stats.yesterday),
