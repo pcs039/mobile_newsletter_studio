@@ -79,6 +79,9 @@ export default async function ReadingEditorPage({
   const selectedArticle = requestedArticleId
     ? articles.find((article) => article.id === requestedArticleId) ?? null
     : null;
+  const mobilePreviewHref = selectedArticle
+    ? `/newsletters/${projectId}?preview=admin&articleId=${selectedArticle.id}`
+    : `/newsletters/${projectId}?preview=admin`;
 
   return (
     <ProjectAdminShell
@@ -105,7 +108,7 @@ export default async function ReadingEditorPage({
             원본 자료 보기
           </Link>
           <Link
-            href={`/newsletters/${projectId}?preview=admin`}
+            href={mobilePreviewHref}
             className="rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
           >
             모바일 미리보기

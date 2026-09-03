@@ -9,7 +9,7 @@ import {
 
 type PublicNewsletterPageProps = {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ preview?: string | string[] }>;
+  searchParams?: Promise<{ articleId?: string | string[]; preview?: string | string[] }>;
 };
 
 function getPreviewBody(article: ProjectContentArticle) {
@@ -165,7 +165,12 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
   const previewMode = resolvedSearchParams?.preview;
+  const previewArticleParam = resolvedSearchParams?.articleId;
+  const previewArticleId = Array.isArray(previewArticleParam) ? previewArticleParam[0] : previewArticleParam;
   const isAdminPreview = Array.isArray(previewMode) ? previewMode.includes("admin") : previewMode === "admin";
+  const backToEditorHref = previewArticleId
+    ? `/projects/${slug}/reading?articleId=${previewArticleId}`
+    : `/projects/${slug}/reading`;
   const [workspace, contentData] = await Promise.all([getProjectWorkspace(slug), getProjectContent(slug)]);
   const project = workspace.project;
   const articles = contentData.articles.filter((article) =>
@@ -183,7 +188,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">관리자 미리보기</p>
             <div className="flex flex-wrap gap-2">
               <Link
-                href={`/projects/${slug}/reading`}
+                href={backToEditorHref}
                 className="rounded-md border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
               >
                 작성 화면으로 돌아가기
