@@ -187,6 +187,8 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
                           {survey.statusCode === "open" && survey.questions.length > 0 ? (
                             <Link
                               href={`/newsletters/${projectId}/survey/${survey.id}`}
+                              target="_blank"
+                              rel="noreferrer"
                               className="rounded-lg bg-[#092046] px-4 py-3 text-center text-sm font-black text-white transition hover:bg-[#123a78]"
                             >
                               공개 참여 화면
