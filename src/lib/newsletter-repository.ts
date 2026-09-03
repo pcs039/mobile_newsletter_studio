@@ -2358,7 +2358,7 @@ export async function archiveProjectSendCampaign(
       return {
         ok: false,
         status: "request_failed",
-        message: "발송 기록 보관 주소를 만들지 못했습니다.",
+        message: "발송 기록 삭제 주소를 만들지 못했습니다.",
       };
     }
 
@@ -2380,20 +2380,20 @@ export async function archiveProjectSendCampaign(
       return {
         ok: false,
         status: "request_failed",
-        message: "발송 기록 보관에 실패했습니다. Supabase 테이블과 권한을 확인하세요.",
+        message: "발송 기록 삭제에 실패했습니다. Supabase 테이블과 권한을 확인하세요.",
         httpStatus: response.status,
       };
     }
 
     return {
       ok: true,
-      message: "발송 기록을 보관했습니다.",
+      message: "발송 기록을 삭제했습니다.",
     };
   } catch {
     return {
       ok: false,
       status: "request_failed",
-      message: "발송 기록 보관 중 오류가 발생했습니다.",
+      message: "발송 기록 삭제 중 오류가 발생했습니다.",
     };
   }
 }

@@ -64,7 +64,7 @@ export function ProjectSendCampaignActions({
   }
 
   function handleArchiveClick() {
-    if (!window.confirm("이 발송 기록을 목록에서 보관 처리할까요?")) {
+    if (!window.confirm("이 발송 기록을 삭제할까요?")) {
       return;
     }
 
@@ -107,7 +107,7 @@ export function ProjectSendCampaignActions({
         disabled={state.isSaving}
         className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-700 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        기록 보관
+        삭제
       </button>
 
       {state.message ? (
