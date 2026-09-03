@@ -4,7 +4,7 @@ import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
-type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish";
+type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish" | "distribution";
 
 const projectNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
   { key: "pages", label: "원본 자료", path: "pages", guide: "PDF·지면" },
@@ -12,6 +12,7 @@ const projectNavigation: Array<{ key: ProjectSection; label: string; path: strin
   { key: "assets", label: "소재 보관함", path: "assets", guide: "이미지·링크" },
   { key: "audio", label: "음성·대본", path: "audio", guide: "MP3·검수" },
   { key: "publish", label: "검수·발행", path: "publish", guide: "URL·QR" },
+  { key: "distribution", label: "배포 운영", path: "distribution", guide: "대상·발송" },
 ];
 
 export async function ProjectAdminShell({
@@ -57,7 +58,10 @@ export async function ProjectAdminShell({
             <p className="mt-3 text-sm leading-6 text-slate-300">{sidebarDescription}</p>
           </div>
 
-          <AdminMainNavigation active={active === "publish" ? "publish" : "edit"} projectId={projectId} />
+          <AdminMainNavigation
+            active={active === "publish" ? "publish" : active === "distribution" ? "distribution" : "edit"}
+            projectId={projectId}
+          />
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
             <p className="text-sm font-bold text-white">{sidebarNoteTitle}</p>
@@ -101,7 +105,7 @@ export async function ProjectAdminShell({
                 순서대로 진행하되, 필요한 단계는 언제든 다시 열 수 있습니다.
               </p>
             </div>
-            <div className="grid gap-2 md:grid-cols-5">
+            <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
               {projectNavigation.map((item, index) => {
                 const isActive = active === item.key;
                 const href = `/projects/${projectId}/${item.path}`;

@@ -126,6 +126,68 @@ export type PublishQueueProjectsResult = {
   message: string;
 };
 
+
+export type ProjectDistributionGroup = {
+  id: string;
+  name: string;
+  description: string;
+  recipientCount: number;
+  channelNote: string;
+  updated: string;
+};
+
+export type ProjectSendCampaign = {
+  id: string;
+  channel: string;
+  targetGroupId: string;
+  targetGroupName: string;
+  messageTitle: string;
+  publicUrl: string;
+  status: string;
+  sentAt: string;
+  note: string;
+  updated: string;
+};
+
+export type ProjectDistributionResult = {
+  groups: ProjectDistributionGroup[];
+  campaigns: ProjectSendCampaign[];
+  source: "supabase" | "unconfigured" | "error" | "not_found";
+  message: string;
+};
+
+export type CreateProjectRecipientGroupInput = {
+  projectSlug: string;
+  name: string;
+  description?: string;
+  recipientCount?: number;
+  channelNote?: string;
+};
+
+export type CreateProjectSendCampaignInput = {
+  projectSlug: string;
+  channel: DistributionChannel;
+  targetGroupId?: string;
+  targetGroupName?: string;
+  messageTitle: string;
+  publicUrl?: string;
+  status: DistributionStatus;
+  sentAt?: string;
+  note?: string;
+};
+
+export type CreateProjectDistributionResult =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "request_failed" | "not_found" | "invalid_input";
+      message: string;
+      httpStatus?: number;
+    };
+
 export type ProjectWorkspaceInfo = {
   id: string;
   slug: string;
@@ -325,6 +387,36 @@ type ProjectViewStats = {
   today: number;
   yesterday: number;
   total: number;
+};
+
+
+type DistributionChannel = "kakao" | "sms" | "email" | "qr" | "manual";
+type DistributionStatus = "draft" | "ready" | "sent" | "failed";
+
+type NewsletterRecipientGroupRow = {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  recipient_count: number | null;
+  channel_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type NewsletterSendCampaignRow = {
+  id: string;
+  project_id: string;
+  channel: DistributionChannel;
+  target_group_id: string | null;
+  target_group_name: string | null;
+  message_title: string;
+  public_url: string | null;
+  status: DistributionStatus;
+  sent_at: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type ProjectPageImage = {
@@ -545,6 +637,22 @@ const productionModeLabels: Record<ProductionMode, string> = {
   hybrid: "템플릿+이미지 혼합",
   full_image: "전체 이미지형",
   external_ebook: "외부 e-book 연동",
+};
+
+
+const distributionChannelLabels: Record<DistributionChannel, string> = {
+  kakao: "카카오 알림톡",
+  sms: "문자",
+  email: "이메일",
+  qr: "QR·인쇄물",
+  manual: "직접 공유",
+};
+
+const distributionStatusLabels: Record<DistributionStatus, string> = {
+  draft: "초안",
+  ready: "발송 준비",
+  sent: "발송 완료",
+  failed: "발송 실패",
 };
 
 const pageImageStatusLabels: Record<string, string> = {
@@ -1011,6 +1119,32 @@ function mapProjectRowToOriginalPdf(project: NewsletterProjectRow): ProjectOrigi
     path: project.pdf_original_path,
     previewHref: makeStoragePreviewHref("pdf-originals", project.pdf_original_path) ?? "",
     uploadedAt: formatCompactDateTime(project.pdf_original_uploaded_at),
+  };
+}
+
+function mapRecipientGroupRow(row: NewsletterRecipientGroupRow): ProjectDistributionGroup {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description || "설명 미입력",
+    recipientCount: Number(row.recipient_count) || 0,
+    channelNote: row.channel_note || "발송 채널 메모 없음",
+    updated: formatCompactDateTime(row.updated_at),
+  };
+}
+
+function mapSendCampaignRow(row: NewsletterSendCampaignRow): ProjectSendCampaign {
+  return {
+    id: row.id,
+    channel: distributionChannelLabels[row.channel] ?? row.channel,
+    targetGroupId: row.target_group_id || "",
+    targetGroupName: row.target_group_name || "대상 그룹 미지정",
+    messageTitle: row.message_title,
+    publicUrl: row.public_url || "",
+    status: distributionStatusLabels[row.status] ?? row.status,
+    sentAt: row.sent_at ? formatCompactDateTime(row.sent_at) : "발송일 미정",
+    note: row.note || "메모 없음",
+    updated: formatCompactDateTime(row.updated_at),
   };
 }
 
@@ -1515,6 +1649,254 @@ export async function getPublishQueueProjects(): Promise<PublishQueueProjectsRes
       projects: [],
       source: "error",
       message: "발행 준비 상태 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function getProjectDistribution(projectSlug: string): Promise<ProjectDistributionResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      groups: [],
+      campaigns: [],
+      source: "unconfigured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 배포 운영 데이터를 표시합니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        groups: [],
+        campaigns: [],
+        source: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const encodedProjectId = encodeURIComponent(project.id);
+    const groupEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_recipient_groups?select=id,project_id,name,description,recipient_count,channel_note,created_at,updated_at&project_id=eq.${encodedProjectId}&order=updated_at.desc`,
+    );
+    const campaignEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_send_campaigns?select=id,project_id,channel,target_group_id,target_group_name,message_title,public_url,status,sent_at,note,created_at,updated_at&project_id=eq.${encodedProjectId}&order=created_at.desc`,
+    );
+
+    if (!groupEndpoint || !campaignEndpoint) {
+      return {
+        groups: [],
+        campaigns: [],
+        source: "error",
+        message: "배포 운영 데이터 조회 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const [groupResponse, campaignResponse] = await Promise.all([
+      fetch(groupEndpoint, { headers, cache: "no-store" }),
+      fetch(campaignEndpoint, { headers, cache: "no-store" }),
+    ]);
+
+    if (!groupResponse.ok || !campaignResponse.ok) {
+      return {
+        groups: [],
+        campaigns: [],
+        source: "error",
+        message: "배포 운영 테이블을 조회하지 못했습니다. Supabase SQL Editor에서 배포 관리 테이블을 먼저 생성하세요.",
+      };
+    }
+
+    const [groupRows, campaignRows] = (await Promise.all([
+      groupResponse.json(),
+      campaignResponse.json(),
+    ])) as [NewsletterRecipientGroupRow[], NewsletterSendCampaignRow[]];
+
+    return {
+      groups: groupRows.map(mapRecipientGroupRow),
+      campaigns: campaignRows.map(mapSendCampaignRow),
+      source: "supabase",
+      message: "프로젝트별 배포 대상과 발송 기록을 표시합니다.",
+    };
+  } catch {
+    return {
+      groups: [],
+      campaigns: [],
+      source: "error",
+      message: "배포 운영 데이터 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function createProjectRecipientGroup(
+  input: CreateProjectRecipientGroupInput,
+): Promise<CreateProjectDistributionResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const name = input.name.trim();
+  const recipientCount = Number(input.recipientCount) || 0;
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 대상 그룹을 저장합니다.",
+    };
+  }
+
+  if (!projectSlug || !name) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트와 대상 그룹명은 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_recipient_groups");
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "대상 그룹 저장 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        project_id: project.id,
+        name,
+        description: input.description?.trim() || null,
+        recipient_count: recipientCount,
+        channel_note: input.channelNote?.trim() || null,
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "대상 그룹 저장에 실패했습니다. Supabase 테이블과 권한을 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "대상 그룹을 저장했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "대상 그룹 저장 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function createProjectSendCampaign(
+  input: CreateProjectSendCampaignInput,
+): Promise<CreateProjectDistributionResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const messageTitle = input.messageTitle.trim();
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 발송 기록을 저장합니다.",
+    };
+  }
+
+  if (!projectSlug || !messageTitle) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트와 발송 제목은 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_send_campaigns");
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "발송 기록 저장 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        project_id: project.id,
+        channel: input.channel,
+        target_group_id: input.targetGroupId?.trim() || null,
+        target_group_name: input.targetGroupName?.trim() || null,
+        message_title: messageTitle,
+        public_url: input.publicUrl?.trim() || `/newsletters/${project.slug}`,
+        status: input.status,
+        sent_at: input.sentAt?.trim() || null,
+        note: input.note?.trim() || null,
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "발송 기록 저장에 실패했습니다. Supabase 테이블과 권한을 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "발송 기록을 저장했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "발송 기록 저장 중 오류가 발생했습니다.",
     };
   }
 }

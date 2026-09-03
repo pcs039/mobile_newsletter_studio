@@ -224,6 +224,12 @@ export default async function DistributionProjectsPage() {
                         </Link>
                         <div className="grid grid-cols-2 gap-2">
                           <Link
+                            href={`/projects/${project.slug}/distribution`}
+                            className="inline-flex h-10 items-center justify-center rounded-md border border-[#092046] bg-[#eaf2ff] px-3 text-xs font-black text-[#092046] transition hover:bg-[#dbeafe]"
+                          >
+                            배포 운영
+                          </Link>
+                          <Link
                             href={`/newsletters/${project.slug}/ebook`}
                             className="inline-flex h-10 items-center justify-center rounded-md border border-[#2f73b7] bg-white px-3 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
                           >
