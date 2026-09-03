@@ -19,6 +19,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
   const openSurveys = surveyData.surveys.filter((survey) => survey.status === "진행 중");
   const totalQuestions = surveyData.surveys.reduce((total, survey) => total + survey.questionCount, 0);
   const totalResponses = surveyData.surveys.reduce((total, survey) => total + survey.responseCount, 0);
+  const answeredSummaries = responseData.summaries.filter((summary) => summary.responseCount > 0);
 
   return (
     <ProjectAdminShell
@@ -196,6 +197,73 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
                     </article>
                   );
                 })
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">응답 분석</p>
+                <h3 className="mt-1 text-lg font-bold text-[#092046]">문항별 응답 요약</h3>
+                <p className="mt-1 text-sm leading-6 text-slate-500 [word-break:keep-all]">
+                  선택형 문항은 항목별 비율을, 주관식 문항은 최근 답변을 요약해 표시합니다.
+                </p>
+              </div>
+              <StatusPill value={`${answeredSummaries.length}개 문항`} />
+            </div>
+
+            <div className="divide-y divide-slate-200">
+              {answeredSummaries.length === 0 ? (
+                <div className="px-5 py-10 text-center">
+                  <p className="text-base font-bold text-[#092046]">아직 요약할 응답이 없습니다.</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">
+                    응답이 제출되면 문항별 선택 비율과 주관식 답변이 이곳에 표시됩니다.
+                  </p>
+                </div>
+              ) : (
+                answeredSummaries.map((summary) => (
+                  <article key={summary.questionId} className="px-5 py-5">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-[#184a88] [word-break:keep-all]">{summary.surveyTitle}</p>
+                        <h4 className="mt-1 font-black text-[#092046] [word-break:keep-all]">{summary.questionTitle}</h4>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <StatusPill value={summary.questionType} />
+                        <StatusPill value={`${summary.responseCount}건`} />
+                      </div>
+                    </div>
+
+                    {summary.options.length > 0 ? (
+                      <div className="mt-4 grid gap-3">
+                        {summary.options.map((option) => (
+                          <div key={`${summary.questionId}-${option.label}`}>
+                            <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold text-slate-600">
+                              <span className="[word-break:keep-all]">{option.label}</span>
+                              <span className="whitespace-nowrap">
+                                {option.count}건 · {option.percent}%
+                              </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                              <div className="h-full rounded-full bg-[#184a88]" style={{ width: `${option.percent}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {summary.textAnswers.length > 0 ? (
+                      <div className="mt-4 grid gap-2">
+                        {summary.textAnswers.map((answer, index) => (
+                          <p key={`${summary.questionId}-${index}`} className="rounded-lg bg-[#f8fbff] px-4 py-3 text-sm font-bold leading-6 text-slate-700 [word-break:keep-all]">
+                            {answer}
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
+                  </article>
+                ))
               )}
             </div>
           </section>

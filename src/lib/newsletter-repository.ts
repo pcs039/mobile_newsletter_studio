@@ -252,8 +252,26 @@ export type ProjectSurveyResponseItem = {
   answers: ProjectSurveyResponseAnswer[];
 };
 
+export type ProjectSurveyQuestionSummaryOption = {
+  label: string;
+  count: number;
+  percent: number;
+};
+
+export type ProjectSurveyQuestionSummary = {
+  surveyId: string;
+  surveyTitle: string;
+  questionId: string;
+  questionTitle: string;
+  questionType: string;
+  responseCount: number;
+  options: ProjectSurveyQuestionSummaryOption[];
+  textAnswers: string[];
+};
+
 export type ProjectSurveyResponseResult = {
   responses: ProjectSurveyResponseItem[];
+  summaries: ProjectSurveyQuestionSummary[];
   source: "supabase" | "unconfigured" | "error" | "not_found";
   message: string;
 };
@@ -2578,6 +2596,58 @@ function formatSurveyResponseAnswer(value: string | string[]) {
   return value || "-";
 }
 
+function buildSurveyQuestionSummaries(
+  surveys: ProjectSurveyItem[],
+  responseRows: NewsletterSurveyResponseRow[],
+): ProjectSurveyQuestionSummary[] {
+  return surveys.flatMap((survey) =>
+    survey.questions.map((question) => {
+      const optionLabels = question.typeCode === "scale" ? ["1", "2", "3", "4", "5"] : question.options;
+      const optionCounts = new Map(optionLabels.map((option) => [option, 0]));
+      const textAnswers: string[] = [];
+      let responseCount = 0;
+
+      for (const row of responseRows) {
+        if (row.survey_id !== survey.id) {
+          continue;
+        }
+
+        const answer = row.response_payload?.answers?.[question.id];
+        const values = Array.isArray(answer) ? answer : typeof answer === "string" && answer ? [answer] : [];
+
+        if (values.length === 0) {
+          continue;
+        }
+
+        responseCount += 1;
+
+        if (question.typeCode === "single_choice" || question.typeCode === "multiple_choice" || question.typeCode === "scale") {
+          for (const value of values) {
+            optionCounts.set(value, (optionCounts.get(value) ?? 0) + 1);
+          }
+        } else {
+          textAnswers.push(...values.filter(Boolean));
+        }
+      }
+
+      return {
+        surveyId: survey.id,
+        surveyTitle: survey.title,
+        questionId: question.id,
+        questionTitle: question.title,
+        questionType: question.type,
+        responseCount,
+        options: Array.from(optionCounts.entries()).map(([label, count]) => ({
+          label,
+          count,
+          percent: responseCount > 0 ? Math.round((count / responseCount) * 100) : 0,
+        })),
+        textAnswers: textAnswers.slice(0, 5),
+      };
+    }),
+  );
+}
+
 export async function getProjectSurveyResponses(projectSlug: string): Promise<ProjectSurveyResponseResult> {
   const config = getSupabaseConfigStatus();
   const headers = getRequestHeaders(true);
@@ -2585,6 +2655,7 @@ export async function getProjectSurveyResponses(projectSlug: string): Promise<Pr
   if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
     return {
       responses: [],
+      summaries: [],
       source: "unconfigured",
       message: "Supabase 환경변수와 서버 저장 키 설정 후 설문 응답을 표시합니다.",
     };
@@ -2596,6 +2667,7 @@ export async function getProjectSurveyResponses(projectSlug: string): Promise<Pr
     if (!project) {
       return {
         responses: [],
+        summaries: [],
         source: "not_found",
         message: "프로젝트를 찾지 못했습니다.",
       };
@@ -2604,6 +2676,7 @@ export async function getProjectSurveyResponses(projectSlug: string): Promise<Pr
     if (surveyData.source !== "supabase") {
       return {
         responses: [],
+        summaries: [],
         source: surveyData.source,
         message: surveyData.message,
       };
@@ -2618,6 +2691,7 @@ export async function getProjectSurveyResponses(projectSlug: string): Promise<Pr
     if (!endpoint) {
       return {
         responses: [],
+        summaries: [],
         source: "error",
         message: "설문 응답 조회 주소를 만들지 못했습니다.",
       };
@@ -2628,6 +2702,7 @@ export async function getProjectSurveyResponses(projectSlug: string): Promise<Pr
     if (!response.ok) {
       return {
         responses: [],
+        summaries: [],
         source: "error",
         message: "설문 응답을 조회하지 못했습니다. Supabase 설문 응답 테이블을 확인하세요.",
       };
@@ -2656,12 +2731,14 @@ export async function getProjectSurveyResponses(projectSlug: string): Promise<Pr
           })),
         };
       }),
+      summaries: buildSurveyQuestionSummaries(surveyData.surveys, rows),
       source: "supabase",
       message: "설문·이벤트 응답 목록을 표시합니다.",
     };
   } catch {
     return {
       responses: [],
+      summaries: [],
       source: "error",
       message: "설문 응답 조회 중 오류가 발생했습니다.",
     };
