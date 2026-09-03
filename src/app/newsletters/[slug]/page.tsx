@@ -99,25 +99,27 @@ function renderContentBlock(article: ProjectContentArticle, block: ProjectConten
     const youtubeId = getYoutubeId(href);
 
     return (
-      <a
+      <section
         key={block.id}
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className="block overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm"
+        className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm"
       >
         {youtubeId ? (
-          <img
-            src={`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
-            alt={block.title || "영상 보기"}
-            className="aspect-video w-full object-cover opacity-90"
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
+            title={block.title || "영상 보기"}
+            className="aspect-video w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
           />
         ) : null}
         <div className="px-4 py-3">
           <p className="text-xs font-black text-sky-200">영상 보기</p>
           <p className="mt-1 text-sm font-black leading-6">{block.title || link?.label || "영상 보기"}</p>
+          <a href={href} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-sky-100 underline">
+            새 창에서 열기
+          </a>
         </div>
-      </a>
+      </section>
     );
   }
 

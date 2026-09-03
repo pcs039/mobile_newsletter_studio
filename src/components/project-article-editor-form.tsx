@@ -33,22 +33,55 @@ const articleStatuses = [
 ];
 
 const editableBlockTypes: Array<{ type: EditorBlockType; label: string; help: string }> = [
-  { type: "paragraph", label: "본문", help: "소제목과 본문 단락" },
-  { type: "image", label: "이미지", help: "이미지 URL과 캡션" },
-  { type: "video_link", label: "유튜브", help: "영상 URL 카드" },
-  { type: "map_link", label: "지도", help: "지도 링크 카드" },
-  { type: "button_group", label: "버튼", help: "신청·문의 링크" },
-  { type: "audio", label: "음성", help: "음성 대본" },
+  { type: "paragraph", label: "문단", help: "기사 본문 텍스트" },
+  { type: "image", label: "이미지", help: "사진 URL과 캡션" },
+  { type: "video_link", label: "유튜브", help: "영상 주소 삽입" },
+  { type: "map_link", label: "지도", help: "위치 링크 삽입" },
+  { type: "button_group", label: "URL 버튼", help: "신청·문의 바로가기" },
+  { type: "audio", label: "음성 대본", help: "낭독용 원고" },
 ];
 
 const blockTypeLabels: Record<EditorBlockType, string> = {
-  paragraph: "본문",
+  paragraph: "문단",
   image: "이미지",
   video_link: "유튜브",
   map_link: "지도",
-  button_group: "버튼",
-  audio: "음성",
+  button_group: "URL 버튼",
+  audio: "음성 대본",
 };
+
+const standardArticleTemplate: EditorBlock[] = [
+  {
+    id: "template-paragraph-1",
+    type: "paragraph",
+    title: "핵심 내용",
+    body: "모바일 독자가 먼저 알아야 할 핵심 내용을 2~4문장으로 입력합니다.",
+  },
+  {
+    id: "template-image-1",
+    type: "image",
+    title: "관련 사진 설명",
+    body: "https://... 이미지 공개 URL",
+  },
+  {
+    id: "template-paragraph-2",
+    type: "paragraph",
+    title: "상세 안내",
+    body: "사진 아래에 이어질 설명 문단을 입력합니다. 날짜, 장소, 대상, 신청 방법처럼 구체 정보를 넣습니다.",
+  },
+  {
+    id: "template-button-1",
+    type: "button_group",
+    title: "자세히 보기",
+    body: "https://... 연결할 페이지 URL",
+  },
+];
+
+const blockUseCases: Array<{ title: string; description: string }> = [
+  { title: "텍스트 사이 사진", description: "문단 → 이미지 → 문단 순서로 블록을 배치합니다." },
+  { title: "신청 링크", description: "URL 버튼 블록에 버튼명과 연결 주소를 입력합니다." },
+  { title: "유튜브 영상", description: "유튜브 블록에 영상 제목과 YouTube URL을 입력합니다." },
+];
 
 function FieldLabel({ children, required = false }: { children: string; required?: boolean }) {
   return (
@@ -65,8 +98,15 @@ function getValue(formData: FormData, name: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function makeBlockId(type: EditorBlockType) {
+function makeBlockId(type: string) {
   return `${type}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function makeTemplateBlock(block: EditorBlock, index: number): EditorBlock {
+  return {
+    ...block,
+    id: makeBlockId(`${block.type}-${index}`),
+  };
 }
 
 function isEditableBlockType(type: ProjectContentBlock["type"]): type is EditorBlockType {
@@ -135,7 +175,7 @@ function getBlockTitleLabel(type: EditorBlockType) {
     case "map_link":
       return "지도 제목";
     case "button_group":
-      return "버튼명";
+      return "버튼에 표시할 문구";
     case "audio":
       return "대본 제목";
     default:
@@ -165,7 +205,7 @@ function getBlockBodyLabel(type: EditorBlockType) {
 function getBlockBodyPlaceholder(type: EditorBlockType) {
   switch (type) {
     case "paragraph":
-      return "모바일 독자가 읽기 쉽게 짧은 문단 중심으로 입력합니다.";
+      return "모바일 독자가 읽기 쉽게 2~5문장 단위로 입력합니다.";
     case "image":
       return "https://... 또는 Supabase Storage 이미지 공개 URL";
     case "video_link":
@@ -179,6 +219,49 @@ function getBlockBodyPlaceholder(type: EditorBlockType) {
     default:
       return "";
   }
+}
+
+function getBlockGuide(type: EditorBlockType) {
+  switch (type) {
+    case "paragraph":
+      return "워드의 본문 문단에 해당합니다. 문단을 여러 개로 나누면 모바일에서 훨씬 읽기 쉽습니다.";
+    case "image":
+      return "이미지는 공개 접근 가능한 URL을 입력해야 합니다. 파일 업로드 이미지는 소재 보관함에서 공개 URL을 확인해 연결합니다.";
+    case "video_link":
+      return "유튜브 주소를 입력하면 공개 화면에서 영상 영역으로 표시됩니다. 예: https://www.youtube.com/watch?v=...";
+    case "map_link":
+      return "카카오맵, 네이버지도, 구글지도 공유 주소를 입력하면 위치 확인 카드로 표시됩니다.";
+    case "button_group":
+      return "신청하기, 자세히 보기, 문의하기처럼 독자가 눌러야 하는 링크를 버튼으로 표시합니다.";
+    case "audio":
+      return "음성 파일 제작이나 낭독 검수에 사용할 원고입니다. 공개 화면에서는 접어서 볼 수 있는 대본으로 표시됩니다.";
+    default:
+      return "모바일 화면에 표시할 내용을 입력합니다.";
+  }
+}
+
+function getBlockPreviewText(block: EditorBlock) {
+  if (block.type === "paragraph") {
+    return block.body || "본문 문단이 여기에 표시됩니다.";
+  }
+
+  if (block.type === "image") {
+    return block.body || "이미지 URL 입력 전";
+  }
+
+  if (block.type === "video_link") {
+    return block.body || "유튜브 URL 입력 전";
+  }
+
+  if (block.type === "map_link") {
+    return block.body || "지도 URL 입력 전";
+  }
+
+  if (block.type === "button_group") {
+    return block.body || "연결 URL 입력 전";
+  }
+
+  return block.body || "음성 대본 입력 전";
 }
 
 function shouldUseTextarea(type: EditorBlockType) {
@@ -220,6 +303,16 @@ export function ProjectArticleEditorForm({
         body: "",
       },
     ]);
+  }
+
+  function loadStandardTemplate() {
+    const hasTypedContent = blocks.some((block) => block.title.trim() || block.body.trim());
+
+    if (hasTypedContent && !window.confirm("현재 입력 중인 블록을 표준 기사 구성으로 바꿀까요?")) {
+      return;
+    }
+
+    setBlocks(standardArticleTemplate.map(makeTemplateBlock));
   }
 
   function removeBlock(blockId: string) {
@@ -408,12 +501,30 @@ export function ProjectArticleEditorForm({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">콘텐츠 블록</p>
-            <h3 className="mt-1 text-lg font-black text-[#092046]">문단·이미지·영상·지도·버튼·음성 배치</h3>
+            <h3 className="mt-1 text-lg font-black text-[#092046]">표준형 기사 블록 편집</h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              블록 순서가 모바일 공개 화면의 표시 순서입니다. 필요한 요소를 추가한 뒤 위로·아래로 버튼으로 정렬합니다.
+              블록 순서가 모바일 공개 화면의 표시 순서입니다. 텍스트 사이에 이미지, URL 버튼, 유튜브 영상을 필요한 위치에 끼워 넣습니다.
             </p>
           </div>
-          <StatusPill value={blockSummary || "블록 없음"} />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={loadStandardTemplate}
+              className="rounded-lg border border-[#2f73b7] bg-white px-4 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+            >
+              표준 기사 구성 불러오기
+            </button>
+            <StatusPill value={blockSummary || "블록 없음"} />
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          {blockUseCases.map((item) => (
+            <div key={item.title} className="rounded-lg border border-[#d8e8ff] bg-[#f7fbff] px-4 py-3">
+              <p className="text-sm font-black text-[#092046]">{item.title}</p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">{item.description}</p>
+            </div>
+          ))}
         </div>
 
         <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
@@ -438,15 +549,7 @@ export function ProjectArticleEditorForm({
                   <p className="text-xs font-black text-[#184a88]">
                     {index + 1}번 블록 · {blockTypeLabels[block.type]}
                   </p>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                    {block.type === "image"
-                      ? "현재 단계에서는 이미지 URL을 입력합니다. 다음 단계에서 소재 보관함 선택 기능을 붙입니다."
-                      : block.type === "video_link"
-                        ? "YouTube URL을 넣으면 공개 화면에서 썸네일 카드로 표시됩니다."
-                        : block.type === "map_link"
-                          ? "지도 URL을 넣으면 지도 보기 카드로 표시됩니다."
-                          : "모바일 화면에 표시할 내용을 입력합니다."}
-                  </p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{getBlockGuide(block.type)}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -509,6 +612,30 @@ export function ProjectArticleEditorForm({
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="mt-5 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">저장 전 구성 확인</p>
+              <h4 className="text-base font-black text-[#092046]">모바일 표시 순서</h4>
+            </div>
+            <p className="text-xs font-semibold text-slate-500">실제 공개 화면은 저장 후 모바일 미리보기에서 확인합니다.</p>
+          </div>
+          <div className="mt-4 space-y-2">
+            {blocks.map((block, index) => (
+              <div key={`preview-${block.id}`} className="rounded-lg bg-white px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-[#eaf2ff] px-2.5 py-1 text-xs font-black text-[#184a88]">
+                    {index + 1}
+                  </span>
+                  <p className="text-sm font-black text-[#092046]">{blockTypeLabels[block.type]}</p>
+                  {block.title ? <p className="text-sm font-bold text-slate-700">{block.title}</p> : null}
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{getBlockPreviewText(block)}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -135,9 +135,11 @@ export default async function ReadingEditorPage({
           </Link>
           <Link
             href={mobilePreviewHref}
+            target="_blank"
+            rel="noreferrer"
             className="rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
           >
-            모바일 미리보기
+            모바일 미리보기 새 탭
           </Link>
         </div>
       }
@@ -225,6 +227,22 @@ export default async function ReadingEditorPage({
         </aside>
 
         <section className="space-y-5">
+          <article className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">표준형 작성 방식</p>
+            <h3 className="mt-1 text-lg font-black text-[#092046]">문단 사이에 이미지·URL·유튜브를 블록으로 끼워 넣습니다.</h3>
+            <div className="mt-4 grid gap-3 lg:grid-cols-4">
+              {["문단", "이미지", "URL 버튼", "유튜브"].map((item, index) => (
+                <div key={item} className="rounded-lg bg-white px-4 py-3">
+                  <p className="text-xs font-black text-[#184a88]">{index + 1}번</p>
+                  <p className="mt-1 text-sm font-black text-[#092046]">{item}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              예를 들어 본문 설명 뒤에 사진을 넣고, 다시 설명 문단을 이어 쓴 뒤 마지막에 신청 링크나 유튜브 영상을 배치할 수 있습니다.
+            </p>
+          </article>
+
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -345,10 +363,33 @@ export default async function ReadingEditorPage({
             <h3 className="mt-1 text-lg font-bold text-[#092046]">작성 흐름</h3>
             <ol className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
               <li className="rounded-lg bg-white px-3 py-2">1. 원본 자료에서 필요한 내용을 확인</li>
-              <li className="rounded-lg bg-white px-3 py-2">2. 기사 제목·요약·본문 작성</li>
-              <li className="rounded-lg bg-white px-3 py-2">3. 버튼·영상·지도·음성 대본 연결</li>
+              <li className="rounded-lg bg-white px-3 py-2">2. 기사 제목·요약 입력</li>
+              <li className="rounded-lg bg-white px-3 py-2">3. 문단·이미지·URL 버튼·유튜브 블록을 순서대로 배치</li>
               <li className="rounded-lg bg-white px-3 py-2">4. 모바일 미리보기에서 검수</li>
             </ol>
+          </article>
+
+          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프리미엄형 참고</p>
+            <h3 className="mt-1 text-lg font-bold text-[#092046]">디자인 이미지형은 원본 자료 화면을 중심으로 관리</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Illustrator나 Photoshop으로 완성한 모바일 페이지 이미지는 기사 본문에 억지로 넣기보다 원본 자료의 페이지 이미지로
+              올리고, 이후 클릭 영역과 링크를 별도로 관리하는 흐름이 적합합니다.
+            </p>
+            <div className="mt-4 grid gap-2">
+              <Link
+                href={`/projects/${projectId}/pages`}
+                className="rounded-lg border border-[#2f73b7] bg-white px-4 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+              >
+                페이지 이미지 관리로 이동
+              </Link>
+              <Link
+                href={`/projects/${projectId}/assets`}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-slate-50"
+              >
+                소재 보관함으로 이동
+              </Link>
+            </div>
           </article>
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
