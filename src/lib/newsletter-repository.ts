@@ -381,6 +381,11 @@ export type UpsertProjectArticleInput = {
   title: string;
   summary?: string;
   body?: string;
+  contentSections?: Array<{
+    title?: string;
+    body?: string;
+    sortOrder?: number;
+  }>;
   contactName?: string;
   contactPhone?: string;
   status?: string;
@@ -1034,6 +1039,16 @@ function normalizeArticleStatus(value: string | undefined) {
 
 function normalizeArticleSortOrder(value: number | undefined) {
   return Number.isInteger(value) && Number(value) >= 0 ? Number(value) : 0;
+}
+
+function normalizeContentSections(sections: UpsertProjectArticleInput["contentSections"]) {
+  return (sections ?? [])
+    .map((section, index) => ({
+      title: nullableText(section.title),
+      body: nullableText(section.body),
+      sortOrder: normalizeArticleSortOrder(section.sortOrder) || (index + 1) * 10,
+    }))
+    .filter((section) => section.title || section.body);
 }
 
 function detectLinkActionType(value: string, fallback: LinkActionType): LinkActionType {
@@ -1770,10 +1785,21 @@ async function replaceArticleBlocks(
     metadata?: Record<string, unknown>;
   }> = [];
 
-  if (cleanText(input.body)) {
+  const contentSections = normalizeContentSections(input.contentSections);
+
+  if (contentSections.length > 0) {
+    contentSections.forEach((section, index) => {
+      blocks.push({
+        block_type: "paragraph",
+        title: section.title,
+        body: section.body,
+        sort_order: section.sortOrder || (index + 1) * 10,
+      });
+    });
+  } else if (cleanText(input.body)) {
     blocks.push({
       block_type: "paragraph",
-      title: "본문",
+      title: null,
       body: cleanText(input.body),
       sort_order: 10,
     });

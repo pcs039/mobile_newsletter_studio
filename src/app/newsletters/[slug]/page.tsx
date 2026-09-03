@@ -18,6 +18,12 @@ function getPreviewBody(article: ProjectContentArticle) {
   return body;
 }
 
+function getParagraphBlocks(article: ProjectContentArticle) {
+  return article.blocks
+    .filter((block) => block.type === "paragraph" && block.isVisible && (block.title || block.body))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 function getAudioScript(article: ProjectContentArticle) {
   return article.blocks.find((block) => block.type === "audio")?.body ?? "";
 }
@@ -84,6 +90,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           {articles.length > 0 ? (
             articles.map((article, index) => {
               const audioScript = getAudioScript(article);
+              const paragraphBlocks = getParagraphBlocks(article);
 
               return (
                 <article key={article.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -106,9 +113,24 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                       {article.summary}
                     </p>
                   ) : null}
-                  <div className="mt-4 whitespace-pre-line text-base leading-8 text-slate-700">
-                    {getPreviewBody(article)}
-                  </div>
+                  {paragraphBlocks.length > 0 ? (
+                    <div className="mt-4 space-y-5">
+                      {paragraphBlocks.map((block) => (
+                        <section key={block.id}>
+                          {block.title ? (
+                            <h3 className="text-base font-black leading-7 text-[#092046]">{block.title}</h3>
+                          ) : null}
+                          {block.body ? (
+                            <p className="mt-2 whitespace-pre-line text-base leading-8 text-slate-700">{block.body}</p>
+                          ) : null}
+                        </section>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 whitespace-pre-line text-base leading-8 text-slate-700">
+                      {getPreviewBody(article)}
+                    </div>
+                  )}
                   {article.contactName || article.contactPhone ? (
                     <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
                       <p className="text-xs font-black text-[#184a88]">문의</p>

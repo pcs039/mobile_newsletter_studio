@@ -42,7 +42,13 @@ function getArticleStatusLabel(status: string) {
 }
 
 function getPreviewBody(article: ProjectContentArticle) {
-  const body = article.body.trim();
+  const paragraphBody = article.blocks
+    .filter((block) => block.type === "paragraph" && block.isVisible)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((block) => [block.title, block.body].filter(Boolean).join("\n"))
+    .join("\n\n")
+    .trim();
+  const body = paragraphBody || article.body.trim();
 
   if (!body) {
     return "본문을 입력하면 모바일 미리보기에 반영됩니다.";

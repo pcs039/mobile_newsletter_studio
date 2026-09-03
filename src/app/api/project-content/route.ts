@@ -13,6 +13,34 @@ function asOptionalNumber(value: unknown) {
   return Number.isInteger(numberValue) && numberValue >= 0 ? numberValue : 0;
 }
 
+function asContentSections(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((section, index) => {
+      if (!section || typeof section !== "object") {
+        return null;
+      }
+
+      const sectionRecord = section as Record<string, unknown>;
+      const title = asText(sectionRecord.title);
+      const body = asText(sectionRecord.body);
+
+      if (!title && !body) {
+        return null;
+      }
+
+      return {
+        title,
+        body,
+        sortOrder: asOptionalNumber(sectionRecord.sortOrder) || (index + 1) * 10,
+      };
+    })
+    .filter((section): section is { title: string; body: string; sortOrder: number } => section !== null);
+}
+
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
@@ -31,6 +59,7 @@ export async function POST(request: Request) {
     title: asText(payload.title),
     summary: asText(payload.summary),
     body: asText(payload.body),
+    contentSections: asContentSections(payload.contentSections),
     contactName: asText(payload.contactName),
     contactPhone: asText(payload.contactPhone),
     status: asText(payload.status),

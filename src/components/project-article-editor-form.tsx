@@ -11,6 +11,12 @@ type ProjectArticleEditorFormProps = {
   article: ProjectContentArticle | null;
 };
 
+type EditorSection = {
+  id: string;
+  title: string;
+  body: string;
+};
+
 const articleStatuses = [
   { value: "draft", label: "작성 중" },
   { value: "review", label: "검수 요청" },
@@ -34,11 +40,34 @@ function getValue(formData: FormData, name: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function makeInitialSections(article: ProjectContentArticle | null): EditorSection[] {
+  const paragraphBlocks =
+    article?.blocks
+      .filter((block) => block.type === "paragraph")
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((block, index) => ({
+        id: block.id || `section-${index + 1}`,
+        title: block.title === "본문" ? "" : block.title,
+        body: block.body,
+      })) ?? [];
+
+  if (paragraphBlocks.length > 0) {
+    return paragraphBlocks;
+  }
+
+  if (article?.body) {
+    return [{ id: "section-1", title: "", body: article.body }];
+  }
+
+  return [{ id: "section-1", title: "", body: "" }];
+}
+
 export function ProjectArticleEditorForm({ projectSlug, pages, article }: ProjectArticleEditorFormProps) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [sections, setSections] = useState<EditorSection[]>(() => makeInitialSections(article));
   const buttonLink = useMemo(
     () => article?.links.find((link) => link.displayStyle === "button") ?? null,
     [article],
@@ -50,6 +79,25 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
     [article],
   );
 
+  function updateSection(sectionId: string, field: "title" | "body", value: string) {
+    setSections((currentSections) =>
+      currentSections.map((section) => (section.id === sectionId ? { ...section, [field]: value } : section)),
+    );
+  }
+
+  function addSection() {
+    setSections((currentSections) => [
+      ...currentSections,
+      { id: `section-${Date.now()}`, title: "", body: "" },
+    ]);
+  }
+
+  function removeSection(sectionId: string) {
+    setSections((currentSections) =>
+      currentSections.length === 1 ? currentSections : currentSections.filter((section) => section.id !== sectionId),
+    );
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -57,6 +105,16 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
     setIsSaving(true);
 
     const formData = new FormData(event.currentTarget);
+    const contentSections = sections
+      .map((section, index) => ({
+        title: section.title.trim(),
+        body: section.body.trim(),
+        sortOrder: (index + 1) * 10,
+      }))
+      .filter((section) => section.title || section.body);
+    const body = contentSections
+      .map((section) => [section.title, section.body].filter(Boolean).join("\n"))
+      .join("\n\n");
     const payload = {
       projectSlug,
       articleId: article?.id ?? "",
@@ -64,7 +122,8 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
       sortOrder: Number(getValue(formData, "sortOrder")) || 0,
       title: getValue(formData, "title"),
       summary: getValue(formData, "summary"),
-      body: getValue(formData, "body"),
+      body,
+      contentSections,
       contactName: getValue(formData, "contactName"),
       contactPhone: getValue(formData, "contactPhone"),
       status: getValue(formData, "status"),
@@ -185,13 +244,51 @@ export function ProjectArticleEditorForm({ projectSlug, pages, article }: Projec
         </div>
 
         <div className="mt-5">
-          <FieldLabel>본문</FieldLabel>
-          <textarea
-            name="body"
-            defaultValue={article?.body ?? ""}
-            placeholder="모바일 독자가 읽기 쉽게 짧은 문단 중심으로 입력합니다."
-            className="min-h-60 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <FieldLabel>본문 섹션</FieldLabel>
+              <p className="text-xs font-semibold leading-5 text-slate-500">
+                모바일 화면에서 나눠 보일 소제목과 본문 단락을 입력합니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={addSection}
+              className="rounded-lg border border-[#2f73b7] bg-white px-4 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+            >
+              + 섹션 추가
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-4">
+            {sections.map((section, index) => (
+              <div key={section.id} className="rounded-lg border border-slate-200 bg-white p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-xs font-black text-[#184a88]">본문 섹션 {index + 1}</p>
+                  <button
+                    type="button"
+                    onClick={() => removeSection(section.id)}
+                    disabled={sections.length === 1}
+                    className="rounded-md border border-rose-200 px-3 py-1 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                  >
+                    삭제
+                  </button>
+                </div>
+                <input
+                  value={section.title}
+                  onChange={(event) => updateSection(section.id, "title", event.target.value)}
+                  placeholder="소제목 예: 주요 일정, 신청 방법, 문의 안내"
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                />
+                <textarea
+                  value={section.body}
+                  onChange={(event) => updateSection(section.id, "body", event.target.value)}
+                  placeholder="모바일 독자가 읽기 쉽게 짧은 문단 중심으로 입력합니다."
+                  className="mt-3 min-h-40 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
