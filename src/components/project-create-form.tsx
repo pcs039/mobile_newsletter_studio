@@ -15,6 +15,7 @@ type ProjectFormMode = "create" | "edit";
 export type ProjectFormInitialValues = {
   projectId?: string;
   title?: string;
+  issueLabel?: string;
   organizationName?: string;
   assigneeName?: string;
   publishedDate?: string;
@@ -118,6 +119,7 @@ export function ProjectCreateForm({
       body: JSON.stringify({
         projectId: initialValues.projectId ?? initialValues.slug,
         title: getFormText(formData, "title"),
+        issueLabel: getFormText(formData, "issueLabel"),
         organizationName: getFormText(formData, "organizationName"),
         assigneeName: getFormText(formData, "assigneeName"),
         publishedDate: getFormText(formData, "publishedDate"),
@@ -202,6 +204,15 @@ export function ProjectCreateForm({
             placeholder="예: 황토골 무안소식지 2025년 제94호"
             defaultValue={initialValues.title}
             required
+          />
+        </div>
+
+        <div>
+          <FieldLabel>발행호수</FieldLabel>
+          <TextInput
+            name="issueLabel"
+            placeholder="예: 제94호, 통권 312호, 2026-05호"
+            defaultValue={initialValues.issueLabel}
           />
         </div>
 

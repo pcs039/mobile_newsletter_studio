@@ -30,6 +30,7 @@ type NewsletterProjectRow = {
 
 export type CreateNewsletterProjectInput = {
   title: string;
+  issueLabel?: string;
   organizationName: string;
   assigneeName?: string;
   publishedDate: string;
@@ -123,6 +124,7 @@ export type ProjectWorkspaceResult =
 export type ProjectBasicInfo = {
   projectId: string;
   title: string;
+  issueLabel: string;
   organizationName: string;
   assigneeName: string;
   publishedDate: string;
@@ -526,23 +528,7 @@ function formatCompactDateTime(value: string | null) {
 }
 
 function makeIssueLabel(input: CreateNewsletterProjectInput) {
-  if (!input.publishedDate) {
-    return null;
-  }
-
-  const [year, month, day] = input.publishedDate.split("-");
-  const monthNumber = Number(month);
-  const dayNumber = Number(day);
-
-  if (!year || !monthNumber) {
-    return input.publishedDate;
-  }
-
-  if (dayNumber) {
-    return `${year}년 ${monthNumber}월 ${dayNumber}일`;
-  }
-
-  return `${year}년 ${monthNumber}월`;
+  return input.issueLabel?.trim() || null;
 }
 
 function normalizePublishedDate(date: string) {
@@ -912,6 +898,7 @@ function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicIn
   return {
     projectId: project.slug,
     title: project.title,
+    issueLabel: project.issue_label || "",
     organizationName: project.organization_name,
     assigneeName: project.assignee_name?.trim() || "",
     publishedDate: formatDateInput(project.published_date),

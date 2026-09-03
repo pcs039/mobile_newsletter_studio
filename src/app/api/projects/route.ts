@@ -74,6 +74,7 @@ export async function POST(request: Request) {
 
   const input: CreateNewsletterProjectInput = {
     title,
+    issueLabel: asOptionalText(payload.issueLabel),
     organizationName,
     assigneeName,
     publishedDate,
@@ -151,6 +152,7 @@ export async function PATCH(request: Request) {
   const input: UpdateNewsletterProjectInput = {
     projectId,
     title,
+    issueLabel: asOptionalText(payload.issueLabel),
     organizationName,
     assigneeName,
     publishedDate,
