@@ -90,6 +90,28 @@ export type DashboardProjectsResult = {
   message: string;
 };
 
+export type PublishQueueProject = DashboardProject & {
+  readiness: {
+    readyCount: number;
+    totalCount: number;
+    label: string;
+    pdfReady: boolean;
+    pageImageCount: number;
+    articleCount: number;
+    linkCount: number;
+    audioFileCount: number;
+    audioScriptCount: number;
+    nextAction: string;
+    nextHref: string;
+  };
+};
+
+export type PublishQueueProjectsResult = {
+  projects: PublishQueueProject[];
+  source: DashboardProjectsResult["source"];
+  message: string;
+};
+
 export type ProjectWorkspaceInfo = {
   id: string;
   slug: string;
@@ -199,6 +221,33 @@ type NewsletterDailyStatsUpdateRow = {
   tablet_count: number;
   direct_count: number;
   referrer_count: number;
+};
+
+type ProjectPageReadinessRow = {
+  project_id: string;
+  image_path: string | null;
+};
+
+type ProjectArticleReadinessRow = {
+  id: string;
+  project_id: string;
+};
+
+type ProjectBlockReadinessRow = {
+  project_id: string;
+  block_type: ContentBlockType;
+};
+
+type ProjectRelatedCountRow = {
+  project_id: string;
+};
+
+type ProjectPublishReadinessStats = {
+  pageImageCount: number;
+  articleCount: number;
+  linkCount: number;
+  audioFileCount: number;
+  audioScriptCount: number;
 };
 
 type ContentBlockType =
@@ -1095,6 +1144,166 @@ function makeArticleIdFilter(articleIds: string[]) {
   return encodeURIComponent(`in.(${articleIds.join(",")})`);
 }
 
+function makeProjectIdFilter(projectIds: string[]) {
+  return encodeURIComponent(`in.(${projectIds.join(",")})`);
+}
+
+function makeEmptyPublishStats(): ProjectPublishReadinessStats {
+  return {
+    pageImageCount: 0,
+    articleCount: 0,
+    linkCount: 0,
+    audioFileCount: 0,
+    audioScriptCount: 0,
+  };
+}
+
+function makePublishStatsMap(projectIds: string[]) {
+  return new Map(projectIds.map((projectId) => [projectId, makeEmptyPublishStats()]));
+}
+
+function bumpPublishStat(
+  statsByProjectId: Map<string, ProjectPublishReadinessStats>,
+  projectId: string,
+  field: keyof ProjectPublishReadinessStats,
+) {
+  const current = statsByProjectId.get(projectId) ?? makeEmptyPublishStats();
+
+  current[field] += 1;
+  statsByProjectId.set(projectId, current);
+}
+
+async function fetchReadinessRows<T>(path: string, headers: Record<string, string>) {
+  const endpoint = getSupabaseRestEndpoint(path);
+
+  if (!endpoint) {
+    return null;
+  }
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return (await response.json()) as T[];
+}
+
+async function getPublishReadinessStatsByProjectId(
+  projectIds: string[],
+  headers: Record<string, string>,
+): Promise<Map<string, ProjectPublishReadinessStats> | null> {
+  if (projectIds.length === 0) {
+    return new Map();
+  }
+
+  const projectFilter = makeProjectIdFilter(projectIds);
+  const [pageRows, articleRows, linkRows, audioRows, blockRows] = await Promise.all([
+    fetchReadinessRows<ProjectPageReadinessRow>(
+      `/rest/v1/newsletter_pages?select=project_id,image_path&project_id=${projectFilter}&limit=10000`,
+      headers,
+    ),
+    fetchReadinessRows<ProjectArticleReadinessRow>(
+      `/rest/v1/newsletter_articles?select=id,project_id&project_id=${projectFilter}&limit=10000`,
+      headers,
+    ),
+    fetchReadinessRows<ProjectRelatedCountRow>(
+      `/rest/v1/newsletter_link_actions?select=project_id&project_id=${projectFilter}&is_visible=eq.true&limit=10000`,
+      headers,
+    ),
+    fetchReadinessRows<ProjectRelatedCountRow>(
+      `/rest/v1/newsletter_audio_files?select=project_id&project_id=${projectFilter}&limit=10000`,
+      headers,
+    ),
+    fetchReadinessRows<ProjectBlockReadinessRow>(
+      `/rest/v1/newsletter_content_blocks?select=project_id,block_type&project_id=${projectFilter}&is_visible=eq.true&limit=10000`,
+      headers,
+    ),
+  ]);
+
+  if (!pageRows || !articleRows || !linkRows || !audioRows || !blockRows) {
+    return null;
+  }
+
+  const statsByProjectId = makePublishStatsMap(projectIds);
+
+  for (const page of pageRows) {
+    if (page.image_path) {
+      bumpPublishStat(statsByProjectId, page.project_id, "pageImageCount");
+    }
+  }
+
+  for (const article of articleRows) {
+    bumpPublishStat(statsByProjectId, article.project_id, "articleCount");
+  }
+
+  for (const link of linkRows) {
+    bumpPublishStat(statsByProjectId, link.project_id, "linkCount");
+  }
+
+  for (const file of audioRows) {
+    bumpPublishStat(statsByProjectId, file.project_id, "audioFileCount");
+  }
+
+  for (const block of blockRows) {
+    if (block.block_type === "audio") {
+      bumpPublishStat(statsByProjectId, block.project_id, "audioScriptCount");
+    }
+  }
+
+  return statsByProjectId;
+}
+
+function makePublishReadiness(
+  project: NewsletterProjectRow,
+  stats: ProjectPublishReadinessStats = makeEmptyPublishStats(),
+): PublishQueueProject["readiness"] {
+  const pdfReady = Boolean(project.pdf_original_path);
+  const hasPageImages = stats.pageImageCount > 0;
+  const hasArticles = stats.articleCount > 0;
+  const hasLinks = stats.linkCount > 0;
+  const hasAudio = stats.audioFileCount > 0 || stats.audioScriptCount > 0;
+  const checks = [pdfReady, hasPageImages, hasArticles, hasLinks, hasAudio];
+  const readyCount = checks.filter(Boolean).length;
+
+  let nextAction = "검수·발행 진행";
+  let nextHref = `/projects/${project.slug}/publish`;
+
+  if (!pdfReady) {
+    nextAction = "원본 PDF 등록";
+    nextHref = `/projects/${project.slug}/pages`;
+  } else if (!hasPageImages) {
+    nextAction = "페이지 이미지 등록";
+    nextHref = `/projects/${project.slug}/pages`;
+  } else if (!hasArticles) {
+    nextAction = "모바일 기사 작성";
+    nextHref = `/projects/${project.slug}/reading`;
+  } else if (!hasLinks) {
+    nextAction = "연결 블록 보완";
+    nextHref = `/projects/${project.slug}/reading`;
+  } else if (!hasAudio) {
+    nextAction = "음성·대본 확인";
+    nextHref = `/projects/${project.slug}/audio`;
+  }
+
+  return {
+    readyCount,
+    totalCount: checks.length,
+    label: readyCount === checks.length ? "발행 가능" : readyCount >= 3 ? "검수 필요" : "작성 필요",
+    pdfReady,
+    pageImageCount: stats.pageImageCount,
+    articleCount: stats.articleCount,
+    linkCount: stats.linkCount,
+    audioFileCount: stats.audioFileCount,
+    audioScriptCount: stats.audioScriptCount,
+    nextAction,
+    nextHref,
+  };
+}
+
 async function ensureProjectPageReference(
   projectId: string,
   pageNumber: number,
@@ -1223,6 +1432,75 @@ export async function getDashboardProjects(): Promise<DashboardProjectsResult> {
       projects: [],
       source: "error",
       message: "Supabase 요청 중 오류가 발생했습니다. 연결 상태를 확인하세요.",
+    };
+  }
+}
+
+export async function getPublishQueueProjects(): Promise<PublishQueueProjectsResult> {
+  const config = getSupabaseConfigStatus();
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_projects?select=${projectSelectColumns}&deleted_at=is.null&order=updated_at.desc&limit=40`,
+  );
+  const headers = getRequestHeaders(true);
+
+  if (!config.isConfigured || !endpoint || !headers || !config.hasServiceRoleKey) {
+    return {
+      projects: [],
+      source: "unconfigured",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 발행 준비 상태를 표시합니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        projects: [],
+        source: "error",
+        message: "발행 대상 프로젝트 조회에 실패했습니다. 연결 상태와 권한을 확인하세요.",
+      };
+    }
+
+    const rows = (await response.json()) as NewsletterProjectRow[];
+
+    if (rows.length === 0) {
+      return {
+        projects: [],
+        source: "supabase" as const,
+        message: "Supabase에 등록된 프로젝트가 아직 없습니다.",
+      };
+    }
+
+    const [statsByProjectId, viewStatsByProjectId] = await Promise.all([
+      getPublishReadinessStatsByProjectId(
+        rows.map((project) => project.id),
+        headers,
+      ),
+      getProjectViewStatsByProjectId(
+        rows.map((project) => project.id),
+        headers,
+      ),
+    ]);
+
+    return {
+      projects: rows.map((project) => ({
+        ...mapProjectRowToDashboardProject(project, viewStatsByProjectId?.get(project.id)),
+        readiness: makePublishReadiness(project, statsByProjectId?.get(project.id)),
+      })),
+      source: "supabase" as const,
+      message: statsByProjectId
+        ? "발행 검수에 필요한 실제 저장 데이터를 표시합니다."
+        : "프로젝트 목록은 표시하지만, 상세 준비 상태 테이블 권한 확인이 필요합니다.",
+    };
+  } catch {
+    return {
+      projects: [],
+      source: "error",
+      message: "발행 준비 상태 조회 중 오류가 발생했습니다.",
     };
   }
 }

@@ -142,16 +142,20 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
               </span>
             </div>
 
-            <div className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+            <div className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
               {readinessItems.map((item) => (
                 <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-[#f9fbfe] p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="min-w-0 whitespace-nowrap text-sm font-black text-[#092046]">{item.label}</p>
+                    <p className="min-w-0 whitespace-nowrap text-sm font-black tracking-normal text-[#092046]">
+                      {item.label}
+                    </p>
                     <span className="shrink-0 whitespace-nowrap">
                       <StatusPill value={item.status} />
                     </span>
                   </div>
-                  <p className="mt-3 text-xs leading-5 text-slate-500 [word-break:keep-all]">{item.detail}</p>
+                  <p className="mt-3 text-xs leading-5 tracking-normal text-slate-500 [word-break:keep-all]">
+                    {item.detail}
+                  </p>
                 </div>
               ))}
             </div>
