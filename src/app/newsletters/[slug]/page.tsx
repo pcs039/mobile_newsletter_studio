@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DatadictionBrand } from "@/components/datadiction-brand";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { getProjectContent, getProjectWorkspace, type ProjectContentArticle } from "@/lib/newsletter-repository";
 
@@ -67,9 +66,6 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
       )}
       <section className="mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10">
         <header className="px-5 pb-7 pt-6 text-white" style={{ backgroundColor: headerColor }}>
-          <div className="mb-6">
-            <DatadictionBrand compact theme="light" />
-          </div>
           <p className="text-sm font-semibold text-sky-200">
             {project?.organization ?? "프로젝트 정보 확인 필요"}
           </p>
