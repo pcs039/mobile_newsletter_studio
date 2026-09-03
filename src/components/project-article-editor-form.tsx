@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/status-pill";
 import type { ProjectContentArticle, ProjectContentBlock, ProjectPageImage } from "@/lib/newsletter-repository";
 
@@ -23,6 +23,25 @@ type EditorBlock = {
   title: string;
   body: string;
 };
+
+type ImportedWordResponse =
+  | {
+      ok: true;
+      imported: {
+        title: string;
+        summary: string;
+        blocks: Array<{
+          type: "paragraph" | "video_link" | "button_group";
+          title: string;
+          body: string;
+          sortOrder: number;
+        }>;
+      };
+    }
+  | {
+      ok: false;
+      message?: string;
+    };
 
 const articleStatuses = [
   { value: "draft", label: "작성 중" },
@@ -275,9 +294,12 @@ export function ProjectArticleEditorForm({
   article,
 }: ProjectArticleEditorFormProps) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isImportingWord, setIsImportingWord] = useState(false);
+  const [wordImportMessage, setWordImportMessage] = useState("");
   const [blocks, setBlocks] = useState<EditorBlock[]>(() => makeInitialBlocks(article));
   const blockSummary = useMemo(
     () =>
@@ -313,6 +335,77 @@ export function ProjectArticleEditorForm({
     }
 
     setBlocks(standardArticleTemplate.map(makeTemplateBlock));
+  }
+
+  function getFormFieldValue(name: string) {
+    const field = formRef.current?.elements.namedItem(name);
+
+    if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+      return field.value.trim();
+    }
+
+    return "";
+  }
+
+  function setFormFieldValue(name: string, value: string) {
+    const field = formRef.current?.elements.namedItem(name);
+
+    if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+      field.value = value;
+    }
+  }
+
+  async function handleWordImport(file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    if (!file.name.toLowerCase().endsWith(".docx")) {
+      setError(".docx 형식의 Word 파일만 가져올 수 있습니다.");
+      return;
+    }
+
+    const hasTypedContent =
+      getFormFieldValue("title") ||
+      getFormFieldValue("summary") ||
+      blocks.some((block) => block.title.trim() || block.body.trim());
+
+    if (hasTypedContent && !window.confirm("현재 입력 중인 제목·요약·블록을 Word 원고 내용으로 바꿀까요?")) {
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setWordImportMessage("");
+    setIsImportingWord(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/project-content/import-word", {
+      method: "POST",
+      body: formData,
+    });
+    const result = (await response.json().catch(() => null)) as ImportedWordResponse | null;
+
+    setIsImportingWord(false);
+
+    if (!response.ok || !result || result.ok !== true) {
+      setError(result && result.ok === false ? result.message || "Word 원고를 가져오지 못했습니다." : "Word 원고를 가져오지 못했습니다.");
+      return;
+    }
+
+    setFormFieldValue("title", result.imported.title);
+    setFormFieldValue("summary", result.imported.summary);
+    setBlocks(
+      result.imported.blocks.map((block, index) => ({
+        id: makeBlockId(`word-${block.type}-${index}`),
+        type: block.type,
+        title: block.title,
+        body: block.body,
+      })),
+    );
+    setWordImportMessage("Word 원고를 모바일 기사 블록으로 가져왔습니다. 이미지와 추가 링크는 필요한 위치에 블록으로 보완하세요.");
   }
 
   function removeBlock(blockId: string) {
@@ -403,7 +496,7 @@ export function ProjectArticleEditorForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       <div className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -413,6 +506,36 @@ export function ProjectArticleEditorForm({
             </h3>
           </div>
           <StatusPill value={article ? "DB 저장됨" : "신규 작성"} />
+        </div>
+
+        <div className="mt-5 rounded-lg border border-[#b8d7ff] bg-white p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">Word 원고 가져오기</p>
+              <h4 className="mt-1 text-base font-black text-[#092046]">.docx 원고를 모바일 기사 블록으로 변환</h4>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Word의 글꼴·크기·줄간격은 가져오지 않고, 제목과 문단 구조만 가져와 모바일 스타일로 정리합니다.
+              </p>
+            </div>
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]">
+              {isImportingWord ? "가져오는 중..." : "Word 원고 선택"}
+              <input
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="sr-only"
+                disabled={isImportingWord}
+                onChange={(event) => {
+                  void handleWordImport(event.target.files?.[0]);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+          </div>
+          {wordImportMessage ? (
+            <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-bold leading-6 text-emerald-700">
+              {wordImportMessage}
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[140px_minmax(0,1fr)_180px]">
