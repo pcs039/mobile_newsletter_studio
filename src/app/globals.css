@@ -35,6 +35,53 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-app-sans);
+  line-break: strict;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+}
+
+/*
+  Korean line wrapping.
+  Keep Korean words and particles together across admin and public pages.
+  Long technical strings such as URLs and storage paths still use explicit
+  Tailwind break utilities where the page needs them.
+*/
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+li,
+dt,
+dd,
+th,
+td,
+label,
+button,
+a,
+span {
+  line-break: strict;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+  hyphens: none;
+}
+
+button,
+.admin-workspace nav a,
+.admin-workspace nav span,
+.admin-workspace .rounded-full {
+  white-space: nowrap;
+}
+
+.break-all {
+  word-break: break-all;
+}
+
+.break-words {
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 /*
