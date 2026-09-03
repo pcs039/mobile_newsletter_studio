@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { StatusPill } from "@/components/status-pill";
+import { filterProjectsForUser, requireAppUser } from "@/lib/app-auth";
 import { getPublishQueueProjects } from "@/lib/newsletter-repository";
 
 function getSiteOrigin() {
@@ -52,8 +53,12 @@ function readinessPercent(readyCount: number, totalCount: number) {
 }
 
 export default async function DistributionProjectsPage() {
+  const user = await requireAppUser("/projects/distribution");
   const publishData = await getPublishQueueProjects();
-  const projects = publishData.projects.filter((project) => project.status !== "삭제됨");
+  const projects = filterProjectsForUser(
+    publishData.projects.filter((project) => project.status !== "삭제됨"),
+    user,
+  );
   const publishedProjects = projects.filter((project) => project.status === "발행 완료");
   const waitingProjects = projects.filter((project) => project.status !== "발행 완료");
   const todayViews = publishedProjects.reduce((total, project) => total + parseViewCount(project.views.today), 0);

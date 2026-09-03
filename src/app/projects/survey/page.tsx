@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { StatusPill } from "@/components/status-pill";
+import { filterProjectsForUser, requireAppUser } from "@/lib/app-auth";
 import { getPublishQueueProjects } from "@/lib/newsletter-repository";
 
 function splitDateTime(value: string) {
@@ -14,8 +15,12 @@ function splitDateTime(value: string) {
 }
 
 export default async function SurveyProjectsPage() {
+  const user = await requireAppUser("/projects/survey");
   const publishData = await getPublishQueueProjects();
-  const projects = publishData.projects.filter((project) => project.status !== "삭제됨");
+  const projects = filterProjectsForUser(
+    publishData.projects.filter((project) => project.status !== "삭제됨"),
+    user,
+  );
   const publishedProjects = projects.filter((project) => project.status === "발행 완료");
   const activeProjects = projects.filter((project) => project.status !== "발행 완료");
 

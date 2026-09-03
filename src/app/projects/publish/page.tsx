@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { StatusPill } from "@/components/status-pill";
+import { filterProjectsForUser, requireAppUser } from "@/lib/app-auth";
 import { getPublishQueueProjects } from "@/lib/newsletter-repository";
 
 function readinessPercent(readyCount: number, totalCount: number) {
@@ -22,8 +23,12 @@ function splitDateTime(value: string) {
 }
 
 export default async function PublishProjectsPage() {
+  const user = await requireAppUser("/projects/publish");
   const publishData = await getPublishQueueProjects();
-  const projects = publishData.projects.filter((project) => project.status !== "삭제됨");
+  const projects = filterProjectsForUser(
+    publishData.projects.filter((project) => project.status !== "삭제됨"),
+    user,
+  );
   const readyProjects = projects.filter((project) => project.readiness.readyCount === project.readiness.totalCount);
   const reviewTargets = projects.filter(
     (project) => project.status === "검수 중" || project.readiness.readyCount >= 3,

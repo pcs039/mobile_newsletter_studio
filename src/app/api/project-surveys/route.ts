@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import {
   createProjectSurvey,
   createProjectSurveyQuestion,
@@ -70,6 +71,12 @@ function makeResponsesCsv(responses: Awaited<ReturnType<typeof getProjectSurveyR
 }
 
 export async function GET(request: Request) {
+  const user = await requireApiUser();
+
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
   const url = new URL(request.url);
   const projectSlug = asText(url.searchParams.get("projectSlug"));
   const format = asText(url.searchParams.get("format"));
@@ -95,6 +102,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const user = await requireApiUser();
+
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
   if (!payload) {

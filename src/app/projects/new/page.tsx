@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { ProjectCreateForm } from "@/components/project-create-form";
+import { requireAppUser } from "@/lib/app-auth";
 import { packageOptions, productionModeOptions } from "@/lib/newsletter-data";
 
 const requiredFields = [
@@ -34,7 +35,9 @@ const publishOptions = [
   },
 ];
 
-export default function NewProjectPage() {
+export default async function NewProjectPage() {
+  await requireAppUser("/projects/new");
+
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">

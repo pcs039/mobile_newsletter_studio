@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,12 @@ function isSafeStoragePath(path: string) {
 }
 
 export async function GET(request: Request) {
+  const user = await requireApiUser();
+
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
   const { searchParams } = new URL(request.url);
   const bucket = searchParams.get("bucket")?.trim() ?? "";
   const path = searchParams.get("path")?.trim() ?? "";

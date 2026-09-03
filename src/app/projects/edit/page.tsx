@@ -3,6 +3,7 @@ import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { ProjectArchiveButton } from "@/components/project-archive-button";
 import { StatusPill } from "@/components/status-pill";
+import { filterProjectsForUser, requireAppUser } from "@/lib/app-auth";
 import { getEditableProjects } from "@/lib/newsletter-repository";
 
 const editSteps = [
@@ -13,8 +14,9 @@ const editSteps = [
 ];
 
 export default async function EditProjectsPage() {
+  const user = await requireAppUser("/projects/edit");
   const editableData = await getEditableProjects();
-  const projects = editableData.projects;
+  const projects = filterProjectsForUser(editableData.projects, user);
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">

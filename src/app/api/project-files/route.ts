@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import {
   completeSignedProjectFileUpload,
   deleteProjectFile,
@@ -44,6 +45,12 @@ function getErrorStatus(status: string, httpStatus?: number) {
 }
 
 export async function DELETE(request: Request) {
+  const user = await requireApiUser();
+
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
   const { searchParams } = new URL(request.url);
   const kind = searchParams.get("kind");
   const projectSlug = searchParams.get("projectSlug")?.trim() ?? "";
@@ -72,6 +79,12 @@ export async function DELETE(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const user = await requireApiUser();
+
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {

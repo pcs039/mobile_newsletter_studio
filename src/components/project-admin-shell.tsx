@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
+import { canAccessProject, requireAppUser } from "@/lib/app-auth";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey";
@@ -39,8 +40,30 @@ export async function ProjectAdminShell({
   sidebarTitle: ReactNode;
   title: string;
 }) {
+  const user = await requireAppUser(`/projects/${projectId}/${active}`);
   const workspace = await getProjectWorkspace(projectId);
   const project = workspace.project;
+
+  if (project && !canAccessProject(user, project)) {
+    return (
+      <main className="admin-workspace grid min-h-screen place-items-center bg-[#f3f7fc] px-5 text-slate-950">
+        <section className="w-full max-w-[520px] rounded-lg border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-blue-950/10">
+          <p className="text-sm font-black text-[#184a88]">접근 권한 확인</p>
+          <h1 className="mt-3 text-2xl font-black leading-tight text-[#092046]">이 프로젝트를 열 수 없습니다.</h1>
+          <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">
+            일반 사용자는 본인이 작업자로 지정된 프로젝트만 열 수 있습니다. 관리자에게 권한을 확인해 주세요.
+          </p>
+          <Link
+            href="/projects/edit"
+            className="mt-6 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white transition hover:bg-[#123a78]"
+          >
+            작업 목록으로 돌아가기
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
   const projectEyebrow = project
     ? `${project.organization} · ${project.issue}`
     : "프로젝트 정보 확인 필요";

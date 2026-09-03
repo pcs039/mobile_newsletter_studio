@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import {
   archiveNewsletterProject,
   createNewsletterProject,
@@ -32,6 +33,12 @@ function normalizeSlug(value: string) {
 }
 
 export async function POST(request: Request) {
+  const user = await requireApiUser();
+
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
   if (!payload) {
@@ -43,7 +50,7 @@ export async function POST(request: Request) {
 
   const title = asOptionalText(payload.title);
   const organizationName = asOptionalText(payload.organizationName);
-  const assigneeName = asOptionalText(payload.assigneeName);
+  const assigneeName = user.role === "admin" ? asOptionalText(payload.assigneeName) : user.name;
   const publishedDate = asOptionalText(payload.publishedDate) || asOptionalText(payload.publishedMonth);
   const slug = normalizeSlug(asOptionalText(payload.slug));
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
@@ -101,6 +108,12 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const user = await requireApiUser();
+
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
   if (!payload) {
@@ -147,7 +160,7 @@ export async function PATCH(request: Request) {
 
   const title = asOptionalText(payload.title);
   const organizationName = asOptionalText(payload.organizationName);
-  const assigneeName = asOptionalText(payload.assigneeName);
+  const assigneeName = user.role === "admin" ? asOptionalText(payload.assigneeName) : user.name;
   const publishedDate = asOptionalText(payload.publishedDate) || asOptionalText(payload.publishedMonth);
   const slug = normalizeSlug(asOptionalText(payload.slug));
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
@@ -218,6 +231,12 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const user = await requireApiUser();
+
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
   const url = new URL(request.url);
   const projectId = url.searchParams.get("projectId")?.trim();
 

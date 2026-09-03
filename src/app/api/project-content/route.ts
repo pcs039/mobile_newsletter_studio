@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { upsertProjectArticle, type UpsertProjectArticleInput } from "@/lib/newsletter-repository";
 
 export const dynamic = "force-dynamic";
@@ -76,6 +77,12 @@ function asContentBlocks(value: unknown): NonNullable<UpsertProjectArticleInput[
 }
 
 export async function POST(request: Request) {
+  const user = await requireApiUser();
+
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
   if (!payload) {

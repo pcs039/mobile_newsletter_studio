@@ -9,6 +9,7 @@ import {
   projectOperationActions,
   workflowSteps,
 } from "@/lib/newsletter-data";
+import { filterProjectsForUser, requireAppUser } from "@/lib/app-auth";
 import { getDashboardProjects } from "@/lib/newsletter-repository";
 import { getSupabaseConfigStatus } from "@/lib/supabase-config";
 
@@ -22,9 +23,10 @@ function parseCount(value: string) {
 }
 
 export default async function Home() {
+  const user = await requireAppUser("/");
   const supabaseConfig = getSupabaseConfigStatus();
   const dashboardData = await getDashboardProjects();
-  const projects = dashboardData.projects;
+  const projects = filterProjectsForUser(dashboardData.projects, user);
   const totalTodayViews = projects.reduce((sum, project) => sum + parseCount(project.views.today), 0);
   const totalYesterdayViews = projects.reduce((sum, project) => sum + parseCount(project.views.yesterday), 0);
   const totalViews = projects.reduce((sum, project) => sum + parseCount(project.views.total), 0);
