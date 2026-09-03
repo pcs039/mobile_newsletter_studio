@@ -130,16 +130,22 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
   const imageFrameRef = useRef<HTMLDivElement>(null);
   const [selectedPageId, setSelectedPageId] = useState(pages[0]?.id ?? "");
   const [form, setForm] = useState(defaultForm);
+  const [isDraftBoxVisible, setIsDraftBoxVisible] = useState(false);
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [hiddenLinkIds, setHiddenLinkIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? pages[0] ?? null;
   const selectedLinks = useMemo(
-    () => links.filter((link) => link.pageId === selectedPage?.id).sort((a, b) => a.sortOrder - b.sortOrder),
-    [links, selectedPage?.id],
+    () =>
+      links
+        .filter((link) => link.pageId === selectedPage?.id && !hiddenLinkIds.includes(link.id))
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    [hiddenLinkIds, links, selectedPage?.id],
   );
+  const visibleLinkCount = links.filter((link) => !hiddenLinkIds.includes(link.id)).length;
 
   function updateField(field: keyof typeof defaultForm, value: string | number) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -152,6 +158,7 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
       ...current,
       ...clampDraftBox({ ...current, [field]: Number.isFinite(numberValue) ? numberValue : 0 }),
     }));
+    setIsDraftBoxVisible(true);
   }
 
   function applyPreset(preset: (typeof positionPresets)[number]) {
@@ -164,6 +171,15 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
         heightPercent: preset.heightPercent,
       }),
     }));
+    setIsDraftBoxVisible(true);
+  }
+
+  function resetDraftBox() {
+    setForm(defaultForm);
+    setDragState(null);
+    setIsDraftBoxVisible(false);
+    setMessage("새 클릭 영역 박스를 지웠습니다.");
+    setError("");
   }
 
   function startDraftDrag(event: PointerEvent<HTMLElement>, mode: DragMode) {
@@ -221,6 +237,11 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
       return;
     }
 
+    if (!isDraftBoxVisible) {
+      setError("먼저 위치 프리셋을 선택하거나 좌표를 입력해 새 클릭 영역 박스를 만들어 주세요.");
+      return;
+    }
+
     setIsSaving(true);
     setMessage("");
     setError("");
@@ -247,6 +268,7 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
     }
 
     setForm(defaultForm);
+    setIsDraftBoxVisible(false);
     setMessage(result.message ?? "이미지 클릭 영역을 저장했습니다.");
     router.refresh();
   }
@@ -270,6 +292,7 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
       return;
     }
 
+    setHiddenLinkIds((current) => (current.includes(linkId) ? current : [...current, linkId]));
     setMessage(result.message ?? "이미지 클릭 영역을 삭제했습니다.");
     router.refresh();
   }
@@ -300,7 +323,7 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
           </p>
         </div>
         <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">
-          {links.length}개 영역
+          {visibleLinkCount}개 영역
         </span>
       </div>
 
@@ -329,12 +352,9 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={selectedPage.previewHref} alt={`${selectedPage.pageNumber}쪽 페이지 이미지`} className="w-full" />
               {selectedLinks.map((link) => (
-                <a
+                <div
                   key={link.id}
-                  href={makeHref(link)}
-                  target={link.type === "phone" ? undefined : "_blank"}
-                  rel={link.type === "phone" ? undefined : "noreferrer"}
-                  className="absolute rounded-md border-2 border-[#f97316] bg-orange-400/25 px-2 py-1 text-[11px] font-black text-white shadow-sm"
+                  className="absolute rounded-md border-2 border-[#f97316] bg-orange-400/25 p-1 text-[11px] font-black text-white shadow-sm"
                   style={{
                     left: `${link.xPercent}%`,
                     top: `${link.yPercent}%`,
@@ -342,45 +362,63 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
                     height: `${link.heightPercent}%`,
                   }}
                 >
-                  {link.label}
-                </a>
+                  <div className="flex h-full min-h-7 items-start justify-between gap-1">
+                    <a
+                      href={makeHref(link)}
+                      target={link.type === "phone" ? undefined : "_blank"}
+                      rel={link.type === "phone" ? undefined : "noreferrer"}
+                      className="min-w-0 rounded bg-[#f97316] px-2 py-1 text-white shadow-sm"
+                    >
+                      {link.label}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(link.id)}
+                      className="rounded bg-white px-2 py-1 text-[10px] font-black text-rose-600 shadow-sm transition hover:bg-rose-50"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </div>
               ))}
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label="새 클릭 영역 위치 조정"
-                onPointerDown={(event) => startDraftDrag(event, "move")}
-                onPointerMove={updateDraftDrag}
-                onPointerUp={endDraftDrag}
-                onPointerCancel={endDraftDrag}
-                className="absolute cursor-move rounded-md border-2 border-[#184a88] bg-sky-400/20 shadow-[0_0_0_1px_rgba(255,255,255,0.85)]"
-                style={{
-                  left: `${form.xPercent}%`,
-                  top: `${form.yPercent}%`,
-                  width: `${form.widthPercent}%`,
-                  height: `${form.heightPercent}%`,
-                }}
-              >
-                <span className="m-1 inline-flex rounded bg-[#184a88] px-2 py-1 text-[11px] font-black text-white">
-                  새 영역
-                </span>
-                {[
-                  { mode: "resize-nw" as const, className: "-left-2 -top-2 cursor-nwse-resize" },
-                  { mode: "resize-ne" as const, className: "-right-2 -top-2 cursor-nesw-resize" },
-                  { mode: "resize-sw" as const, className: "-bottom-2 -left-2 cursor-nesw-resize" },
-                  { mode: "resize-se" as const, className: "-bottom-2 -right-2 cursor-nwse-resize" },
-                ].map((handle) => (
-                  <span
-                    key={handle.mode}
-                    aria-hidden="true"
-                    onPointerDown={(event) => startDraftDrag(event, handle.mode)}
-                    onPointerMove={updateDraftDrag}
-                    onPointerUp={endDraftDrag}
-                    onPointerCancel={endDraftDrag}
-                    className={`absolute h-4 w-4 rounded-full border-2 border-white bg-[#184a88] shadow ${handle.className}`}
-                  />
-                ))}
-              </div>
+              {isDraftBoxVisible ? (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="새 클릭 영역 위치 조정"
+                  onPointerDown={(event) => startDraftDrag(event, "move")}
+                  onPointerMove={updateDraftDrag}
+                  onPointerUp={endDraftDrag}
+                  onPointerCancel={endDraftDrag}
+                  className="absolute cursor-move rounded-md border-2 border-[#184a88] bg-sky-400/20 shadow-[0_0_0_1px_rgba(255,255,255,0.85)]"
+                  style={{
+                    left: `${form.xPercent}%`,
+                    top: `${form.yPercent}%`,
+                    width: `${form.widthPercent}%`,
+                    height: `${form.heightPercent}%`,
+                  }}
+                >
+                  <span className="m-1 inline-flex rounded bg-[#184a88] px-2 py-1 text-[11px] font-black text-white">
+                    새 영역
+                  </span>
+                  {[
+                    { mode: "resize-nw" as const, className: "-left-2 -top-2 cursor-nwse-resize" },
+                    { mode: "resize-ne" as const, className: "-right-2 -top-2 cursor-nesw-resize" },
+                    { mode: "resize-sw" as const, className: "-bottom-2 -left-2 cursor-nesw-resize" },
+                    { mode: "resize-se" as const, className: "-bottom-2 -right-2 cursor-nwse-resize" },
+                  ].map((handle) => (
+                    <span
+                      key={handle.mode}
+                      aria-hidden="true"
+                      onPointerDown={(event) => startDraftDrag(event, handle.mode)}
+                      onPointerMove={updateDraftDrag}
+                      onPointerUp={endDraftDrag}
+                      onPointerCancel={endDraftDrag}
+                      className={`absolute h-4 w-4 rounded-full border-2 border-white bg-[#184a88] shadow ${handle.className}`}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center">
@@ -441,7 +479,7 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
                   ))}
                 </div>
                 <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                  파란 박스 안을 잡으면 이동하고, 네 모서리 점을 잡으면 크기를 조정합니다. 아래 숫자는 미세 조정용입니다.
+                  프리셋을 누르면 파란 박스가 나타납니다. 박스 안을 잡으면 이동하고, 네 모서리 점을 잡으면 크기를 조정합니다.
                 </p>
               </div>
 
@@ -462,14 +500,23 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
                 ))}
               </div>
 
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSaving}
-                className="w-full rounded-lg bg-[#092046] px-4 py-3 text-sm font-black text-white transition hover:bg-[#123a78] disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                {isSaving ? "저장 중" : "클릭 영역 저장"}
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={resetDraftBox}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-black text-[#092046] transition hover:bg-slate-50"
+                >
+                  새 박스 지우기
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSaving}
+                  className="rounded-lg bg-[#092046] px-4 py-3 text-sm font-black text-white transition hover:bg-[#123a78] disabled:cursor-not-allowed disabled:bg-slate-400"
+                >
+                  {isSaving ? "저장 중" : "클릭 영역 저장"}
+                </button>
+              </div>
             </div>
           </div>
 
