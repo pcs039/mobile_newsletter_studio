@@ -33,7 +33,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
       sidebarNote="원본 자료는 제작 기준입니다. 실제 모바일 산출물은 다음 단계의 페이지 작성 화면에서 섹션과 블록으로 조립합니다."
       actions={
         <Link
-          href="/projects/new"
+          href={`/projects/${projectId}/settings`}
           className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
           기본 정보 수정

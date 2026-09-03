@@ -43,6 +43,10 @@ export type CreateNewsletterProjectInput = {
   designerHoursCap?: string;
 };
 
+export type UpdateNewsletterProjectInput = CreateNewsletterProjectInput & {
+  projectId: string;
+};
+
 export type CreateNewsletterProjectResult =
   | {
       ok: true;
@@ -51,6 +55,18 @@ export type CreateNewsletterProjectResult =
   | {
       ok: false;
       status: "not_configured" | "request_failed" | "duplicate_slug";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type UpdateNewsletterProjectResult =
+  | {
+      ok: true;
+      project: Pick<NewsletterProjectRow, "id" | "slug" | "title">;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "request_failed" | "duplicate_slug" | "not_found";
       message: string;
       httpStatus?: number;
     };
@@ -93,6 +109,37 @@ export type ProjectWorkspaceResult =
   | {
       ok: true;
       project: ProjectWorkspaceInfo;
+      source: "supabase";
+      message: string;
+    }
+  | {
+      ok: false;
+      project: null;
+      source: "unconfigured" | "error" | "not_found";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type ProjectBasicInfo = {
+  projectId: string;
+  title: string;
+  organizationName: string;
+  assigneeName: string;
+  publishedDate: string;
+  slug: string;
+  description: string;
+  primaryColor: string;
+  status: ProjectStatus;
+  packageTier: PackageTier;
+  productionMode: ProductionMode;
+  estimatedHours: string;
+  designerHoursCap: string;
+};
+
+export type ProjectBasicInfoResult =
+  | {
+      ok: true;
+      project: ProjectBasicInfo;
       source: "supabase";
       message: string;
     }
@@ -510,6 +557,25 @@ function normalizePublishedDate(date: string) {
   return null;
 }
 
+function formatDateInput(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value.slice(0, 10);
+  }
+
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 function makeWorkload(project: NewsletterProjectRow) {
   const estimated = project.estimated_hours ? `예상 ${project.estimated_hours}` : "예상 미정";
   const designer = project.designer_hours_cap ? `디자인 ${project.designer_hours_cap}` : "디자인 상한 미정";
@@ -839,6 +905,27 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     ebookUrl: `/newsletters/${project.slug}/ebook`,
     pageCount: project.page_count,
     updated: formatCompactDateTime(project.updated_at),
+<<<<<<< ours
+=======
+  };
+}
+
+function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicInfo {
+  return {
+    projectId: project.slug,
+    title: project.title,
+    organizationName: project.organization_name,
+    assigneeName: project.assignee_name?.trim() || "",
+    publishedDate: formatDateInput(project.published_date),
+    slug: project.slug,
+    description: project.description || "",
+    primaryColor: project.primary_color || "#092046",
+    status: project.status,
+    packageTier: project.package_tier,
+    productionMode: project.production_mode,
+    estimatedHours: project.estimated_hours || "",
+    designerHoursCap: project.designer_hours_cap || "",
+>>>>>>> theirs
   };
 }
 
@@ -1189,6 +1276,48 @@ export async function getProjectWorkspace(projectSlug: string): Promise<ProjectW
       project: null,
       source: "error",
       message: "Supabase 프로젝트 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function getProjectBasicInfo(projectSlug: string): Promise<ProjectBasicInfoResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders();
+
+  if (!config.isConfigured || !headers) {
+    return {
+      ok: false,
+      project: null,
+      source: "unconfigured",
+      message: "Supabase 환경변수 설정 후 프로젝트 기본 정보를 수정할 수 있습니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        project: null,
+        source: "not_found",
+        message: "수정할 프로젝트를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
+    return {
+      ok: true,
+      project: mapProjectRowToBasicInfo(project),
+      source: "supabase",
+      message: "프로젝트 기본 정보를 수정합니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      project: null,
+      source: "error",
+      message: "프로젝트 기본 정보 조회 중 오류가 발생했습니다.",
     };
   }
 }
@@ -1985,6 +2114,88 @@ export async function createNewsletterProject(
       ok: false,
       status: "request_failed",
       message: "Supabase 저장 요청 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function updateNewsletterProject(
+  input: UpdateNewsletterProjectInput,
+): Promise<UpdateNewsletterProjectResult> {
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_projects?slug=eq.${encodeURIComponent(input.projectId)}&deleted_at=is.null&select=id,slug,title`,
+  );
+  const headers = getRequestHeaders(true);
+
+  if (!endpoint || !headers) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY가 설정되어야 프로젝트 기본 정보 수정을 사용할 수 있습니다.",
+    };
+  }
+
+  const body = {
+    title: input.title,
+    organization_name: input.organizationName,
+    assignee_name: input.assigneeName || null,
+    issue_label: makeIssueLabel(input),
+    published_date: normalizePublishedDate(input.publishedDate),
+    slug: input.slug,
+    description: input.description || null,
+    primary_color: input.primaryColor || "#092046",
+    status: input.status,
+    package_tier: input.packageTier,
+    production_mode: input.productionMode,
+    estimated_hours: input.estimatedHours || null,
+    designer_hours_cap: input.designerHoursCap || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: {
+        ...headers,
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status === 409 ? "duplicate_slug" : "request_failed",
+        message:
+          response.status === 409
+            ? "이미 사용 중인 공개 주소 slug입니다. 다른 slug를 입력하세요."
+            : responseText || "Supabase 프로젝트 기본 정보 수정 요청에 실패했습니다.",
+        httpStatus: response.status,
+      };
+    }
+
+    const rows = JSON.parse(responseText || "[]") as Array<Pick<NewsletterProjectRow, "id" | "slug" | "title">>;
+
+    if (!rows[0]) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "수정할 프로젝트를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
+    return {
+      ok: true,
+      project: rows[0],
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "Supabase 기본 정보 수정 요청 중 오류가 발생했습니다.",
     };
   }
 }

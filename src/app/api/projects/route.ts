@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import {
   archiveNewsletterProject,
   createNewsletterProject,
+  updateNewsletterProject,
   type CreateNewsletterProjectInput,
+  type UpdateNewsletterProjectInput,
 } from "@/lib/newsletter-repository";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +96,88 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(result, { status: 201 });
+}
+
+export async function PATCH(request: Request) {
+  const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+
+  if (!payload) {
+    return NextResponse.json(
+      { ok: false, message: "요청 데이터를 확인하지 못했습니다." },
+      { status: 400 },
+    );
+  }
+
+  const projectId = asOptionalText(payload.projectId);
+  const title = asOptionalText(payload.title);
+  const organizationName = asOptionalText(payload.organizationName);
+  const assigneeName = asOptionalText(payload.assigneeName);
+  const publishedDate = asOptionalText(payload.publishedDate) || asOptionalText(payload.publishedMonth);
+  const slug = normalizeSlug(asOptionalText(payload.slug));
+  const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
+
+  if (!projectId) {
+    return NextResponse.json(
+      { ok: false, message: "수정할 프로젝트 ID가 필요합니다." },
+      { status: 400 },
+    );
+  }
+
+  if (!title || !organizationName || !assigneeName || !publishedDate || !slug) {
+    return NextResponse.json(
+      { ok: false, message: "소식지명, 기관명, 작업자명, 발행일, 공개 주소 slug는 필수입니다." },
+      { status: 400 },
+    );
+  }
+
+  if (!/^#[0-9a-fA-F]{6}$/.test(primaryColor)) {
+    return NextResponse.json(
+      { ok: false, message: "대표 색상은 #092046 같은 6자리 HEX 코드로 입력하세요." },
+      { status: 400 },
+    );
+  }
+
+  if (
+    !isOneOf(payload.status, projectStatuses) ||
+    !isOneOf(payload.packageTier, packageTiers) ||
+    !isOneOf(payload.productionMode, productionModes)
+  ) {
+    return NextResponse.json(
+      { ok: false, message: "상품 옵션, 제작 방식 또는 상태 값이 올바르지 않습니다." },
+      { status: 400 },
+    );
+  }
+
+  const input: UpdateNewsletterProjectInput = {
+    projectId,
+    title,
+    organizationName,
+    assigneeName,
+    publishedDate,
+    slug,
+    description: asOptionalText(payload.description),
+    primaryColor,
+    status: payload.status,
+    packageTier: payload.packageTier,
+    productionMode: payload.productionMode,
+    estimatedHours: asOptionalText(payload.estimatedHours),
+    designerHoursCap: asOptionalText(payload.designerHoursCap),
+  };
+
+  const result = await updateNewsletterProject(input);
+
+  if (!result.ok) {
+    return NextResponse.json(result, {
+      status:
+        result.status === "not_configured"
+          ? 503
+          : result.status === "not_found"
+            ? 404
+            : result.httpStatus ?? 500,
+    });
+  }
+
+  return NextResponse.json(result);
 }
 
 export async function DELETE(request: Request) {
