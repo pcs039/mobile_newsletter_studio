@@ -238,6 +238,26 @@ export type ProjectSurveyResult = {
   message: string;
 };
 
+export type ProjectSurveyResponseAnswer = {
+  questionId: string;
+  questionTitle: string;
+  answer: string;
+};
+
+export type ProjectSurveyResponseItem = {
+  id: string;
+  surveyId: string;
+  surveyTitle: string;
+  submittedAt: string;
+  answers: ProjectSurveyResponseAnswer[];
+};
+
+export type ProjectSurveyResponseResult = {
+  responses: ProjectSurveyResponseItem[];
+  source: "supabase" | "unconfigured" | "error" | "not_found";
+  message: string;
+};
+
 export type PublicProjectSurveyResult = {
   survey: ProjectSurveyItem | null;
   source: "supabase" | "unconfigured" | "error" | "not_found";
@@ -570,6 +590,16 @@ type NewsletterSurveyQuestionRow = {
 
 type NewsletterSurveyResponseCountRow = {
   survey_id: string;
+};
+
+type NewsletterSurveyResponseRow = {
+  id: string;
+  survey_id: string;
+  project_id: string;
+  response_payload: {
+    answers?: Record<string, string | string[]>;
+  } | null;
+  submitted_at: string;
 };
 
 export type ProjectPageImage = {
@@ -2538,6 +2568,104 @@ export async function getPublicProjectSurvey(
     source: result.source,
     message: result.source === "supabase" ? "공개 설문·이벤트 참여 화면을 표시합니다." : result.message,
   };
+}
+
+function formatSurveyResponseAnswer(value: string | string[]) {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join(", ") : "-";
+  }
+
+  return value || "-";
+}
+
+export async function getProjectSurveyResponses(projectSlug: string): Promise<ProjectSurveyResponseResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      responses: [],
+      source: "unconfigured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 설문 응답을 표시합니다.",
+    };
+  }
+
+  try {
+    const [project, surveyData] = await Promise.all([getProjectRowBySlug(projectSlug, headers), getProjectSurveys(projectSlug)]);
+
+    if (!project) {
+      return {
+        responses: [],
+        source: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    if (surveyData.source !== "supabase") {
+      return {
+        responses: [],
+        source: surveyData.source,
+        message: surveyData.message,
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_survey_responses?select=id,survey_id,project_id,response_payload,submitted_at&project_id=eq.${encodeURIComponent(
+        project.id,
+      )}&order=submitted_at.desc&limit=5000`,
+    );
+
+    if (!endpoint) {
+      return {
+        responses: [],
+        source: "error",
+        message: "설문 응답 조회 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, { headers, cache: "no-store" });
+
+    if (!response.ok) {
+      return {
+        responses: [],
+        source: "error",
+        message: "설문 응답을 조회하지 못했습니다. Supabase 설문 응답 테이블을 확인하세요.",
+      };
+    }
+
+    const rows = (await response.json()) as NewsletterSurveyResponseRow[];
+    const surveyById = new Map(surveyData.surveys.map((survey) => [survey.id, survey]));
+    const questionById = new Map(
+      surveyData.surveys.flatMap((survey) => survey.questions.map((question) => [question.id, question] as const)),
+    );
+
+    return {
+      responses: rows.map((row) => {
+        const survey = surveyById.get(row.survey_id);
+        const answers = row.response_payload?.answers ?? {};
+
+        return {
+          id: row.id,
+          surveyId: row.survey_id,
+          surveyTitle: survey?.title ?? "설문 제목 확인 필요",
+          submittedAt: formatCompactDateTime(row.submitted_at),
+          answers: Object.entries(answers).map(([questionId, answer]) => ({
+            questionId,
+            questionTitle: questionById.get(questionId)?.title ?? "문항 제목 확인 필요",
+            answer: formatSurveyResponseAnswer(answer),
+          })),
+        };
+      }),
+      source: "supabase",
+      message: "설문·이벤트 응답 목록을 표시합니다.",
+    };
+  } catch {
+    return {
+      responses: [],
+      source: "error",
+      message: "설문 응답 조회 중 오류가 발생했습니다.",
+    };
+  }
 }
 
 export async function createProjectSurvey(input: CreateProjectSurveyInput): Promise<CreateProjectSurveyResult> {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   createProjectSurvey,
   createProjectSurveyQuestion,
+  getProjectSurveyResponses,
   type CreateProjectSurveyInput,
   type CreateProjectSurveyQuestionInput,
 } from "@/lib/newsletter-repository";
@@ -45,6 +46,52 @@ function getErrorStatus(status: string, httpStatus?: number) {
       : status === "invalid_input"
         ? 400
         : httpStatus ?? 500;
+}
+
+function escapeCsvCell(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function makeResponsesCsv(responses: Awaited<ReturnType<typeof getProjectSurveyResponses>>["responses"]) {
+  const rows = [["제출일시", "설문명", "문항", "응답"]];
+
+  for (const response of responses) {
+    if (response.answers.length === 0) {
+      rows.push([response.submittedAt, response.surveyTitle, "응답 없음", "-"]);
+      continue;
+    }
+
+    for (const answer of response.answers) {
+      rows.push([response.submittedAt, response.surveyTitle, answer.questionTitle, answer.answer]);
+    }
+  }
+
+  return rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n");
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const projectSlug = asText(url.searchParams.get("projectSlug"));
+  const format = asText(url.searchParams.get("format"));
+
+  if (format !== "csv") {
+    return NextResponse.json({ ok: false, message: "지원하지 않는 설문 조회 형식입니다." }, { status: 400 });
+  }
+
+  const result = await getProjectSurveyResponses(projectSlug);
+
+  if (result.source !== "supabase") {
+    return NextResponse.json({ ok: false, message: result.message }, { status: getErrorStatus(result.source) });
+  }
+
+  const csv = makeResponsesCsv(result.responses);
+
+  return new NextResponse(`\uFEFF${csv}`, {
+    headers: {
+      "Content-Disposition": `attachment; filename="survey-responses-${projectSlug || "project"}.csv"`,
+      "Content-Type": "text/csv; charset=utf-8",
+    },
+  });
 }
 
 export async function POST(request: Request) {

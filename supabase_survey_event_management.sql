@@ -53,3 +53,6 @@ create index if not exists newsletter_survey_responses_survey_id_idx
 
 create index if not exists newsletter_survey_responses_project_id_idx
   on newsletter_survey_responses(project_id);
+
+create index if not exists newsletter_survey_responses_project_submitted_at_idx
+  on newsletter_survey_responses(project_id, submitted_at desc);

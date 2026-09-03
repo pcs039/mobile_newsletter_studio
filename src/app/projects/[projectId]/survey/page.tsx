@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectSurveyForm } from "@/components/project-survey-form";
 import { StatusPill } from "@/components/status-pill";
-import { getProjectSurveys } from "@/lib/newsletter-repository";
+import { getProjectSurveyResponses, getProjectSurveys } from "@/lib/newsletter-repository";
 
 function splitDateTime(value: string) {
   const [date, time] = value.split(" ");
@@ -15,7 +15,7 @@ function splitDateTime(value: string) {
 
 export default async function ProjectSurveyPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const surveyData = await getProjectSurveys(projectId);
+  const [surveyData, responseData] = await Promise.all([getProjectSurveys(projectId), getProjectSurveyResponses(projectId)]);
   const openSurveys = surveyData.surveys.filter((survey) => survey.status === "진행 중");
   const totalQuestions = surveyData.surveys.reduce((total, survey) => total + survey.questionCount, 0);
   const totalResponses = surveyData.surveys.reduce((total, survey) => total + survey.responseCount, 0);
@@ -76,6 +76,12 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
           {surveyData.source === "error" && (
             <article className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm font-bold leading-6 text-amber-900">
               {surveyData.message}
+            </article>
+          )}
+
+          {responseData.source === "error" && (
+            <article className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm font-bold leading-6 text-amber-900">
+              {responseData.message}
             </article>
           )}
 
@@ -190,6 +196,55 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
                     </article>
                   );
                 })
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">응답 관리</p>
+                <h3 className="mt-1 text-lg font-bold text-[#092046]">최근 응답</h3>
+                <p className="mt-1 text-sm leading-6 text-slate-500 [word-break:keep-all]">{responseData.message}</p>
+              </div>
+              <Link
+                href={`/api/project-surveys?projectSlug=${encodeURIComponent(projectId)}&format=csv`}
+                className="rounded-lg border border-[#2f73b7] bg-white px-4 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+              >
+                응답 CSV 다운로드
+              </Link>
+            </div>
+
+            <div className="divide-y divide-slate-200">
+              {responseData.responses.length === 0 ? (
+                <div className="px-5 py-10 text-center">
+                  <p className="text-base font-bold text-[#092046]">아직 제출된 응답이 없습니다.</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">
+                    공개 참여 화면에서 응답이 제출되면 이 영역에 최근 응답이 표시됩니다.
+                  </p>
+                </div>
+              ) : (
+                responseData.responses.slice(0, 10).map((response) => (
+                  <article key={response.id} className="px-5 py-5">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h4 className="font-black text-[#092046] [word-break:keep-all]">{response.surveyTitle}</h4>
+                        <p className="mt-1 text-xs font-bold text-slate-500">제출: {response.submittedAt}</p>
+                      </div>
+                      <StatusPill value={`${response.answers.length}개 답변`} />
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                      {response.answers.map((answer) => (
+                        <div key={`${response.id}-${answer.questionId}`} className="rounded-lg bg-[#f8fbff] px-4 py-3">
+                          <p className="text-xs font-black text-[#184a88] [word-break:keep-all]">{answer.questionTitle}</p>
+                          <p className="mt-1 whitespace-pre-line text-sm font-bold leading-6 text-slate-700 [word-break:keep-all]">
+                            {answer.answer}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                ))
               )}
             </div>
           </section>
