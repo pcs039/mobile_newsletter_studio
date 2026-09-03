@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProjectDistributionCopyTools } from "@/components/project-distribution-copy-tools";
 import { ProjectDistributionForm } from "@/components/project-distribution-form";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectSendCampaignActions } from "@/components/project-send-campaign-actions";
@@ -230,6 +231,8 @@ export default async function ProjectDistributionPage({ params }: { params: Prom
         </section>
 
         <aside className="space-y-5">
+          <ProjectDistributionCopyTools projectTitle={project?.title ?? "모바일 소식지"} publicUrl={publicUrl} />
+
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <h3 className="text-lg font-bold text-[#092046]">공개 링크</h3>
             <div className="mt-4 space-y-3">
