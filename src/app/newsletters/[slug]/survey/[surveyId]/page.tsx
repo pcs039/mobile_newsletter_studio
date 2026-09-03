@@ -56,6 +56,12 @@ export default async function PublicSurveyPage({ params }: PublicSurveyPageProps
               {survey.questionCount}개 문항
             </span>
           </div>
+          <Link
+            href={newsletterHref}
+            className="mt-5 inline-flex rounded-xl border border-white/40 px-4 py-3 text-sm font-black text-white transition hover:bg-white/10"
+          >
+            모바일 소식지 보기
+          </Link>
         </header>
 
         <section className="space-y-5 px-5 py-5">
