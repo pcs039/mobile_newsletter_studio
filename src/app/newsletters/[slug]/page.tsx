@@ -2,11 +2,13 @@ import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import {
   getProjectContent,
+  getProjectPageHotspotLinks,
   getProjectPageImages,
   getPublicProjectSurveys,
   getProjectWorkspace,
   type ProjectContentArticle,
   type ProjectContentBlock,
+  type ProjectPageHotspotLink,
 } from "@/lib/newsletter-repository";
 
 type PublicNewsletterPageProps = {
@@ -72,6 +74,20 @@ function getYoutubeId(value: string) {
   }
 
   return "";
+}
+
+function getHotspotHref(link: ProjectPageHotspotLink) {
+  if (link.type === "phone") {
+    return link.targetValue.startsWith("tel:") ? link.targetValue : `tel:${link.targetValue}`;
+  }
+
+  return link.targetValue;
+}
+
+function getHotspotsForPage(links: ProjectPageHotspotLink[], pageId: string) {
+  return links
+    .filter((link) => link.pageId === pageId && link.isVisible)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 function renderContentBlock(article: ProjectContentArticle, block: ProjectContentBlock) {
@@ -193,10 +209,11 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const backToEditorHref = previewArticleId
     ? `/projects/${slug}/reading?articleId=${previewArticleId}`
     : `/projects/${slug}/reading`;
-  const [workspace, contentData, pageImageData, surveyData] = await Promise.all([
+  const [workspace, contentData, pageImageData, hotspotData, surveyData] = await Promise.all([
     getProjectWorkspace(slug),
     getProjectContent(slug),
     getProjectPageImages(slug),
+    getProjectPageHotspotLinks(slug),
     getPublicProjectSurveys(slug),
   ]);
   const project = workspace.project;
@@ -225,6 +242,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     isAdminPreview ? true : article.status === "approved" || article.status === "published",
   );
   const pageImages = pageImageData.pages.filter((page) => page.previewHref);
+  const hotspotLinks = hotspotData.links;
   const isPremiumImageMode = project?.packageTier === "프리미엄" || project?.productionMode === "전체 이미지형";
   const ebookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
   const headerColor = project?.primaryColor ?? "#071f46";
@@ -285,8 +303,37 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                       </Link>
                     </div>
                   ) : null}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={page.previewHref ?? ""} alt={`${page.pageNumber}쪽 ${page.title}`} className="w-full" />
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={page.previewHref ?? ""} alt={`${page.pageNumber}쪽 ${page.title}`} className="w-full" />
+                    {getHotspotsForPage(hotspotLinks, page.id).map((link) => (
+                      <a
+                        key={link.id}
+                        href={getHotspotHref(link)}
+                        target={link.type === "phone" ? undefined : "_blank"}
+                        rel={link.type === "phone" ? undefined : "noreferrer"}
+                        aria-label={link.label}
+                        title={link.label}
+                        className={`absolute rounded-md ${
+                          isAdminPreview ? "border-2 border-[#f97316] bg-orange-400/20" : "focus:outline focus:outline-2 focus:outline-[#2f73b7]"
+                        }`}
+                        style={{
+                          left: `${link.xPercent}%`,
+                          top: `${link.yPercent}%`,
+                          width: `${link.widthPercent}%`,
+                          height: `${link.heightPercent}%`,
+                        }}
+                      >
+                        {isAdminPreview ? (
+                          <span className="m-1 inline-flex rounded bg-[#f97316] px-2 py-1 text-[11px] font-black text-white">
+                            {link.label}
+                          </span>
+                        ) : (
+                          <span className="sr-only">{link.label}</span>
+                        )}
+                      </a>
+                    ))}
+                  </div>
                 </article>
               ))}
             </section>

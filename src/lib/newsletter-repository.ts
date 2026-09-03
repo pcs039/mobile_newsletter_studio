@@ -430,6 +430,22 @@ type NewsletterPageRow = {
   updated_at: string;
 };
 
+type NewsletterPageHotspotLinkRow = {
+  id: string;
+  project_id: string;
+  page_id: string;
+  label: string;
+  link_type: PageHotspotLinkType;
+  target_value: string;
+  x_percent: number;
+  y_percent: number;
+  width_percent: number;
+  height_percent: number;
+  sort_order: number;
+  is_visible: boolean;
+  updated_at: string;
+};
+
 type NewsletterAssetRow = {
   id: string;
   title: string;
@@ -507,6 +523,7 @@ type ContentBlockType =
 
 type LinkActionType = "url" | "phone" | "map" | "video" | "internal_page" | "download";
 type LinkDisplayStyle = "button" | "text_link" | "thumbnail_card" | "map_card";
+type PageHotspotLinkType = "url" | "phone" | "map" | "video";
 
 type NewsletterArticleRow = {
   id: string;
@@ -658,6 +675,57 @@ export type ProjectPageImagesResult = {
   source: "supabase" | "unconfigured" | "error" | "not_found";
   message: string;
 };
+
+export type ProjectPageHotspotLink = {
+  id: string;
+  pageId: string;
+  label: string;
+  type: PageHotspotLinkType;
+  targetValue: string;
+  xPercent: number;
+  yPercent: number;
+  widthPercent: number;
+  heightPercent: number;
+  sortOrder: number;
+  isVisible: boolean;
+  updated: string;
+};
+
+export type ProjectPageHotspotLinksResult = {
+  links: ProjectPageHotspotLink[];
+  source: "supabase" | "unconfigured" | "error" | "not_found";
+  message: string;
+};
+
+export type CreateProjectPageHotspotLinkInput = {
+  projectSlug: string;
+  pageId: string;
+  label: string;
+  type: PageHotspotLinkType;
+  targetValue: string;
+  xPercent?: number;
+  yPercent?: number;
+  widthPercent?: number;
+  heightPercent?: number;
+  sortOrder?: number;
+};
+
+export type DeleteProjectPageHotspotLinkInput = {
+  projectSlug: string;
+  linkId: string;
+};
+
+export type CreateProjectPageHotspotLinkResult =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "request_failed" | "not_found" | "invalid_input";
+      message: string;
+      httpStatus?: number;
+    };
 
 export type ProjectOriginalPdf = {
   fileName: string;
@@ -1369,6 +1437,23 @@ function mapPageRowToProjectPageImage(page: NewsletterPageRow): ProjectPageImage
   };
 }
 
+function mapPageHotspotLinkRow(row: NewsletterPageHotspotLinkRow): ProjectPageHotspotLink {
+  return {
+    id: row.id,
+    pageId: row.page_id,
+    label: row.label,
+    type: row.link_type,
+    targetValue: row.target_value,
+    xPercent: Number(row.x_percent) || 0,
+    yPercent: Number(row.y_percent) || 0,
+    widthPercent: Number(row.width_percent) || 0,
+    heightPercent: Number(row.height_percent) || 0,
+    sortOrder: Number(row.sort_order) || 0,
+    isVisible: row.is_visible,
+    updated: formatCompactDateTime(row.updated_at),
+  };
+}
+
 function mapProjectRowToOriginalPdf(project: NewsletterProjectRow): ProjectOriginalPdf | null {
   if (!project.pdf_original_path) {
     return null;
@@ -1551,6 +1636,23 @@ function normalizeArticleStatus(value: string | undefined) {
 
 function normalizeArticleSortOrder(value: number | undefined) {
   return Number.isInteger(value) && Number(value) >= 0 ? Number(value) : 0;
+}
+
+function normalizePercent(value: number | undefined, fallback: number) {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return fallback;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(numberValue * 100) / 100));
+}
+
+function normalizePageHotspotLinkType(value: string | undefined): PageHotspotLinkType {
+  const allowed: PageHotspotLinkType[] = ["url", "phone", "map", "video"];
+  const cleaned = cleanText(value);
+
+  return allowed.includes(cleaned as PageHotspotLinkType) ? (cleaned as PageHotspotLinkType) : "url";
 }
 
 function normalizeContentSections(sections: UpsertProjectArticleInput["contentSections"]) {
@@ -3358,6 +3460,272 @@ export async function getProjectPageImages(projectSlug: string): Promise<Project
       pages: [],
       source: "error",
       message: "페이지 이미지 목록 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function getProjectPageHotspotLinks(projectSlug: string): Promise<ProjectPageHotspotLinksResult> {
+  const workspace = await getProjectWorkspace(projectSlug);
+
+  if (!workspace.ok) {
+    return {
+      links: [],
+      source: workspace.source,
+      message: workspace.message,
+    };
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_page_hotspot_links?select=id,project_id,page_id,label,link_type,target_value,x_percent,y_percent,width_percent,height_percent,sort_order,is_visible,updated_at&project_id=eq.${encodeURIComponent(
+      workspace.project.id,
+    )}&is_visible=eq.true&order=sort_order.asc&order=updated_at.desc`,
+  );
+  const headers = getRequestHeaders(true);
+
+  if (!endpoint || !headers) {
+    return {
+      links: [],
+      source: "unconfigured",
+      message: "Supabase 서버 저장 키 설정 후 이미지 클릭 영역을 표시합니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        links: [],
+        source: "error",
+        message: "이미지 클릭 영역 테이블을 조회하지 못했습니다. Supabase SQL을 먼저 실행하세요.",
+      };
+    }
+
+    const rows = (await response.json()) as NewsletterPageHotspotLinkRow[];
+
+    return {
+      links: rows.map(mapPageHotspotLinkRow),
+      source: "supabase",
+      message: rows.length > 0 ? "등록된 이미지 클릭 영역을 표시합니다." : "등록된 이미지 클릭 영역이 아직 없습니다.",
+    };
+  } catch {
+    return {
+      links: [],
+      source: "error",
+      message: "이미지 클릭 영역 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function createProjectPageHotspotLink(
+  input: CreateProjectPageHotspotLinkInput,
+): Promise<CreateProjectPageHotspotLinkResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = cleanText(input.projectSlug);
+  const pageId = cleanText(input.pageId);
+  const label = cleanText(input.label);
+  const targetValue = cleanText(input.targetValue);
+  const type = normalizePageHotspotLinkType(input.type);
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 이미지 클릭 영역을 저장합니다.",
+    };
+  }
+
+  if (!projectSlug || !pageId || !label || !targetValue) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트, 페이지, 영역명, 연결 주소는 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const pageEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_pages?select=id&project_id=eq.${encodeURIComponent(project.id)}&id=eq.${encodeURIComponent(
+        pageId,
+      )}&limit=1`,
+    );
+
+    if (!pageEndpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "페이지 확인 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const pageResponse = await fetch(pageEndpoint, {
+      headers,
+      cache: "no-store",
+    });
+    const pageRows = pageResponse.ok ? ((await pageResponse.json()) as Array<{ id: string }>) : [];
+
+    if (!pageRows[0]) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "선택한 페이지 이미지를 찾지 못했습니다.",
+      };
+    }
+
+    const now = new Date().toISOString();
+    const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_page_hotspot_links");
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "이미지 클릭 영역 저장 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const xPercent = normalizePercent(input.xPercent, 10);
+    const yPercent = normalizePercent(input.yPercent, 10);
+    const widthPercent = normalizePercent(input.widthPercent, 30);
+    const heightPercent = normalizePercent(input.heightPercent, 10);
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        project_id: project.id,
+        page_id: pageId,
+        label,
+        link_type: type,
+        target_value: targetValue,
+        x_percent: xPercent,
+        y_percent: yPercent,
+        width_percent: Math.min(widthPercent, 100 - xPercent),
+        height_percent: Math.min(heightPercent, 100 - yPercent),
+        sort_order: normalizeArticleSortOrder(input.sortOrder) || 10,
+        is_visible: true,
+        updated_at: now,
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "이미지 클릭 영역 저장에 실패했습니다. Supabase 테이블과 권한을 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "이미지 클릭 영역을 저장했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "이미지 클릭 영역 저장 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function deleteProjectPageHotspotLink(
+  input: DeleteProjectPageHotspotLinkInput,
+): Promise<CreateProjectPageHotspotLinkResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = cleanText(input.projectSlug);
+  const linkId = cleanText(input.linkId);
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 이미지 클릭 영역을 삭제합니다.",
+    };
+  }
+
+  if (!projectSlug || !linkId) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트와 클릭 영역 ID는 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_page_hotspot_links?id=eq.${encodeURIComponent(linkId)}&project_id=eq.${encodeURIComponent(
+        project.id,
+      )}`,
+    );
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "이미지 클릭 영역 삭제 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        is_visible: false,
+        updated_at: new Date().toISOString(),
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "이미지 클릭 영역 삭제에 실패했습니다.",
+        httpStatus: response.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "이미지 클릭 영역을 삭제했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "이미지 클릭 영역 삭제 중 오류가 발생했습니다.",
     };
   }
 }

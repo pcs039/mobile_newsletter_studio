@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { FileUploadCard } from "@/components/file-upload-card";
+import { ProjectPageHotspotManager } from "@/components/project-page-hotspot-manager";
 import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
 import { pageConversionSteps, pageQualityChecks } from "@/lib/newsletter-data";
-import { getProjectOriginalPdf, getProjectPageImages, getProjectWorkspace } from "@/lib/newsletter-repository";
+import {
+  getProjectOriginalPdf,
+  getProjectPageHotspotLinks,
+  getProjectPageImages,
+  getProjectWorkspace,
+} from "@/lib/newsletter-repository";
 
 const premiumPageSpecs = [
   { label: "권장 폭", value: "1080px", detail: "스마트폰 고해상도 기준" },
@@ -22,10 +28,11 @@ const premiumWorkflow = [
 
 export default async function ProjectPagesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const [workspace, originalPdfData, pageImageData] = await Promise.all([
+  const [workspace, originalPdfData, pageImageData, hotspotData] = await Promise.all([
     getProjectWorkspace(projectId),
     getProjectOriginalPdf(projectId),
     getProjectPageImages(projectId),
+    getProjectPageHotspotLinks(projectId),
   ]);
   const project = workspace.project;
   const originalPdf = originalPdfData.pdf;
@@ -272,6 +279,8 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   </div>
                 )}
               </article>
+
+              <ProjectPageHotspotManager links={hotspotData.links} pages={pages} projectSlug={projectId} />
             </section>
 
             <aside className="space-y-5">
