@@ -137,9 +137,17 @@ export async function POST(request: Request) {
 
   if (action === "createQuestion") {
     const type = asText(payload.type);
+    const options = asOptions(payload.options);
 
     if (!questionTypes.has(type)) {
       return NextResponse.json({ ok: false, message: "문항 형식을 확인해야 합니다." }, { status: 400 });
+    }
+
+    if ((type === "single_choice" || type === "multiple_choice") && options.length === 0) {
+      return NextResponse.json(
+        { ok: false, message: "단일 선택 또는 복수 선택 문항은 선택지를 한 줄에 하나씩 입력해야 합니다." },
+        { status: 400 },
+      );
     }
 
     const result = await createProjectSurveyQuestion({
@@ -148,7 +156,7 @@ export async function POST(request: Request) {
       order: asNumber(payload.order),
       title: asText(payload.title),
       type: type as CreateProjectSurveyQuestionInput["type"],
-      options: asOptions(payload.options),
+      options,
       isRequired: asBoolean(payload.isRequired),
     });
 

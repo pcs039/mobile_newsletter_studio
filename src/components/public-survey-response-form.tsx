@@ -23,11 +23,21 @@ function getAnswer(formData: FormData, question: ProjectSurveyQuestion) {
   return String(formData.get(question.id) ?? "").trim();
 }
 
+function getChoiceOptions(question: ProjectSurveyQuestion) {
+  if (question.options.length > 0) {
+    return question.options;
+  }
+
+  return ["매우 그렇다", "그렇다", "보통이다", "그렇지 않다"];
+}
+
 function QuestionInput({ question }: { question: ProjectSurveyQuestion }) {
   if (question.typeCode === "single_choice") {
+    const options = getChoiceOptions(question);
+
     return (
       <div className="grid gap-2">
-        {question.options.map((option) => (
+        {options.map((option) => (
           <label key={option} className="flex gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold leading-6 text-slate-700">
             <input name={question.id} type="radio" value={option} required={question.isRequired} className="mt-1 h-4 w-4 accent-[#092046]" />
             <span className="[word-break:keep-all]">{option}</span>
@@ -38,9 +48,11 @@ function QuestionInput({ question }: { question: ProjectSurveyQuestion }) {
   }
 
   if (question.typeCode === "multiple_choice") {
+    const options = getChoiceOptions(question);
+
     return (
       <div className="grid gap-2">
-        {question.options.map((option) => (
+        {options.map((option) => (
           <label key={option} className="flex gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold leading-6 text-slate-700">
             <input name={question.id} type="checkbox" value={option} className="mt-1 h-4 w-4 accent-[#092046]" />
             <span className="[word-break:keep-all]">{option}</span>

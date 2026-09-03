@@ -2840,6 +2840,7 @@ export async function createProjectSurveyQuestion(
   const surveyId = input.surveyId.trim();
   const title = input.title.trim();
   const order = Number(input.order) || 1;
+  const options = input.options ?? [];
 
   if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
     return {
@@ -2854,6 +2855,14 @@ export async function createProjectSurveyQuestion(
       ok: false,
       status: "invalid_input",
       message: "프로젝트, 설문, 문항 제목은 필수입니다.",
+    };
+  }
+
+  if ((input.type === "single_choice" || input.type === "multiple_choice") && options.length === 0) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "단일 선택 또는 복수 선택 문항은 선택지를 한 줄에 하나씩 입력해야 합니다.",
     };
   }
 
@@ -2890,7 +2899,7 @@ export async function createProjectSurveyQuestion(
         question_order: order,
         title,
         question_type: input.type,
-        options: input.options ?? [],
+        options,
         is_required: Boolean(input.isRequired),
       }),
       cache: "no-store",

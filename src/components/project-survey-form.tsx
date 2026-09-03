@@ -15,15 +15,22 @@ type SubmitState = {
   isError: boolean;
 };
 
+type QuestionType = "single_choice" | "multiple_choice" | "short_text" | "long_text" | "scale";
+
 function getText(formData: FormData, name: string) {
   const value = formData.get(name);
 
   return typeof value === "string" ? value.trim() : "";
 }
 
+function needsChoiceOptions(type: QuestionType) {
+  return type === "single_choice" || type === "multiple_choice";
+}
+
 export function ProjectSurveyForm({ projectSlug, surveys }: ProjectSurveyFormProps) {
   const router = useRouter();
   const [submitState, setSubmitState] = useState<SubmitState>({ target: null, message: "", isError: false });
+  const [questionType, setQuestionType] = useState<QuestionType>("single_choice");
 
   async function submitPayload(target: SubmitState["target"], payload: Record<string, string | boolean | number>) {
     setSubmitState({ target, message: "", isError: false });
@@ -75,6 +82,7 @@ export function ProjectSurveyForm({ projectSlug, surveys }: ProjectSurveyFormPro
 
     if (saved) {
       form.reset();
+      setQuestionType("single_choice");
     }
   }
 
@@ -246,7 +254,8 @@ export function ProjectSurveyForm({ projectSlug, surveys }: ProjectSurveyFormPro
               문항 형식
               <select
                 name="type"
-                defaultValue="single_choice"
+                value={questionType}
+                onChange={(event) => setQuestionType(event.target.value as QuestionType)}
                 className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#2f73b7] focus:ring-2 focus:ring-blue-100"
               >
                 <option value="single_choice">단일 선택</option>
@@ -267,11 +276,16 @@ export function ProjectSurveyForm({ projectSlug, surveys }: ProjectSurveyFormPro
             />
           </label>
           <label className="grid gap-2 text-sm font-bold text-[#092046]">
-            선택지
+            선택지 {needsChoiceOptions(questionType) ? "*" : ""}
             <textarea
               name="options"
+              required={needsChoiceOptions(questionType)}
               rows={5}
-              placeholder={"매우 그렇다\n그렇다\n보통이다\n그렇지 않다"}
+              placeholder={
+                needsChoiceOptions(questionType)
+                  ? "매우 그렇다\n그렇다\n보통이다\n그렇지 않다"
+                  : "단답형, 서술형, 척도형은 선택지를 비워두어도 됩니다."
+              }
               className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold leading-6 text-slate-800 outline-none transition focus:border-[#2f73b7] focus:ring-2 focus:ring-blue-100"
             />
           </label>
