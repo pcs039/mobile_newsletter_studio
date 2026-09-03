@@ -116,12 +116,21 @@ export default async function Home() {
                 PDF 원본과 등록 이미지를 바탕으로 모바일 읽기 콘텐츠와 PC e-book을 발행합니다.
               </p>
             </div>
-            <Link
-              href="/projects/new"
-              className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
-            >
-              + 새 소식지 만들기
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <SupabaseHealthCheckButton
+                anonKeyConfigured={Boolean(supabaseConfig.anonKey)}
+                buttonClassName="inline-flex justify-center rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                buttonLabel="Supabase 상태 확인"
+                serviceRoleKeyConfigured={supabaseConfig.hasServiceRoleKey}
+                urlConfigured={Boolean(supabaseConfig.url)}
+              />
+              <Link
+                href="/projects/new"
+                className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+              >
+                + 새 소식지 만들기
+              </Link>
+            </div>
           </header>
 
           <section className="mb-7 grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
@@ -136,49 +145,6 @@ export default async function Home() {
                 </div>
               </article>
             ))}
-          </section>
-
-          <section className="mb-7 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-            <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">Supabase 연결 준비</p>
-                  <h3 className="mt-1 text-lg font-bold text-[#092046]">저장소 환경 설정</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    프로젝트 조회와 생성에 필요한 Supabase 환경변수, 스키마, 서버 저장 키 상태를 확인합니다.
-                  </p>
-                </div>
-                <StatusPill value={supabaseConfig.isConfigured ? "환경변수 준비" : "설정 필요"} />
-              </div>
-              <div className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
-                <div className="rounded-lg bg-slate-50 px-3 py-3">
-                  <p className="font-bold text-[#092046]">URL</p>
-                  <p className="mt-1 text-xs font-semibold">
-                    {supabaseConfig.url ? "입력됨" : "NEXT_PUBLIC_SUPABASE_URL 필요"}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-slate-50 px-3 py-3">
-                  <p className="font-bold text-[#092046]">Anon Key</p>
-                  <p className="mt-1 text-xs font-semibold">
-                    {supabaseConfig.anonKey ? "입력됨" : "NEXT_PUBLIC_SUPABASE_ANON_KEY 필요"}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-slate-50 px-3 py-3">
-                  <p className="font-bold text-[#092046]">Service Key</p>
-                  <p className="mt-1 text-xs font-semibold">
-                    {supabaseConfig.hasServiceRoleKey ? "서버용 키 있음" : "선택 사항"}
-                  </p>
-                </div>
-              </div>
-            </article>
-
-            <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-bold text-[#092046]">연결 점검</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                스키마를 적용하고 Vercel 환경변수를 넣은 뒤 API 상태를 확인합니다.
-              </p>
-              <SupabaseHealthCheckButton />
-            </article>
           </section>
 
           <section className="mb-7 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -283,7 +249,12 @@ export default async function Home() {
                             </p>
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-500">{project.updated}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-slate-500">
+                          <span className="block font-semibold text-slate-600">{project.updated.split(" ")[0]}</span>
+                          <span className="mt-1 block text-xs font-black text-[#184a88]">
+                            {project.updated.split(" ")[1] ?? ""}
+                          </span>
+                        </td>
                         <td className="px-4 py-4">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <Link

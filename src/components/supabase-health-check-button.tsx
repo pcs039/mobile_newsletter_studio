@@ -11,6 +11,14 @@ type SupabaseHealthResult = {
   httpStatus?: number;
 };
 
+type SupabaseHealthCheckButtonProps = {
+  anonKeyConfigured?: boolean;
+  buttonClassName?: string;
+  buttonLabel?: string;
+  serviceRoleKeyConfigured?: boolean;
+  urlConfigured?: boolean;
+};
+
 function formatCheckedAt(value?: string) {
   if (!value) {
     return "-";
@@ -22,7 +30,17 @@ function formatCheckedAt(value?: string) {
   }).format(new Date(value));
 }
 
-export function SupabaseHealthCheckButton() {
+function getConfigLabel(isConfigured: boolean | undefined, configuredLabel = "입력됨") {
+  return isConfigured ? configuredLabel : "확인 필요";
+}
+
+export function SupabaseHealthCheckButton({
+  anonKeyConfigured,
+  buttonClassName,
+  buttonLabel = "Supabase 상태 확인",
+  serviceRoleKeyConfigured,
+  urlConfigured,
+}: SupabaseHealthCheckButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<SupabaseHealthResult | null>(null);
@@ -49,13 +67,33 @@ export function SupabaseHealthCheckButton() {
   }
 
   const isHealthy = Boolean(result?.ok);
+  const configItems = [
+    {
+      label: "URL",
+      value: getConfigLabel(urlConfigured),
+      detail: "NEXT_PUBLIC_SUPABASE_URL",
+    },
+    {
+      label: "Anon Key",
+      value: getConfigLabel(anonKeyConfigured),
+      detail: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    },
+    {
+      label: "Service Key",
+      value: getConfigLabel(serviceRoleKeyConfigured, "서버용 키 있음"),
+      detail: "SUPABASE_SERVICE_ROLE_KEY",
+    },
+  ];
 
   return (
     <>
       <button
         type="button"
         onClick={checkHealth}
-        className="mt-4 inline-flex w-full justify-center rounded-lg bg-[#092046] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
+        className={
+          buttonClassName ??
+          "mt-4 inline-flex w-full justify-center rounded-lg bg-[#092046] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
+        }
       >
         Supabase 상태 확인
       </button>
@@ -85,6 +123,33 @@ export function SupabaseHealthCheckButton() {
             </div>
 
             <div className="space-y-4 px-5 py-5">
+              <section className="rounded-lg border border-slate-200 bg-[#f8fbff] px-4 py-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">Supabase 연결 준비</p>
+                    <h4 className="text-base font-black text-[#092046]">저장소 환경 설정</h4>
+                  </div>
+                  <span
+                    className={`self-start rounded-full px-3 py-1 text-xs font-black sm:self-auto ${
+                      urlConfigured && anonKeyConfigured
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {urlConfigured && anonKeyConfigured ? "환경변수 준비" : "설정 필요"}
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  {configItems.map((item) => (
+                    <div key={item.label} className="rounded-lg bg-white px-3 py-3 shadow-sm">
+                      <p className="text-sm font-black text-[#092046]">{item.label}</p>
+                      <p className="mt-1 text-xs font-bold text-slate-700">{item.value}</p>
+                      <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
               {isLoading && (
                 <div className="rounded-lg bg-[#f4f8ff] px-4 py-5 text-sm font-bold text-[#092046]">
                   Supabase 연결 상태를 확인하고 있습니다.
