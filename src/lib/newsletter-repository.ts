@@ -84,6 +84,20 @@ export type ArchiveNewsletterProjectResult =
       httpStatus?: number;
     };
 
+export type UpdateNewsletterProjectStatusResult =
+  | {
+      ok: true;
+      project: Pick<NewsletterProjectRow, "id" | "slug" | "title"> & {
+        status: ProjectStatus;
+      };
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "request_failed" | "not_found";
+      message: string;
+      httpStatus?: number;
+    };
+
 export type DashboardProjectsResult = {
   projects: DashboardProject[];
   source: "supabase" | "unconfigured" | "error";
@@ -2645,6 +2659,81 @@ export async function updateNewsletterProject(
       ok: false,
       status: "request_failed",
       message: "Supabase 기본 정보 수정 요청 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function updateNewsletterProjectStatus(
+  projectSlug: string,
+  status: ProjectStatus,
+): Promise<UpdateNewsletterProjectStatusResult> {
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_projects?slug=eq.${encodeURIComponent(projectSlug)}&deleted_at=is.null&select=id,slug,title,status`,
+  );
+  const headers = getRequestHeaders(true);
+
+  if (!endpoint || !headers) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY가 설정되어야 공개 상태를 변경할 수 있습니다.",
+    };
+  }
+
+  const now = new Date().toISOString();
+  const body: Record<string, string | null> = {
+    status,
+    updated_at: now,
+  };
+
+  if (status === "published") {
+    body.published_at = now;
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: {
+        ...headers,
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: responseText || "Supabase 공개 상태 변경 요청에 실패했습니다.",
+        httpStatus: response.status,
+      };
+    }
+
+    const rows = JSON.parse(responseText || "[]") as Array<
+      Pick<NewsletterProjectRow, "id" | "slug" | "title" | "status">
+    >;
+
+    if (!rows[0]) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "공개 상태를 변경할 프로젝트를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
+    return {
+      ok: true,
+      project: rows[0],
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "Supabase 공개 상태 변경 중 오류가 발생했습니다.",
     };
   }
 }

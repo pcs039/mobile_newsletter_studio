@@ -3,6 +3,7 @@ import {
   archiveNewsletterProject,
   createNewsletterProject,
   updateNewsletterProject,
+  updateNewsletterProjectStatus,
   type CreateNewsletterProjectInput,
   type UpdateNewsletterProjectInput,
 } from "@/lib/newsletter-repository";
@@ -110,6 +111,40 @@ export async function PATCH(request: Request) {
   }
 
   const projectId = asOptionalText(payload.projectId);
+  const action = asOptionalText(payload.action);
+  const requestedStatus = payload.status;
+
+  if (action === "updateStatus") {
+    if (!projectId) {
+      return NextResponse.json(
+        { ok: false, message: "상태를 변경할 프로젝트 ID가 필요합니다." },
+        { status: 400 },
+      );
+    }
+
+    if (!isOneOf(requestedStatus, projectStatuses)) {
+      return NextResponse.json(
+        { ok: false, message: "변경할 공개 상태 값이 올바르지 않습니다." },
+        { status: 400 },
+      );
+    }
+
+    const result = await updateNewsletterProjectStatus(projectId, requestedStatus);
+
+    if (!result.ok) {
+      return NextResponse.json(result, {
+        status:
+          result.status === "not_configured"
+            ? 503
+            : result.status === "not_found"
+              ? 404
+              : result.httpStatus ?? 500,
+      });
+    }
+
+    return NextResponse.json(result);
+  }
+
   const title = asOptionalText(payload.title);
   const organizationName = asOptionalText(payload.organizationName);
   const assigneeName = asOptionalText(payload.assigneeName);

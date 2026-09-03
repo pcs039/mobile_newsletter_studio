@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { ProjectPublishStatusControls } from "@/components/project-publish-status-controls";
 import { StatusPill } from "@/components/status-pill";
 import { publishChecks } from "@/lib/newsletter-data";
 import {
@@ -89,6 +90,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     { label: "공개 상태", value: project?.status ?? "프로젝트 확인 필요" },
     { label: "최종 수정", value: project?.updated ?? "-" },
   ];
+  const isReadyToPublish = readyCount === readinessItems.length;
 
   return (
     <ProjectAdminShell
@@ -294,12 +296,13 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <h3 className="text-lg font-bold text-[#092046]">공개 상태 변경</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              현재 상태: <strong className="text-[#092046]">{project?.status ?? "확인 필요"}</strong>
-            </p>
-            <button className="mt-4 w-full rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]">
-              공개 URL 발행
-            </button>
+            <div className="mt-3">
+              <ProjectPublishStatusControls
+                currentStatus={project?.status ?? "확인 필요"}
+                isReady={isReadyToPublish}
+                projectId={projectId}
+              />
+            </div>
           </article>
         </aside>
       </div>
