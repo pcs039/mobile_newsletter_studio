@@ -11,20 +11,24 @@ import {
   getProjectWorkspace,
 } from "@/lib/newsletter-repository";
 
-function QrMock() {
-  const filled = new Set([0, 1, 2, 4, 6, 8, 10, 11, 14, 16, 18, 20, 21, 22, 24, 27, 30, 31, 32, 34, 36, 38, 40, 41, 42, 44, 46, 48]);
-
-  return (
-    <div className="grid h-32 w-32 grid-cols-7 gap-1 rounded-lg bg-white p-3 shadow-inner">
-      {Array.from({ length: 49 }, (_, index) => (
-        <span key={index} className={`rounded-sm ${filled.has(index) ? "bg-[#092046]" : "bg-slate-100"}`} />
-      ))}
-    </div>
-  );
-}
-
 function getReadinessStatus(done: boolean, label = "완료") {
   return done ? label : "보완 필요";
+}
+
+function getSiteOrigin() {
+  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
+
+  if (configuredOrigin) {
+    return configuredOrigin.replace(/\/$/, "");
+  }
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+
+  if (vercelUrl) {
+    return `https://${vercelUrl}`;
+  }
+
+  return "";
 }
 
 export default async function PublishPage({ params }: { params: Promise<{ projectId: string }> }) {
@@ -91,6 +95,9 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     { label: "최종 수정", value: project?.updated ?? "-" },
   ];
   const isReadyToPublish = readyCount === readinessItems.length;
+  const publicUrl = project?.publicUrl ?? `/newsletters/${projectId}`;
+  const publicQrTarget = `${getSiteOrigin()}${publicUrl}`;
+  const publicQrHref = `/api/qr?value=${encodeURIComponent(publicQrTarget)}`;
 
   return (
     <ProjectAdminShell
@@ -289,15 +296,24 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg font-bold text-[#092046]">QR 코드</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  QR 생성 기능을 연결하면 공개 URL 기준 이미지로 내려받을 수 있습니다.
+                <p className="mt-2 text-sm leading-6 text-slate-600 [word-break:keep-all]">
+                  공개 URL 기준 QR을 생성합니다. 인쇄물에는 SVG 파일을 사용하는 편이 선명합니다.
                 </p>
               </div>
-              <QrMock />
+              <div className="shrink-0 rounded-lg border border-slate-200 bg-white p-2">
+                <img src={publicQrHref} alt={`${project?.title ?? projectId} 공개 URL QR`} className="h-28 w-28" />
+              </div>
             </div>
-            <button className="mt-5 w-full rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
-              QR PNG 다운로드
-            </button>
+            <p className="mt-4 break-all rounded-lg bg-slate-50 px-3 py-2 text-xs font-bold leading-5 text-slate-600">
+              {publicQrTarget || publicUrl}
+            </p>
+            <a
+              href={publicQrHref}
+              download
+              className="mt-3 inline-flex w-full justify-center rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+            >
+              QR SVG 다운로드
+            </a>
           </article>
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
