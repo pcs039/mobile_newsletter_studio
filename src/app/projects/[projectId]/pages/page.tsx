@@ -16,14 +16,32 @@ const premiumPageSpecs = [
   { label: "권장 폭", value: "1080px", detail: "스마트폰 고해상도 기준" },
   { label: "권장 형식", value: "PNG/JPG/WebP", detail: "텍스트가 많은 페이지는 PNG 권장" },
   { label: "페이지 단위", value: "1쪽 = 이미지 1장", detail: "번호 순서대로 모바일에 표시" },
-  { label: "링크 처리", value: "다음 단계", detail: "클릭 영역 지정 기능으로 확장" },
+  { label: "링크 처리", value: "투명 클릭 영역", detail: "공개 화면에서 버튼처럼 작동" },
 ];
 
 const premiumWorkflow = [
-  "Adobe·Figma에서 모바일 규격 페이지 이미지 제작",
+  "디자인 프로그램에서 모바일 페이지 이미지 완성",
   "페이지 번호에 맞춰 이미지 업로드",
-  "공개 화면에서 이미지 순서와 가독성 확인",
-  "이후 클릭 영역, URL, 영상 연결 기능 추가",
+  "이미지 위에 URL·유튜브·전화 클릭 영역 지정",
+  "미리보기/발행에서 실제 모바일 화면 확인",
+];
+
+const premiumAssemblySteps = [
+  {
+    label: "1. 페이지 이미지",
+    title: "업로드한 이미지가 본문",
+    detail: "1쪽, 2쪽, 3쪽 순서대로 모바일 공개 화면에 세로로 표시됩니다.",
+  },
+  {
+    label: "2. 클릭 영역",
+    title: "이미지 위에 투명 버튼",
+    detail: "관리 화면의 주황색 영역은 공개 화면에서 보이지 않는 링크 버튼으로 작동합니다.",
+  },
+  {
+    label: "3. 공개 URL·QR",
+    title: "발행 후 그대로 배포",
+    detail: "발행 완료 처리 후 공개 URL과 QR로 고객·독자에게 전달합니다.",
+  },
 ];
 
 export default async function ProjectPagesPage({ params }: { params: Promise<{ projectId: string }> }) {
@@ -56,12 +74,22 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
       sidebarNoteTitle="운영 기준"
       sidebarNote="표준형은 기사 블록으로 조립하고, 프리미엄형은 페이지 이미지 자체를 모바일 산출물의 중심으로 사용합니다."
       actions={
-        <Link
-          href={`/projects/${projectId}/settings`}
-          className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
-        >
-          기본 정보 수정
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/newsletters/${projectId}?preview=admin`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white transition hover:bg-[#123a78]"
+          >
+            모바일 미리보기
+          </Link>
+          <Link
+            href={`/projects/${projectId}/settings`}
+            className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+          >
+            기본 정보 수정
+          </Link>
+        </div>
       }
     >
           <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
@@ -101,6 +129,34 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                       </li>
                     ))}
                   </ol>
+                </div>
+
+                <div className="mt-5 rounded-lg border border-[#b8d7ff] bg-white p-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-[#092046]">모바일 소식지 반영 방식</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        이미지를 다시 합성 파일로 만들지 않고, 공개 웹페이지가 페이지 이미지와 클릭 영역을 실시간으로 조립해 보여줍니다.
+                      </p>
+                    </div>
+                    <Link
+                      href={`/newsletters/${projectId}?preview=admin`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 rounded-lg border border-[#2f73b7] bg-[#f7fbff] px-4 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                    >
+                      반영 화면 확인
+                    </Link>
+                  </div>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                    {premiumAssemblySteps.map((step) => (
+                      <div key={step.label} className="rounded-lg bg-[#f4f8ff] px-4 py-3">
+                        <p className="text-xs font-black text-[#184a88]">{step.label}</p>
+                        <p className="mt-1 text-sm font-black text-[#092046]">{step.title}</p>
+                        <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{step.detail}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </article>
 
@@ -183,7 +239,8 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   <div>
                     <h3 className="text-lg font-bold text-[#092046]">페이지 이미지 업로드</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      일러스트 등에서 제작한 모바일·e-book용 페이지 이미지를 페이지 번호와 함께 저장합니다.
+                      일러스트 등에서 제작한 모바일용 페이지 이미지를 페이지 번호와 함께 저장합니다. 업로드한 이미지는 공개 모바일
+                      화면에서 해당 번호 순서대로 표시됩니다.
                     </p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
@@ -194,7 +251,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <FileUploadCard
                   accept="image/png,image/jpeg,image/webp"
                   buttonLabel="페이지 이미지 선택"
-                  description="페이지 번호를 먼저 확인한 뒤 PNG, JPG, WebP 파일을 업로드하세요."
+                  description="페이지 번호를 먼저 확인한 뒤 PNG, JPG, WebP 파일을 업로드하세요. 저장 후 아래 등록 현황과 모바일 미리보기에 반영됩니다."
                   kind="page_image"
                   projectSlug={projectId}
                   title="페이지 이미지를 선택하거나 이 영역에 끌어다 놓기"
@@ -205,7 +262,9 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-[#092046]">페이지 이미지 등록 현황</h3>
-                    <p className="mt-1 text-sm text-slate-500">{pageImageData.message}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {pageImageData.message} 등록된 이미지는 모바일 공개 화면에서 페이지 순서대로 표시됩니다.
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     <button className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
@@ -314,16 +373,35 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">다음 작업</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  페이지 확인 후 모바일 읽기 보기 편집 화면으로 이동합니다. 이 단계에서 기사 제목, 본문,
-                  대표 이미지, 문의처, 음성 대본을 정리합니다.
-                </p>
-                <Link
-                  href={`/projects/${projectId}/reading`}
-                  className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
-                >
-                  읽기 보기 편집으로 이동
-                </Link>
+                {isPremiumImageMode ? (
+                  <>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      페이지 이미지를 올린 뒤 왼쪽의 클릭 영역 지정에서 URL, 유튜브, 전화 연결을 저장하세요. 이후 모바일 미리보기에서
+                      이미지와 링크가 함께 반영됐는지 확인합니다.
+                    </p>
+                    <Link
+                      href={`/newsletters/${projectId}?preview=admin`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
+                    >
+                      모바일 미리보기 확인
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      페이지 확인 후 모바일 읽기 보기 편집 화면으로 이동합니다. 이 단계에서 기사 제목, 본문, 대표 이미지, 문의처, 음성
+                      대본을 정리합니다.
+                    </p>
+                    <Link
+                      href={`/projects/${projectId}/reading`}
+                      className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
+                    >
+                      읽기 보기 편집으로 이동
+                    </Link>
+                  </>
+                )}
               </article>
             </aside>
           </div>
