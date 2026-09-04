@@ -27,15 +27,33 @@ export default async function Home() {
   const supabaseConfig = getSupabaseConfigStatus();
   const dashboardData = await getDashboardProjects();
   const projects = dashboardData.projects;
-  const totalTodayViews = projects.reduce((sum, project) => sum + parseCount(project.views.today), 0);
-  const totalYesterdayViews = projects.reduce((sum, project) => sum + parseCount(project.views.yesterday), 0);
-  const totalViews = projects.reduce((sum, project) => sum + parseCount(project.views.total), 0);
+  const isAdmin = user.role === "admin";
+  const statsProjects = isAdmin ? projects : projects.filter((project) => canAccessProject(user, project));
+  const totalTodayViews = statsProjects.reduce((sum, project) => sum + parseCount(project.views.today), 0);
+  const totalYesterdayViews = statsProjects.reduce((sum, project) => sum + parseCount(project.views.yesterday), 0);
+  const totalViews = statsProjects.reduce((sum, project) => sum + parseCount(project.views.total), 0);
   const hasAnyViewStats = totalTodayViews > 0 || totalYesterdayViews > 0 || totalViews > 0;
+  const rankedProjects = [...statsProjects]
+    .sort((first, second) => {
+      const totalDiff = parseCount(second.views.total) - parseCount(first.views.total);
+
+      if (totalDiff !== 0) {
+        return totalDiff;
+      }
+
+      return parseCount(second.views.today) - parseCount(first.views.today);
+    })
+    .slice(0, 5);
   const dashboardSummaryCards = [
     { label: "전체 프로젝트", value: String(projects.length) },
-    { label: "제작 중", value: String(projects.filter((project) => project.status === "제작 중").length) },
     {
-      label: "오늘 접속",
+      label: isAdmin ? "제작 중" : "내 담당 프로젝트",
+      value: String(
+        isAdmin ? projects.filter((project) => project.status === "제작 중").length : statsProjects.length,
+      ),
+    },
+    {
+      label: isAdmin ? "오늘 전체 접속" : "내 프로젝트 오늘 접속",
       value: totalTodayViews.toLocaleString("ko-KR"),
     },
     { label: "발행 완료", value: String(projects.filter((project) => project.status === "발행 완료").length) },
@@ -43,32 +61,48 @@ export default async function Home() {
   const dashboardSummaryDetails: Record<string, string> = {
     "전체 프로젝트": dashboardData.source === "supabase" ? "DB 연동" : "연결 필요",
     "제작 중": "편집 필요",
-    "오늘 접속": dashboardData.source === "supabase" ? "실제 집계" : "연결 필요",
+    "내 담당 프로젝트": "내 작업 기준",
+    "오늘 전체 접속": dashboardData.source === "supabase" ? "전체 집계" : "연결 필요",
+    "내 프로젝트 오늘 접속": dashboardData.source === "supabase" ? "담당 집계" : "연결 필요",
     "발행 완료": "URL·QR 생성",
   };
+  const analyticsTitle = isAdmin ? "전체 운영 통계" : "내 프로젝트 접속 요약";
+  const analyticsDescription = isAdmin
+    ? "관리자 기준으로 전체 프로젝트의 공개 URL 접속 통계와 프로젝트별 순위를 표시합니다."
+    : "내가 담당한 프로젝트의 공개 URL 접속 통계만 요약해 표시합니다.";
+  const rankingTitle = isAdmin ? "프로젝트별 접속 순위" : "내 담당 프로젝트 접속 순위";
+  const rankingDescription = isAdmin
+    ? "누적 접속 수 기준으로 반응이 높은 프로젝트를 확인합니다."
+    : "내가 담당한 프로젝트 중 접속이 많은 순서로 표시합니다.";
   const dashboardAnalyticsNotes = [
     {
-      label: "오늘 접속",
+      label: isAdmin ? "오늘 전체 접속" : "내 프로젝트 오늘 접속",
       status: totalTodayViews.toLocaleString("ko-KR"),
       detail:
         dashboardData.source === "supabase"
-          ? "newsletter_daily_stats의 오늘 날짜 view_count 합계입니다."
+          ? isAdmin
+            ? "전체 프로젝트의 오늘 날짜 view_count 합계입니다."
+            : "내 담당 프로젝트의 오늘 날짜 view_count 합계입니다."
           : "Supabase 연결 후 실제 접속 수를 표시합니다.",
     },
     {
-      label: "어제 접속",
+      label: isAdmin ? "어제 전체 접속" : "내 프로젝트 어제 접속",
       status: totalYesterdayViews.toLocaleString("ko-KR"),
       detail:
         dashboardData.source === "supabase"
-          ? "newsletter_daily_stats의 어제 날짜 view_count 합계입니다."
+          ? isAdmin
+            ? "전체 프로젝트의 어제 날짜 view_count 합계입니다."
+            : "내 담당 프로젝트의 어제 날짜 view_count 합계입니다."
           : "Supabase 연결 후 전일 접속 수를 표시합니다.",
     },
     {
-      label: "전체 접속",
+      label: isAdmin ? "전체 누적 접속" : "내 프로젝트 누적 접속",
       status: totalViews.toLocaleString("ko-KR"),
       detail:
         dashboardData.source === "supabase"
-          ? "현재 조회된 프로젝트들의 누적 view_count 합계입니다."
+          ? isAdmin
+            ? "현재 조회된 전체 프로젝트의 누적 view_count 합계입니다."
+            : "내 담당 프로젝트의 누적 view_count 합계입니다."
           : "Supabase 연결 후 전체 누적 접속 수를 표시합니다.",
     },
     {
@@ -304,10 +338,8 @@ export default async function Home() {
 
             <aside className="space-y-5">
               <article id="analytics-preview" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-[#092046]">접속 통계 요약</h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  공개 URL 접속 통계를 Supabase 일별 집계 테이블 기준으로 표시합니다.
-                </p>
+                <h3 className="text-lg font-bold text-[#092046]">{analyticsTitle}</h3>
+                <p className="mt-1 text-sm text-slate-500">{analyticsDescription}</p>
                 <div className="mt-4 space-y-3">
                   {dashboardAnalyticsNotes.map((note) => (
                     <div key={note.label} className="rounded-md bg-slate-50 px-3 py-3">
@@ -321,6 +353,42 @@ export default async function Home() {
                     </div>
                   ))}
                 </div>
+              </article>
+
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-bold text-[#092046]">{rankingTitle}</h3>
+                <p className="mt-1 text-sm text-slate-500">{rankingDescription}</p>
+                {rankedProjects.length > 0 ? (
+                  <div className="mt-4 space-y-3">
+                    {rankedProjects.map((project, index) => (
+                      <div key={project.id} className="rounded-md bg-slate-50 px-3 py-3">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#092046] text-xs font-black text-white">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-1 text-sm font-black text-[#092046]">{project.title}</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-500">
+                              {project.organization} · 담당 {project.assigneeName}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2 text-xs font-black">
+                              <span className="rounded-full bg-[#eaf2ff] px-2.5 py-1 text-[#184a88]">
+                                오늘 {project.views.today}
+                              </span>
+                              <span className="rounded-full bg-white px-2.5 py-1 text-[#092046]">
+                                누적 {project.views.total}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-md bg-slate-50 px-3 py-5 text-center text-sm font-bold text-slate-500">
+                    아직 표시할 접속 순위가 없습니다.
+                  </p>
+                )}
               </article>
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
