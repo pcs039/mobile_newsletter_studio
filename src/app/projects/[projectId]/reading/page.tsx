@@ -276,6 +276,7 @@ export default async function ReadingEditorPage({
           <ProjectArticleEditorForm
             key={selectedArticle?.id ?? "new"}
             article={selectedArticle}
+            assets={assetData.assets}
             pages={pageImageData.pages}
             projectPageCount={project?.pageCount ?? 0}
             projectSlug={projectId}

@@ -3,11 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/status-pill";
-import type { ProjectContentArticle, ProjectContentBlock, ProjectPageImage } from "@/lib/newsletter-repository";
+import type {
+  ProjectAssetFile,
+  ProjectContentArticle,
+  ProjectContentBlock,
+  ProjectPageImage,
+} from "@/lib/newsletter-repository";
 
 type ProjectArticleEditorFormProps = {
   projectSlug: string;
   pages: ProjectPageImage[];
+  assets: ProjectAssetFile[];
   projectPageCount?: number;
   article: ProjectContentArticle | null;
 };
@@ -43,6 +49,22 @@ type ImportedWordResponse =
       message?: string;
     };
 
+type ProjectFileUploadResponse =
+  | {
+      ok: true;
+      bucket: string;
+      fileName: string;
+      message?: string;
+      mimeType: string;
+      path: string;
+      size: number;
+      uploadUrl?: string;
+    }
+  | {
+      ok: false;
+      message?: string;
+    };
+
 const articleStatuses = [
   { value: "draft", label: "작성 중" },
   { value: "review", label: "검수 요청" },
@@ -59,6 +81,33 @@ const editableBlockTypes: Array<{ type: EditorBlockType; label: string; help: st
   { type: "button_group", label: "URL 버튼", help: "신청·문의 바로가기" },
   { type: "audio", label: "음성 대본", help: "낭독용 원고" },
 ];
+
+const blockTypeThemes: Record<EditorBlockType, { button: string; marker: string }> = {
+  paragraph: {
+    button: "border-[#2f73b7] bg-[#eef6ff] hover:bg-[#e1efff]",
+    marker: "bg-[#184a88] text-white",
+  },
+  image: {
+    button: "border-sky-300 bg-sky-50 hover:bg-sky-100",
+    marker: "bg-sky-600 text-white",
+  },
+  video_link: {
+    button: "border-rose-200 bg-rose-50 hover:bg-rose-100",
+    marker: "bg-rose-600 text-white",
+  },
+  map_link: {
+    button: "border-emerald-200 bg-emerald-50 hover:bg-emerald-100",
+    marker: "bg-emerald-700 text-white",
+  },
+  button_group: {
+    button: "border-violet-200 bg-violet-50 hover:bg-violet-100",
+    marker: "bg-violet-700 text-white",
+  },
+  audio: {
+    button: "border-amber-200 bg-amber-50 hover:bg-amber-100",
+    marker: "bg-amber-600 text-white",
+  },
+};
 
 const blockTypeLabels: Record<EditorBlockType, string> = {
   paragraph: "문단",
@@ -226,7 +275,7 @@ function getBlockBodyPlaceholder(type: EditorBlockType) {
     case "paragraph":
       return "모바일 독자가 읽기 쉽게 2~5문장 단위로 입력합니다.";
     case "image":
-      return "https://... 또는 Supabase Storage 이미지 공개 URL";
+      return "저장 이미지 불러오기, 로컬 업로드, 또는 외부 공개 이미지 URL";
     case "video_link":
       return "https://www.youtube.com/watch?v=...";
     case "map_link":
@@ -245,7 +294,7 @@ function getBlockGuide(type: EditorBlockType) {
     case "paragraph":
       return "워드의 본문 문단에 해당합니다. 문단을 여러 개로 나누면 모바일에서 훨씬 읽기 쉽습니다.";
     case "image":
-      return "이미지는 공개 접근 가능한 URL을 입력해야 합니다. 파일 업로드 이미지는 소재 보관함에서 공개 URL을 확인해 연결합니다.";
+      return "저장된 이미지 소재를 불러오거나 로컬 이미지를 업로드하면 공개 화면용 이미지 주소가 자동 입력됩니다.";
     case "video_link":
       return "유튜브 주소를 입력하면 공개 화면에서 영상 영역으로 표시됩니다. 예: https://www.youtube.com/watch?v=...";
     case "map_link":
@@ -287,9 +336,22 @@ function shouldUseTextarea(type: EditorBlockType) {
   return type === "paragraph" || type === "audio";
 }
 
+function makePublicAssetPreviewHref(path: string) {
+  return `/api/public-files/preview?bucket=mobile-assets&path=${encodeURIComponent(path)}`;
+}
+
+function readUploadMessage(response: ProjectFileUploadResponse | null, fallback: string) {
+  return response && response.ok === false ? response.message || fallback : fallback;
+}
+
+function isUrlBlockType(type: EditorBlockType) {
+  return type === "image" || type === "video_link" || type === "map_link" || type === "button_group";
+}
+
 export function ProjectArticleEditorForm({
   projectSlug,
   pages,
+  assets,
   projectPageCount = 0,
   article,
 }: ProjectArticleEditorFormProps) {
@@ -299,8 +361,13 @@ export function ProjectArticleEditorForm({
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isImportingWord, setIsImportingWord] = useState(false);
+  const [uploadingImageBlockId, setUploadingImageBlockId] = useState("");
   const [wordImportMessage, setWordImportMessage] = useState("");
   const [blocks, setBlocks] = useState<EditorBlock[]>(() => makeInitialBlocks(article));
+  const imageAssets = useMemo(
+    () => assets.filter((asset) => asset.mimeType.startsWith("image/") || asset.previewHref),
+    [assets],
+  );
   const blockSummary = useMemo(
     () =>
       blocks
@@ -325,6 +392,164 @@ export function ProjectArticleEditorForm({
         body: "",
       },
     ]);
+  }
+
+  function applyImageAssetToBlock(blockId: string, asset: ProjectAssetFile) {
+    setBlocks((currentBlocks) =>
+      currentBlocks.map((block) =>
+        block.id === blockId
+          ? {
+              ...block,
+              title: block.title.trim() ? block.title : asset.title,
+              body: makePublicAssetPreviewHref(asset.filePath),
+            }
+          : block,
+      ),
+    );
+    setError("");
+    setMessage("저장된 이미지 소재를 현재 블록에 불러왔습니다. 저장 버튼을 눌러 기사에 반영하세요.");
+  }
+
+  async function pasteClipboardUrlToBlock(blockId: string) {
+    if (!navigator.clipboard?.readText) {
+      setError("이 브라우저에서는 클립보드 주소 붙여넣기를 사용할 수 없습니다.");
+      return;
+    }
+
+    const text = (await navigator.clipboard.readText().catch(() => "")).trim();
+
+    if (!text) {
+      setError("클립보드에서 붙여넣을 주소를 찾지 못했습니다.");
+      return;
+    }
+
+    updateBlock(blockId, "body", text);
+    setError("");
+    setMessage("클립보드의 주소를 현재 블록에 붙여넣었습니다.");
+  }
+
+  async function uploadImageFileToBlock(blockId: string, file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError("이미지 파일만 불러올 수 있습니다.");
+      return;
+    }
+
+    setError("");
+    setMessage("이미지를 Supabase에 업로드하는 중입니다.");
+    setUploadingImageBlockId(blockId);
+
+    const prepareResponse = await fetch("/api/project-files", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "prepare",
+        fileName: file.name,
+        kind: "asset_image",
+        mimeType: file.type,
+        projectSlug,
+        size: file.size,
+      }),
+    });
+    const prepareResult = (await prepareResponse.json().catch(() => null)) as ProjectFileUploadResponse | null;
+
+    if (!prepareResponse.ok || !prepareResult?.ok || !prepareResult.uploadUrl) {
+      setUploadingImageBlockId("");
+      setError(readUploadMessage(prepareResult, "이미지 업로드 준비에 실패했습니다."));
+      return;
+    }
+
+    const uploadResponse = await fetch(prepareResult.uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": prepareResult.mimeType || file.type || "application/octet-stream",
+      },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      setUploadingImageBlockId("");
+      setError("이미지를 Supabase Storage에 업로드하지 못했습니다.");
+      return;
+    }
+
+    const completeResponse = await fetch("/api/project-files", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "complete",
+        bucket: prepareResult.bucket,
+        fileName: prepareResult.fileName ?? file.name,
+        kind: "asset_image",
+        mimeType: prepareResult.mimeType ?? file.type,
+        path: prepareResult.path,
+        projectSlug,
+        size: prepareResult.size ?? file.size,
+      }),
+    });
+    const completeResult = (await completeResponse.json().catch(() => null)) as ProjectFileUploadResponse | null;
+
+    setUploadingImageBlockId("");
+
+    if (!completeResponse.ok || !completeResult?.ok) {
+      setError(readUploadMessage(completeResult, "이미지는 올라갔지만 프로젝트 소재 기록 연결에 실패했습니다."));
+      return;
+    }
+
+    setBlocks((currentBlocks) =>
+      currentBlocks.map((block) =>
+        block.id === blockId
+          ? {
+              ...block,
+              title: block.title.trim() ? block.title : completeResult.fileName,
+              body: makePublicAssetPreviewHref(completeResult.path),
+            }
+          : block,
+      ),
+    );
+    setMessage("이미지를 업로드하고 현재 이미지 블록에 불러왔습니다. 저장 버튼을 눌러 기사에 반영하세요.");
+  }
+
+  async function importTextFileToBlock(blockId: string, file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    const fileName = file.name.toLowerCase();
+    const isTextFile = file.type.startsWith("text/") || fileName.endsWith(".txt") || fileName.endsWith(".md");
+
+    if (!isTextFile) {
+      setError("음성 대본은 .txt 또는 .md 텍스트 파일만 불러올 수 있습니다.");
+      return;
+    }
+
+    const text = (await file.text().catch(() => "")).trim();
+
+    if (!text) {
+      setError("불러온 파일에서 텍스트를 찾지 못했습니다.");
+      return;
+    }
+
+    setBlocks((currentBlocks) =>
+      currentBlocks.map((block) =>
+        block.id === blockId
+          ? {
+              ...block,
+              title: block.title.trim() ? block.title : "음성 대본",
+              body: text,
+            }
+          : block,
+      ),
+    );
+    setError("");
+    setMessage("텍스트 파일을 음성 대본 블록에 불러왔습니다.");
   }
 
   function loadStandardTemplate() {
@@ -651,17 +876,23 @@ export function ProjectArticleEditorForm({
         </div>
 
         <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
-          {editableBlockTypes.map((item) => (
-            <button
-              key={item.type}
-              type="button"
-              onClick={() => addBlock(item.type)}
-              className="rounded-lg border border-[#2f73b7] bg-white px-3 py-3 text-left transition hover:bg-[#eaf3ff]"
-            >
-              <span className="block text-sm font-black text-[#092046]">+ {item.label}</span>
-              <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{item.help}</span>
-            </button>
-          ))}
+          {editableBlockTypes.map((item) => {
+            const theme = blockTypeThemes[item.type];
+
+            return (
+              <button
+                key={item.type}
+                type="button"
+                onClick={() => addBlock(item.type)}
+                className={`group rounded-xl border px-3 py-3 text-left shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-md ${theme.button}`}
+              >
+                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${theme.marker}`}>
+                  + {item.label}
+                </span>
+                <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600">{item.help}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-5 space-y-4">
@@ -733,6 +964,102 @@ export function ProjectArticleEditorForm({
                   )}
                 </div>
               </div>
+
+              {block.type === "image" && (
+                <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                    <label className="flex-1 text-xs font-black text-[#092046]">
+                      저장 이미지 불러오기
+                      <select
+                        defaultValue=""
+                        className="mt-2 h-10 w-full rounded-md border border-sky-200 bg-white px-3 text-sm font-bold text-[#092046] outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                        onChange={(event) => {
+                          const asset = imageAssets.find((item) => item.id === event.currentTarget.value);
+
+                          if (asset) {
+                            applyImageAssetToBlock(block.id, asset);
+                          }
+
+                          event.currentTarget.value = "";
+                        }}
+                      >
+                        <option value="">
+                          {imageAssets.length > 0 ? "소재 보관함 이미지 선택" : "저장된 이미지 소재 없음"}
+                        </option>
+                        {imageAssets.map((asset) => (
+                          <option key={asset.id} value={asset.id}>
+                            {asset.title} · {asset.review}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-sky-700 px-3 text-xs font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-sky-800 hover:shadow-md">
+                        {uploadingImageBlockId === block.id ? "업로드 중" : "로컬 이미지 업로드"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          disabled={uploadingImageBlockId === block.id}
+                          onChange={(event) => {
+                            void uploadImageFileToBlock(block.id, event.currentTarget.files?.[0]);
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void pasteClipboardUrlToBlock(block.id);
+                        }}
+                        className="inline-flex h-10 items-center justify-center rounded-md border border-sky-300 bg-white px-3 text-xs font-black text-[#092046] transition hover:bg-white"
+                      >
+                        이미지 URL 붙여넣기
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">
+                    업로드한 이미지는 소재 보관함에도 저장되고, 현재 블록에는 공개 화면용 이미지 주소가 자동 입력됩니다.
+                  </p>
+                </div>
+              )}
+
+              {isUrlBlockType(block.type) && block.type !== "image" && (
+                <div className="mt-4 flex flex-col gap-3 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs font-semibold leading-5 text-slate-600">
+                    유튜브·지도·URL 버튼은 파일보다 공유 주소가 기준입니다. 복사해 둔 주소를 바로 붙여넣을 수 있습니다.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void pasteClipboardUrlToBlock(block.id);
+                    }}
+                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-md border border-[#2f73b7] bg-white px-3 text-xs font-black text-[#092046] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
+                  >
+                    클립보드 주소 붙여넣기
+                  </button>
+                </div>
+              )}
+
+              {block.type === "audio" && (
+                <div className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs font-semibold leading-5 text-slate-700">
+                    별도 메모장에 정리한 낭독 원고가 있으면 .txt 또는 .md 파일로 불러올 수 있습니다.
+                  </p>
+                  <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-amber-600 px-3 text-xs font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-amber-700 hover:shadow-md">
+                    대본 파일 불러오기
+                    <input
+                      type="file"
+                      accept=".txt,.md,text/plain,text/markdown"
+                      className="sr-only"
+                      onChange={(event) => {
+                        void importTextFileToBlock(block.id, event.currentTarget.files?.[0]);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
             </div>
           ))}
         </div>
