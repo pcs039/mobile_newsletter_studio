@@ -26,7 +26,7 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
           href={`/projects/${projectId}/pages`}
           className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
-          프리미엄 페이지 제작
+          이미지 페이지·URL 태깅
         </Link>
       }
     >
@@ -49,8 +49,8 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
             <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="text-lg font-bold text-[#092046]">저장 후 이동</h3>
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                수정 내용을 저장하면 해당 프로젝트의 프리미엄 페이지 제작 화면으로 돌아갑니다. 이후 프로젝트 방식에 따라
-                일반형 페이지 제작, 프리미엄 페이지 제작, 소재 관리 작업을 계속 진행하면 됩니다.
+                수정 내용을 저장하면 선택한 제작 방식에 맞는 작성 화면으로 이동합니다. 이후 콘텐츠 블록 제작,
+                이미지 페이지·URL 태깅, 소재 관리 작업을 계속 진행하면 됩니다.
               </p>
             </article>
           </aside>

@@ -24,7 +24,8 @@ create type production_mode as enum (
   'template',
   'hybrid',
   'full_image',
-  'external_ebook'
+  'external_ebook',
+  'ocr_assist'
 );
 
 create type page_image_status as enum (

@@ -265,7 +265,7 @@ export const dashboardProjects: DashboardProject[] = [
     reading: "편집 중",
     audio: "미등록",
     packageTier: "표준형",
-    productionMode: "템플릿+이미지 혼합",
+    productionMode: "혼합형",
     workload: "예상 18~24h · 디자인 6h 상한",
     updated: "2026.09.02",
     views: {
@@ -293,7 +293,7 @@ export const dashboardProjects: DashboardProject[] = [
     reading: "구조 확인",
     audio: "보류",
     packageTier: "기본형",
-    productionMode: "템플릿 중심",
+    productionMode: "템플릿 블록형",
     workload: "예상 8~12h · 디자인 최소",
     updated: "2026.09.01",
     views: {
@@ -321,7 +321,7 @@ export const dashboardProjects: DashboardProject[] = [
     reading: "대기",
     audio: "대기",
     packageTier: "고급형",
-    productionMode: "맞춤 블록 혼합",
+    productionMode: "혼합형",
     workload: "예상 30~40h · 별도 검수",
     updated: "2026.08.31",
     views: {
@@ -352,17 +352,18 @@ export const projectOperationActions: LabelStatusDetail[] = [
 ];
 
 export const packageOptions: LabelStatusDetail[] = [
-  { label: "기본형", status: "빠른 제작", detail: "템플릿 중심, 디자이너 투입 최소, 반복 소식지에 적합" },
-  { label: "표준형", status: "권장", detail: "템플릿과 대표 이미지 제작을 혼합한 기본 권장 상품" },
-  { label: "고급형", status: "검수 확대", detail: "맞춤 블록, 이미지 자산 보강, 검수 범위 확대" },
-  { label: "프리미엄", status: "별도 협의", detail: "전체 모바일 이미지 제작 등 디자인 대행형 옵션" },
+  { label: "기본형", status: "빠른 제작", detail: "견적·범위 관리용 등급입니다. 실제 제작 방식은 별도로 선택합니다." },
+  { label: "표준형", status: "권장", detail: "기본 권장 상품입니다. 템플릿 블록형, 혼합형, 이미지 페이지형 모두 선택할 수 있습니다." },
+  { label: "고급형", status: "검수 확대", detail: "맞춤 구성과 검수 범위가 넓은 상품 등급입니다." },
+  { label: "프리미엄", status: "별도 협의", detail: "디자인 대행, 이미지 페이지 제작, URL 태깅 규모가 큰 경우의 견적 등급입니다." },
 ];
 
 export const productionModeOptions: LabelStatusDetail[] = [
-  { label: "템플릿 중심", status: "기본", detail: "반복 소식지에 적합하며 수익성 관리에 유리" },
-  { label: "템플릿+이미지 혼합", status: "권장", detail: "읽기 보기 블록과 이미지 자산을 함께 구성" },
-  { label: "전체 이미지형", status: "고급", detail: "고객 요구가 있을 때만 프리미엄 옵션으로 제한" },
-  { label: "외부 e-book 연동", status: "선택", detail: "PC e-book은 TOAST 등 외부 솔루션 병행 가능" },
+  { label: "템플릿 블록형", status: "기본", detail: "제목, 문단, 이미지, 버튼, 유튜브를 모바일 블록으로 작성합니다." },
+  { label: "혼합형", status: "권장", detail: "기사 블록과 제작 이미지를 함께 쓰고 필요한 위치에 링크를 연결합니다." },
+  { label: "이미지 페이지형", status: "이미지", detail: "완성된 모바일 페이지 이미지를 본문으로 쓰고 투명 클릭 영역을 지정합니다." },
+  { label: "원본 연동형", status: "연동", detail: "PDF 원본 또는 외부 e-book을 중심으로 연결하고 필요한 보조 콘텐츠만 구성합니다." },
+  { label: "OCR 보조형", status: "보조", detail: "원본 이미지나 PDF에서 텍스트를 추출해 기사 블록 작성의 초안으로 활용합니다." },
 ];
 
 export const workflowSteps = [

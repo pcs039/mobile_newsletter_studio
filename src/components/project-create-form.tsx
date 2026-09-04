@@ -86,8 +86,8 @@ function getFormText(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function getNextAuthoringPath(projectSlug: string, packageTier: string, productionMode: string) {
-  if (packageTier === "premium" || productionMode === "full_image") {
+function getNextAuthoringPath(projectSlug: string, productionMode: string) {
+  if (productionMode === "full_image" || productionMode === "external_ebook") {
     return `/projects/${projectSlug}/pages`;
   }
 
@@ -175,7 +175,6 @@ export function ProjectCreateForm({
 
     const nextAuthoringPath = getNextAuthoringPath(
       result.project.slug,
-      getFormText(formData, "packageTier"),
       getFormText(formData, "productionMode"),
     );
 
@@ -370,10 +369,11 @@ export function ProjectCreateForm({
             required
             className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
           >
-            <option value="hybrid">템플릿+이미지 혼합</option>
-            <option value="template">템플릿 중심</option>
-            <option value="full_image">전체 이미지형</option>
-            <option value="external_ebook">외부 e-book 연동형</option>
+            <option value="hybrid">혼합형</option>
+            <option value="template">템플릿 블록형</option>
+            <option value="full_image">이미지 페이지형</option>
+            <option value="external_ebook">원본 연동형</option>
+            <option value="ocr_assist">OCR 보조형</option>
           </select>
         </div>
 
@@ -426,7 +426,7 @@ export function ProjectCreateForm({
         <p className="mt-2 text-sm leading-6 text-slate-600">
           {isEditMode
             ? "발행일, 담당자, 공개 주소, 상품 옵션은 기관 사정에 따라 바뀔 수 있습니다. 공개 주소 slug를 바꾸면 기존 공개 URL도 함께 바뀝니다."
-            : "프로젝트 정보를 저장하면 작성/수정 목록에 반영되고, 상품 옵션과 제작 방식에 맞춰 일반형 페이지 제작 또는 프리미엄 페이지 제작으로 이동합니다."}
+            : "프로젝트 정보를 저장하면 작성/수정 목록에 반영되고, 선택한 제작 방식에 맞는 작성 화면으로 이동합니다."}
         </p>
       </div>
 

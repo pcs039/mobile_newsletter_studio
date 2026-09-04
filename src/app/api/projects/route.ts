@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 const projectStatuses = ["draft", "in_review", "published", "private", "archived"] as const;
 const packageTiers = ["basic", "standard", "advanced", "premium", "retainer"] as const;
-const productionModes = ["template", "hybrid", "full_image", "external_ebook"] as const;
+const productionModes = ["template", "hybrid", "full_image", "external_ebook", "ocr_assist"] as const;
 
 function isOneOf<T extends readonly string[]>(value: unknown, values: T): value is T[number] {
   return typeof value === "string" && values.includes(value);

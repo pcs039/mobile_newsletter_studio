@@ -243,7 +243,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   );
   const pageImages = pageImageData.pages.filter((page) => page.previewHref);
   const hotspotLinks = hotspotData.links;
-  const isPremiumImageMode = project?.packageTier === "프리미엄" || project?.productionMode === "전체 이미지형";
+  const isImagePageMode = project?.productionMode === "이미지 페이지형";
   const ebookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
   const headerColor = project?.primaryColor ?? "#071f46";
 
@@ -282,13 +282,13 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               PC e-book 보기
             </Link>
             <span className="rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-slate-200">
-              {isPremiumImageMode ? "이미지형 모바일 보기" : "모바일 읽기 보기"}
+              {isImagePageMode ? "이미지형 모바일 보기" : "모바일 읽기 보기"}
             </span>
           </div>
         </header>
 
         <section className="space-y-5 px-5 py-5">
-          {isPremiumImageMode && pageImages.length > 0 ? (
+          {isImagePageMode && pageImages.length > 0 ? (
             <section className="space-y-4">
               {pageImages.map((page) => (
                 <article key={page.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

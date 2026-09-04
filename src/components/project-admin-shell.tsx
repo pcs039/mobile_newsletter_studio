@@ -11,9 +11,9 @@ type ProjectSection = "settings" | "pages" | "reading" | "assets" | "audio" | "p
 
 const authoringNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
   { key: "settings", label: "기본 정보", path: "settings", guide: "기준·권한" },
-  { key: "reading", label: "일반형 페이지 제작", path: "reading", guide: "기본·표준·고급" },
-  { key: "pages", label: "프리미엄 페이지 제작", path: "pages", guide: "이미지·클릭" },
-  { key: "assets", label: "이미지·링크·영상 소재", path: "assets", guide: "이미지·URL·유튜브" },
+  { key: "reading", label: "콘텐츠 블록 제작", path: "reading", guide: "문단·이미지·URL" },
+  { key: "pages", label: "이미지 페이지·URL 태깅", path: "pages", guide: "이미지·클릭" },
+  { key: "assets", label: "소재 관리", path: "assets", guide: "이미지·URL·유튜브" },
   { key: "audio", label: "음성·대본", path: "audio", guide: "MP3·검수" },
 ];
 
@@ -139,7 +139,7 @@ export async function ProjectAdminShell({
                 <h3 className="text-base font-bold text-[#092046]">현재 프로젝트 제작 구성</h3>
               </div>
               <p className="text-xs font-semibold text-slate-500">
-                제작 업무는 5개 구성으로 묶고, 검수·배포·설문은 운영 단계에서 관리합니다.
+                상품 등급과 별개로 실제 제작 방식에 맞춰 콘텐츠 블록, 이미지 페이지, URL 태깅을 관리합니다.
               </p>
             </div>
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">

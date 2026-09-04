@@ -849,7 +849,7 @@ export function ProjectArticleEditorForm({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">콘텐츠 블록</p>
-            <h3 className="mt-1 text-lg font-black text-[#092046]">표준형 기사 블록 편집</h3>
+            <h3 className="mt-1 text-lg font-black text-[#092046]">모바일 기사 블록 편집</h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               블록 순서가 모바일 공개 화면의 표시 순서입니다. 텍스트 사이에 이미지, URL 버튼, 유튜브 영상을 필요한 위치에 끼워 넣습니다.
             </p>

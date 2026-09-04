@@ -82,7 +82,7 @@ export type NewsletterProject = {
   publishDate: string;
   description: string;
   packageTier?: "basic" | "standard" | "advanced" | "premium" | "retainer";
-  productionMode?: "template" | "hybrid" | "full_image" | "external_ebook";
+  productionMode?: "template" | "hybrid" | "full_image" | "external_ebook" | "ocr_assist";
   estimatedHours?: string;
   designerHoursCap?: string;
   previewTitle: string;

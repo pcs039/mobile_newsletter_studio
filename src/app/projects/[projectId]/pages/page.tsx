@@ -12,21 +12,21 @@ import {
   getProjectWorkspace,
 } from "@/lib/newsletter-repository";
 
-const premiumPageSpecs = [
+const imagePageSpecs = [
   { label: "권장 폭", value: "1080px", detail: "스마트폰 고해상도 기준" },
   { label: "권장 형식", value: "PNG/JPG/WebP", detail: "텍스트가 많은 페이지는 PNG 권장" },
   { label: "페이지 단위", value: "1쪽 = 이미지 1장", detail: "번호 순서대로 모바일에 표시" },
   { label: "링크 처리", value: "투명 클릭 영역", detail: "공개 화면에서 버튼처럼 작동" },
 ];
 
-const premiumWorkflow = [
+const imagePageWorkflow = [
   "디자인 프로그램에서 모바일 페이지 이미지 완성",
   "페이지 번호에 맞춰 이미지 업로드",
   "이미지 위에 URL·유튜브·전화 클릭 영역 지정",
   "미리보기/발행에서 실제 모바일 화면 확인",
 ];
 
-const premiumAssemblySteps = [
+const imagePageAssemblySteps = [
   {
     label: "1. 페이지 이미지",
     title: "업로드한 이미지가 본문",
@@ -55,24 +55,24 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
   const project = workspace.project;
   const originalPdf = originalPdfData.pdf;
   const pages = pageImageData.pages;
-  const isPremiumImageMode = project?.packageTier === "프리미엄" || project?.productionMode === "전체 이미지형";
+  const isImagePageMode = project?.productionMode === "이미지 페이지형";
 
   return (
     <ProjectAdminShell
       active="pages"
       projectId={projectId}
-      title="프리미엄 페이지 제작"
+      title="이미지 페이지·URL 태깅"
       description="완성된 모바일 페이지 이미지를 번호 순서대로 업로드하고, 이미지 위에 URL·유튜브·전화 클릭 영역을 지정합니다."
       sidebarTitle={
         <>
-          프리미엄
+          이미지 페이지
           <br />
-          페이지 제작
+          URL 태깅
         </>
       }
       sidebarDescription="디자인된 이미지 페이지를 모바일 공개 화면에 반영하고 클릭 영역을 연결합니다."
       sidebarNoteTitle="운영 기준"
-      sidebarNote="프리미엄형은 페이지 이미지 자체가 모바일 본문이며, URL과 영상은 이미지 위 투명 클릭 영역으로 연결합니다."
+      sidebarNote="이미지 페이지형은 페이지 이미지 자체가 모바일 본문이며, URL과 영상은 이미지 위 투명 클릭 영역으로 연결합니다."
       actions={
         <div className="flex flex-wrap gap-2">
           <Link
@@ -97,20 +97,20 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
               <article className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프리미엄 페이지 구성</p>
+                    <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이미지 페이지 구성</p>
                     <h3 className="mt-1 text-lg font-black text-[#092046]">
                       모바일 규격 이미지 파일을 페이지 순서대로 구성합니다.
                     </h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      프리미엄형은 Word식 편집이 아니라 디자이너가 완성한 페이지 이미지를 업로드하고, 공개 화면에서 이미지 중심으로
+                      이미지 페이지형은 Word식 편집이 아니라 디자이너가 완성한 페이지 이미지를 업로드하고, 공개 화면에서 이미지 중심으로
                       보여주는 방식입니다.
                     </p>
                   </div>
-                  <StatusPill value={isPremiumImageMode ? "프리미엄 흐름" : "공통 자료 관리"} />
+                  <StatusPill value={isImagePageMode ? "이미지 페이지형" : "공통 자료 관리"} />
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {premiumPageSpecs.map((spec) => (
+                  {imagePageSpecs.map((spec) => (
                     <div key={spec.label} className="rounded-lg border border-[#d8e8ff] bg-white px-4 py-3">
                       <p className="text-xs font-black text-slate-500">{spec.label}</p>
                       <p className="mt-1 text-base font-black text-[#092046]">{spec.value}</p>
@@ -122,7 +122,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
                   <p className="text-sm font-black text-[#092046]">작업 순서</p>
                   <ol className="mt-3 grid gap-2 lg:grid-cols-4">
-                    {premiumWorkflow.map((item, index) => (
+                    {imagePageWorkflow.map((item, index) => (
                       <li key={item} className="rounded-lg bg-[#f4f8ff] px-3 py-3 text-sm font-bold leading-6 text-slate-700">
                         <span className="mr-2 font-black text-[#184a88]">{index + 1}.</span>
                         {item}
@@ -149,7 +149,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                     </Link>
                   </div>
                   <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                    {premiumAssemblySteps.map((step) => (
+                    {imagePageAssemblySteps.map((step) => (
                       <div key={step.label} className="rounded-lg bg-[#f4f8ff] px-4 py-3">
                         <p className="text-xs font-black text-[#184a88]">{step.label}</p>
                         <p className="mt-1 text-sm font-black text-[#092046]">{step.title}</p>
@@ -176,7 +176,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <FileUploadCard
                   accept="application/pdf"
                   buttonLabel="PDF 선택"
-                  description="권장: 10~20쪽 지자체 소식지 PDF. 프리미엄 모바일 페이지 이미지는 아래에서 별도 등록합니다."
+                  description="권장: 10~20쪽 지자체 소식지 PDF. 모바일 페이지 이미지는 아래에서 별도 등록합니다."
                   kind="pdf_original"
                   projectSlug={projectId}
                   title="PDF 파일을 선택하거나 이 영역에 끌어다 놓기"
@@ -373,7 +373,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">다음 작업</h3>
-                {isPremiumImageMode ? (
+                {isImagePageMode ? (
                   <>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                       페이지 이미지를 올린 뒤 왼쪽의 클릭 영역 지정에서 URL, 유튜브, 전화 연결을 저장하세요. 이후 모바일 미리보기에서
@@ -391,14 +391,14 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 ) : (
                   <>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      프리미엄 이미지형이 아니라면 일반형 페이지 제작으로 이동합니다. 이 단계에서 기사 제목, 본문, 대표 이미지,
+                      이미지 페이지형이 아니라면 콘텐츠 블록 제작으로 이동합니다. 이 단계에서 기사 제목, 본문, 대표 이미지,
                       문의처, 음성 대본을 정리합니다.
                     </p>
                     <Link
                       href={`/projects/${projectId}/reading`}
                       className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
                     >
-                      일반형 페이지 제작으로 이동
+                      콘텐츠 블록 제작으로 이동
                     </Link>
                   </>
                 )}

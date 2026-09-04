@@ -44,7 +44,7 @@ export default async function EditProjectsPage() {
                 작성/수정 프로젝트
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                여러 소식지가 동시에 진행될 때 먼저 작업 대상을 고르고, 기본 정보·일반형·프리미엄·소재·음성 작업으로 들어갑니다.
+                여러 소식지가 동시에 진행될 때 먼저 작업 대상을 고르고, 실제 제작 방식에 맞춰 콘텐츠 블록·이미지 페이지·URL 태깅 작업으로 들어갑니다.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

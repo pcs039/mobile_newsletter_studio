@@ -113,16 +113,16 @@ export default async function ReadingEditorPage({
     <ProjectAdminShell
       active="reading"
       projectId={projectId}
-      title="일반형 페이지 제작"
-      description="기본형, 표준형, 고급형 프로젝트에서 기사, 본문, 이미지, URL 버튼, 유튜브, 지도, 음성 대본을 블록으로 조립합니다."
+      title="콘텐츠 블록 제작"
+      description="상품 등급과 별개로 기사, 본문, 이미지, URL 버튼, 유튜브, 지도, 음성 대본을 모바일 블록으로 조립합니다."
       sidebarTitle={
         <>
-          일반형
+          콘텐츠
           <br />
-          페이지 제작
+          블록 제작
         </>
       }
-      sidebarDescription="프리미엄 이미지형을 제외한 등급의 모바일 기사와 연결 블록을 작성합니다."
+      sidebarDescription="템플릿 블록형, 혼합형, OCR 보조형에서 모바일 기사와 연결 블록을 작성합니다."
       sidebarNoteTitle="작성 기준"
       sidebarNote="PDF와 지면 이미지는 참고 원본입니다. 최종 산출물은 저장된 기사와 콘텐츠 블록을 기준으로 구성합니다."
       actions={
@@ -131,7 +131,7 @@ export default async function ReadingEditorPage({
             href={`/projects/${projectId}/pages`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
-            프리미엄 페이지 제작
+            이미지 페이지·URL 태깅
           </Link>
           <Link
             href={mobilePreviewHref}
@@ -228,7 +228,7 @@ export default async function ReadingEditorPage({
 
         <section className="space-y-5">
           <article className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">일반형 작성 방식</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">콘텐츠 블록 작성 방식</p>
             <h3 className="mt-1 text-lg font-black text-[#092046]">문단 사이에 이미지·URL·유튜브를 블록으로 끼워 넣습니다.</h3>
             <div className="mt-4 grid gap-3 lg:grid-cols-4">
               {["문단", "이미지", "URL 버튼", "유튜브"].map((item, index) => (
@@ -371,18 +371,18 @@ export default async function ReadingEditorPage({
           </article>
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프리미엄형 참고</p>
-            <h3 className="mt-1 text-lg font-bold text-[#092046]">디자인 이미지형은 프리미엄 페이지 제작에서 관리</h3>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이미지 페이지 참고</p>
+            <h3 className="mt-1 text-lg font-bold text-[#092046]">디자인 이미지형은 이미지 페이지·URL 태깅에서 관리</h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Illustrator나 Photoshop으로 완성한 모바일 페이지 이미지는 기사 본문에 억지로 넣기보다 프리미엄 페이지 제작의 페이지 이미지로
-              올리고, 이후 클릭 영역과 링크를 별도로 관리하는 흐름이 적합합니다.
+              Illustrator나 Photoshop으로 완성한 모바일 페이지 이미지는 기사 본문에 억지로 넣기보다 페이지 이미지로 올리고,
+              이후 클릭 영역과 링크를 별도로 관리하는 흐름이 적합합니다.
             </p>
             <div className="mt-4 grid gap-2">
               <Link
                 href={`/projects/${projectId}/pages`}
                 className="rounded-lg border border-[#2f73b7] bg-white px-4 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
               >
-                프리미엄 페이지 제작으로 이동
+                이미지 페이지·URL 태깅으로 이동
               </Link>
               <Link
                 href={`/projects/${projectId}/assets`}

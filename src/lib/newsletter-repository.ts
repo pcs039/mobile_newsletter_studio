@@ -4,7 +4,7 @@ import type { DashboardProject } from "@/types/newsletter";
 
 type ProjectStatus = "draft" | "in_review" | "published" | "private" | "archived";
 type PackageTier = "basic" | "standard" | "advanced" | "premium" | "retainer";
-type ProductionMode = "template" | "hybrid" | "full_image" | "external_ebook";
+type ProductionMode = "template" | "hybrid" | "full_image" | "external_ebook" | "ocr_assist";
 
 type NewsletterProjectRow = {
   id: string;
@@ -927,10 +927,11 @@ const packageTierLabels: Record<PackageTier, string> = {
 };
 
 const productionModeLabels: Record<ProductionMode, string> = {
-  template: "템플릿 중심",
-  hybrid: "템플릿+이미지 혼합",
-  full_image: "전체 이미지형",
-  external_ebook: "외부 e-book 연동",
+  template: "템플릿 블록형",
+  hybrid: "혼합형",
+  full_image: "이미지 페이지형",
+  external_ebook: "원본 연동형",
+  ocr_assist: "OCR 보조형",
 };
 
 const distributionChannelLabels: Record<DistributionChannel, string> = {

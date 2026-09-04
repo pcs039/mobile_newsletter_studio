@@ -316,7 +316,7 @@ export function ProjectPageHotspotManager({ links, pages, projectSlug }: Project
     <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프리미엄 링크 영역</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이미지 페이지 링크 영역</p>
           <h3 className="mt-1 text-lg font-bold text-[#092046]">이미지 위 클릭 영역 지정</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             프리셋으로 파란 박스를 만든 뒤 이미지 위에서 직접 드래그해 위치와 크기를 조정합니다.

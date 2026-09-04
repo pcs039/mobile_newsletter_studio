@@ -8,9 +8,9 @@ import type { DashboardProject } from "@/types/newsletter";
 
 const editSteps = [
   { label: "기본 정보", path: "settings", detail: "기관, 담당자, 상품 옵션" },
-  { label: "일반형 페이지 제작", path: "reading", detail: "기본형, 표준형, 고급형" },
-  { label: "프리미엄 페이지 제작", path: "pages", detail: "이미지 페이지와 클릭 영역" },
-  { label: "이미지·링크·영상 소재", path: "assets", detail: "이미지, URL, 유튜브" },
+  { label: "콘텐츠 블록 제작", path: "reading", detail: "문단, 이미지, URL, 음성" },
+  { label: "이미지 페이지·URL 태깅", path: "pages", detail: "페이지 이미지와 클릭 영역" },
+  { label: "소재 관리", path: "assets", detail: "이미지, URL, 유튜브" },
   { label: "음성·대본", path: "audio", detail: "MP3와 기사 대본" },
 ];
 
