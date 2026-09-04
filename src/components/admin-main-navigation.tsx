@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AuthUserPanel } from "@/components/auth-user-panel";
 import { getCurrentUser } from "@/lib/app-auth";
 
-export type AdminMainSection = "dashboard" | "new" | "edit" | "publish" | "distribution" | "survey";
+export type AdminMainSection = "dashboard" | "edit" | "publish" | "distribution" | "survey";
 
 type AdminMainNavigationProps = {
   active: AdminMainSection;
@@ -18,7 +18,6 @@ export async function AdminMainNavigation({ active, projectId }: AdminMainNaviga
     href?: string;
   }> = [
     { key: "dashboard", label: "프로젝트 현황", detail: "전체 목록", href: "/" },
-    { key: "new", label: "새 프로젝트 생성", detail: "기본 정보", href: "/projects/new" },
     { key: "edit", label: "작성/수정", detail: "작업 대상", href: "/projects/edit" },
     {
       key: "publish",

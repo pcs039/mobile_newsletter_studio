@@ -86,6 +86,14 @@ function getFormText(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function getNextAuthoringPath(projectSlug: string, packageTier: string, productionMode: string) {
+  if (packageTier === "premium" || productionMode === "full_image") {
+    return `/projects/${projectSlug}/pages`;
+  }
+
+  return `/projects/${projectSlug}/reading`;
+}
+
 export function ProjectCreateForm({
   initialValues = {},
   mode = "create",
@@ -165,15 +173,21 @@ export function ProjectCreateForm({
       return;
     }
 
+    const nextAuthoringPath = getNextAuthoringPath(
+      result.project.slug,
+      getFormText(formData, "packageTier"),
+      getFormText(formData, "productionMode"),
+    );
+
     setSubmitState({
       status: "success",
       message: isEditMode
-        ? "수정되었습니다. 프로젝트 작업 화면으로 이동합니다."
-        : "저장되었습니다. 대시보드 목록으로 이동합니다.",
+        ? "수정되었습니다. 프로젝트 제작 화면으로 이동합니다."
+        : "저장되었습니다. 선택한 제작 방식에 맞는 다음 화면으로 이동합니다.",
     });
 
     router.refresh();
-    router.push(isEditMode ? `/projects/${result.project.slug}/pages` : "/");
+    router.push(nextAuthoringPath);
   }
 
   const isSaving = submitState.status === "saving";
@@ -407,12 +421,12 @@ export function ProjectCreateForm({
 
       <div className="mt-7 rounded-lg border border-dashed border-sky-300 bg-[#eaf2ff] p-5">
         <h3 className="text-base font-bold text-[#092046]">
-          {isEditMode ? "수정 기준" : "다음 단계: 대시보드 반영 확인"}
+          {isEditMode ? "수정 기준" : "다음 단계: 제작 화면으로 이동"}
         </h3>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           {isEditMode
             ? "발행일, 담당자, 공개 주소, 상품 옵션은 기관 사정에 따라 바뀔 수 있습니다. 공개 주소 slug를 바꾸면 기존 공개 URL도 함께 바뀝니다."
-            : "프로젝트 정보를 저장하면 Supabase의 프로젝트 목록에 반영됩니다. 상세 제작 화면의 실제 데이터 연결은 다음 단계에서 이어갑니다."}
+            : "프로젝트 정보를 저장하면 작성/수정 목록에 반영되고, 상품 옵션과 제작 방식에 맞춰 일반형 페이지 제작 또는 프리미엄 페이지 제작으로 이동합니다."}
         </p>
       </div>
 
@@ -430,7 +444,7 @@ export function ProjectCreateForm({
 
       <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Link
-          href={isEditMode && initialValues.slug ? `/projects/${initialValues.slug}/pages` : "/"}
+          href={isEditMode && initialValues.slug ? `/projects/${initialValues.slug}/settings` : "/projects/edit"}
           className="rounded-lg border border-slate-300 px-5 py-3 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
         >
           취소

@@ -107,13 +107,13 @@ export default async function SurveyProjectsPage() {
                 <div className="px-5 py-12 text-center">
                   <p className="text-base font-bold text-[#092046]">설문/이벤트를 연결할 프로젝트가 없습니다.</p>
                   <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">
-                    새 프로젝트를 만든 뒤 이 화면에서 참여 기능을 구성하세요.
+                    새 프로젝트 기본 정보를 입력한 뒤 이 화면에서 참여 기능을 구성하세요.
                   </p>
                   <Link
                     href="/projects/new"
                     className="mt-5 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
                   >
-                    새 프로젝트 생성
+                    새 프로젝트 기본 정보 입력
                   </Link>
                 </div>
               ) : (

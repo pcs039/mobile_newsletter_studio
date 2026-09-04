@@ -157,13 +157,13 @@ export function ProjectEditWorkQueue({ isAdmin, message, projects }: ProjectEdit
           {projects.length === 0 && (
             <div className="px-5 py-12 text-center">
               <p className="text-base font-bold text-[#092046]">작성/수정할 프로젝트가 없습니다.</p>
-              <p className="mt-2 text-sm text-slate-500">새 프로젝트를 만들거나 Supabase 연결 상태를 확인하세요.</p>
+              <p className="mt-2 text-sm text-slate-500">새 프로젝트 기본 정보를 입력하거나 Supabase 연결 상태를 확인하세요.</p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 <Link
                   href="/projects/new"
                   className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
                 >
-                  + 새 프로젝트 생성
+                  + 새 프로젝트 기본 정보 입력
                 </Link>
                 <Link
                   href="/api/supabase/health"

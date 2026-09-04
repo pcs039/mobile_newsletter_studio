@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { HomeButton } from "@/components/home-button";
@@ -45,16 +46,16 @@ export default async function NewProjectPage() {
           <div className="mb-9">
             <DatadictionBrand theme="light" />
             <h1 className="mt-6 text-2xl font-bold leading-tight">
-              새 소식지
+              작성/수정
               <br />
-              만들기
+              기본 정보
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              상품 옵션과 제작 방식을 먼저 정한 뒤 PDF 원본 보관과 페이지 이미지 등록으로 넘어갑니다.
+              새 프로젝트는 작성/수정의 첫 단계인 기본 정보 입력에서 시작합니다.
             </p>
           </div>
 
-          <AdminMainNavigation active="new" />
+          <AdminMainNavigation active="edit" />
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
             <p className="text-sm font-bold text-white">필수 입력</p>
@@ -71,15 +72,23 @@ export default async function NewProjectPage() {
         <section className="px-5 py-6 sm:px-8 lg:px-10">
           <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#184a88]">프로젝트 생성</p>
+              <p className="text-sm font-semibold text-[#184a88]">작성/수정 · 기본 정보</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
-                새 모바일 소식지 기본 정보
+                새 프로젝트 기본 정보 입력
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                입력한 기본 정보를 Supabase 프로젝트 데이터로 저장하고 다음 제작 단계로 이동합니다.
+                기관명, 담당자, 상품 옵션, 제작 방식을 먼저 저장한 뒤 해당 제작 화면으로 이동합니다.
               </p>
             </div>
-            <HomeButton />
+            <div className="flex flex-wrap gap-2">
+              <HomeButton />
+              <Link
+                href="/projects/edit"
+                className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+              >
+                작성/수정 목록
+              </Link>
+            </div>
           </header>
 
           <div className="grid gap-5 xl:grid-cols-[1fr_360px]">

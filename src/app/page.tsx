@@ -130,7 +130,7 @@ export default async function Home() {
                 href="/projects/new"
                 className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
               >
-                + 새 소식지 만들기
+                + 새 프로젝트 기본 정보 입력
               </Link>
             </div>
           </header>
@@ -195,13 +195,13 @@ export default async function Home() {
                         <td colSpan={5} className="px-4 py-12 text-center">
                           <p className="text-base font-bold text-[#092046]">등록된 소식지 프로젝트가 없습니다.</p>
                           <p className="mt-2 text-sm text-slate-500">
-                            새 소식지를 만들면 Supabase에 저장되고 이 목록에 표시됩니다.
+                            새 프로젝트 기본 정보를 입력하면 Supabase에 저장되고 이 목록에 표시됩니다.
                           </p>
                           <Link
                             href="/projects/new"
                             className="mt-5 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
                           >
-                            + 새 소식지 만들기
+                            + 새 프로젝트 기본 정보 입력
                           </Link>
                         </td>
                       </tr>

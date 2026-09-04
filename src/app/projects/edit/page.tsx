@@ -54,7 +54,7 @@ export default async function EditProjectsPage() {
                 href="/projects/new"
                 className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
               >
-                + 새 프로젝트 생성
+                + 새 프로젝트 기본 정보 입력
               </Link>
             </div>
           </header>
