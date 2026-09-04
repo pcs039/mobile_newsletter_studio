@@ -80,7 +80,7 @@ export default async function PublishProjectsPage() {
               <HomeButton />
               <Link
                 href="/projects/edit"
-                className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
               >
                 작성/수정 목록 보기
               </Link>
@@ -123,13 +123,13 @@ export default async function PublishProjectsPage() {
                 <div className="px-5 py-12 text-center">
                   <p className="text-base font-bold text-[#092046]">미리보기/발행할 프로젝트가 없습니다.</p>
                   <p className="mt-2 text-sm text-slate-500 [word-break:keep-all]">
-                    새 프로젝트 기본 정보를 입력하고 작성/수정 단계에서 콘텐츠를 저장하면 이 목록에 표시됩니다.
+                    작성/수정 목록에서 프로젝트를 생성하고 콘텐츠를 저장하면 이 목록에 표시됩니다.
                   </p>
                   <Link
-                    href="/projects/new"
-                    className="mt-5 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
+                    href="/projects/edit"
+                    className="mt-5 inline-flex rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
                   >
-                    + 새 프로젝트 기본 정보 입력
+                    작성/수정 목록으로 이동
                   </Link>
                 </div>
               )}

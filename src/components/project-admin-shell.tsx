@@ -61,7 +61,7 @@ export async function ProjectAdminShell({
           </p>
           <Link
             href="/projects/edit"
-            className="mt-6 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white transition hover:bg-[#123a78]"
+            className="mt-6 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md"
           >
             작업 목록으로 돌아가기
           </Link>
@@ -124,7 +124,7 @@ export async function ProjectAdminShell({
               <HomeButton />
               <Link
                 href="/projects/edit"
-                className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:border-[#2f73b7] hover:bg-[#eaf3ff] hover:shadow-md"
               >
                 작성/수정 목록
               </Link>
@@ -146,7 +146,7 @@ export async function ProjectAdminShell({
               {authoringNavigation.map((item, index) => {
                 const isActive = active === item.key;
                 const href = `/projects/${projectId}/${item.path}`;
-                const className = `rounded-lg border px-3 py-3 text-left transition ${
+                const className = `rounded-lg border px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
                   isActive
                     ? "border-[#092046] bg-[#092046] text-white shadow-sm shadow-blue-950/20"
                     : "border-slate-200 bg-[#f8fbff] text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"

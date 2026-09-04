@@ -104,7 +104,7 @@ export default async function DistributionProjectsPage() {
               <HomeButton />
               <Link
                 href="/projects/publish"
-                className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
               >
                 미리보기/발행 목록
               </Link>
@@ -153,7 +153,7 @@ export default async function DistributionProjectsPage() {
                   </p>
                   <Link
                     href="/projects/publish"
-                    className="mt-5 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
+                    className="mt-5 inline-flex rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
                   >
                     발행 검수 목록으로 이동
                   </Link>

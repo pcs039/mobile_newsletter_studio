@@ -14,9 +14,9 @@ import { getDashboardProjects } from "@/lib/newsletter-repository";
 import { getSupabaseConfigStatus } from "@/lib/supabase-config";
 
 const dashboardActionClass =
-  "inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]";
+  "inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-[#092046] shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:border-[#184a88] hover:bg-[#eaf2ff] hover:shadow-md";
 const dashboardPrimaryActionClass =
-  "inline-flex h-8 items-center justify-center rounded-md bg-[#092046] px-3 text-xs font-black text-white shadow-sm shadow-blue-950/20 transition hover:bg-[#123a78]";
+  "inline-flex h-8 items-center justify-center rounded-md bg-[#092046] px-3 text-xs font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md";
 
 function parseCount(value: string) {
   return Number(value.replace(/,/g, "")) || 0;
@@ -155,16 +155,16 @@ export default async function Home() {
             <div className="flex flex-wrap gap-2">
               <SupabaseHealthCheckButton
                 anonKeyConfigured={Boolean(supabaseConfig.anonKey)}
-                buttonClassName="inline-flex justify-center rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                buttonClassName="inline-flex justify-center rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
                 buttonLabel="Supabase 상태 확인"
                 serviceRoleKeyConfigured={supabaseConfig.hasServiceRoleKey}
                 urlConfigured={Boolean(supabaseConfig.url)}
               />
               <Link
                 href="/projects/new"
-                className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+                className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md"
               >
-                + 새 프로젝트 기본 정보 입력
+                + 새 프로젝트 생성
               </Link>
             </div>
           </header>
@@ -229,13 +229,13 @@ export default async function Home() {
                         <td colSpan={5} className="px-4 py-12 text-center">
                           <p className="text-base font-bold text-[#092046]">등록된 소식지 프로젝트가 없습니다.</p>
                           <p className="mt-2 text-sm text-slate-500">
-                            새 프로젝트 기본 정보를 입력하면 Supabase에 저장되고 이 목록에 표시됩니다.
+                            새 프로젝트를 생성하면 Supabase에 저장되고 이 목록에 표시됩니다.
                           </p>
                           <Link
                             href="/projects/new"
-                            className="mt-5 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
+                            className="mt-5 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md"
                           >
-                            + 새 프로젝트 기본 정보 입력
+                            + 새 프로젝트 생성
                           </Link>
                         </td>
                       </tr>

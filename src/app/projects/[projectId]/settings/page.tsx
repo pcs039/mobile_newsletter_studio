@@ -61,9 +61,9 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
           <p className="mt-2 text-sm leading-6">{basicInfoData.message}</p>
           <Link
             href="/"
-            className="mt-4 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white transition hover:bg-[#123a78]"
+            className="mt-4 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md"
           >
-            대시보드로 돌아가기
+            처음 화면
           </Link>
         </article>
       )}

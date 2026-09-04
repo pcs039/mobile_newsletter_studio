@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { HomeButton } from "@/components/home-button";
@@ -50,12 +49,6 @@ export default async function EditProjectsPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <HomeButton />
-              <Link
-                href="/projects/new"
-                className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
-              >
-                + 새 프로젝트 기본 정보 입력
-              </Link>
             </div>
           </header>
 

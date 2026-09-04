@@ -92,63 +92,71 @@ export function ProjectEditWorkQueue({ isAdmin, message, projects }: ProjectEdit
 
       <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">작업 목록</p>
               <h3 className="mt-1 text-lg font-bold text-[#092046]">작업 대상 목록</h3>
               <p className="mt-1 text-sm text-slate-500">{message}</p>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_150px_170px_auto]">
-              <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
-                검색
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="소식지명, 기관명, 담당자, slug"
-                  className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-[#092046] outline-none transition placeholder:text-slate-400 focus:border-[#2f73b7] focus:ring-2 focus:ring-[#2f73b7]/15"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
-                상태
-                <select
-                  value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value)}
-                  className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-[#092046] outline-none transition focus:border-[#2f73b7] focus:ring-2 focus:ring-[#2f73b7]/15"
-                >
-                  {statusFilters.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
-                담당자
-                <select
-                  value={assigneeFilter}
-                  onChange={(event) => setAssigneeFilter(event.target.value)}
-                  className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-[#092046] outline-none transition focus:border-[#2f73b7] focus:ring-2 focus:ring-[#2f73b7]/15"
-                >
-                  <option value="전체">전체</option>
-                  {assignees.map((assignee) => (
-                    <option key={assignee} value={assignee}>
-                      {assignee}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  setStatusFilter("전체");
-                  setAssigneeFilter("전체");
-                }}
-                className="h-11 self-end rounded-lg border border-slate-300 bg-white px-4 text-sm font-black text-[#092046] transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+            <div className="flex w-full flex-col gap-3 xl:w-auto xl:items-end">
+              <Link
+                href="/projects/new"
+                className="inline-flex h-11 items-center justify-center rounded-lg bg-[#092046] px-5 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md"
               >
-                초기화
-              </button>
+                + 새 프로젝트 생성
+              </Link>
+              <div className="grid w-full gap-2 sm:grid-cols-[minmax(220px,1fr)_150px_170px_auto] xl:w-auto">
+                <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+                  검색
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="소식지명, 기관명, 담당자, slug"
+                    className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-[#092046] outline-none transition placeholder:text-slate-400 focus:border-[#2f73b7] focus:ring-2 focus:ring-[#2f73b7]/15"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+                  상태
+                  <select
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value)}
+                    className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-[#092046] outline-none transition focus:border-[#2f73b7] focus:ring-2 focus:ring-[#2f73b7]/15"
+                  >
+                    {statusFilters.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+                  담당자
+                  <select
+                    value={assigneeFilter}
+                    onChange={(event) => setAssigneeFilter(event.target.value)}
+                    className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-[#092046] outline-none transition focus:border-[#2f73b7] focus:ring-2 focus:ring-[#2f73b7]/15"
+                  >
+                    <option value="전체">전체</option>
+                    {assignees.map((assignee) => (
+                      <option key={assignee} value={assignee}>
+                        {assignee}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setStatusFilter("전체");
+                    setAssigneeFilter("전체");
+                  }}
+                  className="h-11 self-end rounded-lg border border-slate-300 bg-white px-4 text-sm font-black text-[#092046] transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                >
+                  초기화
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -157,19 +165,13 @@ export function ProjectEditWorkQueue({ isAdmin, message, projects }: ProjectEdit
           {projects.length === 0 && (
             <div className="px-5 py-12 text-center">
               <p className="text-base font-bold text-[#092046]">작성/수정할 프로젝트가 없습니다.</p>
-              <p className="mt-2 text-sm text-slate-500">새 프로젝트 기본 정보를 입력하거나 Supabase 연결 상태를 확인하세요.</p>
+              <p className="mt-2 text-sm text-slate-500">새 프로젝트를 생성하면 작성/수정 목록에 표시됩니다.</p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 <Link
                   href="/projects/new"
-                  className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
+                  className="rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md"
                 >
-                  + 새 프로젝트 기본 정보 입력
-                </Link>
-                <Link
-                  href="/api/supabase/health"
-                  className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-bold text-[#092046] transition hover:bg-[#eaf3ff]"
-                >
-                  Supabase 상태 확인
+                  + 새 프로젝트 생성
                 </Link>
               </div>
             </div>
@@ -244,7 +246,7 @@ export function ProjectEditWorkQueue({ isAdmin, message, projects }: ProjectEdit
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
                   href={project.actions.editHref}
-                  className="inline-flex h-10 items-center justify-center rounded-md bg-[#092046] px-4 text-xs font-black text-white shadow-sm transition hover:bg-[#123a78]"
+                  className="inline-flex h-10 items-center justify-center rounded-md bg-[#092046] px-4 text-xs font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md"
                 >
                   작업 시작
                 </Link>

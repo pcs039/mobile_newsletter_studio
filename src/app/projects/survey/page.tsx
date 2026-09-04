@@ -64,7 +64,7 @@ export default async function SurveyProjectsPage() {
               <HomeButton />
               <Link
                 href="/projects/distribution"
-                className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
               >
                 배포/관리 목록
               </Link>
@@ -107,13 +107,13 @@ export default async function SurveyProjectsPage() {
                 <div className="px-5 py-12 text-center">
                   <p className="text-base font-bold text-[#092046]">설문/이벤트를 연결할 프로젝트가 없습니다.</p>
                   <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">
-                    새 프로젝트 기본 정보를 입력한 뒤 이 화면에서 참여 기능을 구성하세요.
+                    작성/수정 목록에서 프로젝트를 생성한 뒤 이 화면에서 참여 기능을 구성하세요.
                   </p>
                   <Link
-                    href="/projects/new"
-                    className="mt-5 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#123a78]"
+                    href="/projects/edit"
+                    className="mt-5 inline-flex rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
                   >
-                    새 프로젝트 기본 정보 입력
+                    작성/수정 목록으로 이동
                   </Link>
                 </div>
               ) : (
