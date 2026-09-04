@@ -113,16 +113,16 @@ export default async function ReadingEditorPage({
     <ProjectAdminShell
       active="reading"
       projectId={projectId}
-      title="모바일 페이지 작성"
-      description="기사, 본문, 버튼, 영상, 지도, 음성 대본을 실제 Supabase 데이터로 저장하고 모바일 산출물로 조립합니다."
+      title="일반형 페이지 제작"
+      description="기본형, 표준형, 고급형 프로젝트에서 기사, 본문, 이미지, URL 버튼, 유튜브, 지도, 음성 대본을 블록으로 조립합니다."
       sidebarTitle={
         <>
-          모바일 페이지
+          일반형
           <br />
-          작성
+          페이지 제작
         </>
       }
-      sidebarDescription="샘플 구성이 아니라 실제 발행할 모바일 기사와 연결 블록을 작성합니다."
+      sidebarDescription="프리미엄 이미지형을 제외한 등급의 모바일 기사와 연결 블록을 작성합니다."
       sidebarNoteTitle="작성 기준"
       sidebarNote="PDF와 지면 이미지는 참고 원본입니다. 최종 산출물은 저장된 기사와 콘텐츠 블록을 기준으로 구성합니다."
       actions={
@@ -131,7 +131,7 @@ export default async function ReadingEditorPage({
             href={`/projects/${projectId}/pages`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
-            원본 자료 보기
+            프리미엄 페이지 제작
           </Link>
           <Link
             href={mobilePreviewHref}
@@ -217,18 +217,18 @@ export default async function ReadingEditorPage({
 
           <article className="rounded-lg border border-slate-200 bg-[#eef6ff] p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
-            <h3 className="mt-1 text-lg font-bold text-[#092046]">원본 자료 상태</h3>
+            <h3 className="mt-1 text-lg font-bold text-[#092046]">제작 자료 상태</h3>
             <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
               <p>{originalPdfData.pdf ? `PDF 등록: ${originalPdfData.pdf.fileName}` : "PDF 원본이 아직 없습니다."}</p>
               <p>페이지 이미지 {pageImageData.pages.length}개</p>
-              <p>소재 보관함 이미지 {assetData.assets.length}개</p>
+              <p>이미지·링크·영상 소재 {assetData.assets.length}개</p>
             </div>
           </article>
         </aside>
 
         <section className="space-y-5">
           <article className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">표준형 작성 방식</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">일반형 작성 방식</p>
             <h3 className="mt-1 text-lg font-black text-[#092046]">문단 사이에 이미지·URL·유튜브를 블록으로 끼워 넣습니다.</h3>
             <div className="mt-4 grid gap-3 lg:grid-cols-4">
               {["문단", "이미지", "URL 버튼", "유튜브"].map((item, index) => (
@@ -362,7 +362,7 @@ export default async function ReadingEditorPage({
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
             <h3 className="mt-1 text-lg font-bold text-[#092046]">작성 흐름</h3>
             <ol className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
-              <li className="rounded-lg bg-white px-3 py-2">1. 원본 자료에서 필요한 내용을 확인</li>
+              <li className="rounded-lg bg-white px-3 py-2">1. 기본 정보와 제작 자료를 확인</li>
               <li className="rounded-lg bg-white px-3 py-2">2. 기사 제목·요약 입력</li>
               <li className="rounded-lg bg-white px-3 py-2">3. 문단·이미지·URL 버튼·유튜브 블록을 순서대로 배치</li>
               <li className="rounded-lg bg-white px-3 py-2">4. 모바일 미리보기에서 검수</li>
@@ -371,9 +371,9 @@ export default async function ReadingEditorPage({
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프리미엄형 참고</p>
-            <h3 className="mt-1 text-lg font-bold text-[#092046]">디자인 이미지형은 원본 자료 화면을 중심으로 관리</h3>
+            <h3 className="mt-1 text-lg font-bold text-[#092046]">디자인 이미지형은 프리미엄 페이지 제작에서 관리</h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Illustrator나 Photoshop으로 완성한 모바일 페이지 이미지는 기사 본문에 억지로 넣기보다 원본 자료의 페이지 이미지로
+              Illustrator나 Photoshop으로 완성한 모바일 페이지 이미지는 기사 본문에 억지로 넣기보다 프리미엄 페이지 제작의 페이지 이미지로
               올리고, 이후 클릭 영역과 링크를 별도로 관리하는 흐름이 적합합니다.
             </p>
             <div className="mt-4 grid gap-2">
@@ -381,13 +381,13 @@ export default async function ReadingEditorPage({
                 href={`/projects/${projectId}/pages`}
                 className="rounded-lg border border-[#2f73b7] bg-white px-4 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
               >
-                페이지 이미지 관리로 이동
+                프리미엄 페이지 제작으로 이동
               </Link>
               <Link
                 href={`/projects/${projectId}/assets`}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-slate-50"
               >
-                소재 보관함으로 이동
+                이미지·링크·영상 소재로 이동
               </Link>
             </div>
           </article>

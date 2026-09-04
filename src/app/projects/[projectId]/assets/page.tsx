@@ -15,24 +15,24 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
     <ProjectAdminShell
       active="assets"
       projectId={projectId}
-      title="소재 보관함"
-      description="모바일 페이지에 연결할 이미지, 배너, 지도 이미지, 링크용 썸네일의 품질과 권리 상태를 관리합니다."
+      title="이미지·링크·영상 소재"
+      description="모바일 페이지에 사용할 이미지, 배너, URL, 유튜브, 지도, 전화 연결 소재의 품질과 권리 상태를 관리합니다."
       sidebarTitle={
         <>
-          소재
+          이미지·링크
           <br />
-          보관함
+          영상 소재
         </>
       }
-      sidebarDescription="작성 화면에서 가져다 쓸 이미지와 링크 소재를 출처, 권리, 품질 기준으로 정리합니다."
+      sidebarDescription="일반형 기사와 프리미엄 페이지에서 가져다 쓸 이미지, 링크, 유튜브 소재를 정리합니다."
       sidebarNoteTitle="v0.5 반영"
-      sidebarNote="이 화면은 독립 산출물이 아니라 모바일 페이지 작성 화면에 붙는 소재 창입니다."
+      sidebarNote="이 화면은 독립 산출물이 아니라 일반형·프리미엄 페이지 제작 화면에 붙는 소재 관리 공간입니다."
       actions={
         <Link
           href={`/projects/${projectId}/reading`}
           className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
-          읽기 보기로 돌아가기
+          일반형 페이지 제작
         </Link>
       }
     >
@@ -44,6 +44,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                     <h3 className="text-lg font-bold text-[#092046]">소재 이미지 업로드</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                       기관 제공 원본 사진, 디자이너 제작 배너, AI 생성 이미지, PDF 발췌 이미지를 자산으로 등록합니다.
+                      URL과 유튜브 주소는 일반형 페이지 제작 또는 프리미엄 클릭 영역에서 연결합니다.
                     </p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">

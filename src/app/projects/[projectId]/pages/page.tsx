@@ -61,18 +61,18 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
     <ProjectAdminShell
       active="pages"
       projectId={projectId}
-      title="원본 자료 등록"
-      description="표준형은 PDF 원본과 기사 작성의 기준 자료를 보관하고, 프리미엄형은 완성된 모바일 페이지 이미지를 번호 순서대로 구성합니다."
+      title="프리미엄 페이지 제작"
+      description="완성된 모바일 페이지 이미지를 번호 순서대로 업로드하고, 이미지 위에 URL·유튜브·전화 클릭 영역을 지정합니다."
       sidebarTitle={
         <>
-          원본 자료
+          프리미엄
           <br />
-          등록
+          페이지 제작
         </>
       }
-      sidebarDescription="표준형 원본 자료와 프리미엄형 모바일 이미지 페이지를 함께 관리합니다."
+      sidebarDescription="디자인된 이미지 페이지를 모바일 공개 화면에 반영하고 클릭 영역을 연결합니다."
       sidebarNoteTitle="운영 기준"
-      sidebarNote="표준형은 기사 블록으로 조립하고, 프리미엄형은 페이지 이미지 자체를 모바일 산출물의 중심으로 사용합니다."
+      sidebarNote="프리미엄형은 페이지 이미지 자체가 모바일 본문이며, URL과 영상은 이미지 위 투명 클릭 영역으로 연결합니다."
       actions={
         <div className="flex flex-wrap gap-2">
           <Link
@@ -165,7 +165,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   <div>
                     <h3 className="text-lg font-bold text-[#092046]">PDF 원본 업로드</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      PDF는 원본 보관용으로 저장하고, PC e-book에 사용할 페이지 이미지는 별도로 등록합니다.
+                      PDF는 원본 보관용으로 저장하고, 모바일 공개 화면에 사용할 페이지 이미지는 아래에서 별도로 등록합니다.
                     </p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
@@ -176,7 +176,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <FileUploadCard
                   accept="application/pdf"
                   buttonLabel="PDF 선택"
-                  description="권장: 10~20쪽 지자체 소식지 PDF. 페이지 이미지는 아래에서 별도 등록합니다."
+                  description="권장: 10~20쪽 지자체 소식지 PDF. 프리미엄 모바일 페이지 이미지는 아래에서 별도 등록합니다."
                   kind="pdf_original"
                   projectSlug={projectId}
                   title="PDF 파일을 선택하거나 이 영역에 끌어다 놓기"
@@ -391,14 +391,14 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 ) : (
                   <>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      페이지 확인 후 모바일 읽기 보기 편집 화면으로 이동합니다. 이 단계에서 기사 제목, 본문, 대표 이미지, 문의처, 음성
-                      대본을 정리합니다.
+                      프리미엄 이미지형이 아니라면 일반형 페이지 제작으로 이동합니다. 이 단계에서 기사 제목, 본문, 대표 이미지,
+                      문의처, 음성 대본을 정리합니다.
                     </p>
                     <Link
                       href={`/projects/${projectId}/reading`}
                       className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
                     >
-                      읽기 보기 편집으로 이동
+                      일반형 페이지 제작으로 이동
                     </Link>
                   </>
                 )}

@@ -7,13 +7,17 @@ import { HomeButton } from "@/components/home-button";
 import { canAccessProject, hasProjectUnlock, requireAppUser } from "@/lib/app-auth";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
-type ProjectSection = "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey";
+type ProjectSection = "settings" | "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey";
 
-const projectNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
-  { key: "pages", label: "원본 자료", path: "pages", guide: "PDF·지면" },
-  { key: "reading", label: "모바일 페이지 작성", path: "reading", guide: "페이지·섹션" },
-  { key: "assets", label: "소재 보관함", path: "assets", guide: "이미지·링크" },
+const authoringNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
+  { key: "settings", label: "기본 정보", path: "settings", guide: "기준·권한" },
+  { key: "reading", label: "일반형 페이지 제작", path: "reading", guide: "기본·표준·고급" },
+  { key: "pages", label: "프리미엄 페이지 제작", path: "pages", guide: "이미지·클릭" },
+  { key: "assets", label: "이미지·링크·영상 소재", path: "assets", guide: "이미지·URL·유튜브" },
   { key: "audio", label: "음성·대본", path: "audio", guide: "MP3·검수" },
+];
+
+const operationNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
   { key: "publish", label: "검수·발행", path: "publish", guide: "URL·QR" },
   { key: "distribution", label: "배포 운영", path: "distribution", guide: "대상·발송" },
   { key: "survey", label: "설문·이벤트", path: "survey", guide: "참여·응답" },
@@ -128,18 +132,18 @@ export async function ProjectAdminShell({
             </div>
           </header>
 
-          <nav className="mb-7 rounded-lg border border-slate-200 bg-white p-3 shadow-sm" aria-label="프로젝트 작업 흐름">
+          <nav className="mb-7 rounded-lg border border-slate-200 bg-white p-3 shadow-sm" aria-label="프로젝트 작성 수정 구성">
             <div className="mb-3 flex flex-col gap-1 px-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">작업 흐름</p>
-                <h3 className="text-base font-bold text-[#092046]">현재 프로젝트 제작 단계</h3>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">작성/수정</p>
+                <h3 className="text-base font-bold text-[#092046]">현재 프로젝트 제작 구성</h3>
               </div>
               <p className="text-xs font-semibold text-slate-500">
-                순서대로 진행하되, 필요한 단계는 언제든 다시 열 수 있습니다.
+                제작 업무는 5개 구성으로 묶고, 검수·배포·설문은 운영 단계에서 관리합니다.
               </p>
             </div>
-            <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-7">
-              {projectNavigation.map((item, index) => {
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+              {authoringNavigation.map((item, index) => {
                 const isActive = active === item.key;
                 const href = `/projects/${projectId}/${item.path}`;
                 const className = `rounded-lg border px-3 py-3 text-left transition ${
@@ -164,6 +168,27 @@ export async function ProjectAdminShell({
                   </Link>
                 );
               })}
+            </div>
+            <div className="mt-3 flex flex-col gap-2 border-t border-slate-200 px-2 pt-3 lg:flex-row lg:items-center lg:justify-between">
+              <p className="text-xs font-black text-slate-500">검수 이후 운영 화면</p>
+              <div className="flex flex-wrap gap-2">
+                {operationNavigation.map((item) => {
+                  const isActive = active === item.key;
+                  return (
+                    <Link
+                      key={item.key}
+                      href={`/projects/${projectId}/${item.path}`}
+                      className={`rounded-full border px-3 py-2 text-xs font-black transition ${
+                        isActive
+                          ? "border-[#092046] bg-[#092046] text-white"
+                          : "border-slate-200 bg-white text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </nav>
 
