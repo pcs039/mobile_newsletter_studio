@@ -22,6 +22,14 @@ type ProjectEditWorkQueueProps = {
   projects: DashboardProject[];
 };
 
+function getRecommendedStep(project: DashboardProject) {
+  if (project.productionMode.includes("이미지 페이지형") || project.productionMode.includes("원본 연동형")) {
+    return editSteps.find((step) => step.path === "pages") ?? editSteps[2];
+  }
+
+  return editSteps.find((step) => step.path === "reading") ?? editSteps[1];
+}
+
 function getProjectSearchText(project: DashboardProject) {
   return [
     project.title,
@@ -41,6 +49,7 @@ export function ProjectEditWorkQueue({ isAdmin, message, projects }: ProjectEdit
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("전체");
   const [assigneeFilter, setAssigneeFilter] = useState("전체");
+  const [expandedProjectId, setExpandedProjectId] = useState("");
 
   const assignees = useMemo(
     () =>
@@ -197,77 +206,111 @@ export function ProjectEditWorkQueue({ isAdmin, message, projects }: ProjectEdit
             </div>
           )}
 
-          {filteredProjects.map((project) => (
-            <article key={project.id} className="px-5 py-5">
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_460px]">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="text-lg font-black text-[#092046]">{project.title}</h4>
-                    <StatusPill value={project.status} />
-                  </div>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    {project.organization} · {project.issue} · {project.slug}
-                  </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-lg bg-[#f8fbff] px-3 py-2">
-                      <p className="text-[11px] font-black text-slate-500">담당</p>
-                      <p className="mt-1 text-sm font-black text-[#184a88]">{project.assigneeName}</p>
-                    </div>
-                    <div className="rounded-lg bg-[#f8fbff] px-3 py-2">
-                      <p className="text-[11px] font-black text-slate-500">상품</p>
-                      <p className="mt-1 text-sm font-black text-[#092046]">{project.packageTier}</p>
-                    </div>
-                    <div className="rounded-lg bg-[#f8fbff] px-3 py-2">
-                      <p className="text-[11px] font-black text-slate-500">제작 방식</p>
-                      <p className="mt-1 text-sm font-black text-[#092046]">{project.productionMode}</p>
-                    </div>
-                    <div className="rounded-lg bg-[#f8fbff] px-3 py-2">
-                      <p className="text-[11px] font-black text-slate-500">최근 수정</p>
-                      <p className="mt-1 text-sm font-black text-[#092046]">{project.updated}</p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-xs font-semibold text-slate-500">{project.workload}</p>
-                </div>
+          {filteredProjects.map((project) => {
+            const recommendedStep = getRecommendedStep(project);
+            const isExpanded = expandedProjectId === project.id;
 
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {editSteps.map((step) => (
+            return (
+              <article key={project.id} className="px-5 py-5">
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-lg font-black text-[#092046] [word-break:keep-all]">{project.title}</h4>
+                      <StatusPill value={project.status} />
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      {project.organization} · {project.issue} · {project.slug}
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-[#eaf2ff] px-3 py-1.5 text-xs font-black text-[#184a88]">
+                        제작 방식: {project.productionMode}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">
+                        상품: {project.packageTier}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">
+                        담당: {project.assigneeName}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">
+                        최근 수정: {project.updated}
+                      </span>
+                    </div>
+
+                    <p className="mt-4 max-w-3xl text-sm font-semibold leading-6 text-slate-600">
+                      {project.workload}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">추천 다음 작업</p>
+                    <h5 className="mt-1 text-base font-black text-[#092046]">{recommendedStep.label}</h5>
+                    <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">{recommendedStep.detail}</p>
                     <Link
-                      key={step.path}
-                      href={`/projects/${project.slug}/${step.path}`}
-                      className="rounded-lg border border-slate-200 bg-[#f8fbff] px-3 py-3 transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                      href={`/projects/${project.slug}/${recommendedStep.path}`}
+                      className="mt-4 flex h-11 items-center justify-center rounded-lg bg-[#092046] px-4 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md"
                     >
-                      <span className="block text-sm font-black text-[#092046]">{step.label}</span>
-                      <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{step.detail}</span>
+                      작업 이어하기
                     </Link>
-                  ))}
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <Link
+                        href={`/projects/${project.slug}/settings`}
+                        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-center text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
+                      >
+                        기본 정보
+                      </Link>
+                      <Link
+                        href={project.actions.previewHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-center text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
+                      >
+                        미리보기
+                      </Link>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  href={project.actions.editHref}
-                  className="inline-flex h-10 items-center justify-center rounded-md bg-[#092046] px-4 text-xs font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md"
-                >
-                  작업 시작
-                </Link>
-                <Link
-                  href={`/projects/${project.slug}/settings`}
-                  className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
-                >
-                  기본 정보 수정
-                </Link>
-                <Link
-                  href={project.actions.previewHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-xs font-bold text-[#092046] transition hover:border-[#184a88] hover:bg-[#eaf2ff]"
-                >
-                  미리보기 새 탭
-                </Link>
-                <ProjectArchiveButton projectId={project.id} projectTitle={project.title} />
-              </div>
-            </article>
-          ))}
+                <div className="mt-4 rounded-lg border border-slate-200 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedProjectId(isExpanded ? "" : project.id)}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-black text-[#092046] transition hover:bg-[#f8fbff]"
+                    aria-expanded={isExpanded}
+                  >
+                    <span>전체 작업 메뉴</span>
+                    <span className="text-xs font-bold text-slate-500">{isExpanded ? "접기" : "펼치기"}</span>
+                  </button>
+
+                  {isExpanded ? (
+                    <div className="border-t border-slate-200 px-4 py-4">
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                        {editSteps.map((step) => (
+                          <Link
+                            key={step.path}
+                            href={`/projects/${project.slug}/${step.path}`}
+                            className={`rounded-lg border px-3 py-3 transition hover:border-[#2f73b7] hover:bg-[#eaf3ff] ${
+                              step.path === recommendedStep.path
+                                ? "border-[#2f73b7] bg-[#eaf3ff]"
+                                : "border-slate-200 bg-[#f8fbff]"
+                            }`}
+                          >
+                            <span className="block text-sm font-black text-[#092046]">{step.label}</span>
+                            <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">
+                              {step.detail}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <ProjectArchiveButton projectId={project.id} projectTitle={project.title} />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </>
