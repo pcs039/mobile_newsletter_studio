@@ -23,6 +23,25 @@ const operationNavigation: Array<{ key: ProjectSection; label: string; path: str
   { key: "survey", label: "설문·이벤트", path: "survey", guide: "참여·응답" },
 ];
 
+const guidedFlowSteps: Array<{
+  label: string;
+  detail: string;
+  path: ProjectSection;
+  sections: ProjectSection[];
+}> = [
+  { label: "기본 정보", detail: "프로젝트 기준 확인", path: "settings", sections: ["settings"] },
+  { label: "자료 등록", detail: "원본·이미지·링크 준비", path: "pages", sections: ["pages", "assets"] },
+  { label: "콘텐츠 입력", detail: "본문·음성 대본 작성", path: "reading", sections: ["reading", "audio"] },
+  { label: "미리보기", detail: "모바일 화면 확인", path: "reading", sections: [] },
+  { label: "검수·발행", detail: "공개 URL·QR 생성", path: "publish", sections: ["publish", "distribution", "survey"] },
+];
+
+function getGuidedFlowState(active: ProjectSection) {
+  const activeIndex = guidedFlowSteps.findIndex((step) => step.sections.includes(active));
+
+  return activeIndex >= 0 ? activeIndex : 3;
+}
+
 export async function ProjectAdminShell({
   active,
   actions,
@@ -81,6 +100,7 @@ export async function ProjectAdminShell({
   const projectMeta = project
     ? `담당: ${project.assigneeName} · ${project.status} · ${project.pageCount}쪽`
     : workspace.message;
+  const guidedFlowActiveIndex = getGuidedFlowState(active);
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
@@ -131,6 +151,70 @@ export async function ProjectAdminShell({
               {actions}
             </div>
           </header>
+
+          <section className="mb-7 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제작 진행 안내</p>
+                <h3 className="mt-1 text-lg font-black text-[#092046]">
+                  기본 흐름대로 입력하고, 모바일 미리보기에서 바로 확인합니다.
+                </h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={`/newsletters/${projectId}?preview=admin`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border border-[#2f73b7] bg-white px-4 py-2.5 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                >
+                  모바일 미리보기
+                </Link>
+                <Link
+                  href={`/projects/${projectId}/publish`}
+                  className="rounded-lg bg-[#092046] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:bg-[#123a78]"
+                >
+                  발행 준비
+                </Link>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-5">
+              {guidedFlowSteps.map((step, index) => {
+                const isActive = index === guidedFlowActiveIndex;
+                const isDone = index < guidedFlowActiveIndex;
+
+                return (
+                  <Link
+                    key={step.label}
+                    href={`/projects/${projectId}/${step.path}`}
+                    className={`rounded-lg border px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-sm ${
+                      isActive
+                        ? "border-[#092046] bg-[#092046] text-white shadow-sm shadow-blue-950/20"
+                        : isDone
+                          ? "border-[#b8d7ff] bg-white text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                          : "border-slate-200 bg-white text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ${
+                        isActive
+                          ? "bg-white text-[#092046]"
+                          : isDone
+                            ? "bg-[#184a88] text-white"
+                            : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
+                    <span className="mt-2 block text-sm font-black">{step.label}</span>
+                    <span className={`mt-1 block text-xs font-semibold ${isActive ? "text-sky-100" : "text-slate-500"}`}>
+                      {step.detail}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
 
           <nav className="mb-7 rounded-lg border border-slate-200 bg-white p-3 shadow-sm" aria-label="프로젝트 작성 수정 구성">
             <div className="mb-3 flex flex-col gap-1 px-2 sm:flex-row sm:items-end sm:justify-between">

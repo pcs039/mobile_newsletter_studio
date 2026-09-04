@@ -16,6 +16,14 @@ const editSteps = [
 
 const statusFilters = ["전체", "제작 중", "검수 중", "비공개"];
 
+const beginnerFlowSteps = [
+  { label: "기본 정보", detail: "기관, 발행일, 작업자 확인" },
+  { label: "자료 등록", detail: "PDF, 이미지, 링크 소재 업로드" },
+  { label: "콘텐츠 입력", detail: "본문, 이미지, 버튼을 블록으로 작성" },
+  { label: "미리보기", detail: "모바일 화면에서 즉시 확인" },
+  { label: "검수·발행", detail: "부족 항목 확인 후 공개 처리" },
+];
+
 type ProjectEditWorkQueueProps = {
   isAdmin: boolean;
   message: string;
@@ -166,6 +174,29 @@ export function ProjectEditWorkQueue({ isAdmin, message, projects }: ProjectEdit
                   초기화
                 </button>
               </div>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">처음 작업 흐름</p>
+                <h4 className="mt-1 text-base font-black text-[#092046]">입력하고, 바로 보고, 고쳐서 발행합니다.</h4>
+              </div>
+              <p className="text-xs font-semibold leading-5 text-slate-600">
+                고급 기능은 나중에 열고, 우선 이 5단계만 따라가면 됩니다.
+              </p>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-5">
+              {beginnerFlowSteps.map((step, index) => (
+                <div key={step.label} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#092046] text-xs font-black text-white">
+                    {index + 1}
+                  </span>
+                  <p className="mt-2 text-sm font-black text-[#092046]">{step.label}</p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{step.detail}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
