@@ -23,23 +23,26 @@ const operationNavigation: Array<{ key: ProjectSection; label: string; path: str
   { key: "survey", label: "설문·이벤트", path: "survey", guide: "참여·응답" },
 ];
 
-const guidedFlowSteps: Array<{
+const processStages: Array<{
   label: string;
   detail: string;
   path: ProjectSection;
   sections: ProjectSection[];
 }> = [
-  { label: "기본 정보", detail: "프로젝트 기준 확인", path: "settings", sections: ["settings"] },
-  { label: "자료 등록", detail: "원본·이미지·링크 준비", path: "pages", sections: ["pages", "assets"] },
-  { label: "콘텐츠 입력", detail: "본문·음성 대본 작성", path: "reading", sections: ["reading", "audio"] },
-  { label: "미리보기", detail: "모바일 화면 확인", path: "reading", sections: [] },
-  { label: "검수·발행", detail: "공개 URL·QR 생성", path: "publish", sections: ["publish", "distribution", "survey"] },
+  {
+    label: "작성",
+    detail: "자료 등록과 콘텐츠 입력",
+    path: "reading",
+    sections: ["settings", "pages", "reading", "assets", "audio"],
+  },
+  { label: "검수", detail: "모바일 미리보기와 수정", path: "publish", sections: ["publish"] },
+  { label: "발행", detail: "공개 URL, QR, 배포 운영", path: "distribution", sections: ["distribution", "survey"] },
 ];
 
-function getGuidedFlowState(active: ProjectSection) {
-  const activeIndex = guidedFlowSteps.findIndex((step) => step.sections.includes(active));
+function getProcessStageIndex(active: ProjectSection) {
+  const activeIndex = processStages.findIndex((stage) => stage.sections.includes(active));
 
-  return activeIndex >= 0 ? activeIndex : 3;
+  return activeIndex >= 0 ? activeIndex : 0;
 }
 
 export async function ProjectAdminShell({
@@ -100,7 +103,7 @@ export async function ProjectAdminShell({
   const projectMeta = project
     ? `담당: ${project.assigneeName} · ${project.status} · ${project.pageCount}쪽`
     : workspace.message;
-  const guidedFlowActiveIndex = getGuidedFlowState(active);
+  const processStageActiveIndex = getProcessStageIndex(active);
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
@@ -155,10 +158,11 @@ export async function ProjectAdminShell({
           <section className="mb-7 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제작 진행 안내</p>
-                <h3 className="mt-1 text-lg font-black text-[#092046]">
-                  기본 흐름대로 입력하고, 모바일 미리보기에서 바로 확인합니다.
-                </h3>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제작 흐름</p>
+                <h3 className="mt-1 text-lg font-black text-[#092046]">작성하고, 검수한 뒤, 발행합니다.</h3>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                  세부 작업은 아래 하위 메뉴에서 고르고, 확인은 모바일 미리보기에서 바로 합니다.
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Link
@@ -178,15 +182,15 @@ export async function ProjectAdminShell({
               </div>
             </div>
 
-            <div className="mt-4 grid gap-2 md:grid-cols-5">
-              {guidedFlowSteps.map((step, index) => {
-                const isActive = index === guidedFlowActiveIndex;
-                const isDone = index < guidedFlowActiveIndex;
+            <div className="mt-4 grid gap-2 md:grid-cols-3">
+              {processStages.map((stage, index) => {
+                const isActive = index === processStageActiveIndex;
+                const isDone = index < processStageActiveIndex;
 
                 return (
                   <Link
-                    key={step.label}
-                    href={`/projects/${projectId}/${step.path}`}
+                    key={stage.label}
+                    href={`/projects/${projectId}/${stage.path}`}
                     className={`rounded-lg border px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-sm ${
                       isActive
                         ? "border-[#092046] bg-[#092046] text-white shadow-sm shadow-blue-950/20"
@@ -206,75 +210,68 @@ export async function ProjectAdminShell({
                     >
                       {index + 1}
                     </span>
-                    <span className="mt-2 block text-sm font-black">{step.label}</span>
+                    <span className="mt-2 block text-sm font-black">{stage.label}</span>
                     <span className={`mt-1 block text-xs font-semibold ${isActive ? "text-sky-100" : "text-slate-500"}`}>
-                      {step.detail}
+                      {stage.detail}
                     </span>
                   </Link>
                 );
               })}
             </div>
-          </section>
 
-          <nav className="mb-7 rounded-lg border border-slate-200 bg-white p-3 shadow-sm" aria-label="프로젝트 작성 수정 구성">
-            <div className="mb-3 flex flex-col gap-1 px-2 sm:flex-row sm:items-end sm:justify-between">
+            <nav
+              className="mt-4 grid gap-3 border-t border-[#d8e8ff] pt-4 xl:grid-cols-[minmax(0,1fr)_auto]"
+              aria-label="프로젝트 하위 작업"
+            >
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">작성/수정</p>
-                <h3 className="text-base font-bold text-[#092046]">현재 프로젝트 제작 구성</h3>
-              </div>
-              <p className="text-xs font-semibold text-slate-500">
-                상품 등급과 별개로 실제 제작 방식에 맞춰 콘텐츠 블록, 이미지 페이지, URL 태깅을 관리합니다.
-              </p>
-            </div>
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-              {authoringNavigation.map((item, index) => {
-                const isActive = active === item.key;
-                const href = `/projects/${projectId}/${item.path}`;
-                const className = `rounded-lg border px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-                  isActive
-                    ? "border-[#092046] bg-[#092046] text-white shadow-sm shadow-blue-950/20"
-                    : "border-slate-200 bg-[#f8fbff] text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
-                }`;
+                <p className="mb-2 text-xs font-black text-slate-500">작성 하위 작업</p>
+                <div className="flex flex-wrap gap-2">
+                  {authoringNavigation.map((item) => {
+                    const isActive = active === item.key;
 
-                return (
-                  <Link key={item.key} href={href} className={className}>
-                    <span
-                      className={`mb-2 flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ${
-                        isActive ? "bg-white text-[#092046]" : "bg-[#dfeaff] text-[#184a88]"
-                      }`}
-                    >
-                      {index + 1}
-                    </span>
-                    <span className="block text-sm font-black">{item.label}</span>
-                    <span className={`mt-1 block text-xs font-semibold ${isActive ? "text-sky-100" : "text-slate-500"}`}>
-                      {item.guide}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-            <div className="mt-3 flex flex-col gap-2 border-t border-slate-200 px-2 pt-3 lg:flex-row lg:items-center lg:justify-between">
-              <p className="text-xs font-black text-slate-500">검수 이후 운영 화면</p>
-              <div className="flex flex-wrap gap-2">
-                {operationNavigation.map((item) => {
-                  const isActive = active === item.key;
-                  return (
-                    <Link
-                      key={item.key}
-                      href={`/projects/${projectId}/${item.path}`}
-                      className={`rounded-full border px-3 py-2 text-xs font-black transition ${
-                        isActive
-                          ? "border-[#092046] bg-[#092046] text-white"
-                          : "border-slate-200 bg-white text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
+                    return (
+                      <Link
+                        key={item.key}
+                        href={`/projects/${projectId}/${item.path}`}
+                        className={`rounded-full border px-3 py-2 text-xs font-black transition ${
+                          isActive
+                            ? "border-[#092046] bg-[#092046] text-white"
+                            : "border-[#d8e8ff] bg-white text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                        }`}
+                      >
+                        {item.label}
+                        <span className={`ml-1 font-semibold ${isActive ? "text-sky-100" : "text-slate-400"}`}>
+                          {item.guide}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          </nav>
+              <div>
+                <p className="mb-2 text-xs font-black text-slate-500">운영 하위 작업</p>
+                <div className="flex flex-wrap gap-2">
+                  {operationNavigation.map((item) => {
+                    const isActive = active === item.key;
+
+                    return (
+                      <Link
+                        key={item.key}
+                        href={`/projects/${projectId}/${item.path}`}
+                        className={`rounded-full border px-3 py-2 text-xs font-black transition ${
+                          isActive
+                            ? "border-[#092046] bg-[#092046] text-white"
+                            : "border-[#d8e8ff] bg-white text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </nav>
+          </section>
 
           {children}
         </section>
