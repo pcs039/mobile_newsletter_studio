@@ -77,9 +77,10 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
 
   const pages = pageImageData.pages;
   const mobileHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : project?.publicUrl ?? `/newsletters/${slug}`;
+  const mobileEbookHref = isAdminPreview ? `/newsletters/${slug}/ebook/mobile?preview=admin` : `/newsletters/${slug}/ebook/mobile`;
 
   return (
-    <main className="public-newsletter-screen min-h-screen bg-[#eef4fb] text-slate-950">
+    <main className="public-newsletter-screen min-h-screen bg-[#e8f0f8] text-slate-950">
       <NewsletterViewTracker slug={slug} viewMode="ebook" disabled={isAdminPreview || !isPublished} />
       {isAdminPreview && (
         <div className="border-b border-slate-300 bg-white px-6 py-3 shadow-sm">
@@ -113,24 +114,32 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
               <h1 className="mt-1 text-2xl font-black text-[#092046]">
                 {project ? `${project.title} ${project.issue}` : slug}
               </h1>
-              <p className="mt-1 text-sm text-slate-600">PC 화면에서 등록된 원본 지면 이미지를 확인합니다.</p>
+              <p className="mt-1 text-sm text-slate-600">PC 화면에 맞춘 원본 지면 뷰어입니다.</p>
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <PublicTextSizeToggle />
             {!isEmbeddedAdminPreview ? (
-              <Link
-                href={mobileHref}
-                className="public-control rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
-              >
-                모바일 읽기 보기
-              </Link>
+              <>
+                <Link
+                  href={mobileEbookHref}
+                  className="public-control rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-bold text-[#092046] shadow-sm transition hover:bg-[#eaf3ff]"
+                >
+                  모바일 e-book 보기
+                </Link>
+                <Link
+                  href={mobileHref}
+                  className="public-control rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+                >
+                  모바일 읽기 보기
+                </Link>
+              </>
             ) : null}
           </div>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-7xl gap-5 px-6 py-6 xl:grid-cols-[260px_1fr_300px]">
+      <section className="mx-auto grid max-w-7xl gap-6 px-6 py-6 xl:grid-cols-[260px_minmax(0,1fr)_300px]">
         <aside className="public-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:self-start xl:overflow-y-auto">
           <h2 className="text-lg font-bold text-[#092046]">목차</h2>
           {pages.length > 0 ? (
@@ -159,10 +168,11 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
           )}
         </aside>
 
-        <section className="public-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="public-card rounded-xl border border-slate-200 bg-white p-5 shadow-lg shadow-blue-950/10">
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-[#092046]">원본 지면 보기</h2>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">Desktop e-book</p>
+              <h2 className="mt-1 text-xl font-black text-[#092046]">원본 지면 보기</h2>
               <p className="mt-1 text-sm text-slate-500">{pageImageData.message}</p>
             </div>
             {isAdminPreview ? (
@@ -176,21 +186,25 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
           </div>
 
           {pages.length > 0 ? (
-            <div className="space-y-5 rounded-lg bg-[#dfeaf5] p-5">
+            <div className="space-y-8 rounded-2xl bg-[#dfeaf5] p-4 sm:p-6">
               {pages.map((page) => {
                 const pageLabel = formatEbookPageLabel(page.pageNumber, page.title);
 
                 return (
-                  <article key={page.id} id={`page-${page.pageNumber}`} className="public-card public-image-page-frame rounded-lg bg-white p-4 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between gap-3">
+                  <article
+                    key={page.id}
+                    id={`page-${page.pageNumber}`}
+                    className="public-card public-ebook-page-frame public-image-page-frame scroll-mt-6 rounded-2xl border border-white/80 bg-white/90 p-4 shadow-2xl shadow-blue-950/15"
+                  >
+                    <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
                       <h3 className="text-sm font-black text-[#092046]">{pageLabel}</h3>
-                      <span className="text-xs font-bold text-slate-500">{page.status}</span>
+                      <span className="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-bold text-[#184a88]">{page.status}</span>
                     </div>
                     {page.previewHref ? (
                       <img
                         src={page.previewHref}
                         alt={pageLabel}
-                        className="mx-auto max-h-[900px] w-auto max-w-full rounded border border-slate-200 bg-white"
+                        className="mx-auto max-h-[980px] w-auto max-w-full rounded-xl border border-slate-200 bg-white shadow-lg shadow-slate-950/10"
                       />
                     ) : (
                       <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-16 text-center">

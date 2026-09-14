@@ -371,6 +371,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const hotspotLinks = hotspotData.links;
   const isImagePageMode = project?.productionMode === "이미지 페이지형";
   const ebookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
+  const mobileEbookHref = isAdminPreview ? `/newsletters/${slug}/ebook/mobile?preview=admin` : `/newsletters/${slug}/ebook/mobile`;
   const headerColor = project?.primaryColor ?? "#071f46";
 
   return (
@@ -408,9 +409,14 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           <p className="mt-4 text-sm leading-6 text-slate-200">{project?.description ?? workspace.message}</p>
           <div className="mt-5 flex gap-2">
             {!isEmbeddedAdminPreview ? (
-              <Link href={ebookHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046]">
-                PC e-book 보기
-              </Link>
+              <>
+                <Link href={ebookHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046]">
+                  PC e-book 보기
+                </Link>
+                <Link href={mobileEbookHref} className="rounded-full border border-white/40 px-4 py-2 text-xs font-black text-white">
+                  모바일 e-book 보기
+                </Link>
+              </>
             ) : null}
             <span className="rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-slate-200">
               {isImagePageMode ? "이미지형 모바일 보기" : "모바일 읽기 보기"}
