@@ -41,9 +41,10 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-[#092046]">소재 이미지 업로드</h3>
+                    <span className="rounded-full bg-[#092046] px-3 py-1 text-xs font-black text-white">기본 입력</span>
+                    <h3 className="mt-2 text-lg font-bold text-[#092046]">자주 쓰는 이미지 등록</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      기관 제공 원본 사진, 디자이너 제작 배너, AI 생성 이미지, PDF 발췌 이미지를 자산으로 등록합니다.
+                      소재 이름은 파일명으로 먼저 저장됩니다. 파일을 올린 뒤 용도와 권리 상태를 목록에서 확인하세요.
                       URL과 유튜브 주소는 기사 작성/편집 또는 이미지 페이지 클릭 영역에서 연결합니다.
                     </p>
                   </div>
@@ -61,15 +62,21 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                     projectSlug={projectId}
                     title="이미지 파일을 선택하거나 이 영역에 끌어다 놓기"
                   />
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm font-bold text-[#092046]">등록 시 필수 정보</p>
+                  <details className="rounded-lg border border-slate-200 bg-white p-4">
+                    <summary className="cursor-pointer text-sm font-bold text-[#092046]">
+                      <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">선택</span>
+                      <span className="ml-2">선택 정보 확인</span>
+                    </summary>
+                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
+                      설명, 연결 원본 페이지, 보조 메모는 필요한 경우 목록에서 보완합니다.
+                    </p>
                     <div className="mt-3 grid gap-2 text-sm text-slate-600">
                       <span className="rounded-md bg-slate-50 px-3 py-2">출처</span>
                       <span className="rounded-md bg-slate-50 px-3 py-2">권리 확인 상태</span>
                       <span className="rounded-md bg-slate-50 px-3 py-2">품질 상태</span>
                       <span className="rounded-md bg-slate-50 px-3 py-2">대체텍스트</span>
                     </div>
-                  </div>
+                  </details>
                 </div>
               </article>
 
