@@ -131,7 +131,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
       </header>
 
       <section className="mx-auto grid max-w-7xl gap-5 px-6 py-6 xl:grid-cols-[260px_1fr_300px]">
-        <aside className="public-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <aside className="public-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:self-start xl:overflow-y-auto">
           <h2 className="text-lg font-bold text-[#092046]">목차</h2>
           {pages.length > 0 ? (
             <div className="mt-4 space-y-2">
