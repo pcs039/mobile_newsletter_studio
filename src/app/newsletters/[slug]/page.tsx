@@ -14,8 +14,12 @@ import {
 
 type PublicNewsletterPageProps = {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ articleId?: string | string[]; preview?: string | string[] }>;
+  searchParams?: Promise<{ articleId?: string | string[]; embedded?: string | string[]; preview?: string | string[] }>;
 };
+
+function hasSearchParamValue(value: string | string[] | undefined, expectedValue: string) {
+  return Array.isArray(value) ? value.includes(expectedValue) : value === expectedValue;
+}
 
 function getPreviewBody(article: ProjectContentArticle) {
   const body = article.body.trim();
@@ -323,9 +327,11 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
   const previewMode = resolvedSearchParams?.preview;
+  const embeddedMode = resolvedSearchParams?.embedded;
   const previewArticleParam = resolvedSearchParams?.articleId;
   const previewArticleId = Array.isArray(previewArticleParam) ? previewArticleParam[0] : previewArticleParam;
-  const isAdminPreview = Array.isArray(previewMode) ? previewMode.includes("admin") : previewMode === "admin";
+  const isAdminPreview = hasSearchParamValue(previewMode, "admin");
+  const isEmbeddedAdminPreview = hasSearchParamValue(embeddedMode, "adminPreview");
   const backToEditorHref = previewArticleId
     ? `/projects/${slug}/reading?articleId=${previewArticleId}`
     : `/projects/${slug}/reading`;
@@ -401,9 +407,11 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
           <p className="mt-4 text-sm leading-6 text-slate-200">{project?.description ?? workspace.message}</p>
           <div className="mt-5 flex gap-2">
-            <Link href={ebookHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046]">
-              PC e-book 보기
-            </Link>
+            {!isEmbeddedAdminPreview ? (
+              <Link href={ebookHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046]">
+                PC e-book 보기
+              </Link>
+            ) : null}
             <span className="rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-slate-200">
               {isImagePageMode ? "이미지형 모바일 보기" : "모바일 읽기 보기"}
             </span>

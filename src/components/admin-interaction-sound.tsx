@@ -5,6 +5,25 @@ import { useEffect } from "react";
 let sharedAudioContext: AudioContext | null = null;
 let lastPlayedAt = 0;
 
+const soundTargetSelector = [
+  "button",
+  "[role='button']",
+  "input[type='button']",
+  "input[type='submit']",
+  "input[type='reset']",
+  "a[href]",
+].join(", ");
+
+const editingControlSelector = [
+  "input[type='text']",
+  "input[type='search']",
+  "input[type='email']",
+  "input[type='password']",
+  "textarea",
+  "select",
+  "[contenteditable='true']",
+].join(", ");
+
 function getAudioContext() {
   const audioWindow = window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
   const AudioContextConstructor = window.AudioContext ?? audioWindow.webkitAudioContext;
@@ -18,7 +37,7 @@ function getAudioContext() {
   return sharedAudioContext;
 }
 
-function playClickTick() {
+async function playClickTick() {
   try {
     const now = Date.now();
 
@@ -35,7 +54,7 @@ function playClickTick() {
     }
 
     if (audioContext.state === "suspended") {
-      void audioContext.resume();
+      await audioContext.resume();
     }
 
     const startTime = audioContext.currentTime;
@@ -46,7 +65,7 @@ function playClickTick() {
     oscillator.frequency.setValueAtTime(740, startTime);
     oscillator.frequency.exponentialRampToValueAtTime(420, startTime + 0.045);
     gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.025, startTime + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.04, startTime + 0.006);
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.05);
 
     oscillator.connect(gain);
@@ -58,32 +77,52 @@ function playClickTick() {
   }
 }
 
+function isButtonLikeLink(element: Element) {
+  if (!(element instanceof HTMLAnchorElement)) {
+    return true;
+  }
+
+  return Boolean(
+    element.closest("[role='button']") ||
+      element.className.includes("rounded") ||
+      element.className.includes("bg-") ||
+      element.className.includes("border") ||
+      element.className.includes("shadow") ||
+      element.className.includes("px-") ||
+      element.className.includes("py-"),
+  );
+}
+
 function isSoundTarget(target: EventTarget | null) {
   if (!(target instanceof Element)) {
     return false;
   }
 
-  const interactiveElement = target.closest("button, [role='button'], input[type='button'], input[type='submit'], input[type='reset']");
+  if (target.closest(editingControlSelector)) {
+    return false;
+  }
+
+  const interactiveElement = target.closest(soundTargetSelector);
 
   if (!interactiveElement) {
     return false;
   }
 
-  return !interactiveElement.closest(".public-newsletter-screen");
+  return !interactiveElement.closest(".public-newsletter-screen") && isButtonLikeLink(interactiveElement);
 }
 
 export function AdminInteractionSound() {
   useEffect(() => {
-    function handlePointerUp(event: PointerEvent) {
+    function handlePointerDown(event: PointerEvent) {
       if (isSoundTarget(event.target)) {
-        playClickTick();
+        void playClickTick();
       }
     }
 
-    document.addEventListener("pointerup", handlePointerUp, true);
+    document.addEventListener("pointerdown", handlePointerDown, true);
 
     return () => {
-      document.removeEventListener("pointerup", handlePointerUp, true);
+      document.removeEventListener("pointerdown", handlePointerDown, true);
     };
   }, []);
 
