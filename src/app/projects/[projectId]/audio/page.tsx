@@ -58,9 +58,10 @@ export default async function AudioManagementPage({ params }: { params: Promise<
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-[#092046]">MP3 파일 업로드</h3>
+                    <span className="rounded-full bg-[#092046] px-3 py-1 text-xs font-black text-white">필수</span>
+                    <h3 className="mt-2 text-lg font-bold text-[#092046]">MP3 파일 업로드와 재생 확인</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      기사 또는 페이지별로 외부 TTS에서 제작한 MP3 파일을 업로드하고, 브라우저 재생기로 바로 검수합니다.
+                      MP3를 올린 뒤 재생해 보고, 대본이 본문 내용과 맞는지 확인합니다.
                     </p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
@@ -77,15 +78,18 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                     projectSlug={projectId}
                     title="MP3 파일을 선택하거나 이 영역에 끌어다 놓기"
                   />
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
-                    <p className="text-sm font-bold text-[#092046]">업로드 전 확인</p>
+                  <details className="rounded-lg border border-slate-200 bg-white p-4">
+                    <summary className="cursor-pointer text-sm font-bold text-[#092046]">
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">보조</span>
+                      <span className="ml-2">대본·기사 연결 확인</span>
+                    </summary>
                     <div className="mt-3 grid gap-2 text-sm text-slate-600">
                       <span className="rounded-md bg-slate-50 px-3 py-2">대본 최종본 확인</span>
                       <span className="rounded-md bg-slate-50 px-3 py-2">발음·속도 검수</span>
                       <span className="rounded-md bg-slate-50 px-3 py-2">기사 연결 위치 선택</span>
                       <span className="rounded-md bg-slate-50 px-3 py-2">브라우저 플레이어 재생 확인</span>
                     </div>
-                  </div>
+                  </details>
                 </div>
               </article>
 
@@ -177,8 +181,11 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                 </div>
               </article>
 
-              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-[#092046]">선택 기사 대본</h3>
+              <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <summary className="cursor-pointer text-sm font-black text-[#092046]">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">보조</span>
+                  <span className="ml-2">선택 기사 대본 확인</span>
+                </summary>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   외부 TTS에 넣기 전 최종 대본을 확인합니다. 본문과 다른 표현을 쓰는 경우 검수 상태를 남깁니다.
                 </p>
@@ -186,7 +193,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                   defaultValue={`무안군의 주요 정책과 생활 정보를 안내드립니다. 이번 소식에서는 군정 주요 사업, 생활 지원 정보, 문화 행사 일정을 확인할 수 있습니다.\n\n자세한 내용은 화면의 본문과 연결 버튼을 함께 확인해 주세요.`}
                   className="mt-4 min-h-36 w-full resize-y rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
                 />
-              </article>
+              </details>
             </section>
 
             <aside className="space-y-5">

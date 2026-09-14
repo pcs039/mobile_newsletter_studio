@@ -160,6 +160,17 @@ function FieldLabel({ children, required = false }: { children: string; required
   );
 }
 
+function SectionBadge({ tone, children }: { tone: "required" | "optional" | "advanced"; children: string }) {
+  const className =
+    tone === "required"
+      ? "bg-[#092046] text-white"
+      : tone === "optional"
+        ? "bg-[#eaf2ff] text-[#184a88]"
+        : "bg-slate-100 text-slate-600";
+
+  return <span className={`rounded-full px-3 py-1 text-xs font-black ${className}`}>{children}</span>;
+}
+
 function getValue(formData: FormData, name: string) {
   const value = formData.get(name);
 
@@ -725,90 +736,21 @@ export function ProjectArticleEditorForm({
       <div className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">작업 입력 영역</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">필수 입력</p>
             <h3 className="mt-1 text-lg font-black text-[#092046]">
               {article ? "선택 기사 수정" : "새 기사 작성"}
             </h3>
-          </div>
-          <StatusPill value={article ? "DB 저장됨" : "신규 작성"} />
-        </div>
-
-        <div className="mt-5 rounded-lg border border-[#b8d7ff] bg-white p-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">Word 원고 가져오기</p>
-              <h4 className="mt-1 text-base font-black text-[#092046]">.docx 원고를 모바일 기사 블록으로 변환</h4>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Word의 글꼴·크기·줄간격은 가져오지 않고, 제목과 문단 구조만 가져와 모바일 스타일로 정리합니다.
-              </p>
-            </div>
-            <label className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]">
-              {isImportingWord ? "가져오는 중..." : "Word 원고 선택"}
-              <input
-                type="file"
-                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                className="sr-only"
-                disabled={isImportingWord}
-                onChange={(event) => {
-                  void handleWordImport(event.target.files?.[0]);
-                  event.currentTarget.value = "";
-                }}
-              />
-            </label>
-          </div>
-          {wordImportMessage ? (
-            <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-bold leading-6 text-emerald-700">
-              {wordImportMessage}
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              먼저 필수 정보를 입력한 뒤 저장하세요. 저장 후 오른쪽 미리보기에서 모바일 화면을 확인합니다.
             </p>
-          ) : null}
-        </div>
-
-        <div className="mt-5 grid gap-5 lg:grid-cols-[140px_minmax(0,1fr)_180px]">
-          <div>
-            <FieldLabel>순서</FieldLabel>
-            <input
-              name="sortOrder"
-              type="number"
-              min="0"
-              defaultValue={article?.sortOrder ?? 0}
-              className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            />
           </div>
-          <div>
-            <FieldLabel>연결 원본 페이지</FieldLabel>
-            <select
-              name="pageId"
-              defaultValue={article?.pageId ?? ""}
-              className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            >
-              <option value="">페이지 미지정</option>
-              {pages.map((page) => (
-                <option key={page.id} value={page.id}>
-                  {page.pageNumber}쪽 · {page.title}
-                </option>
-              ))}
-            </select>
-            {pages.length === 0 ? (
-              <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                등록된 페이지 이미지가 없으면 오른쪽에 원본 PDF 쪽수를 직접 입력하세요.
-              </p>
-            ) : null}
-          </div>
-          <div>
-            <FieldLabel>원본 PDF 쪽수 직접 입력</FieldLabel>
-            <input
-              name="sourcePageNumber"
-              type="number"
-              min="1"
-              max={projectPageCount > 0 ? projectPageCount : undefined}
-              defaultValue={article?.pageNumber ?? ""}
-              placeholder={projectPageCount > 0 ? `1~${projectPageCount}` : "예: 3"}
-              className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            />
+          <div className="flex flex-wrap gap-2">
+            <SectionBadge tone="required">필수</SectionBadge>
+            <StatusPill value={article ? "DB 저장됨" : "신규 작성"} />
           </div>
         </div>
 
-        <div className="mt-5 grid gap-5 md:grid-cols-[minmax(0,1fr)_180px]">
+        <div className="mt-5">
           <div>
             <FieldLabel required>기사 제목</FieldLabel>
             <input
@@ -817,20 +759,6 @@ export function ProjectArticleEditorForm({
               placeholder="예: 군정 주요 소식"
               className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
             />
-          </div>
-          <div>
-            <FieldLabel>상태</FieldLabel>
-            <select
-              name="status"
-              defaultValue={article?.status ?? "draft"}
-              className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            >
-              {articleStatuses.map((status) => (
-                <option key={status.value} value={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 
@@ -843,15 +771,66 @@ export function ProjectArticleEditorForm({
             className="min-h-24 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
           />
         </div>
+
+        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <SectionBadge tone="required">필수</SectionBadge>
+            <p className="text-sm font-black text-[#092046]">연결 기준과 노출 순서</p>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-[140px_minmax(0,1fr)_180px]">
+            <div>
+              <FieldLabel>순서</FieldLabel>
+              <input
+                name="sortOrder"
+                type="number"
+                min="0"
+                defaultValue={article?.sortOrder ?? 0}
+                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              />
+            </div>
+            <div>
+              <FieldLabel>연결 원본 페이지</FieldLabel>
+              <select
+                name="pageId"
+                defaultValue={article?.pageId ?? ""}
+                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              >
+                <option value="">페이지 미지정</option>
+                {pages.map((page) => (
+                  <option key={page.id} value={page.id}>
+                    {page.pageNumber}쪽 · {page.title}
+                  </option>
+                ))}
+              </select>
+              {pages.length === 0 ? (
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                  등록된 페이지 이미지가 없으면 오른쪽에 원본 PDF 쪽수를 직접 입력하세요.
+                </p>
+              ) : null}
+            </div>
+            <div>
+              <FieldLabel>원본 PDF 쪽수 직접 입력</FieldLabel>
+              <input
+                name="sourcePageNumber"
+                type="number"
+                min="1"
+                max={projectPageCount > 0 ? projectPageCount : undefined}
+                defaultValue={article?.pageNumber ?? ""}
+                placeholder={projectPageCount > 0 ? `1~${projectPageCount}` : "예: 3"}
+                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">콘텐츠 블록</p>
-            <h3 className="mt-1 text-lg font-black text-[#092046]">모바일 기사 블록 편집</h3>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">본문과 선택 콘텐츠</p>
+            <h3 className="mt-1 text-lg font-black text-[#092046]">첫 문단을 먼저 작성하고 필요한 콘텐츠를 추가합니다.</h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              블록 순서가 모바일 공개 화면의 표시 순서입니다. 텍스트 사이에 이미지, URL 버튼, 유튜브 영상을 필요한 위치에 끼워 넣습니다.
+              1번 블록은 모바일 본문의 시작점입니다. 이미지, URL, 유튜브, 지도는 필요한 경우에만 추가합니다.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -866,34 +845,43 @@ export function ProjectArticleEditorForm({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-3">
-          {blockUseCases.map((item) => (
-            <div key={item.title} className="rounded-lg border border-[#d8e8ff] bg-[#f7fbff] px-4 py-3">
-              <p className="text-sm font-black text-[#092046]">{item.title}</p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">{item.description}</p>
-            </div>
-          ))}
-        </div>
+        <details className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
+          <summary className="cursor-pointer text-sm font-black text-[#092046]">
+            <SectionBadge tone="optional">선택</SectionBadge>
+            <span className="ml-2">선택 콘텐츠 추가</span>
+          </summary>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            필요할 때만 이미지, 버튼, 영상, 지도, 추가 문단, 음성 대본을 추가합니다.
+          </p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {blockUseCases.map((item) => (
+              <div key={item.title} className="rounded-lg border border-[#d8e8ff] bg-white px-4 py-3">
+                <p className="text-sm font-black text-[#092046]">{item.title}</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">{item.description}</p>
+              </div>
+            ))}
+          </div>
 
-        <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
-          {editableBlockTypes.map((item) => {
-            const theme = blockTypeThemes[item.type];
+          <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+            {editableBlockTypes.map((item) => {
+              const theme = blockTypeThemes[item.type];
 
-            return (
-              <button
-                key={item.type}
-                type="button"
-                onClick={() => addBlock(item.type)}
-                className={`group rounded-xl border px-3 py-3 text-left shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-md ${theme.button}`}
-              >
-                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${theme.marker}`}>
-                  + {item.label}
-                </span>
-                <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600">{item.help}</span>
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={item.type}
+                  type="button"
+                  onClick={() => addBlock(item.type)}
+                  className={`group rounded-xl border px-3 py-3 text-left shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-md ${theme.button}`}
+                >
+                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${theme.marker}`}>
+                    + {item.label}
+                  </span>
+                  <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600">{item.help}</span>
+                </button>
+              );
+            })}
+          </div>
+        </details>
 
         <div className="mt-5 space-y-4">
           {blocks.map((block, index) => (
@@ -903,6 +891,11 @@ export function ProjectArticleEditorForm({
                   <p className="text-xs font-black text-[#184a88]">
                     {index + 1}번 블록 · {blockTypeLabels[block.type]}
                   </p>
+                  {index === 0 ? (
+                    <div className="mt-2">
+                      <SectionBadge tone="required">첫 본문</SectionBadge>
+                    </div>
+                  ) : null}
                   <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{getBlockGuide(block.type)}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1089,30 +1082,86 @@ export function ProjectArticleEditorForm({
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">문의 정보</p>
-        <h3 className="mt-1 text-lg font-black text-[#092046]">기사 공통 연락처</h3>
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+      <details className="rounded-lg border border-slate-200 bg-white p-5">
+        <summary className="cursor-pointer text-sm font-black text-[#092046]">
+          <SectionBadge tone="advanced">고급 설정</SectionBadge>
+          <span className="ml-2">상태, Word 원고, 문의 정보</span>
+        </summary>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          고급 설정은 기본 제작에는 자주 사용하지 않습니다. 검수 상태나 Word 원고 가져오기, 문의처가 필요할 때만 확인하세요.
+        </p>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <div>
-            <FieldLabel>담당 부서 또는 담당자</FieldLabel>
-            <input
-              name="contactName"
-              defaultValue={article?.contactName ?? ""}
-              placeholder="예: 기획실 홍보팀"
-              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            />
+            <FieldLabel>상태</FieldLabel>
+            <select
+              name="status"
+              defaultValue={article?.status ?? "draft"}
+              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+            >
+              {articleStatuses.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
           </div>
-          <div>
-            <FieldLabel>전화번호</FieldLabel>
-            <input
-              name="contactPhone"
-              defaultValue={article?.contactPhone ?? ""}
-              placeholder="예: 061-000-0000"
-              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            />
+          <div className="rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">Word 원고 가져오기</p>
+                <h4 className="mt-1 text-base font-black text-[#092046]">.docx 원고를 모바일 기사 블록으로 변환</h4>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Word의 글꼴·크기·줄간격은 가져오지 않고, 제목과 문단 구조만 가져와 모바일 스타일로 정리합니다.
+                </p>
+              </div>
+              <label className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]">
+                {isImportingWord ? "가져오는 중..." : "Word 원고 선택"}
+                <input
+                  type="file"
+                  accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="sr-only"
+                  disabled={isImportingWord}
+                  onChange={(event) => {
+                    void handleWordImport(event.target.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </div>
+            {wordImportMessage ? (
+              <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-bold leading-6 text-emerald-700">
+                {wordImportMessage}
+              </p>
+            ) : null}
           </div>
         </div>
-      </div>
+
+        <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">보조 설정</p>
+          <h3 className="mt-1 text-lg font-black text-[#092046]">기사 공통 연락처</h3>
+          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <div>
+              <FieldLabel>담당 부서 또는 담당자</FieldLabel>
+              <input
+                name="contactName"
+                defaultValue={article?.contactName ?? ""}
+                placeholder="예: 기획실 홍보팀"
+                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              />
+            </div>
+            <div>
+              <FieldLabel>전화번호</FieldLabel>
+              <input
+                name="contactPhone"
+                defaultValue={article?.contactPhone ?? ""}
+                placeholder="예: 061-000-0000"
+                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              />
+            </div>
+          </div>
+        </div>
+      </details>
 
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">

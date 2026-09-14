@@ -165,6 +165,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
+                    <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">선택</span>
                     <h3 className="text-lg font-bold text-[#092046]">PDF 원본 업로드</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                       PDF는 원본 보관용으로 저장하고, 모바일 공개 화면에 사용할 페이지 이미지는 아래에서 별도로 등록합니다.
@@ -239,9 +240,10 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
+                    <span className="rounded-full bg-[#092046] px-3 py-1 text-xs font-black text-white">필수</span>
                     <h3 className="text-lg font-bold text-[#092046]">페이지 이미지 업로드</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      일러스트 등에서 제작한 모바일용 페이지 이미지를 페이지 번호와 함께 저장합니다. 업로드한 이미지는 공개 모바일
+                      먼저 페이지 번호와 이미지를 저장하세요. 업로드한 이미지는 공개 모바일
                       화면에서 해당 번호 순서대로 표시됩니다.
                     </p>
                   </div>
@@ -341,7 +343,18 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 )}
               </article>
 
-              <ProjectPageHotspotManager links={hotspotData.links} pages={pages} projectSlug={projectId} />
+              <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <summary className="cursor-pointer text-sm font-black text-[#092046]">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">선택</span>
+                  <span className="ml-2">고급 편집: 클릭 영역·URL 연결</span>
+                </summary>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  클릭 영역과 URL 연결은 필요한 경우에만 추가합니다. 페이지 이미지 업로드 후 미리보기에서 위치를 확인하세요.
+                </p>
+                <div className="mt-4">
+                  <ProjectPageHotspotManager links={hotspotData.links} pages={pages} projectSlug={projectId} />
+                </div>
+              </details>
             </section>
 
             <aside className="space-y-5">
