@@ -214,6 +214,17 @@ select {
   white-space: normal;
 }
 
+.public-text-size-toggle .text-xs,
+.public-text-size-toggle .public-text-size-option {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.public-text-size-toggle .public-text-size-option {
+  min-width: 0;
+  white-space: nowrap;
+}
+
 [data-public-text-scale="large"] .public-newsletter-screen {
   --public-scaled-card-padding: 1.75rem;
   --public-scaled-control-min-height: 3.5rem;
@@ -359,6 +370,19 @@ select {
 [data-public-text-scale="large"] .public-newsletter-screen :is(.public-text-size-option, .public-control),
 [data-public-text-scale="xlarge"] .public-newsletter-screen :is(.public-text-size-option, .public-control) {
   padding: var(--public-scaled-control-padding-y) var(--public-scaled-control-padding-x);
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen .public-text-size-toggle .text-xs,
+[data-public-text-scale="xlarge"] .public-newsletter-screen .public-text-size-toggle .text-xs,
+[data-public-text-scale="large"] .public-newsletter-screen .public-text-size-toggle .public-text-size-option,
+[data-public-text-scale="xlarge"] .public-newsletter-screen .public-text-size-toggle .public-text-size-option {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen .public-text-size-toggle .public-text-size-option,
+[data-public-text-scale="xlarge"] .public-newsletter-screen .public-text-size-toggle .public-text-size-option {
+  padding: 0.5rem;
 }
 
 @media (max-width: 420px) {

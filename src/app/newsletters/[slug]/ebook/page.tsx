@@ -9,6 +9,17 @@ type PublicEbookPageProps = {
   searchParams?: Promise<{ preview?: string | string[] }>;
 };
 
+function formatEbookPageLabel(pageNumber: number, title?: string | null) {
+  const pageLabel = `${pageNumber}쪽`;
+  const trimmedTitle = title?.trim();
+
+  if (!trimmedTitle || trimmedTitle.replace(/\s+/g, "") === pageLabel) {
+    return pageLabel;
+  }
+
+  return `${pageLabel} · ${trimmedTitle}`;
+}
+
 function PublicUnavailablePage({
   title,
   message,
@@ -116,15 +127,19 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
           <h2 className="text-lg font-bold text-[#092046]">목차</h2>
           {pages.length > 0 ? (
             <div className="mt-4 space-y-2">
-              {pages.map((page) => (
-                <a
-                  key={page.id}
-                  href={`#page-${page.pageNumber}`}
-                  className="block rounded-lg border border-slate-200 bg-[#f8fbff] px-3 py-3 text-sm font-bold text-[#092046] transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
-                >
-                  {page.pageNumber}쪽 · {page.title}
-                </a>
-              ))}
+              {pages.map((page) => {
+                const pageLabel = formatEbookPageLabel(page.pageNumber, page.title);
+
+                return (
+                  <a
+                    key={page.id}
+                    href={`#page-${page.pageNumber}`}
+                    className="block rounded-lg border border-slate-200 bg-[#f8fbff] px-3 py-3 text-sm font-bold text-[#092046] transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                  >
+                    {pageLabel}
+                  </a>
+                );
+              })}
             </div>
           ) : (
             <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-6 text-center">
@@ -154,27 +169,29 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
 
           {pages.length > 0 ? (
             <div className="space-y-5 rounded-lg bg-[#dfeaf5] p-5">
-              {pages.map((page) => (
-                <article key={page.id} id={`page-${page.pageNumber}`} className="public-card public-image-page-frame rounded-lg bg-white p-4 shadow-sm">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-black text-[#092046]">
-                      {page.pageNumber}쪽 · {page.title}
-                    </h3>
-                    <span className="text-xs font-bold text-slate-500">{page.status}</span>
-                  </div>
-                  {page.previewHref ? (
-                    <img
-                      src={page.previewHref}
-                      alt={`${page.pageNumber}쪽 ${page.title}`}
-                      className="mx-auto max-h-[900px] w-auto max-w-full rounded border border-slate-200 bg-white"
-                    />
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-16 text-center">
-                      <p className="text-sm font-black text-[#092046]">이미지 파일 경로가 없습니다.</p>
+              {pages.map((page) => {
+                const pageLabel = formatEbookPageLabel(page.pageNumber, page.title);
+
+                return (
+                  <article key={page.id} id={`page-${page.pageNumber}`} className="public-card public-image-page-frame rounded-lg bg-white p-4 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-black text-[#092046]">{pageLabel}</h3>
+                      <span className="text-xs font-bold text-slate-500">{page.status}</span>
                     </div>
-                  )}
-                </article>
-              ))}
+                    {page.previewHref ? (
+                      <img
+                        src={page.previewHref}
+                        alt={pageLabel}
+                        className="mx-auto max-h-[900px] w-auto max-w-full rounded border border-slate-200 bg-white"
+                      />
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-16 text-center">
+                        <p className="text-sm font-black text-[#092046]">이미지 파일 경로가 없습니다.</p>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           ) : (
             <div className="rounded-lg bg-[#dfeaf5] p-5">
