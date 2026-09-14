@@ -86,6 +86,14 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
             모바일 미리보기
           </Link>
           <Link
+            href={`/newsletters/${projectId}/ebook/mobile?preview=admin`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+          >
+            모바일 e-book 보기
+          </Link>
+          <Link
             href={`/projects/${projectId}/settings`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
