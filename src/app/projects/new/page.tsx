@@ -144,7 +144,7 @@ export default async function NewProjectPage() {
                 <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
                   <li>PDF 원본은 PC e-book 기준 자산으로 보존합니다.</li>
                   <li>모바일 공개 화면은 읽기 보기와 음성 듣기를 중심으로 구성합니다.</li>
-                  <li>이미지 자산은 출처, 권리 확인, 대체텍스트를 함께 관리합니다.</li>
+                  <li>이미지 소재는 출처, 권리 확인, 대체텍스트를 함께 관리합니다.</li>
                 </ul>
               </article>
             </aside>

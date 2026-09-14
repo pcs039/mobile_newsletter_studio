@@ -28,7 +28,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             </p>
           </div>
           <div className="absolute bottom-16 left-20 right-20 grid grid-cols-3 gap-4 text-white">
-            {["제작 관리", "배포 운영", "응답 분석"].map((label) => (
+            {["제작 관리", "배포 관리", "응답 분석"].map((label) => (
               <div key={label} className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 shadow-xl shadow-blue-950/20 backdrop-blur">
                 <p className="text-sm font-black">{label}</p>
                 <p className="mt-2 text-xs font-semibold leading-5 text-slate-300">로그인 후 접근</p>

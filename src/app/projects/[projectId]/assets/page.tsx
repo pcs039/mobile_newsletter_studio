@@ -15,24 +15,24 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
     <ProjectAdminShell
       active="assets"
       projectId={projectId}
-      title="이미지·링크·영상 소재"
-      description="모바일 페이지에 사용할 이미지, 배너, URL, 유튜브, 지도, 전화 연결 소재의 품질과 권리 상태를 관리합니다."
+      title="사진·이미지 관리"
+      description="기사에 사용할 이미지, URL, 유튜브 링크를 모아 관리합니다."
       sidebarTitle={
         <>
-          이미지·링크
+          사진·이미지
           <br />
-          영상 소재
+          관리
         </>
       }
-      sidebarDescription="콘텐츠 블록과 이미지 페이지에서 가져다 쓸 이미지, 링크, 유튜브 소재를 정리합니다."
+      sidebarDescription="기사 작성과 이미지 페이지 편집에서 사용할 사진, 이미지, URL, 유튜브 소재를 정리합니다."
       sidebarNoteTitle="운영 기준"
-      sidebarNote="이 화면은 독립 산출물이 아니라 콘텐츠 블록 제작과 이미지 페이지·URL 태깅에 붙는 소재 관리 공간입니다."
+      sidebarNote="이 화면은 독립 산출물이 아니라 기사 작성/편집과 이미지 페이지 편집에 붙는 사진·이미지 보관 공간입니다."
       actions={
         <Link
           href={`/projects/${projectId}/reading`}
           className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
-          콘텐츠 블록 제작
+          기사 작성/편집
         </Link>
       }
     >
@@ -44,7 +44,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                     <h3 className="text-lg font-bold text-[#092046]">소재 이미지 업로드</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                       기관 제공 원본 사진, 디자이너 제작 배너, AI 생성 이미지, PDF 발췌 이미지를 자산으로 등록합니다.
-                      URL과 유튜브 주소는 콘텐츠 블록 제작 또는 이미지 페이지 클릭 영역에서 연결합니다.
+                      URL과 유튜브 주소는 기사 작성/편집 또는 이미지 페이지 클릭 영역에서 연결합니다.
                     </p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
@@ -94,7 +94,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
 
                 {assets.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-12 text-center">
-                    <p className="text-base font-black text-[#092046]">등록된 이미지 자산이 없습니다.</p>
+                    <p className="text-base font-black text-[#092046]">등록된 이미지 소재가 없습니다.</p>
                     <p className="mt-2 text-sm leading-6 text-slate-500">
                       위 업로드 영역에서 이미지를 저장하면 실제 파일 목록과 썸네일이 여기에 표시됩니다.
                     </p>
@@ -176,13 +176,13 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">다음 작업</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  이미지 자산을 정리한 뒤 음성 MP3 관리 화면으로 이동합니다. 외부 TTS로 제작한 음성 파일을 기사별로 연결합니다.
+                  이미지 소재를 정리한 뒤 음성 소식지 검수 화면으로 이동합니다. 외부 TTS로 제작한 음성 파일을 기사별로 연결합니다.
                 </p>
                 <Link
                   href={`/projects/${projectId}/audio`}
                   className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
                 >
-                  음성 MP3 관리로 이동
+                  음성 소식지 검수로 이동
                 </Link>
               </article>
             </aside>

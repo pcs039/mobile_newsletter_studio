@@ -32,13 +32,13 @@ export default async function AudioManagementPage({ params }: { params: Promise<
     <ProjectAdminShell
       active="audio"
       projectId={projectId}
-      title="음성·대본 관리"
-      description="모바일 페이지별 음성 대본을 확인하고 외부 TTS로 제작한 MP3 파일을 연결합니다."
+      title="음성 소식지 검수"
+      description="음성 파일과 대본이 본문 내용과 맞는지 확인합니다."
       sidebarTitle={
         <>
-          음성 MP3
+          음성 소식지
           <br />
-          대본
+          검수
         </>
       }
       sidebarDescription="작성된 페이지와 기사에 맞춰 대본, MP3, 재생 상태를 함께 검수합니다."
@@ -49,7 +49,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
           href={`/projects/${projectId}/assets`}
           className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
-          이미지 자산으로 돌아가기
+          사진·이미지 관리로 돌아가기
         </Link>
       }
     >
@@ -253,13 +253,13 @@ export default async function AudioManagementPage({ params }: { params: Promise<
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">다음 작업</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  음성 파일 연결을 확인한 뒤 공개 모바일 화면과 PC e-book 미리보기, URL·QR 발행 화면으로 이동합니다.
+                  음성 파일과 대본을 확인한 뒤 공개 모바일 화면과 PC e-book 미리보기, URL·QR 발행 화면으로 이동합니다.
                 </p>
                 <Link
                   href={`/projects/${projectId}/publish`}
                   className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
                 >
-                  미리보기·발행 준비
+                  검수·발행으로 이동
                 </Link>
               </article>
             </aside>
