@@ -224,8 +224,19 @@ select {
 }
 
 .public-ebook-page-frame,
-.public-mobile-ebook-page {
+.public-mobile-ebook-page,
+.public-desktop-ebook-spread {
   animation: public-ebook-frame-enter 260ms ease-out both;
+}
+
+.public-desktop-ebook-page {
+  transition:
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+.public-desktop-ebook-page:hover {
+  transform: translateY(-2px);
 }
 
 @keyframes public-ebook-frame-enter {
@@ -243,8 +254,13 @@ select {
 @media (prefers-reduced-motion: reduce) {
   .public-newsletter-screen,
   .public-ebook-page-frame,
-  .public-mobile-ebook-page {
+  .public-mobile-ebook-page,
+  .public-desktop-ebook-spread {
     animation: none;
+  }
+
+  .public-desktop-ebook-page {
+    transition: none;
   }
 }
 
@@ -421,6 +437,31 @@ select {
 [data-public-text-scale="large"] .public-newsletter-screen .public-text-size-toggle .public-text-size-option,
 [data-public-text-scale="xlarge"] .public-newsletter-screen .public-text-size-toggle .public-text-size-option {
   padding: 0.5rem;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen.public-desktop-ebook-viewer .text-xs,
+[data-public-text-scale="xlarge"] .public-newsletter-screen.public-desktop-ebook-viewer .text-xs,
+[data-public-text-scale="large"] .public-newsletter-screen.public-desktop-ebook-viewer .text-sm,
+[data-public-text-scale="xlarge"] .public-newsletter-screen.public-desktop-ebook-viewer .text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen.public-desktop-ebook-viewer .text-lg,
+[data-public-text-scale="xlarge"] .public-newsletter-screen.public-desktop-ebook-viewer .text-lg {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen.public-desktop-ebook-viewer .text-xl,
+[data-public-text-scale="xlarge"] .public-newsletter-screen.public-desktop-ebook-viewer .text-xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen.public-desktop-ebook-viewer :is(a, button, label, summary):not(.public-text-size-option),
+[data-public-text-scale="xlarge"] .public-newsletter-screen.public-desktop-ebook-viewer :is(a, button, label, summary):not(.public-text-size-option) {
+  min-height: auto;
 }
 
 .public-newsletter-screen .public-article-body {
