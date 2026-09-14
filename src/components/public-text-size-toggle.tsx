@@ -7,11 +7,11 @@ type PublicTextScale = "normal" | "large" | "xlarge";
 const STORAGE_KEY = "datadiction_public_text_scale";
 const LEGACY_STORAGE_KEY = "datadiction_public_large_text";
 const textScaleListeners = new Set<() => void>();
-const textScaleOptions = [
+const textScaleOptions: { value: PublicTextScale; label: string }[] = [
   { value: "normal", label: "기본" },
   { value: "large", label: "크게" },
   { value: "xlarge", label: "아주 크게" },
-] satisfies { value: PublicTextScale; label: string }[];
+];
 
 function isPublicTextScale(value: string | null): value is PublicTextScale {
   return value === "normal" || value === "large" || value === "xlarge";
