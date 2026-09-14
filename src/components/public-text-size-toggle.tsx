@@ -7,11 +7,11 @@ type PublicTextScale = "normal" | "large" | "xlarge";
 const STORAGE_KEY = "datadiction_public_text_scale";
 const LEGACY_STORAGE_KEY = "datadiction_public_large_text";
 const textScaleListeners = new Set<() => void>();
-const textScaleOptions: { value: PublicTextScale; label: string }[] = [
+const textScaleOptions = [
   { value: "normal", label: "기본" },
   { value: "large", label: "크게" },
   { value: "xlarge", label: "아주 크게" },
-];
+] as const satisfies readonly { value: PublicTextScale; label: string }[];
 
 function isPublicTextScale(value: string | null): value is PublicTextScale {
   return value === "normal" || value === "large" || value === "xlarge";
@@ -96,7 +96,7 @@ export function PublicTextSizeToggle() {
               key={option.value}
               type="button"
               aria-pressed={isSelected}
-              onClick={() => saveTextScalePreference(option.value)}
+              onClick={() => saveTextScalePreference(option.value as PublicTextScale)}
               className={`public-text-size-option inline-flex min-h-10 items-center justify-center rounded-xl px-2 py-2 text-sm font-black transition focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[#2f73b7] ${
                 isSelected ? "bg-[#092046] text-white" : "bg-[#eaf3ff] text-[#092046] hover:bg-[#d8eaff]"
               }`}
