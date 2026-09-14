@@ -2,68 +2,118 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 
-const STORAGE_KEY = "datadiction_public_large_text";
-const largeTextListeners = new Set<() => void>();
+type PublicTextScale = "normal" | "large" | "xlarge";
 
-function applyLargeTextMode(enabled: boolean) {
-  document.documentElement.dataset.publicLargeText = enabled ? "true" : "false";
+const STORAGE_KEY = "datadiction_public_text_scale";
+const LEGACY_STORAGE_KEY = "datadiction_public_large_text";
+const textScaleListeners = new Set<() => void>();
+const textScaleOptions = [
+  { value: "normal", label: "기본" },
+  { value: "large", label: "크게" },
+  { value: "xlarge", label: "아주 크게" },
+] as const satisfies readonly { value: PublicTextScale; label: string }[];
+
+function isPublicTextScale(value: string | null): value is PublicTextScale {
+  return value === "normal" || value === "large" || value === "xlarge";
 }
 
-function readLargeTextPreference() {
+function applyTextScale(scale: PublicTextScale) {
+  document.documentElement.dataset.publicTextScale = scale;
+  delete document.documentElement.dataset.publicLargeText;
+}
+
+function readTextScalePreference(): PublicTextScale {
   if (typeof window === "undefined") {
-    return false;
+    return "normal";
   }
 
-  return window.localStorage.getItem(STORAGE_KEY) === "true";
+  try {
+    const savedValue = window.localStorage.getItem(STORAGE_KEY);
+
+    if (isPublicTextScale(savedValue)) {
+      return savedValue;
+    }
+
+    const legacyValue = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+
+    if (legacyValue === "true") {
+      return "large";
+    }
+
+    return "normal";
+  } catch {
+    return "normal";
+  }
 }
 
-function subscribeToLargeTextPreference(listener: () => void) {
+function readServerTextScalePreference(): PublicTextScale {
+  return "normal";
+}
+
+function subscribeToTextScalePreference(listener: () => void) {
   if (typeof window === "undefined") {
     return () => {};
   }
 
   function handleStorage(event: StorageEvent) {
-    if (event.key === STORAGE_KEY) {
+    if (event.key === STORAGE_KEY || event.key === LEGACY_STORAGE_KEY) {
       listener();
     }
   }
 
-  largeTextListeners.add(listener);
+  textScaleListeners.add(listener);
   window.addEventListener("storage", handleStorage);
 
   return () => {
-    largeTextListeners.delete(listener);
+    textScaleListeners.delete(listener);
     window.removeEventListener("storage", handleStorage);
   };
 }
 
-function saveLargeTextPreference(enabled: boolean) {
-  window.localStorage.setItem(STORAGE_KEY, String(enabled));
-  applyLargeTextMode(enabled);
-  largeTextListeners.forEach((listener) => listener());
+function saveTextScalePreference(scale: PublicTextScale) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, scale);
+  } catch {
+    // The visual state can still update even if storage is unavailable.
+  }
+
+  applyTextScale(scale);
+  textScaleListeners.forEach((listener) => listener());
 }
 
 export function PublicTextSizeToggle() {
-  const isLargeText = useSyncExternalStore(subscribeToLargeTextPreference, readLargeTextPreference, () => false);
+  const textScale: PublicTextScale = useSyncExternalStore<PublicTextScale>(
+    subscribeToTextScalePreference,
+    readTextScalePreference,
+    readServerTextScalePreference,
+  );
 
   useEffect(() => {
-    applyLargeTextMode(isLargeText);
-  }, [isLargeText]);
-
-  function handleToggle() {
-    const nextValue = !isLargeText;
-
-    saveLargeTextPreference(nextValue);
-  }
+    applyTextScale(textScale);
+  }, [textScale]);
 
   return (
-    <button
-      type="button"
-      aria-pressed={isLargeText}
-      onClick={handleToggle}
-      className="public-text-size-toggle inline-flex min-h-11 items-center justify-center rounded-full border border-[#2f73b7] bg-white px-4 py-2 text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:bg-[#eaf3ff] focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[#2f73b7]"
-    >
-      {isLargeText ? "기본 크기로 보기" : "글자 크게 보기"}
-    </button>
+    <div className="public-text-size-toggle w-full max-w-[360px] rounded-2xl border border-[#2f73b7] bg-white p-2 shadow-sm shadow-blue-950/10">
+      <p className="px-1 pb-2 text-xs font-black text-[#184a88]">글자 크기</p>
+      <div className="grid grid-cols-3 gap-1" role="group" aria-label="글자 크기">
+        {textScaleOptions.map((option) => {
+          const isSelected = option.value === textScale;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={isSelected}
+              onClick={() => saveTextScalePreference(option.value as PublicTextScale)}
+              className={`public-text-size-option inline-flex min-h-10 items-center justify-center rounded-xl px-2 py-2 text-sm font-black transition focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[#2f73b7] ${
+                isSelected ? "bg-[#092046] text-white" : "bg-[#eaf3ff] text-[#092046] hover:bg-[#d8eaff]"
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
