@@ -11,36 +11,62 @@ type ProjectSection = "settings" | "pages" | "reading" | "assets" | "audio" | "p
 
 const authoringNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
   { key: "settings", label: "기본 정보", path: "settings", guide: "기준·권한" },
-  { key: "reading", label: "콘텐츠 블록 제작", path: "reading", guide: "문단·이미지·URL" },
-  { key: "pages", label: "이미지 페이지·URL 태깅", path: "pages", guide: "이미지·클릭" },
-  { key: "assets", label: "소재 관리", path: "assets", guide: "이미지·URL·유튜브" },
-  { key: "audio", label: "음성·대본", path: "audio", guide: "MP3·검수" },
+  { key: "reading", label: "기사 작성/편집", path: "reading", guide: "문단·이미지·URL 버튼" },
+  { key: "pages", label: "이미지 페이지 편집", path: "pages", guide: "이미지·클릭 영역" },
+  { key: "assets", label: "사진·이미지 관리", path: "assets", guide: "이미지·URL·유튜브 소재" },
+  { key: "audio", label: "음성 소식지 검수", path: "audio", guide: "MP3·대본 확인" },
 ];
 
 const operationNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
-  { key: "publish", label: "검수·발행", path: "publish", guide: "URL·QR" },
-  { key: "distribution", label: "배포 운영", path: "distribution", guide: "대상·발송" },
+  { key: "publish", label: "검수·발행", path: "publish", guide: "최종 확인·공개 URL" },
+  { key: "distribution", label: "배포 관리", path: "distribution", guide: "배포 기록" },
   { key: "survey", label: "설문·이벤트", path: "survey", guide: "참여·응답" },
 ];
 
-const processStages: Array<{
+const workflowStages: Array<{
   label: string;
   detail: string;
   path: ProjectSection;
   sections: ProjectSection[];
 }> = [
   {
-    label: "작성",
-    detail: "자료 등록과 콘텐츠 입력",
-    path: "reading",
-    sections: ["settings", "pages", "reading", "assets", "audio"],
+    label: "기본정보",
+    detail: "기관·발행월·담당자 확인",
+    path: "settings",
+    sections: ["settings"],
   },
-  { label: "검수", detail: "모바일 미리보기와 수정", path: "publish", sections: ["publish"] },
-  { label: "발행", detail: "공개 URL, QR, 배포 운영", path: "distribution", sections: ["distribution", "survey"] },
+  {
+    label: "기사 작성",
+    detail: "제목·요약·본문·버튼 작성",
+    path: "reading",
+    sections: ["reading"],
+  },
+  {
+    label: "이미지 편집",
+    detail: "페이지 이미지·클릭 영역·소재",
+    path: "pages",
+    sections: ["pages", "assets"],
+  },
+  { label: "음성 검수", detail: "MP3·대본·재생 확인", path: "audio", sections: ["audio"] },
+  {
+    label: "검수·발행",
+    detail: "모바일·e-book·URL·QR 확인",
+    path: "publish",
+    sections: ["publish", "distribution", "survey"],
+  },
 ];
 
-function getProcessStageIndex(active: ProjectSection) {
-  const activeIndex = processStages.findIndex((stage) => stage.sections.includes(active));
+const nextSteps: Partial<Record<ProjectSection, { label: string; path: ProjectSection; detail: string }>> = {
+  settings: { label: "기사 작성/편집", path: "reading", detail: "모바일 화면에 들어갈 기사와 버튼을 작성합니다." },
+  reading: { label: "이미지 페이지 편집", path: "pages", detail: "페이지 이미지와 클릭 영역을 정리합니다." },
+  pages: { label: "사진·이미지 관리", path: "assets", detail: "기사와 이미지 페이지에 쓸 소재를 모아 확인합니다." },
+  assets: { label: "음성 소식지 검수", path: "audio", detail: "MP3와 대본이 본문과 맞는지 확인합니다." },
+  audio: { label: "검수·발행", path: "publish", detail: "모바일 화면, e-book, 공개 URL, QR을 최종 확인합니다." },
+  publish: { label: "배포 관리", path: "distribution", detail: "공개 URL과 QR을 어디에 배포했는지 기록합니다." },
+};
+
+function getWorkflowStageIndex(active: ProjectSection) {
+  const activeIndex = workflowStages.findIndex((stage) => stage.sections.includes(active));
 
   return activeIndex >= 0 ? activeIndex : 0;
 }
@@ -103,7 +129,8 @@ export async function ProjectAdminShell({
   const projectMeta = project
     ? `담당: ${project.assigneeName} · ${project.status} · ${project.pageCount}쪽`
     : workspace.message;
-  const processStageActiveIndex = getProcessStageIndex(active);
+  const workflowStageActiveIndex = getWorkflowStageIndex(active);
+  const nextStep = nextSteps[active];
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
@@ -159,9 +186,9 @@ export async function ProjectAdminShell({
             <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제작 흐름</p>
-                <h3 className="mt-1 text-lg font-black text-[#092046]">작성하고, 검수한 뒤, 발행합니다.</h3>
+                <h3 className="mt-1 text-lg font-black text-[#092046]">작성 → 검수 → 발행 흐름을 세부 단계로 확인합니다.</h3>
                 <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
-                  세부 작업은 아래 하위 메뉴에서 고르고, 확인은 모바일 미리보기에서 바로 합니다.
+                  신규 직원도 기본정보부터 배포까지 순서대로 따라갈 수 있도록 현재 단계와 다음 단계를 함께 표시합니다.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -179,13 +206,27 @@ export async function ProjectAdminShell({
                 >
                   발행 준비
                 </Link>
+                {nextStep ? (
+                  <Link
+                    href={`/projects/${projectId}/${nextStep.path}`}
+                    className="rounded-lg bg-[#184a88] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:bg-[#2f73b7]"
+                  >
+                    다음 단계: {nextStep.label}
+                  </Link>
+                ) : null}
               </div>
             </div>
 
-            <div className="mt-4 grid gap-2 md:grid-cols-3">
-              {processStages.map((stage, index) => {
-                const isActive = index === processStageActiveIndex;
-                const isDone = index < processStageActiveIndex;
+            {nextStep ? (
+              <p className="mt-3 rounded-lg border border-[#d8e8ff] bg-white px-3 py-2 text-xs font-bold leading-5 text-slate-600">
+                다음 단계 안내: {nextStep.detail}
+              </p>
+            ) : null}
+
+            <div className="mt-4 grid gap-2 md:grid-cols-5">
+              {workflowStages.map((stage, index) => {
+                const isActive = index === workflowStageActiveIndex;
+                const isDone = index < workflowStageActiveIndex;
 
                 return (
                   <Link
@@ -265,6 +306,9 @@ export async function ProjectAdminShell({
                         }`}
                       >
                         {item.label}
+                        <span className={`ml-1 font-semibold ${isActive ? "text-sky-100" : "text-slate-400"}`}>
+                          {item.guide}
+                        </span>
                       </Link>
                     );
                   })}

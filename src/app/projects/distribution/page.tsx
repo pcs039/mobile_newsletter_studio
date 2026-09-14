@@ -95,7 +95,7 @@ export default async function DistributionProjectsPage() {
           <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-[#184a88]">공개 운영대장</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">배포/관리 프로젝트</h2>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">배포 관리 프로젝트</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600 [word-break:keep-all]">
                 발행 완료된 모바일 소식지의 공개 링크와 QR 파일, 접속 현황을 운영자 기준으로 정리합니다.
               </p>

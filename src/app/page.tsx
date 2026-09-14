@@ -421,7 +421,7 @@ export default async function Home() {
               </article>
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-[#092046]">이미지 자산 기준</h3>
+                <h3 className="text-lg font-bold text-[#092046]">이미지 소재 기준</h3>
                 <div className="mt-4 space-y-3">
                   {assetChecks.map((asset) => (
                     <div key={asset.label} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">

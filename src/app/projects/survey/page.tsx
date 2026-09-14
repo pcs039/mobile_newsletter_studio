@@ -66,7 +66,7 @@ export default async function SurveyProjectsPage() {
                 href="/projects/distribution"
                 className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
               >
-                배포/관리 목록
+                배포 관리 목록
               </Link>
             </div>
           </header>

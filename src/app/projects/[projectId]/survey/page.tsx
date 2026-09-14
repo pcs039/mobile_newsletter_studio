@@ -49,7 +49,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
             href={`/projects/${projectId}/distribution`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
-            배포 운영 보기
+            배포 관리 보기
           </Link>
         </div>
       }

@@ -63,16 +63,16 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
     <ProjectAdminShell
       active="pages"
       projectId={projectId}
-      title="이미지 페이지·URL 태깅"
-      description="완성된 모바일 페이지 이미지를 번호 순서대로 업로드하고, 이미지 위에 URL·유튜브·전화 클릭 영역을 지정합니다."
+      title="이미지 페이지 편집"
+      description="PDF나 디자인 이미지로 만든 페이지를 올리고, 클릭 영역과 링크를 지정합니다."
       sidebarTitle={
         <>
           이미지 페이지
           <br />
-          URL 태깅
+          편집
         </>
       }
-      sidebarDescription="디자인된 이미지 페이지를 모바일 공개 화면에 반영하고 클릭 영역을 연결합니다."
+      sidebarDescription="디자인된 이미지 페이지를 공개 화면에 반영하고 클릭 영역과 링크를 연결합니다."
       sidebarNoteTitle="운영 기준"
       sidebarNote="이미지 페이지형은 페이지 이미지 자체가 모바일 본문이며, URL과 영상은 이미지 위 투명 클릭 영역으로 연결합니다."
       actions={
@@ -402,14 +402,14 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 ) : (
                   <>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      이미지 페이지형이 아니라면 콘텐츠 블록 제작으로 이동합니다. 이 단계에서 기사 제목, 본문, 대표 이미지,
+                      이미지 페이지형이 아니라면 기사 작성/편집으로 이동합니다. 이 단계에서 기사 제목, 본문, 대표 이미지,
                       문의처, 음성 대본을 정리합니다.
                     </p>
                     <Link
                       href={`/projects/${projectId}/reading`}
                       className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
                     >
-                      콘텐츠 블록 제작으로 이동
+                      기사 작성/편집으로 이동
                     </Link>
                   </>
                 )}

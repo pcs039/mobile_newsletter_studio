@@ -78,7 +78,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       detail: `${articles.reduce((total, article) => total + article.links.length, 0)}개 링크 등록`,
     },
     {
-      label: "음성·대본",
+      label: "음성 소식지",
       status: getReadinessStatus(
         audioData.files.length > 0 || articles.some((article) => article.blocks.some((block) => block.type === "audio")),
         "준비됨",
@@ -104,7 +104,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       active="publish"
       projectId={projectId}
       title="검수·발행"
-      description="모바일 페이지, PC e-book, 링크, 음성 상태를 실제 등록 데이터 기준으로 최종 확인합니다."
+      description="모바일 화면, e-book 화면, 공개 URL, QR 코드를 최종 확인합니다."
       sidebarTitle={
         <>
           검수
@@ -112,7 +112,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
           발행
         </>
       }
-      sidebarDescription="공개 전 모바일 산출물, PC e-book, URL·QR 발행 상태를 최종 확인합니다."
+      sidebarDescription="공개 전 모바일 화면, PC e-book, 공개 URL, QR 코드 상태를 최종 확인합니다."
       sidebarNoteTitle="공개 기준"
       sidebarNote="모바일은 작성 기사와 연결 블록, PC는 등록된 페이지 이미지 기준으로 검수합니다."
       actions={
@@ -127,13 +127,13 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
             href={`/projects/${projectId}/reading`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
-            작성 화면으로 돌아가기
+            기사 작성/편집으로 돌아가기
           </Link>
           <Link
             href={`/projects/${projectId}/distribution`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
-            배포 입력으로 이동
+            배포 관리로 이동
           </Link>
           <Link
             href={publicPreviewHref}

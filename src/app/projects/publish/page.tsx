@@ -60,7 +60,7 @@ export default async function PublishProjectsPage() {
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
             <p className="text-sm font-bold text-white">검수 기준</p>
             <p className="mt-2 text-sm leading-6 text-slate-300 [word-break:keep-all]">
-              PDF, 페이지 이미지, 모바일 기사, 연결 링크, 음성·대본을 모두 확인한 뒤 공개합니다.
+              PDF, 페이지 이미지, 모바일 기사, 연결 링크, 음성 소식지를 모두 확인한 뒤 공개합니다.
             </p>
           </div>
         </aside>

@@ -8,18 +8,18 @@ import type { DashboardProject } from "@/types/newsletter";
 
 const editSteps = [
   { label: "기본 정보", path: "settings", detail: "기관, 담당자, 상품 옵션" },
-  { label: "콘텐츠 블록 제작", path: "reading", detail: "문단, 이미지, URL, 음성" },
-  { label: "이미지 페이지·URL 태깅", path: "pages", detail: "페이지 이미지와 클릭 영역" },
-  { label: "소재 관리", path: "assets", detail: "이미지, URL, 유튜브" },
-  { label: "음성·대본", path: "audio", detail: "MP3와 기사 대본" },
+  { label: "기사 작성/편집", path: "reading", detail: "문단, 이미지, URL 버튼" },
+  { label: "이미지 페이지 편집", path: "pages", detail: "페이지 이미지와 클릭 영역" },
+  { label: "사진·이미지 관리", path: "assets", detail: "이미지, URL, 유튜브 소재" },
+  { label: "음성 소식지 검수", path: "audio", detail: "MP3와 기사 대본 확인" },
 ];
 
 const statusFilters = ["전체", "제작 중", "검수 중", "비공개"];
 
 const stageFlowSteps = [
-  { label: "작성", detail: "기본 정보, 자료 등록, 콘텐츠 입력" },
-  { label: "검수", detail: "모바일 미리보기로 확인하고 수정" },
-  { label: "발행", detail: "공개 URL, QR, 배포 준비" },
+  { label: "기본정보", detail: "기관, 발행월, 담당자 확인" },
+  { label: "기사·이미지", detail: "기사 작성, 이미지 편집, 소재 정리" },
+  { label: "검수·발행", detail: "음성, 모바일/e-book, URL·QR 확인" },
 ];
 
 type ProjectEditWorkQueueProps = {
@@ -179,7 +179,7 @@ export function ProjectEditWorkQueue({ isAdmin, message, projects }: ProjectEdit
             <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">처음 작업 흐름</p>
-                <h4 className="mt-1 text-base font-black text-[#092046]">작성하고, 검수한 뒤, 발행합니다.</h4>
+                <h4 className="mt-1 text-base font-black text-[#092046]">기본정보부터 검수·발행까지 순서대로 진행합니다.</h4>
               </div>
               <p className="text-xs font-semibold leading-5 text-slate-600">
                 세부 작업은 프로젝트 안에서 하위 메뉴로 정리됩니다.

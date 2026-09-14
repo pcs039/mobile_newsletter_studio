@@ -12,13 +12,13 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
       active="settings"
       projectId={projectId}
       title="기본 정보"
-      description="발행일, 담당자, 공개 주소, 상품 옵션처럼 운영 중 바뀔 수 있는 프로젝트 기본 정보를 수정합니다."
+      description="기관명, 발행월, 담당자, 공개 주소처럼 제작 기준이 되는 정보를 확인하고 수정합니다."
       sidebarTitle={
         <>
           기본 정보
         </>
       }
-      sidebarDescription="기관 일정이나 작업 배정이 바뀌면 이 화면에서 프로젝트 기준 정보를 다시 저장합니다."
+      sidebarDescription="작업을 시작하기 전 기관명, 발행 표기, 담당자, 제작 방식을 먼저 확인합니다."
       sidebarNoteTitle="수정 기준"
       sidebarNote="공개 주소 slug를 바꾸면 모바일 보기와 PC e-book의 공개 URL도 함께 바뀝니다."
       actions={
@@ -26,7 +26,7 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
           href={`/projects/${projectId}/pages`}
           className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
-          이미지 페이지·URL 태깅
+          이미지 페이지 편집
         </Link>
       }
     >
@@ -49,8 +49,8 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
             <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="text-lg font-bold text-[#092046]">저장 후 이동</h3>
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                수정 내용을 저장하면 선택한 제작 방식에 맞는 작성 화면으로 이동합니다. 이후 콘텐츠 블록 제작,
-                이미지 페이지·URL 태깅, 소재 관리 작업을 계속 진행하면 됩니다.
+                수정 내용을 저장하면 선택한 제작 방식에 맞는 작성 화면으로 이동합니다. 이후 기사 작성/편집,
+                이미지 페이지 편집, 사진·이미지 관리 작업을 순서대로 진행하면 됩니다.
               </p>
             </article>
           </aside>

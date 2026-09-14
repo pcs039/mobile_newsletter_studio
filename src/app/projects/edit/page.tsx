@@ -31,7 +31,7 @@ export default async function EditProjectsPage() {
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
             <p className="text-sm font-bold text-white">작업 대상 기준</p>
             <p className="mt-2 text-sm leading-6 text-slate-300">
-              제작 중, 검수 중, 비공개 프로젝트를 작성/수정 대상으로 봅니다. 발행 완료 프로젝트는 배포/관리에서 다룹니다.
+              제작 중, 검수 중, 비공개 프로젝트를 작성/수정 대상으로 봅니다. 발행 완료 프로젝트는 배포 관리에서 다룹니다.
             </p>
           </div>
         </aside>

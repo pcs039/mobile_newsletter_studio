@@ -98,25 +98,25 @@ export default async function ReadingEditorPage({
     <ProjectAdminShell
       active="reading"
       projectId={projectId}
-      title="콘텐츠 블록 제작"
-      description="상품 등급과 별개로 기사, 본문, 이미지, URL 버튼, 유튜브, 지도, 음성 대본을 모바일 블록으로 조립합니다."
+      title="기사 작성/편집"
+      description="모바일 화면에 표시될 기사 제목, 요약, 본문, 이미지, 버튼을 작성합니다."
       sidebarTitle={
         <>
-          콘텐츠
+          기사 작성
           <br />
-          블록 제작
+          편집
         </>
       }
-      sidebarDescription="템플릿 블록형, 혼합형, OCR 보조형에서 모바일 기사와 연결 블록을 작성합니다."
+      sidebarDescription="모바일 독자가 읽을 기사와 문단·이미지·URL 버튼을 순서대로 작성합니다."
       sidebarNoteTitle="작성 기준"
-      sidebarNote="PDF와 지면 이미지는 참고 원본입니다. 최종 산출물은 저장된 기사와 콘텐츠 블록을 기준으로 구성합니다."
+      sidebarNote="PDF와 지면 이미지는 참고 원본입니다. 공개 화면은 저장된 기사와 문단·이미지·URL 버튼을 기준으로 구성됩니다."
       actions={
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
             href={`/projects/${projectId}/pages`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
-            이미지 페이지·URL 태깅
+            이미지 페이지 편집
           </Link>
           <Link
             href={mobilePreviewHref}
@@ -316,7 +316,7 @@ export default async function ReadingEditorPage({
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이미지 페이지 참고</p>
-            <h3 className="mt-1 text-lg font-bold text-[#092046]">디자인 이미지형은 이미지 페이지·URL 태깅에서 관리</h3>
+            <h3 className="mt-1 text-lg font-bold text-[#092046]">디자인 이미지형은 이미지 페이지 편집에서 관리</h3>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Illustrator나 Photoshop으로 완성한 모바일 페이지 이미지는 기사 본문에 억지로 넣기보다 페이지 이미지로 올리고,
               이후 클릭 영역과 링크를 별도로 관리하는 흐름이 적합합니다.
@@ -326,13 +326,13 @@ export default async function ReadingEditorPage({
                 href={`/projects/${projectId}/pages`}
                 className="rounded-lg border border-[#2f73b7] bg-white px-4 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
               >
-                이미지 페이지·URL 태깅으로 이동
+                이미지 페이지 편집으로 이동
               </Link>
               <Link
                 href={`/projects/${projectId}/assets`}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-slate-50"
               >
-                이미지·링크·영상 소재로 이동
+                사진·이미지 관리로 이동
               </Link>
             </div>
           </article>

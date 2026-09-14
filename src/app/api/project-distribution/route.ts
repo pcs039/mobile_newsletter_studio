@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
   if (!payload) {
     return NextResponse.json(
-      { ok: false, message: "배포 운영 저장 요청 데이터를 확인하지 못했습니다." },
+      { ok: false, message: "배포 관리 저장 요청 데이터를 확인하지 못했습니다." },
       { status: 400 },
     );
   }
@@ -137,5 +137,5 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   }
 
-  return NextResponse.json({ ok: false, message: "지원하지 않는 배포 운영 작업입니다." }, { status: 400 });
+  return NextResponse.json({ ok: false, message: "지원하지 않는 배포 관리 작업입니다." }, { status: 400 });
 }
