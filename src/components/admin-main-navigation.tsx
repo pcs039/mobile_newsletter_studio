@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminInteractionSound } from "@/components/admin-interaction-sound";
 import { AuthUserPanel } from "@/components/auth-user-panel";
 import { getCurrentUser } from "@/lib/app-auth";
 
@@ -31,6 +32,7 @@ export async function AdminMainNavigation({ active, projectId }: AdminMainNaviga
 
   return (
     <>
+      <AdminInteractionSound />
       <nav className="space-y-2" aria-label="관리자 주 메뉴">
         {items.map((item) => {
           const isActive = active === item.key;
