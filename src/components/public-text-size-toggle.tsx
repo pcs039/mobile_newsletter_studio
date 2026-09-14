@@ -46,6 +46,10 @@ function readTextScalePreference(): PublicTextScale {
   }
 }
 
+function readServerTextScalePreference(): PublicTextScale {
+  return "normal";
+}
+
 function subscribeToTextScalePreference(listener: () => void) {
   if (typeof window === "undefined") {
     return () => {};
@@ -78,7 +82,11 @@ function saveTextScalePreference(scale: PublicTextScale) {
 }
 
 export function PublicTextSizeToggle() {
-  const textScale = useSyncExternalStore(subscribeToTextScalePreference, readTextScalePreference, () => "normal");
+  const textScale: PublicTextScale = useSyncExternalStore<PublicTextScale>(
+    subscribeToTextScalePreference,
+    readTextScalePreference,
+    readServerTextScalePreference,
+  );
 
   useEffect(() => {
     applyTextScale(textScale);
