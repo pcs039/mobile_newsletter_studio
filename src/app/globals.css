@@ -208,6 +208,25 @@ select {
   --public-scaled-input-min-height: 2.75rem;
   --public-scaled-control-padding-x: 1.125rem;
   --public-scaled-control-padding-y: 0.875rem;
+  animation: public-page-enter 240ms ease-out both;
+}
+
+@keyframes public-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-newsletter-screen {
+    animation: none;
+  }
 }
 
 .public-text-size-toggle {

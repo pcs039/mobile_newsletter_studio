@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminMobilePreviewFrame } from "@/components/admin-mobile-preview-frame";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectArticleEditorForm } from "@/components/project-article-editor-form";
 import { StatusPill } from "@/components/status-pill";
@@ -51,22 +52,6 @@ function getArticleSourceLabel(article: ProjectContentArticle, index: number) {
 
 function getArticleSortLabel(article: ProjectContentArticle) {
   return article.sortOrder > 0 ? `노출 ${article.sortOrder}` : "노출 순서 미정";
-}
-
-function getPreviewBody(article: ProjectContentArticle) {
-  const paragraphBody = article.blocks
-    .filter((block) => block.type === "paragraph" && block.isVisible)
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((block) => [block.title, block.body].filter(Boolean).join("\n"))
-    .join("\n\n")
-    .trim();
-  const body = paragraphBody || article.body.trim();
-
-  if (!body) {
-    return "본문을 입력하면 모바일 미리보기에 반영됩니다.";
-  }
-
-  return body.length > 130 ? `${body.slice(0, 130)}...` : body;
 }
 
 export default async function ReadingEditorPage({
@@ -314,50 +299,9 @@ export default async function ReadingEditorPage({
         </section>
 
         <aside className="space-y-5">
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-bold text-[#092046]">모바일 미리보기</h3>
-            <div className="mt-4 rounded-[28px] border border-slate-200 bg-slate-950 p-3 shadow-sm">
-              <div className="overflow-hidden rounded-[22px] bg-white">
-                <div className="px-4 py-4 text-white" style={{ backgroundColor: project?.primaryColor ?? "#092046" }}>
-                  <p className="text-xs font-semibold text-sky-200">
-                    {project?.organization ?? "프로젝트 정보 확인 필요"}
-                  </p>
-                  <h4 className="mt-2 text-lg font-black">{selectedArticle?.title ?? "기사 제목 입력 전"}</h4>
-                </div>
-                <div className="p-4">
-                  <div className="rounded-xl bg-[#f4f8ff] px-4 py-3">
-                    <p className="text-sm font-bold leading-6 text-[#092046]">
-                      {selectedArticle?.summary || "요약을 입력하면 이 영역에 표시됩니다."}
-                    </p>
-                  </div>
-                  <p className="mt-4 text-sm leading-7 text-slate-600">
-                    {selectedArticle ? getPreviewBody(selectedArticle) : "첫 기사를 저장하면 미리보기가 표시됩니다."}
-                  </p>
-                  {selectedArticle?.contactName || selectedArticle?.contactPhone ? (
-                    <div className="mt-4 rounded-xl border border-slate-200 px-4 py-3 text-xs leading-5 text-slate-600">
-                      <p className="font-black text-[#092046]">문의</p>
-                      <p>{[selectedArticle.contactName, selectedArticle.contactPhone].filter(Boolean).join(" · ")}</p>
-                    </div>
-                  ) : null}
-                  {selectedArticle && selectedArticle.links.length > 0 ? (
-                    <div className="mt-4 grid gap-2">
-                      {selectedArticle.links.map((link) => (
-                        <a
-                          key={link.id}
-                          href={link.targetValue}
-                          className="rounded-lg bg-[#092046] px-4 py-2 text-center text-sm font-bold text-white"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {link.label}
-                        </a>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </article>
+          <div className="xl:sticky xl:top-6">
+            <AdminMobilePreviewFrame previewHref={mobilePreviewHref} />
+          </div>
 
           <article className="rounded-lg border border-slate-200 bg-[#eef6ff] p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
