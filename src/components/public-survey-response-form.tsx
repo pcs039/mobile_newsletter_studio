@@ -140,7 +140,7 @@ export function PublicSurveyResponseForm({ projectSlug, survey }: PublicSurveyRe
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {survey.questions.map((question) => (
-        <section key={question.id} className="rounded-2xl border border-slate-200 bg-[#f8fbff] px-4 py-4">
+        <section key={question.id} className="public-card rounded-2xl border border-slate-200 bg-[#f8fbff] px-4 py-4">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-black text-[#184a88]">문항 {question.order}</p>
@@ -173,7 +173,7 @@ export function PublicSurveyResponseForm({ projectSlug, survey }: PublicSurveyRe
       ) : null}
 
       {state.isDone ? (
-        <div className="rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4 text-center">
+        <div className="public-card rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4 text-center">
           <p className="text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">
             참여해 주셔서 감사합니다. 아래 버튼을 눌러 모바일 소식지 화면으로 돌아갈 수 있습니다.
           </p>

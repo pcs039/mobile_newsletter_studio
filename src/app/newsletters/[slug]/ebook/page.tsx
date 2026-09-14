@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
+import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import { getProjectPageImages, getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type PublicEbookPageProps = {
@@ -16,8 +17,11 @@ function PublicUnavailablePage({
   message: string;
 }) {
   return (
-    <main className="grid min-h-screen place-items-center bg-[#eef4fb] px-5 text-slate-950">
+    <main className="public-newsletter-screen grid min-h-screen place-items-center bg-[#eef4fb] px-5 text-slate-950">
       <section className="w-full max-w-[560px] rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-blue-950/10">
+        <div className="mb-5 flex justify-center">
+          <PublicTextSizeToggle />
+        </div>
         <p className="text-sm font-black text-[#184a88]">DataDiction Newsletter</p>
         <h1 className="mt-3 text-2xl font-black leading-tight text-[#092046]">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600 [word-break:keep-all]">{message}</p>
@@ -58,7 +62,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
   const mobileHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : project?.publicUrl ?? `/newsletters/${slug}`;
 
   return (
-    <main className="min-h-screen bg-[#eef4fb] text-slate-950">
+    <main className="public-newsletter-screen min-h-screen bg-[#eef4fb] text-slate-950">
       <NewsletterViewTracker slug={slug} viewMode="ebook" disabled={isAdminPreview || !isPublished} />
       {isAdminPreview && (
         <div className="border-b border-slate-300 bg-white px-6 py-3 shadow-sm">
@@ -95,17 +99,20 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
               <p className="mt-1 text-sm text-slate-600">PC 화면에서 등록된 원본 지면 이미지를 확인합니다.</p>
             </div>
           </div>
-          <Link
-            href={mobileHref}
-            className="rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
-          >
-            모바일 읽기 보기
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <PublicTextSizeToggle />
+            <Link
+              href={mobileHref}
+              className="public-control rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+            >
+              모바일 읽기 보기
+            </Link>
+          </div>
         </div>
       </header>
 
       <section className="mx-auto grid max-w-7xl gap-5 px-6 py-6 xl:grid-cols-[260px_1fr_300px]">
-        <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <aside className="public-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-[#092046]">목차</h2>
           {pages.length > 0 ? (
             <div className="mt-4 space-y-2">
@@ -129,7 +136,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
           )}
         </aside>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="public-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-bold text-[#092046]">원본 지면 보기</h2>
@@ -148,7 +155,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
           {pages.length > 0 ? (
             <div className="space-y-5 rounded-lg bg-[#dfeaf5] p-5">
               {pages.map((page) => (
-                <article key={page.id} id={`page-${page.pageNumber}`} className="rounded-lg bg-white p-4 shadow-sm">
+                <article key={page.id} id={`page-${page.pageNumber}`} className="public-card public-image-page-frame rounded-lg bg-white p-4 shadow-sm">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <h3 className="text-sm font-black text-[#092046]">
                       {page.pageNumber}쪽 · {page.title}
@@ -190,14 +197,14 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
         </section>
 
         <aside className="space-y-5">
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="public-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-bold text-[#092046]">보기 기준</h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               e-book은 PC 중심 원본 확인 화면입니다. 모바일 독자는 읽기 보기에서 본문과 음성을 이용하는 흐름을 우선합니다.
             </p>
           </article>
 
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="public-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-bold text-[#092046]">페이지 정보</h2>
             <div className="mt-4 space-y-3">
               <div className="rounded-lg bg-slate-50 px-3 py-3">

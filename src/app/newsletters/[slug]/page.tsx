@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
+import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import {
   getProjectContent,
   getProjectPageHotspotLinks,
@@ -189,8 +190,11 @@ function PublicUnavailablePage({
   message: string;
 }) {
   return (
-    <main className="grid min-h-screen place-items-center bg-[#edf4fb] px-5 text-slate-950">
+    <main className="public-newsletter-screen grid min-h-screen place-items-center bg-[#edf4fb] px-5 text-slate-950">
       <section className="w-full max-w-[520px] rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-blue-950/10">
+        <div className="mb-5 flex justify-center">
+          <PublicTextSizeToggle />
+        </div>
         <p className="text-sm font-black text-[#184a88]">DataDiction Newsletter</p>
         <h1 className="mt-3 text-2xl font-black leading-tight text-[#092046]">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600 [word-break:keep-all]">{message}</p>
@@ -248,7 +252,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const headerColor = project?.primaryColor ?? "#071f46";
 
   return (
-    <main className="min-h-screen bg-[#edf4fb] text-slate-950">
+    <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
       <NewsletterViewTracker slug={slug} viewMode="reading" disabled={isAdminPreview || !isPublished} />
       {isAdminPreview && (
         <div className="sticky top-0 z-20 border-b border-slate-300 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
@@ -273,6 +277,9 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
       )}
       <section className="mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10">
         <header className="px-5 pb-7 pt-7 text-white" style={{ backgroundColor: headerColor }}>
+          <div className="mb-5 flex justify-end">
+            <PublicTextSizeToggle />
+          </div>
           <p className="text-sm font-semibold text-sky-200">{project?.organization ?? "프로젝트 정보 확인 필요"}</p>
           <h1 className="mt-3 text-3xl font-black leading-tight">{project?.title ?? slug}</h1>
           <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
@@ -289,9 +296,9 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
 
         <section className="space-y-5 px-5 py-5">
           {isImagePageMode && pageImages.length > 0 ? (
-            <section className="space-y-4">
+            <section className="public-image-page-list space-y-4">
               {pageImages.map((page) => (
-                <article key={page.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <article key={page.id} className="public-card public-image-page-frame overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   {isAdminPreview ? (
                     <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-[#f8fbff] px-4 py-3">
                       <p className="text-xs font-black text-[#184a88]">{page.pageNumber}쪽 이미지 페이지</p>
@@ -342,7 +349,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               const visibleBlocks = getVisibleBlocks(article);
 
               return (
-                <article key={article.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <article key={article.id} className="public-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-black text-[#184a88]">
                       {article.pageNumber ? `${article.pageNumber}쪽` : `${index + 1}번 기사`}
@@ -401,7 +408,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             </div>
           )}
           {surveyData.surveys.length > 0 ? (
-            <section className="rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-5">
+            <section className="public-card rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-5">
               <p className="text-xs font-black text-[#184a88]">참여하기</p>
               <h2 className="mt-2 text-xl font-black leading-tight text-[#092046]">설문·이벤트</h2>
               <p className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">

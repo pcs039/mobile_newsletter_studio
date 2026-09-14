@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PublicSurveyCloseButton } from "@/components/public-survey-close-button";
 import { PublicSurveyResponseForm } from "@/components/public-survey-response-form";
+import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import { getPublicProjectSurvey, getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type PublicSurveyPageProps = {
@@ -9,8 +10,11 @@ type PublicSurveyPageProps = {
 
 function PublicSurveyUnavailablePage({ title, message, backHref }: { title: string; message: string; backHref: string }) {
   return (
-    <main className="grid min-h-screen place-items-center bg-[#edf4fb] px-5 text-slate-950">
+    <main className="public-newsletter-screen grid min-h-screen place-items-center bg-[#edf4fb] px-5 text-slate-950">
       <section className="w-full max-w-[520px] rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-blue-950/10">
+        <div className="mb-5 flex justify-center">
+          <PublicTextSizeToggle />
+        </div>
         <p className="text-sm font-black text-[#184a88]">DataDiction Newsletter</p>
         <h1 className="mt-3 text-2xl font-black leading-tight text-[#092046]">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600 [word-break:keep-all]">{message}</p>
@@ -45,9 +49,12 @@ export default async function PublicSurveyPage({ params }: PublicSurveyPageProps
   }
 
   return (
-    <main className="min-h-screen bg-[#edf4fb] text-slate-950">
+    <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
       <section className="mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10">
         <header className="px-5 pb-7 pt-7 text-white" style={{ backgroundColor: headerColor }}>
+          <div className="mb-5 flex justify-end">
+            <PublicTextSizeToggle />
+          </div>
           <p className="text-sm font-semibold text-sky-200">{project.organization}</p>
           <h1 className="mt-3 text-3xl font-black leading-tight">{survey.title}</h1>
           <p className="mt-3 text-sm font-bold leading-6 text-slate-200 [word-break:keep-all]">{survey.description}</p>
@@ -69,7 +76,7 @@ export default async function PublicSurveyPage({ params }: PublicSurveyPageProps
         </header>
 
         <section className="space-y-5 px-5 py-5">
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+          <div className="public-card rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
             <p className="text-xs font-black text-[#184a88]">참여 안내</p>
             <p className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">
               응답은 운영자가 모바일 소식지 성과 확인과 개선 의견 검토에 활용합니다.
