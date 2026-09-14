@@ -385,6 +385,23 @@ select {
   padding: 0.5rem;
 }
 
+.public-newsletter-screen .public-article-body {
+  text-align: left;
+  line-height: 1.85;
+  line-break: strict;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen .public-article-body {
+  line-height: 1.7;
+}
+
+[data-public-text-scale="xlarge"] .public-newsletter-screen .public-article-body {
+  line-height: 1.55;
+}
+
 @media (max-width: 420px) {
   [data-public-text-scale="large"] .public-newsletter-screen {
     --public-scaled-card-padding: 1.25rem;

@@ -99,7 +99,7 @@ function renderContentBlock(article: ProjectContentArticle, block: ProjectConten
     return (
       <section key={block.id}>
         {block.title ? <h3 className="text-base font-black leading-7 text-[#092046]">{block.title}</h3> : null}
-        {block.body ? <p className="mt-2 whitespace-pre-line text-base leading-8 text-slate-700">{block.body}</p> : null}
+        {block.body ? <p className="public-article-body mt-2 whitespace-pre-line text-base leading-8 text-slate-700">{block.body}</p> : null}
       </section>
     );
   }
@@ -372,7 +372,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                   {visibleBlocks.length > 0 ? (
                     <div className="mt-4 space-y-5">{visibleBlocks.map((block) => renderContentBlock(article, block))}</div>
                   ) : (
-                    <div className="mt-4 whitespace-pre-line text-base leading-8 text-slate-700">
+                    <div className="public-article-body mt-4 whitespace-pre-line text-base leading-8 text-slate-700">
                       {getPreviewBody(article)}
                     </div>
                   )}
