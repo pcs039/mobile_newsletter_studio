@@ -129,7 +129,7 @@ export default async function ReadingEditorPage({
         </div>
       }
     >
-      <div className="grid gap-5 2xl:grid-cols-[300px_minmax(0,1fr)_360px]">
+      <div className="grid gap-5 2xl:grid-cols-[300px_minmax(0,1fr)_minmax(400px,460px)]">
         <aside className="space-y-5">
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3">

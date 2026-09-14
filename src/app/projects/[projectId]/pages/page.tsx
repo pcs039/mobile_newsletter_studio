@@ -94,7 +94,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
         </div>
       }
     >
-          <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)]">
             <section className="space-y-5">
               <article className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
