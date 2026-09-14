@@ -30,9 +30,10 @@ type PageViewMode = "single" | "double";
 
 const soundPreferenceKey = "datadiction_desktop_ebook_sound";
 const soundPreferenceChangeEvent = "datadiction-desktop-ebook-sound-change";
-const zoomStep = 20;
-const minZoom = 60;
-const maxZoom = 220;
+const zoomStep = 25;
+const minZoom = 25;
+const maxZoom = 600;
+const zoomPresets = [100, 150, 200, 300, 400, 600] as const;
 
 let sharedAudioContext: AudioContext | null = null;
 let lastSoundAt = 0;
@@ -232,6 +233,11 @@ export function PublicDesktopEbookViewer({
     viewportRef.current?.scrollTo({ left: 0, top: 0 });
   }
 
+  function updateZoom(nextZoom: number) {
+    setZoom(clamp(nextZoom, minZoom, maxZoom));
+    viewportRef.current?.scrollTo({ left: 0, top: 0 });
+  }
+
   return (
     <main className="public-newsletter-screen public-desktop-ebook-viewer min-h-screen bg-[#071f46] text-slate-950">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#071f46]/95 px-4 py-3 text-white shadow-xl shadow-blue-950/30 backdrop-blur">
@@ -271,7 +277,7 @@ export function PublicDesktopEbookViewer({
             <div className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/10 p-1">
               <button
                 type="button"
-                onClick={() => setZoom((value) => clamp(value - zoomStep, minZoom, maxZoom))}
+                onClick={() => updateZoom(zoom - zoomStep)}
                 className="rounded-md px-3 py-2 text-xs font-black text-slate-100 hover:bg-white/10"
               >
                 축소
@@ -279,7 +285,7 @@ export function PublicDesktopEbookViewer({
               <span className="min-w-12 text-center text-xs font-black text-white">{zoom}%</span>
               <button
                 type="button"
-                onClick={() => setZoom((value) => clamp(value + zoomStep, minZoom, maxZoom))}
+                onClick={() => updateZoom(zoom + zoomStep)}
                 className="rounded-md px-3 py-2 text-xs font-black text-slate-100 hover:bg-white/10"
               >
                 확대
@@ -291,6 +297,28 @@ export function PublicDesktopEbookViewer({
               >
                 화면 맞춤
               </button>
+              <button
+                type="button"
+                onClick={fitToScreen}
+                className="rounded-md px-3 py-2 text-xs font-black text-slate-100 hover:bg-white/10"
+              >
+                폭 맞춤
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1 rounded-lg border border-white/15 bg-white/10 p-1">
+              {zoomPresets.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => updateZoom(preset)}
+                  className={`rounded-md px-2.5 py-2 text-xs font-black transition ${
+                    zoom === preset ? "bg-white text-[#092046]" : "text-slate-100 hover:bg-white/10"
+                  }`}
+                >
+                  {preset}%
+                </button>
+              ))}
             </div>
 
             <button
@@ -380,6 +408,12 @@ export function PublicDesktopEbookViewer({
         </aside>
 
         <section className="relative min-w-0 bg-[radial-gradient(circle_at_top,#315c88_0%,#102b52_42%,#071f46_100%)]">
+          {zoom >= 300 ? (
+            <div className="absolute left-1/2 top-4 z-20 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 rounded-xl border border-amber-200/40 bg-amber-50/95 px-4 py-3 text-sm font-bold text-amber-950 shadow-xl shadow-blue-950/20 backdrop-blur">
+              <p>고배율 확대 중입니다. 이미지가 흐릿하게 보일 수 있습니다.</p>
+              {viewMode === "double" ? <p className="mt-1">고배율 확인은 1페이지 보기를 권장합니다.</p> : null}
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={() => goToIndex(currentIndex - pageStep, true)}
@@ -409,7 +443,8 @@ export function PublicDesktopEbookViewer({
                 {visiblePages.map((page) => (
                   <article
                     key={page.id}
-                    className="public-desktop-ebook-page min-w-0 rounded-2xl border border-white/80 bg-white p-3 shadow-2xl shadow-blue-950/50"
+                    className="public-desktop-ebook-page min-w-0 shrink-0 rounded-2xl border border-white/80 bg-white p-3 shadow-2xl shadow-blue-950/50"
+                    style={{ width: viewMode === "double" ? "50%" : "100%" }}
                   >
                     <div className="mb-3 flex items-center justify-between gap-3 px-1">
                       <h2 className="text-sm font-black text-[#092046]">{formatEbookPageLabel(page.pageNumber, page.title)}</h2>
@@ -420,7 +455,7 @@ export function PublicDesktopEbookViewer({
                       <img
                         src={page.previewHref}
                         alt={formatEbookPageLabel(page.pageNumber, page.title)}
-                        className="max-h-[calc(100vh-190px)] w-auto max-w-full rounded-xl border border-slate-200 bg-white object-contain shadow-lg shadow-slate-950/10"
+                        className="mx-auto h-auto w-full rounded-xl border border-slate-200 bg-white object-contain shadow-lg shadow-slate-950/10"
                       />
                     ) : (
                       <div className="grid h-[60vh] min-w-80 place-items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 text-center">
