@@ -2,20 +2,35 @@
 
 import { useState } from "react";
 
-export function AdminMobilePreviewFrame({ previewHref }: { previewHref: string }) {
-  const [previewVersion, setPreviewVersion] = useState(0);
+type AdminMobilePreviewFrameProps = {
+  previewHref: string;
+  title?: string;
+  description?: string;
+  iframeTitle?: string;
+};
+
+function appendEmbeddedPreviewParams(previewHref: string, previewVersion: number) {
   const separator = previewHref.includes("?") ? "&" : "?";
-  const iframeSrc = `${previewHref}${separator}previewReload=${previewVersion}`;
+
+  return `${previewHref}${separator}embedded=adminPreview&previewReload=${previewVersion}`;
+}
+
+export function AdminMobilePreviewFrame({
+  previewHref,
+  title = "모바일 미리보기",
+  description = "저장된 내용을 기준으로 표시됩니다. 최종 확인은 새 탭의 실제 공개 화면에서도 진행하세요.",
+  iframeTitle = "저장된 모바일 소식지 미리보기",
+}: AdminMobilePreviewFrameProps) {
+  const [previewVersion, setPreviewVersion] = useState(0);
+  const iframeSrc = appendEmbeddedPreviewParams(previewHref, previewVersion);
 
   return (
     <article className="admin-mobile-preview-panel rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">저장본 기준</p>
-          <h3 className="mt-1 text-lg font-bold text-[#092046]">모바일 미리보기</h3>
-          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-            저장된 내용을 기준으로 표시됩니다. 최종 확인은 새 탭의 실제 공개 화면에서도 진행하세요.
-          </p>
+          <h3 className="mt-1 text-lg font-bold text-[#092046]">{title}</h3>
+          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{description}</p>
         </div>
         <button
           type="button"
@@ -36,7 +51,7 @@ export function AdminMobilePreviewFrame({ previewHref }: { previewHref: string }
           <div className="overflow-hidden rounded-[22px] border border-slate-800 bg-white">
             <iframe
               key={previewVersion}
-              title="저장된 모바일 소식지 미리보기"
+              title={iframeTitle}
               src={iframeSrc}
               className="h-[640px] w-full border-0 bg-white"
             />

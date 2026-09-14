@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminMobilePreviewFrame } from "@/components/admin-mobile-preview-frame";
 import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectPageHotspotManager } from "@/components/project-page-hotspot-manager";
 import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
@@ -56,6 +57,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
   const originalPdf = originalPdfData.pdf;
   const pages = pageImageData.pages;
   const isImagePageMode = project?.productionMode === "이미지 페이지형";
+  const ebookPreviewHref = `/newsletters/${projectId}/ebook?preview=admin`;
 
   return (
     <ProjectAdminShell
@@ -343,6 +345,15 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
             </section>
 
             <aside className="space-y-5">
+              <div className="xl:sticky xl:top-6">
+                <AdminMobilePreviewFrame
+                  previewHref={ebookPreviewHref}
+                  title="e-book 미리보기"
+                  description="저장된 페이지 이미지를 기준으로 e-book 화면만 표시합니다. 최종 확인은 새 탭의 실제 공개 화면에서도 진행하세요."
+                  iframeTitle="저장된 e-book 소식지 미리보기"
+                />
+              </div>
+
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">등록 진행 상태</h3>
                 <div className="mt-4 space-y-3">

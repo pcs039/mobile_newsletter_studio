@@ -6,8 +6,12 @@ import { getProjectPageImages, getProjectWorkspace } from "@/lib/newsletter-repo
 
 type PublicEbookPageProps = {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ preview?: string | string[] }>;
+  searchParams?: Promise<{ embedded?: string | string[]; preview?: string | string[] }>;
 };
+
+function hasSearchParamValue(value: string | string[] | undefined, expectedValue: string) {
+  return Array.isArray(value) ? value.includes(expectedValue) : value === expectedValue;
+}
 
 function formatEbookPageLabel(pageNumber: number, title?: string | null) {
   const pageLabel = `${pageNumber}쪽`;
@@ -45,7 +49,9 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
   const previewMode = resolvedSearchParams?.preview;
-  const isAdminPreview = Array.isArray(previewMode) ? previewMode.includes("admin") : previewMode === "admin";
+  const embeddedMode = resolvedSearchParams?.embedded;
+  const isAdminPreview = hasSearchParamValue(previewMode, "admin");
+  const isEmbeddedAdminPreview = hasSearchParamValue(embeddedMode, "adminPreview");
   const [workspace, pageImageData] = await Promise.all([getProjectWorkspace(slug), getProjectPageImages(slug)]);
   const project = workspace.project;
   const isPublished = project?.status === "발행 완료";
@@ -112,12 +118,14 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <PublicTextSizeToggle />
-            <Link
-              href={mobileHref}
-              className="public-control rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
-            >
-              모바일 읽기 보기
-            </Link>
+            {!isEmbeddedAdminPreview ? (
+              <Link
+                href={mobileHref}
+                className="public-control rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#123a78]"
+              >
+                모바일 읽기 보기
+              </Link>
+            ) : null}
           </div>
         </div>
       </header>
