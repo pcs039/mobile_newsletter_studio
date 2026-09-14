@@ -99,7 +99,7 @@ function renderContentBlock(article: ProjectContentArticle, block: ProjectConten
     return (
       <section key={block.id}>
         {block.title ? <h3 className="text-base font-black leading-7 text-[#092046]">{block.title}</h3> : null}
-        {block.body ? <p className="public-article-body mt-2 whitespace-pre-line text-base leading-8 text-slate-700">{block.body}</p> : null}
+        {block.body ? <p className="public-article-body mt-3 whitespace-pre-line text-base leading-8 text-slate-700">{block.body}</p> : null}
       </section>
     );
   }
@@ -349,7 +349,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               const visibleBlocks = getVisibleBlocks(article);
 
               return (
-                <article key={article.id} className="public-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <article key={article.id} className="public-card public-article-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-black text-[#184a88]">
                       {article.pageNumber ? `${article.pageNumber}쪽` : `${index + 1}번 기사`}
@@ -363,16 +363,16 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                       </Link>
                     ) : null}
                   </div>
-                  <h2 className="mt-3 text-2xl font-black leading-tight text-[#092046]">{article.title}</h2>
+                  <h2 className="public-article-title mt-4 text-2xl font-black leading-tight text-[#092046]">{article.title}</h2>
                   {article.summary ? (
                     <p className="mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]">
                       {article.summary}
                     </p>
                   ) : null}
                   {visibleBlocks.length > 0 ? (
-                    <div className="mt-4 space-y-5">{visibleBlocks.map((block) => renderContentBlock(article, block))}</div>
+                    <div className="public-article-content mt-6 space-y-6">{visibleBlocks.map((block) => renderContentBlock(article, block))}</div>
                   ) : (
-                    <div className="public-article-body mt-4 whitespace-pre-line text-base leading-8 text-slate-700">
+                    <div className="public-article-body mt-6 whitespace-pre-line text-base leading-8 text-slate-700">
                       {getPreviewBody(article)}
                     </div>
                   )}
