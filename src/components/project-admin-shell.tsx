@@ -9,8 +9,7 @@ import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type ProjectSection = "settings" | "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey";
 
-const authoringNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
-  { key: "settings", label: "기본 정보", path: "settings", guide: "기준·권한" },
+const contentToolNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
   { key: "reading", label: "기사 작성/편집", path: "reading", guide: "문단·이미지·URL 버튼" },
   { key: "pages", label: "이미지 페이지 편집", path: "pages", guide: "이미지·클릭 영역" },
   { key: "assets", label: "사진·이미지 관리", path: "assets", guide: "이미지·URL·유튜브 소재" },
@@ -36,32 +35,31 @@ const workflowStages: Array<{
     sections: ["settings"],
   },
   {
-    label: "기사 작성",
-    detail: "제목·요약·본문·버튼 작성",
+    label: "콘텐츠 제작",
+    detail: "기사·이미지·URL·음성 대본 작성",
     path: "reading",
-    sections: ["reading"],
+    sections: ["reading", "pages", "assets", "audio"],
   },
-  {
-    label: "이미지 편집",
-    detail: "페이지 이미지·클릭 영역·소재",
-    path: "pages",
-    sections: ["pages", "assets"],
-  },
-  { label: "음성 검수", detail: "MP3·대본·재생 확인", path: "audio", sections: ["audio"] },
   {
     label: "검수·발행",
-    detail: "모바일·e-book·URL·QR 확인",
+    detail: "모바일·e-book·음성·URL·QR 확인",
     path: "publish",
-    sections: ["publish", "distribution", "survey"],
+    sections: ["publish"],
+  },
+  {
+    label: "배포 관리",
+    detail: "배포 기록·공유 문안 관리",
+    path: "distribution",
+    sections: ["distribution", "survey"],
   },
 ];
 
 const nextSteps: Partial<Record<ProjectSection, { label: string; path: ProjectSection; detail: string }>> = {
-  settings: { label: "기사 작성/편집", path: "reading", detail: "모바일 화면에 들어갈 기사와 버튼을 작성합니다." },
-  reading: { label: "이미지 페이지 편집", path: "pages", detail: "페이지 이미지와 클릭 영역을 정리합니다." },
-  pages: { label: "사진·이미지 관리", path: "assets", detail: "기사와 이미지 페이지에 쓸 소재를 모아 확인합니다." },
-  assets: { label: "음성 소식지 검수", path: "audio", detail: "MP3와 대본이 본문과 맞는지 확인합니다." },
-  audio: { label: "검수·발행", path: "publish", detail: "모바일 화면, e-book, 공개 URL, QR을 최종 확인합니다." },
+  settings: { label: "콘텐츠 제작", path: "reading", detail: "기사, 이미지, URL, 음성 대본을 작성합니다." },
+  reading: { label: "검수·발행", path: "publish", detail: "모바일 화면, e-book, 음성, 공개 URL, QR을 최종 확인합니다." },
+  pages: { label: "검수·발행", path: "publish", detail: "이미지와 클릭 영역을 확인한 뒤 최종 검수 화면으로 이동합니다." },
+  assets: { label: "검수·발행", path: "publish", detail: "사진·이미지 소재를 확인한 뒤 최종 검수 화면으로 이동합니다." },
+  audio: { label: "검수·발행", path: "publish", detail: "음성 파일과 대본을 확인한 뒤 최종 검수 화면으로 이동합니다." },
   publish: { label: "배포 관리", path: "distribution", detail: "공개 URL과 QR을 어디에 배포했는지 기록합니다." },
 };
 
@@ -131,6 +129,8 @@ export async function ProjectAdminShell({
     : workspace.message;
   const workflowStageActiveIndex = getWorkflowStageIndex(active);
   const nextStep = nextSteps[active];
+  const isContentToolActive = contentToolNavigation.some((item) => item.key === active);
+  const isOperationToolActive = operationNavigation.some((item) => item.key === active);
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
@@ -186,9 +186,9 @@ export async function ProjectAdminShell({
             <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제작 흐름</p>
-                <h3 className="mt-1 text-lg font-black text-[#092046]">작성 → 검수 → 발행 흐름을 세부 단계로 확인합니다.</h3>
+                <h3 className="mt-1 text-lg font-black text-[#092046]">기본정보 → 콘텐츠 제작 → 검수·발행 → 배포 관리</h3>
                 <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
-                  신규 직원도 기본정보부터 배포까지 순서대로 따라갈 수 있도록 현재 단계와 다음 단계를 함께 표시합니다.
+                  이미지 페이지, 사진·이미지, 음성은 콘텐츠 제작 안의 하위 도구로 정리했습니다.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -200,16 +200,10 @@ export async function ProjectAdminShell({
                 >
                   모바일 미리보기
                 </Link>
-                <Link
-                  href={`/projects/${projectId}/publish`}
-                  className="rounded-lg bg-[#092046] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:bg-[#123a78]"
-                >
-                  발행 준비
-                </Link>
                 {nextStep ? (
                   <Link
                     href={`/projects/${projectId}/${nextStep.path}`}
-                    className="rounded-lg bg-[#184a88] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:bg-[#2f73b7]"
+                    className="rounded-lg bg-[#092046] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:bg-[#123a78]"
                   >
                     다음 단계: {nextStep.label}
                   </Link>
@@ -223,7 +217,7 @@ export async function ProjectAdminShell({
               </p>
             ) : null}
 
-            <div className="mt-4 grid gap-2 md:grid-cols-5">
+            <div className="mt-4 grid gap-2 md:grid-cols-4">
               {workflowStages.map((stage, index) => {
                 const isActive = index === workflowStageActiveIndex;
                 const isDone = index < workflowStageActiveIndex;
@@ -261,13 +255,13 @@ export async function ProjectAdminShell({
             </div>
 
             <nav
-              className="mt-4 grid gap-3 border-t border-[#d8e8ff] pt-4 xl:grid-cols-[minmax(0,1fr)_auto]"
+              className="mt-4 grid gap-3 border-t border-[#d8e8ff] pt-4 xl:grid-cols-2"
               aria-label="프로젝트 하위 작업"
             >
-              <div>
-                <p className="mb-2 text-xs font-black text-slate-500">작성 하위 작업</p>
-                <div className="flex flex-wrap gap-2">
-                  {authoringNavigation.map((item) => {
+              <details open={active === "settings" || isContentToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
+                <summary className="cursor-pointer text-xs font-black text-slate-600">콘텐츠 제작 도구</summary>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {contentToolNavigation.map((item) => {
                     const isActive = active === item.key;
 
                     return (
@@ -288,10 +282,10 @@ export async function ProjectAdminShell({
                     );
                   })}
                 </div>
-              </div>
-              <div>
-                <p className="mb-2 text-xs font-black text-slate-500">운영 하위 작업</p>
-                <div className="flex flex-wrap gap-2">
+              </details>
+              <details open={isOperationToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
+                <summary className="cursor-pointer text-xs font-black text-slate-600">운영 도구</summary>
+                <div className="mt-3 flex flex-wrap gap-2">
                   {operationNavigation.map((item) => {
                     const isActive = active === item.key;
 
@@ -313,7 +307,7 @@ export async function ProjectAdminShell({
                     );
                   })}
                 </div>
-              </div>
+              </details>
             </nav>
           </section>
 
