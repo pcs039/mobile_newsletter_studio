@@ -27,6 +27,122 @@ function getPreviewBody(article: ProjectContentArticle) {
   return body;
 }
 
+function restoreProtectedText(value: string, protectedValues: Map<string, string>) {
+  let restored = value;
+
+  protectedValues.forEach((protectedValue, token) => {
+    restored = restored.replaceAll(token, protectedValue);
+  });
+
+  return restored.trim();
+}
+
+function protectArticleText(value: string, protectedValues: Map<string, string>) {
+  return value.replace(/https?:\/\/[^\s]+|[^\s@]+@[^\s@]+\.[^\s@]+/g, (protectedValue) => {
+    const token = `__PUBLIC_ARTICLE_PROTECTED_${protectedValues.size}__`;
+
+    protectedValues.set(token, protectedValue);
+    return token;
+  });
+}
+
+function getPreviousNonSpaceCharacter(value: string, index: number) {
+  for (let position = index - 1; position >= 0; position -= 1) {
+    const character = value[position];
+
+    if (character && !/\s/.test(character)) {
+      return character;
+    }
+  }
+
+  return "";
+}
+
+function isSentenceDelimiter(value: string, index: number) {
+  const character = value[index];
+
+  if (!character) {
+    return false;
+  }
+
+  if ("!?。？！".includes(character)) {
+    return true;
+  }
+
+  if (character !== ".") {
+    return false;
+  }
+
+  return !/\d/.test(getPreviousNonSpaceCharacter(value, index));
+}
+
+function splitArticleLineIntoSentences(value: string) {
+  const sentences: string[] = [];
+  let sentenceStart = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    if (!isSentenceDelimiter(value, index)) {
+      continue;
+    }
+
+    let sentenceEnd = index + 1;
+
+    while (sentenceEnd < value.length && /["'”’)]/.test(value[sentenceEnd] ?? "")) {
+      sentenceEnd += 1;
+    }
+
+    const sentence = value.slice(sentenceStart, sentenceEnd).trim();
+
+    if (sentence) {
+      sentences.push(sentence);
+    }
+
+    sentenceStart = sentenceEnd;
+  }
+
+  const remainder = value.slice(sentenceStart).trim();
+
+  if (remainder) {
+    sentences.push(remainder);
+  }
+
+  return sentences;
+}
+
+function getArticleBodyParagraphs(value: string) {
+  const protectedValues = new Map<string, string>();
+  const protectedText = protectArticleText(value.trim(), protectedValues);
+
+  return protectedText
+    .split(/\n{2,}/)
+    .map((paragraph) =>
+      paragraph
+        .split(/\n+/)
+        .flatMap(splitArticleLineIntoSentences)
+        .map((sentence) => restoreProtectedText(sentence, protectedValues))
+        .filter(Boolean),
+    )
+    .filter((paragraph) => paragraph.length > 0);
+}
+
+function renderArticleBody(value: string, className: string) {
+  const paragraphs = getArticleBodyParagraphs(value);
+
+  return (
+    <div className={`public-article-body text-base leading-8 text-slate-700 ${className}`}>
+      {paragraphs.map((paragraph, paragraphIndex) => (
+        <div key={paragraphIndex} className="public-article-paragraph">
+          {paragraph.map((sentence, sentenceIndex) => (
+            <span key={`${paragraphIndex}-${sentenceIndex}`} className="public-article-sentence">
+              {sentence}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function getVisibleBlocks(article: ProjectContentArticle) {
   return article.blocks
     .filter((block) => block.isVisible && (block.title || block.body))
@@ -99,7 +215,7 @@ function renderContentBlock(article: ProjectContentArticle, block: ProjectConten
     return (
       <section key={block.id}>
         {block.title ? <h3 className="text-base font-black leading-7 text-[#092046]">{block.title}</h3> : null}
-        {block.body ? <p className="public-article-body mt-3 whitespace-pre-line text-base leading-8 text-slate-700">{block.body}</p> : null}
+        {block.body ? renderArticleBody(block.body, "mt-3") : null}
       </section>
     );
   }
@@ -372,9 +488,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                   {visibleBlocks.length > 0 ? (
                     <div className="public-article-content mt-6 space-y-6">{visibleBlocks.map((block) => renderContentBlock(article, block))}</div>
                   ) : (
-                    <div className="public-article-body mt-6 whitespace-pre-line text-base leading-8 text-slate-700">
-                      {getPreviewBody(article)}
-                    </div>
+                    renderArticleBody(getPreviewBody(article), "mt-6")
                   )}
                   {article.contactName || article.contactPhone ? (
                     <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">

@@ -417,6 +417,18 @@ select {
   margin-top: 1.25rem;
 }
 
+.public-newsletter-screen .public-article-paragraph + .public-article-paragraph {
+  margin-top: 1.35rem;
+}
+
+.public-newsletter-screen .public-article-sentence {
+  display: block;
+}
+
+.public-newsletter-screen .public-article-sentence + .public-article-sentence {
+  margin-top: 0.75rem;
+}
+
 [data-public-text-scale="large"] .public-newsletter-screen .public-article-body {
   font-size: 1.5rem;
   line-height: 1.75;
@@ -433,6 +445,22 @@ select {
 
 [data-public-text-scale="xlarge"] .public-newsletter-screen .public-article-content > section + section {
   margin-top: 2.125rem;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen .public-article-paragraph + .public-article-paragraph {
+  margin-top: 1.65rem;
+}
+
+[data-public-text-scale="xlarge"] .public-newsletter-screen .public-article-paragraph + .public-article-paragraph {
+  margin-top: 1.95rem;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen .public-article-sentence + .public-article-sentence {
+  margin-top: 1rem;
+}
+
+[data-public-text-scale="xlarge"] .public-newsletter-screen .public-article-sentence + .public-article-sentence {
+  margin-top: 1.2rem;
 }
 
 [data-public-text-scale="large"] .public-newsletter-screen .public-article-card,
