@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import type { FontAsset } from "@/lib/newsletter-repository";
 
 type SubmitState =
   | { status: "idle"; message: string }
@@ -29,6 +30,8 @@ export type ProjectFormInitialValues = {
   designerHoursCap?: string;
   hasProjectPassword?: boolean;
   projectPasswordUpdatedAt?: string;
+  titleFontAssetId?: string;
+  bodyFontAssetId?: string;
 };
 
 const primaryColorOptions = [
@@ -95,9 +98,11 @@ function getNextAuthoringPath(projectSlug: string, productionMode: string) {
 }
 
 export function ProjectCreateForm({
+  fonts = [],
   initialValues = {},
   mode = "create",
 }: {
+  fonts?: FontAsset[];
   initialValues?: ProjectFormInitialValues;
   mode?: ProjectFormMode;
 }) {
@@ -141,6 +146,8 @@ export function ProjectCreateForm({
         productionMode: getFormText(formData, "productionMode"),
         estimatedHours: getFormText(formData, "estimatedHours"),
         designerHoursCap: getFormText(formData, "designerHoursCap"),
+        titleFontAssetId: getFormText(formData, "titleFontAssetId"),
+        bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
         projectPassword: getFormText(formData, "projectPassword"),
         clearProjectPassword: formData.get("clearProjectPassword") === "on",
       }),
@@ -328,6 +335,55 @@ export function ProjectCreateForm({
               />
               <span className="text-sm font-semibold text-slate-600">공개 화면 헤더와 버튼 기준 색상</span>
             </div>
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <div className="rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">공개 화면 글꼴</p>
+                <h4 className="mt-1 text-base font-black text-[#092046]">프로젝트 기본 글꼴</h4>
+              </div>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-500">선택</span>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div>
+                <FieldLabel>기사 제목 기본 글꼴</FieldLabel>
+                <select
+                  name="titleFontAssetId"
+                  defaultValue={initialValues.titleFontAssetId ?? ""}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  <option value="">시스템 기본 글꼴</option>
+                  {fonts.map((font) => (
+                    <option key={font.id} value={font.id}>
+                      {font.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>기사 본문 기본 글꼴</FieldLabel>
+                <select
+                  name="bodyFontAssetId"
+                  defaultValue={initialValues.bodyFontAssetId ?? ""}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  <option value="">시스템 기본 글꼴</option>
+                  {fonts.map((font) => (
+                    <option key={font.id} value={font.id}>
+                      {font.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {fonts.length === 0 ? (
+              <p className="mt-3 text-xs font-semibold text-slate-500">
+                활성화된 폰트가 없습니다. 관리자 계정으로 폰트 라이브러리에 먼저 업로드하세요.
+              </p>
+            ) : null}
           </div>
         </div>
 

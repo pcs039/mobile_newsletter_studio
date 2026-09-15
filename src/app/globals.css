@@ -480,6 +480,7 @@ select {
 
 .public-newsletter-screen .public-article-body {
   color: #334155;
+  font-family: var(--newsletter-body-font, var(--font-app-sans, system-ui, sans-serif));
   font-size: 1.0625rem;
   text-align: left;
   line-height: 1.8;
@@ -494,8 +495,22 @@ select {
 }
 
 .public-newsletter-screen .public-article-title {
+  font-family: var(--newsletter-title-font, var(--font-app-sans, system-ui, sans-serif));
   text-align: left;
   word-break: keep-all;
+}
+
+.public-newsletter-screen .article-motion-summary,
+.public-newsletter-screen .article-motion-content-block {
+  font-family: var(--newsletter-body-font, var(--font-app-sans, system-ui, sans-serif));
+}
+
+.public-newsletter-screen .article-motion-caption {
+  font-family: var(--newsletter-caption-font, var(--newsletter-body-font, var(--font-app-sans, system-ui, sans-serif)));
+}
+
+.public-newsletter-screen .article-motion-link-button {
+  font-family: var(--newsletter-button-font, var(--newsletter-body-font, var(--font-app-sans, system-ui, sans-serif)));
 }
 
 .public-mobile-article-reader .article-title-motion {

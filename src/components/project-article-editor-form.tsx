@@ -9,6 +9,7 @@ import type {
   ArticleElementMotionSpeed,
   ArticleMotionPreset,
   ArticleMotionSpeed,
+  FontAsset,
   ProjectAssetFile,
   ProjectContentArticle,
   ProjectContentBlock,
@@ -19,6 +20,9 @@ type ProjectArticleEditorFormProps = {
   projectSlug: string;
   pages: ProjectPageImage[];
   assets: ProjectAssetFile[];
+  fonts?: FontAsset[];
+  projectBodyFontAssetId?: string | null;
+  projectTitleFontAssetId?: string | null;
   projectPageCount?: number;
   article: ProjectContentArticle | null;
 };
@@ -488,10 +492,45 @@ function ElementMotionSettingRow({
   );
 }
 
+function FontSelect({
+  defaultValue,
+  fonts,
+  inheritLabel,
+  label,
+  name,
+}: {
+  defaultValue?: string | null;
+  fonts: FontAsset[];
+  inheritLabel: string;
+  label: string;
+  name: string;
+}) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <select
+        name={name}
+        defaultValue={defaultValue ?? ""}
+        className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+      >
+        <option value="">{inheritLabel}</option>
+        {fonts.map((font) => (
+          <option key={font.id} value={font.id}>
+            {font.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export function ProjectArticleEditorForm({
   projectSlug,
   pages,
   assets,
+  fonts = [],
+  projectBodyFontAssetId,
+  projectTitleFontAssetId,
   projectPageCount = 0,
   article,
 }: ProjectArticleEditorFormProps) {
@@ -867,6 +906,10 @@ export function ProjectArticleEditorForm({
       imageMotionSpeed: getValue(formData, "imageMotionSpeed"),
       linkMotionEffect: getValue(formData, "linkMotionEffect"),
       linkMotionSpeed: getValue(formData, "linkMotionSpeed"),
+      titleFontAssetId: getValue(formData, "titleFontAssetId"),
+      bodyFontAssetId: getValue(formData, "bodyFontAssetId"),
+      captionFontAssetId: getValue(formData, "captionFontAssetId"),
+      buttonFontAssetId: getValue(formData, "buttonFontAssetId"),
       status: getValue(formData, "status"),
     };
 
@@ -1370,6 +1413,48 @@ export function ProjectArticleEditorForm({
             />
           </div>
         </div>
+
+        <details className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
+          <summary className="cursor-pointer text-sm font-black text-[#092046]">
+            글꼴 설정
+            <span className="ml-2 text-xs font-bold text-slate-500">기사별로 프로젝트 기본값을 덮어씁니다.</span>
+          </summary>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <FontSelect
+              name="titleFontAssetId"
+              label="기사 제목 글꼴"
+              fonts={fonts}
+              defaultValue={article?.titleFontAssetId}
+              inheritLabel={projectTitleFontAssetId ? "프로젝트 제목 글꼴 사용" : "시스템 기본 글꼴"}
+            />
+            <FontSelect
+              name="bodyFontAssetId"
+              label="기사 본문 글꼴"
+              fonts={fonts}
+              defaultValue={article?.bodyFontAssetId}
+              inheritLabel={projectBodyFontAssetId ? "프로젝트 본문 글꼴 사용" : "시스템 기본 글꼴"}
+            />
+            <FontSelect
+              name="captionFontAssetId"
+              label="이미지 캡션 글꼴"
+              fonts={fonts}
+              defaultValue={article?.captionFontAssetId}
+              inheritLabel="본문 글꼴 사용"
+            />
+            <FontSelect
+              name="buttonFontAssetId"
+              label="URL 버튼 글꼴"
+              fonts={fonts}
+              defaultValue={article?.buttonFontAssetId}
+              inheritLabel="본문 글꼴 사용"
+            />
+          </div>
+          {fonts.length === 0 ? (
+            <p className="mt-3 text-xs font-semibold text-slate-500">
+              활성화된 폰트가 없어 시스템 기본 글꼴로 표시됩니다.
+            </p>
+          ) : null}
+        </details>
 
         <div className="mt-5 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <div>

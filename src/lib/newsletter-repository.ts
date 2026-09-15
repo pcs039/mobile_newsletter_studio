@@ -26,7 +26,32 @@ type NewsletterProjectRow = {
   pdf_original_uploaded_at: string | null;
   project_password_hash: string | null;
   project_password_updated_at: string | null;
+  title_font_asset_id: string | null;
+  body_font_asset_id: string | null;
   page_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type FontAssetRow = {
+  id: string;
+  font_name: string;
+  font_family: string;
+  font_file_path: string;
+  font_file_format: string;
+  font_weight: string | null;
+  font_style: string | null;
+  font_type: string;
+  license_type: string | null;
+  license_note: string | null;
+  license_url: string | null;
+  webfont_allowed: boolean;
+  commercial_allowed: boolean;
+  redistribution_allowed: boolean;
+  attribution_required: boolean;
+  attribution_text: string | null;
+  is_active: boolean;
+  uploaded_by: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -47,6 +72,8 @@ export type CreateNewsletterProjectInput = {
   designerHoursCap?: string;
   projectPassword?: string;
   clearProjectPassword?: boolean;
+  titleFontAssetId?: string;
+  bodyFontAssetId?: string;
 };
 
 export type UpdateNewsletterProjectInput = CreateNewsletterProjectInput & {
@@ -358,6 +385,8 @@ export type ProjectWorkspaceInfo = {
   updated: string;
   hasProjectPassword: boolean;
   projectPasswordUpdatedAt: string;
+  titleFontAssetId: string | null;
+  bodyFontAssetId: string | null;
 };
 
 export type ProjectWorkspaceResult =
@@ -392,6 +421,39 @@ export type ProjectBasicInfo = {
   designerHoursCap: string;
   hasProjectPassword: boolean;
   projectPasswordUpdatedAt: string;
+  titleFontAssetId: string;
+  bodyFontAssetId: string;
+};
+
+export type FontAsset = {
+  id: string;
+  name: string;
+  family: string;
+  cssFamily: string;
+  filePath: string;
+  fileFormat: string;
+  fileUrl: string;
+  weight: string;
+  style: string;
+  type: string;
+  licenseType: string;
+  licenseNote: string;
+  licenseUrl: string;
+  webfontAllowed: boolean;
+  commercialAllowed: boolean;
+  redistributionAllowed: boolean;
+  attributionRequired: boolean;
+  attributionText: string;
+  isActive: boolean;
+  uploadedBy: string;
+  created: string;
+  updated: string;
+};
+
+export type FontAssetsResult = {
+  fonts: FontAsset[];
+  source: "supabase" | "unconfigured" | "error";
+  message: string;
 };
 
 export type ProjectBasicInfoResult =
@@ -559,6 +621,10 @@ type NewsletterArticleRow = {
   image_motion_speed: string | null;
   link_motion_effect: string | null;
   link_motion_speed: string | null;
+  title_font_asset_id: string | null;
+  body_font_asset_id: string | null;
+  caption_font_asset_id: string | null;
+  button_font_asset_id: string | null;
   status: string;
   representative_asset_id: string | null;
   audio_id: string | null;
@@ -842,6 +908,10 @@ export type ProjectContentArticle = {
   imageMotionSpeed: ArticleElementMotionSpeed;
   linkMotionEffect: ArticleElementMotionEffect;
   linkMotionSpeed: ArticleElementMotionSpeed;
+  titleFontAssetId: string | null;
+  bodyFontAssetId: string | null;
+  captionFontAssetId: string | null;
+  buttonFontAssetId: string | null;
   status: string;
   updated: string;
   blocks: ProjectContentBlock[];
@@ -887,6 +957,10 @@ export type UpsertProjectArticleInput = {
   imageMotionSpeed?: string;
   linkMotionEffect?: string;
   linkMotionSpeed?: string;
+  titleFontAssetId?: string;
+  bodyFontAssetId?: string;
+  captionFontAssetId?: string;
+  buttonFontAssetId?: string;
   status?: string;
   buttonLabel?: string;
   buttonTarget?: string;
@@ -949,7 +1023,32 @@ const projectSelectColumns = [
   "pdf_original_uploaded_at",
   "project_password_hash",
   "project_password_updated_at",
+  "title_font_asset_id",
+  "body_font_asset_id",
   "page_count",
+  "created_at",
+  "updated_at",
+].join(",");
+
+const fontAssetSelectColumns = [
+  "id",
+  "font_name",
+  "font_family",
+  "font_file_path",
+  "font_file_format",
+  "font_weight",
+  "font_style",
+  "font_type",
+  "license_type",
+  "license_note",
+  "license_url",
+  "webfont_allowed",
+  "commercial_allowed",
+  "redistribution_allowed",
+  "attribution_required",
+  "attribution_text",
+  "is_active",
+  "uploaded_by",
   "created_at",
   "updated_at",
 ].join(",");
@@ -1454,6 +1553,8 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     updated: formatCompactDateTime(project.updated_at),
     hasProjectPassword: Boolean(project.project_password_hash),
     projectPasswordUpdatedAt: project.project_password_updated_at ? formatCompactDateTime(project.project_password_updated_at) : "",
+    titleFontAssetId: project.title_font_asset_id,
+    bodyFontAssetId: project.body_font_asset_id,
   };
 }
 
@@ -1475,7 +1576,90 @@ function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicIn
     designerHoursCap: project.designer_hours_cap || "",
     hasProjectPassword: Boolean(project.project_password_hash),
     projectPasswordUpdatedAt: project.project_password_updated_at ? formatCompactDateTime(project.project_password_updated_at) : "",
+    titleFontAssetId: project.title_font_asset_id || "",
+    bodyFontAssetId: project.body_font_asset_id || "",
   };
+}
+
+function makeInternalFontFamilyName(id: string) {
+  return `DD_Font_${id.replace(/[^a-zA-Z0-9_-]/g, "_").replace(/-/g, "_")}`;
+}
+
+function mapFontAssetRowToFontAsset(font: FontAssetRow): FontAsset {
+  return {
+    id: font.id,
+    name: font.font_name,
+    family: font.font_family,
+    cssFamily: makeInternalFontFamilyName(font.id),
+    filePath: font.font_file_path,
+    fileFormat: font.font_file_format,
+    fileUrl: makePublicStoragePreviewHref("fonts", font.font_file_path) ?? "",
+    weight: font.font_weight || "400",
+    style: font.font_style || "normal",
+    type: font.font_type,
+    licenseType: font.license_type || "",
+    licenseNote: font.license_note || "",
+    licenseUrl: font.license_url || "",
+    webfontAllowed: font.webfont_allowed,
+    commercialAllowed: font.commercial_allowed,
+    redistributionAllowed: font.redistribution_allowed,
+    attributionRequired: font.attribution_required,
+    attributionText: font.attribution_text || "",
+    isActive: font.is_active,
+    uploadedBy: font.uploaded_by || "",
+    created: formatCompactDateTime(font.created_at),
+    updated: formatCompactDateTime(font.updated_at),
+  };
+}
+
+export async function getFontAssets({
+  activeOnly = true,
+}: {
+  activeOnly?: boolean;
+} = {}): Promise<FontAssetsResult> {
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/font_assets?select=${fontAssetSelectColumns}${
+      activeOnly ? "&is_active=eq.true&webfont_allowed=eq.true" : ""
+    }&order=font_name.asc`,
+  );
+  const headers = getRequestHeaders(true);
+
+  if (!endpoint || !headers) {
+    return {
+      fonts: [],
+      source: "unconfigured",
+      message: "Supabase 폰트 라이브러리 설정 후 글꼴 목록을 표시합니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        fonts: [],
+        source: "error",
+        message: "폰트 라이브러리 조회에 실패했습니다. font_assets 테이블을 확인하세요.",
+      };
+    }
+
+    const rows = (await response.json()) as FontAssetRow[];
+
+    return {
+      fonts: rows.map(mapFontAssetRowToFontAsset),
+      source: "supabase",
+      message: rows.length > 0 ? "등록된 폰트 목록을 표시합니다." : "등록된 폰트가 아직 없습니다.",
+    };
+  } catch {
+    return {
+      fonts: [],
+      source: "error",
+      message: "폰트 라이브러리 조회 중 오류가 발생했습니다.",
+    };
+  }
 }
 
 function mapPageRowToProjectPageImage(page: NewsletterPageRow): ProjectPageImage {
@@ -1673,6 +1857,10 @@ function mapArticleRowToProjectContentArticle(
     imageMotionSpeed: normalizeArticleElementMotionSpeed(article.image_motion_speed),
     linkMotionEffect: normalizeArticleElementMotionEffect(article.link_motion_effect),
     linkMotionSpeed: normalizeArticleElementMotionSpeed(article.link_motion_speed),
+    titleFontAssetId: article.title_font_asset_id,
+    bodyFontAssetId: article.body_font_asset_id,
+    captionFontAssetId: article.caption_font_asset_id,
+    buttonFontAssetId: article.button_font_asset_id,
     status: article.status,
     updated: formatCompactDateTime(article.updated_at),
     blocks: blocks.map(mapContentBlockRowToProjectBlock),
@@ -4149,7 +4337,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,summary,body,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,summary,body,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -4573,6 +4761,10 @@ export async function upsertProjectArticle(
       image_motion_speed: normalizeArticleElementMotionSpeed(input.imageMotionSpeed),
       link_motion_effect: normalizeArticleElementMotionEffect(input.linkMotionEffect),
       link_motion_speed: normalizeArticleElementMotionSpeed(input.linkMotionSpeed),
+      title_font_asset_id: nullableText(input.titleFontAssetId),
+      body_font_asset_id: nullableText(input.bodyFontAssetId),
+      caption_font_asset_id: nullableText(input.captionFontAssetId),
+      button_font_asset_id: nullableText(input.buttonFontAssetId),
       status: normalizeArticleStatus(input.status),
     };
 
@@ -4676,6 +4868,8 @@ export async function createNewsletterProject(
     production_mode: input.productionMode,
     estimated_hours: input.estimatedHours || null,
     designer_hours_cap: input.designerHoursCap || null,
+    title_font_asset_id: nullableText(input.titleFontAssetId),
+    body_font_asset_id: nullableText(input.bodyFontAssetId),
     project_password_hash: input.projectPassword ? hashProjectPassword(input.projectPassword) : null,
     project_password_updated_at: input.projectPassword ? new Date().toISOString() : null,
   };
@@ -4758,6 +4952,8 @@ export async function updateNewsletterProject(
     production_mode: input.productionMode,
     estimated_hours: input.estimatedHours || null,
     designer_hours_cap: input.designerHoursCap || null,
+    title_font_asset_id: nullableText(input.titleFontAssetId),
+    body_font_asset_id: nullableText(input.bodyFontAssetId),
     updated_at: new Date().toISOString(),
   };
 

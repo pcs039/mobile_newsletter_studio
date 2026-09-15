@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type TouchEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type TouchEvent } from "react";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { ScrollMotionReveal } from "@/components/scroll-motion-reveal";
@@ -12,11 +12,13 @@ import {
   makeArticleSummarySegmentId,
   makeArticleTitleSegmentId,
 } from "@/lib/audio-text-sync";
+import { getFontAssetById, getFontFamilyValue } from "@/lib/font-css";
 import type {
   ArticleElementMotionEffect,
   ArticleElementMotionSpeed,
   ArticleMotionPreset,
   ArticleMotionSpeed,
+  FontAsset,
   ProjectContentArticle,
   ProjectContentBlock,
 } from "@/lib/newsletter-repository";
@@ -24,7 +26,10 @@ import { getArticleLinkButtonLabel, getValidArticleUrl } from "@/lib/public-arti
 
 type PublicMobileArticleReaderProps = {
   articles: ProjectContentArticle[];
+  fontAssets?: FontAsset[];
   initialArticleId?: string | null;
+  projectBodyFontAssetId?: string | null;
+  projectTitleFontAssetId?: string | null;
   publicAudio?: {
     src: string;
     title?: string;
@@ -509,15 +514,21 @@ function renderContentBlock(
 function ArticleCard({
   article,
   className = "",
+  fontAssets,
   index,
   onOpenArticleImage,
+  projectBodyFontAssetId,
+  projectTitleFontAssetId,
   showAdminPreviewControls,
   slug,
 }: {
   article: ProjectContentArticle;
   className?: string;
+  fontAssets: FontAsset[];
   index: number;
   onOpenArticleImage: (image: PublicArticleLightboxImage) => void;
+  projectBodyFontAssetId?: string | null;
+  projectTitleFontAssetId?: string | null;
   showAdminPreviewControls: boolean;
   slug: string;
 }) {
@@ -528,12 +539,23 @@ function ArticleCard({
   const motionSettings = getResolvedArticleMotionSettings(article, motionPreset, motionSpeed);
   const shouldRenderCharacterTitleMotion = motionSettings.title.effect === "char_by_char";
   const titleMotionTokens = shouldRenderCharacterTitleMotion ? getArticleTitleMotionTokens(articleTitle, motionSettings.title.speed) : [];
+  const titleFont = getFontAssetById(fontAssets, article.titleFontAssetId || projectTitleFontAssetId);
+  const bodyFont = getFontAssetById(fontAssets, article.bodyFontAssetId || projectBodyFontAssetId);
+  const captionFont = getFontAssetById(fontAssets, article.captionFontAssetId || article.bodyFontAssetId || projectBodyFontAssetId);
+  const buttonFont = getFontAssetById(fontAssets, article.buttonFontAssetId || article.bodyFontAssetId || projectBodyFontAssetId);
+  const fontStyle = {
+    "--newsletter-title-font": getFontFamilyValue(titleFont),
+    "--newsletter-body-font": getFontFamilyValue(bodyFont),
+    "--newsletter-caption-font": getFontFamilyValue(captionFont),
+    "--newsletter-button-font": getFontFamilyValue(buttonFont),
+  } as CSSProperties;
 
   return (
     <article
       className={`public-card public-article-card ${articleMotionPresetClassNames[motionPreset]} ${articleMotionSpeedClassNames[motionSpeed]} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}
       data-motion-preset={motionPreset}
       data-motion-speed={motionSpeed}
+      style={fontStyle}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-black text-[#184a88]">
@@ -615,7 +637,10 @@ function ArticleCard({
 
 export function PublicMobileArticleReader({
   articles,
+  fontAssets = [],
   initialArticleId,
+  projectBodyFontAssetId,
+  projectTitleFontAssetId,
   publicAudio,
   showAdminPreviewControls,
   slug,
@@ -717,8 +742,11 @@ export function PublicMobileArticleReader({
           {currentArticle ? (
             <ArticleCard
               article={currentArticle}
+              fontAssets={fontAssets}
               index={safeCurrentIndex}
               onOpenArticleImage={setLightboxImage}
+              projectBodyFontAssetId={projectBodyFontAssetId}
+              projectTitleFontAssetId={projectTitleFontAssetId}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
             />
@@ -817,8 +845,11 @@ export function PublicMobileArticleReader({
             <ArticleCard
               key={article.id}
               article={article}
+              fontAssets={fontAssets}
               index={index}
               onOpenArticleImage={setLightboxImage}
+              projectBodyFontAssetId={projectBodyFontAssetId}
+              projectTitleFontAssetId={projectTitleFontAssetId}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
             />
