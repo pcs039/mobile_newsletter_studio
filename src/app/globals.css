@@ -499,14 +499,13 @@ select {
 }
 
 .public-mobile-article-reader .article-title-motion {
-  animation: public-article-title-fade-up 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
   margin-top: 1rem;
   padding-bottom: 0.8rem;
   position: relative;
 }
 
 .public-mobile-article-reader .article-title-motion::after {
-  animation: public-article-title-underline 560ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+  animation: public-article-title-underline 520ms cubic-bezier(0.22, 1, 0.36, 1) 620ms both;
   background: linear-gradient(90deg, #092046, #2f73b7);
   border-radius: 999px;
   bottom: 0;
@@ -519,10 +518,16 @@ select {
   width: 26%;
 }
 
-@keyframes public-article-title-fade-up {
+.public-mobile-article-reader .article-title-motion-char {
+  animation: public-article-title-char-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  display: inline-block;
+  white-space: pre;
+}
+
+@keyframes public-article-title-char-enter {
   from {
     opacity: 0;
-    transform: translateY(0.75rem);
+    transform: translate(-0.16rem, 0.42rem);
   }
 
   to {
@@ -654,9 +659,11 @@ select {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .public-mobile-article-reader .article-title-motion,
+  .public-mobile-article-reader .article-title-motion-char,
   .public-mobile-article-reader .article-title-motion::after {
     animation: none;
+    opacity: 1;
+    transform: none;
   }
 
   .public-newsletter-screen .public-audio-sync-segment {
