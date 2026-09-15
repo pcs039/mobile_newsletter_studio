@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { PublicAudioPlayer } from "@/components/public-audio-player";
+import { getAudioSyncedPageNumber } from "@/lib/audio-page-sync";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
 
 type EbookPage = {
@@ -37,6 +38,7 @@ const zoomStep = 25;
 const minZoom = 25;
 const maxZoom = 600;
 const zoomPresets = [100, 150, 200, 300, 400, 600] as const;
+const followPagesStorageKey = "datadiction_audio_follow_pages";
 
 let sharedAudioContext: AudioContext | null = null;
 let lastSoundAt = 0;
@@ -120,6 +122,18 @@ function subscribeToSoundPreference(onStoreChange: () => void) {
   };
 }
 
+function getInitialFollowPagesEnabled() {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  try {
+    return window.localStorage.getItem(followPagesStorageKey) !== "false";
+  } catch {
+    return true;
+  }
+}
+
 export function PublicDesktopEbookViewer({
   initialPageNumber,
   isEmbeddedAdminPreview,
@@ -141,6 +155,10 @@ export function PublicDesktopEbookViewer({
   const [viewMode, setViewMode] = useState<PageViewMode>("single");
   const [zoom, setZoom] = useState(100);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [followPages, setFollowPages] = useState(getInitialFollowPagesEnabled);
+  const [followPagesMessage, setFollowPagesMessage] = useState("");
   const soundEnabled = useSyncExternalStore(subscribeToSoundPreference, getInitialSoundEnabled, () => true);
   const currentPage = pages[currentIndex] ?? null;
   const coverPage = pages.find((page) => page.previewHref) ?? pages[0] ?? null;
@@ -155,33 +173,16 @@ export function PublicDesktopEbookViewer({
   const canGoPrevious = currentIndex > 0;
   const canGoNext = currentIndex < pages.length - 1;
   const pageStep = viewMode === "double" ? 2 : 1;
+  const canFollowPages = Boolean(publicAudio) && pages.length > 0 && audioDuration > 0;
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        goToIndex(currentIndex - pageStep, true);
-      }
-
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        goToIndex(currentIndex + pageStep, true);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  });
-
-  function syncPageToUrl(pageNumber: number) {
+  const syncPageToUrl = useCallback((pageNumber: number) => {
     const url = new URL(window.location.href);
 
     url.searchParams.set("page", String(pageNumber));
     window.history.replaceState(null, "", url);
-  }
+  }, []);
 
-  function goToIndex(nextIndex: number, withSound: boolean) {
+  const goToIndex = useCallback((nextIndex: number, withSound: boolean) => {
     if (pages.length === 0) {
       return;
     }
@@ -195,6 +196,102 @@ export function PublicDesktopEbookViewer({
 
     if (withSound && soundEnabled) {
       void playPageFlipSound();
+    }
+  }, [pages, soundEnabled, syncPageToUrl]);
+
+  const getIndexForSyncedPage = useCallback((pageNumber: number) => {
+    const targetIndex = pages.findIndex((page) => page.pageNumber === pageNumber);
+
+    if (targetIndex < 0) {
+      return -1;
+    }
+
+    if (viewMode === "single") {
+      return targetIndex;
+    }
+
+    return targetIndex % 2 === 0 ? targetIndex : Math.max(0, targetIndex - 1);
+  }, [pages, viewMode]);
+
+  const syncPageToAudioTime = useCallback((nextTime: number) => {
+    const syncedPageNumber = getAudioSyncedPageNumber(nextTime, audioDuration, pages.length);
+
+    if (!syncedPageNumber) {
+      return;
+    }
+
+    const nextIndex = getIndexForSyncedPage(syncedPageNumber);
+
+    if (nextIndex < 0) {
+      return;
+    }
+
+    if (viewMode === "double" && (currentIndex === nextIndex || currentIndex + 1 === nextIndex)) {
+      return;
+    }
+
+    if (currentIndex === nextIndex) {
+      return;
+    }
+
+    goToIndex(nextIndex, false);
+  }, [audioDuration, currentIndex, getIndexForSyncedPage, goToIndex, pages.length, viewMode]);
+
+  const disableFollowPagesForManualNavigation = useCallback(() => {
+    if (!followPages) {
+      return;
+    }
+
+    setFollowPages(false);
+    setFollowPagesMessage("사용자가 직접 페이지를 이동해 자동 넘김을 껐습니다.");
+  }, [followPages]);
+
+  const handleAudioDurationChange = useCallback((nextDuration: number) => {
+    setAudioDuration(nextDuration);
+  }, []);
+
+  const handleAudioTimeUpdate = useCallback((nextTime: number) => {
+    setAudioCurrentTime(nextTime);
+
+    if (canFollowPages && followPages) {
+      syncPageToAudioTime(nextTime);
+    }
+  }, [canFollowPages, followPages, syncPageToAudioTime]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        disableFollowPagesForManualNavigation();
+        goToIndex(currentIndex - pageStep, true);
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        disableFollowPagesForManualNavigation();
+        goToIndex(currentIndex + pageStep, true);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentIndex, disableFollowPagesForManualNavigation, goToIndex, pageStep]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(followPagesStorageKey, String(followPages));
+    } catch {
+      // Page follow preference is optional.
+    }
+  }, [followPages]);
+
+  function updateFollowPages(nextValue: boolean) {
+    setFollowPages(nextValue);
+    setFollowPagesMessage(nextValue ? "" : "자동 넘김을 껐습니다.");
+
+    if (nextValue) {
+      syncPageToAudioTime(audioCurrentTime);
     }
   }
 
@@ -393,6 +490,7 @@ export function PublicDesktopEbookViewer({
                       key={page.id}
                       type="button"
                       onClick={() => {
+                        disableFollowPagesForManualNavigation();
                         goToIndex(index, true);
                         setIsDrawerOpen(false);
                       }}
@@ -429,7 +527,10 @@ export function PublicDesktopEbookViewer({
 
         <button
           type="button"
-          onClick={() => goToIndex(currentIndex - pageStep, true)}
+          onClick={() => {
+            disableFollowPagesForManualNavigation();
+            goToIndex(currentIndex - pageStep, true);
+          }}
           disabled={!canGoPrevious}
           className="public-ebook-side-nav dd-btn dd-btn-ghost absolute left-4 top-1/2 z-20 !hidden h-16 w-16 rounded-full text-sm backdrop-blur disabled:opacity-25 lg:!flex"
         >
@@ -437,7 +538,10 @@ export function PublicDesktopEbookViewer({
         </button>
         <button
           type="button"
-          onClick={() => goToIndex(currentIndex + pageStep, true)}
+          onClick={() => {
+            disableFollowPagesForManualNavigation();
+            goToIndex(currentIndex + pageStep, true);
+          }}
           disabled={!canGoNext}
           className="public-ebook-side-nav dd-btn dd-btn-ghost absolute right-4 top-1/2 z-20 !hidden h-16 w-16 rounded-full text-sm backdrop-blur disabled:opacity-25 lg:!flex"
         >
@@ -499,7 +603,10 @@ export function PublicDesktopEbookViewer({
               min={0}
               max={Math.max(pages.length - 1, 0)}
               value={currentIndex}
-              onChange={(event) => goToIndex(Number(event.target.value), false)}
+              onChange={(event) => {
+                disableFollowPagesForManualNavigation();
+                goToIndex(Number(event.target.value), false);
+              }}
               disabled={pages.length === 0}
               className="h-2 min-w-0 flex-1 accent-sky-300"
               aria-label="e-book 페이지 이동"
@@ -521,7 +628,30 @@ export function PublicDesktopEbookViewer({
           </div>
         </div>
       </section>
-      {publicAudio ? <PublicAudioPlayer src={publicAudio.src} title={publicAudio.title} variant="desktop" /> : null}
+      {publicAudio ? (
+        <PublicAudioPlayer
+          src={publicAudio.src}
+          title={publicAudio.title}
+          variant="desktop"
+          onDurationChange={handleAudioDurationChange}
+          onTimeUpdate={handleAudioTimeUpdate}
+          actionSlot={
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => updateFollowPages(!followPages)}
+                className={`dd-btn dd-btn-sm text-xs ${
+                  followPages ? "bg-white text-[#092046]" : "dd-btn-ghost text-slate-100"
+                }`}
+                aria-pressed={followPages}
+              >
+                자동 넘김 {followPages ? "켜짐" : "꺼짐"}
+              </button>
+              {followPagesMessage ? <span className="text-[11px] font-bold text-slate-300">{followPagesMessage}</span> : null}
+            </div>
+          }
+        />
+      ) : null}
     </main>
   );
 }
