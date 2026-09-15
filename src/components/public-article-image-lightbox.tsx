@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 export type PublicArticleLightboxImage = {
   alt: string;
@@ -36,16 +37,16 @@ export function PublicArticleImageLightbox({ image, onClose }: PublicArticleImag
     };
   }, [image, onClose]);
 
-  if (!image) {
+  if (!image || typeof document === "undefined") {
     return null;
   }
 
-  return (
+  const lightbox = (
     <section
       role="dialog"
       aria-label="기사 이미지 확대 보기"
       aria-modal="true"
-      className="fixed inset-0 z-[9999] flex min-h-[100dvh] items-center justify-center overflow-hidden bg-slate-950/95 text-white"
+      className="fixed inset-0 z-[9999] flex min-h-[100dvh] bg-black text-white"
       style={{
         paddingBottom: "env(safe-area-inset-bottom)",
         paddingTop: "env(safe-area-inset-top)",
@@ -53,34 +54,31 @@ export function PublicArticleImageLightbox({ image, onClose }: PublicArticleImag
     >
       <button
         type="button"
-        className="absolute inset-0 z-0 cursor-zoom-out bg-black/40"
+        className="absolute inset-0 cursor-zoom-out bg-black"
         aria-label="이미지 확대 닫기"
         onClick={onClose}
       />
-      <div className="pointer-events-none relative z-10 grid h-[100dvh] w-full grid-rows-[auto_minmax(0,1fr)_auto] gap-3 px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6">
-        <div className="flex min-h-12 w-full items-center justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="dd-btn pointer-events-auto min-h-11 rounded-full border border-white/30 bg-white px-4 py-2 text-sm font-black text-[#092046] shadow-2xl shadow-black/40 transition hover:bg-sky-50"
-            aria-label="이미지 확대 닫기"
-          >
-            닫기 ×
-          </button>
-        </div>
-        <div className="flex min-h-0 w-full items-center justify-center px-1 py-2">
-          <div className="pointer-events-auto max-h-[78dvh] max-w-[94vw] overflow-auto rounded-xl shadow-2xl shadow-black/60">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={image.src}
-              alt={image.alt}
-              className="mx-auto h-auto max-h-[78dvh] max-w-[94vw] object-contain"
-            />
-          </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] z-20 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/25 bg-white px-4 text-sm font-black text-black shadow-lg shadow-black/40 transition hover:bg-slate-100"
+        aria-label="이미지 확대 닫기"
+      >
+        닫기
+      </button>
+      <div className="pointer-events-none relative z-10 grid h-[100dvh] w-full grid-rows-[1fr_auto] px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(4.25rem+env(safe-area-inset-top))] sm:px-5">
+        <div className="flex min-h-0 items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={image.src}
+            alt={image.alt}
+            className="pointer-events-auto max-h-[82dvh] max-w-[96vw] rounded-lg object-contain shadow-2xl shadow-black/50"
+            onClick={(event) => event.stopPropagation()}
+          />
         </div>
         {image.caption ? (
-          <div className="flex min-h-10 w-full justify-center">
-            <p className="pointer-events-auto line-clamp-2 max-w-3xl rounded-2xl bg-black/70 px-4 py-2 text-center text-sm font-bold leading-6 text-white shadow-lg shadow-black/30">
+          <div className="mt-3 flex min-h-6 justify-center px-3">
+            <p className="line-clamp-2 max-w-3xl text-center text-xs font-bold leading-5 text-white/80 sm:text-sm">
               {image.caption}
             </p>
           </div>
@@ -88,4 +86,6 @@ export function PublicArticleImageLightbox({ image, onClose }: PublicArticleImag
       </div>
     </section>
   );
+
+  return createPortal(lightbox, document.body);
 }
