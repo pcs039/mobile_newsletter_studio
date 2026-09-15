@@ -519,54 +519,54 @@ select {
 }
 
 .public-mobile-article-reader .article-motion-speed-slow {
-  --article-motion-title-duration: 620ms;
-  --article-motion-char-duration: 520ms;
-  --article-motion-char-delay: 30ms;
-  --article-motion-char-max-delay: 700ms;
-  --article-motion-underline-delay: 720ms;
-  --article-motion-underline-duration: 620ms;
-  --article-motion-summary-delay: 180ms;
-  --article-motion-summary-duration: 660ms;
-  --article-motion-image-delay: 180ms;
-  --article-motion-image-duration: 760ms;
-  --article-motion-block-delay: 240ms;
-  --article-motion-block-duration: 680ms;
-  --article-motion-button-delay: 320ms;
-  --article-motion-button-duration: 520ms;
+  --article-motion-title-duration: 1050ms;
+  --article-motion-char-duration: 950ms;
+  --article-motion-char-delay: 50ms;
+  --article-motion-char-max-delay: 1450ms;
+  --article-motion-underline-delay: 1500ms;
+  --article-motion-underline-duration: 700ms;
+  --article-motion-summary-delay: 300ms;
+  --article-motion-summary-duration: 1700ms;
+  --article-motion-image-delay: 300ms;
+  --article-motion-image-duration: 1900ms;
+  --article-motion-block-delay: 420ms;
+  --article-motion-block-duration: 1750ms;
+  --article-motion-button-delay: 580ms;
+  --article-motion-button-duration: 1500ms;
 }
 
 .public-mobile-article-reader .article-motion-speed-normal {
-  --article-motion-title-duration: 520ms;
-  --article-motion-char-duration: 420ms;
-  --article-motion-char-delay: 22ms;
-  --article-motion-char-max-delay: 520ms;
-  --article-motion-underline-delay: 620ms;
-  --article-motion-underline-duration: 520ms;
-  --article-motion-summary-delay: 130ms;
-  --article-motion-summary-duration: 520ms;
-  --article-motion-image-delay: 130ms;
-  --article-motion-image-duration: 620ms;
-  --article-motion-block-delay: 190ms;
-  --article-motion-block-duration: 540ms;
-  --article-motion-button-delay: 260ms;
-  --article-motion-button-duration: 440ms;
+  --article-motion-title-duration: 800ms;
+  --article-motion-char-duration: 760ms;
+  --article-motion-char-delay: 36ms;
+  --article-motion-char-max-delay: 1000ms;
+  --article-motion-underline-delay: 1050ms;
+  --article-motion-underline-duration: 560ms;
+  --article-motion-summary-delay: 180ms;
+  --article-motion-summary-duration: 1150ms;
+  --article-motion-image-delay: 180ms;
+  --article-motion-image-duration: 1300ms;
+  --article-motion-block-delay: 260ms;
+  --article-motion-block-duration: 1200ms;
+  --article-motion-button-delay: 360ms;
+  --article-motion-button-duration: 1100ms;
 }
 
 .public-mobile-article-reader .article-motion-speed-fast {
-  --article-motion-title-duration: 380ms;
-  --article-motion-char-duration: 320ms;
-  --article-motion-char-delay: 14ms;
-  --article-motion-char-max-delay: 360ms;
-  --article-motion-underline-delay: 420ms;
-  --article-motion-underline-duration: 380ms;
-  --article-motion-summary-delay: 80ms;
-  --article-motion-summary-duration: 380ms;
-  --article-motion-image-delay: 80ms;
-  --article-motion-image-duration: 460ms;
-  --article-motion-block-delay: 120ms;
-  --article-motion-block-duration: 420ms;
-  --article-motion-button-delay: 160ms;
-  --article-motion-button-duration: 340ms;
+  --article-motion-title-duration: 620ms;
+  --article-motion-char-duration: 580ms;
+  --article-motion-char-delay: 20ms;
+  --article-motion-char-max-delay: 650ms;
+  --article-motion-underline-delay: 700ms;
+  --article-motion-underline-duration: 420ms;
+  --article-motion-summary-delay: 90ms;
+  --article-motion-summary-duration: 780ms;
+  --article-motion-image-delay: 100ms;
+  --article-motion-image-duration: 820ms;
+  --article-motion-block-delay: 140ms;
+  --article-motion-block-duration: 820ms;
+  --article-motion-button-delay: 180ms;
+  --article-motion-button-duration: 700ms;
 }
 
 .public-mobile-article-reader .article-title-motion[data-motion-effect="fade_up"] {
@@ -642,7 +642,7 @@ select {
 @keyframes public-article-title-fade-up {
   from {
     opacity: 0;
-    transform: translateY(0.65rem);
+    transform: translateY(0.9rem);
   }
 
   to {
@@ -654,7 +654,7 @@ select {
 @keyframes public-article-title-char-enter {
   from {
     opacity: 0;
-    transform: translate(-0.16rem, 0.42rem);
+    transform: translate(-0.22rem, 0.6rem);
   }
 
   to {
@@ -666,7 +666,7 @@ select {
 @keyframes public-article-summary-enter {
   from {
     opacity: 0;
-    transform: translateY(0.5rem);
+    transform: translateY(0.8rem);
   }
 
   to {
@@ -678,13 +678,13 @@ select {
 @keyframes public-article-card-lift {
   from {
     opacity: 0;
-    transform: translateY(0.45rem);
-    box-shadow: 0 4px 12px rgba(9, 32, 70, 0.06);
+    transform: translateY(0.75rem);
+    box-shadow: 0 4px 14px rgba(9, 32, 70, 0.06);
   }
 
   55% {
-    box-shadow: 0 16px 28px rgba(47, 115, 183, 0.16);
-    transform: translateY(-0.08rem);
+    box-shadow: 0 20px 34px rgba(47, 115, 183, 0.2);
+    transform: translateY(-0.14rem);
   }
 
   to {
@@ -695,9 +695,9 @@ select {
 
 @keyframes public-article-image-reveal {
   from {
-    filter: blur(6px);
+    filter: blur(10px);
     opacity: 0;
-    transform: translateY(0.5rem) scale(0.985);
+    transform: translateY(1rem) scale(0.965);
   }
 
   to {
@@ -710,7 +710,7 @@ select {
 @keyframes public-article-soft-zoom {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.972);
   }
 
   to {
@@ -721,11 +721,11 @@ select {
 
 @keyframes public-article-button-emphasis {
   from {
-    transform: scale(0.985);
+    transform: scale(0.96);
   }
 
   45% {
-    transform: scale(1.025);
+    transform: scale(1.045);
   }
 
   to {

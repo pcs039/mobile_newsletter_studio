@@ -81,9 +81,9 @@ const articleMotionSpeedClassNames: Record<ArticleMotionSpeed, string> = {
 };
 
 const articleMotionSpeedSettings: Record<ArticleMotionSpeed, { characterDelayMs: number; maxDelayMs: number }> = {
-  slow: { characterDelayMs: 30, maxDelayMs: 700 },
-  normal: { characterDelayMs: 22, maxDelayMs: 520 },
-  fast: { characterDelayMs: 14, maxDelayMs: 360 },
+  slow: { characterDelayMs: 50, maxDelayMs: 1450 },
+  normal: { characterDelayMs: 36, maxDelayMs: 1000 },
+  fast: { characterDelayMs: 20, maxDelayMs: 650 },
 };
 
 function makeMotionTitleTokens(title: string, speed: ArticleMotionSpeed): MotionTitleToken[] {
