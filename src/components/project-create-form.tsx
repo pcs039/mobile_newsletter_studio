@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { getSelectableFontAssets } from "@/lib/font-css";
 import type { FontAsset } from "@/lib/newsletter-repository";
 
 type SubmitState =
@@ -197,6 +198,7 @@ export function ProjectCreateForm({
   }
 
   const isSaving = submitState.status === "saving";
+  const selectableFonts = getSelectableFontAssets(fonts);
 
   return (
     <form onSubmit={handleSubmit} className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
@@ -356,7 +358,7 @@ export function ProjectCreateForm({
                   className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
                 >
                   <option value="">시스템 기본 글꼴</option>
-                  {fonts.map((font) => (
+                  {selectableFonts.map((font) => (
                     <option key={font.id} value={font.id}>
                       {font.name}
                     </option>
@@ -371,7 +373,7 @@ export function ProjectCreateForm({
                   className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
                 >
                   <option value="">시스템 기본 글꼴</option>
-                  {fonts.map((font) => (
+                  {selectableFonts.map((font) => (
                     <option key={font.id} value={font.id}>
                       {font.name}
                     </option>
