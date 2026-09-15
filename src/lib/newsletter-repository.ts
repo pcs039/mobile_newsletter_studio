@@ -1099,6 +1099,14 @@ function makeStoragePreviewHref(bucket: string, path: string | null) {
   return `/api/project-files/preview?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}`;
 }
 
+export function makePublicStoragePreviewHref(bucket: string, path: string | null) {
+  if (!path) {
+    return null;
+  }
+
+  return `/api/public-files/preview?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}`;
+}
+
 function formatKoreanDateKey(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",

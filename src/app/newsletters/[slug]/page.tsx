@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
+import { PublicAudioPlayer } from "@/components/public-audio-player";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import {
+  getProjectAudioFiles,
   getProjectContent,
   getProjectPageHotspotLinks,
   getProjectPageImages,
   getPublicProjectSurveys,
   getProjectWorkspace,
+  makePublicStoragePreviewHref,
   type ProjectContentArticle,
   type ProjectContentBlock,
   type ProjectPageHotspotLink,
@@ -336,12 +339,13 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const backToEditorHref = previewArticleId
     ? `/projects/${slug}/reading?articleId=${previewArticleId}`
     : `/projects/${slug}/reading`;
-  const [workspace, contentData, pageImageData, hotspotData, surveyData] = await Promise.all([
+  const [workspace, contentData, pageImageData, hotspotData, surveyData, audioData] = await Promise.all([
     getProjectWorkspace(slug),
     getProjectContent(slug),
     getProjectPageImages(slug),
     getProjectPageHotspotLinks(slug),
     getPublicProjectSurveys(slug),
+    getProjectAudioFiles(slug),
   ]);
   const project = workspace.project;
   const isPublished = project?.status === "발행 완료";
@@ -374,6 +378,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const ebookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
   const mobileEbookHref = isAdminPreview ? `/newsletters/${slug}/ebook/mobile?preview=admin` : `/newsletters/${slug}/ebook/mobile`;
   const headerColor = project?.primaryColor ?? "#071f46";
+  const publicAudioFile = audioData.files[0] ?? null;
+  const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
 
   return (
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
@@ -425,7 +431,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           </div>
         </header>
 
-        <section className="space-y-5 px-5 py-5">
+        <section className={`space-y-5 px-5 py-5 ${publicAudioSrc ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
           {isImagePageMode && pageImages.length > 0 ? (
             <section className="public-image-page-list space-y-4">
               {pageImages.map((page) => (
@@ -580,6 +586,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           ) : null}
         </section>
       </section>
+      {publicAudioSrc ? <PublicAudioPlayer src={publicAudioSrc} title={publicAudioFile?.title} /> : null}
     </main>
   );
 }
