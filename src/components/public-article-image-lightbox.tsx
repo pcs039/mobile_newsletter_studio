@@ -45,41 +45,45 @@ export function PublicArticleImageLightbox({ image, onClose }: PublicArticleImag
       role="dialog"
       aria-label="기사 이미지 확대 보기"
       aria-modal="true"
-      className="fixed inset-0 z-[90] flex items-center justify-center p-4 text-white sm:p-6"
+      className="fixed inset-0 z-[9999] flex min-h-[100dvh] items-center justify-center overflow-hidden bg-slate-950/95 text-white"
       style={{
-        paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
-        paddingTop: "calc(1rem + env(safe-area-inset-top))",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        paddingTop: "env(safe-area-inset-top)",
       }}
     >
       <button
         type="button"
-        className="absolute inset-0 cursor-zoom-out bg-slate-950/82"
-        aria-label="이미지 확대 보기 닫기"
+        className="absolute inset-0 z-0 cursor-zoom-out bg-black/40"
+        aria-label="이미지 확대 닫기"
         onClick={onClose}
       />
-      <div className="relative z-10 flex max-h-full w-full max-w-6xl flex-col items-center gap-3">
-        <div className="flex w-full justify-end">
+      <div className="pointer-events-none relative z-10 grid h-[100dvh] w-full grid-rows-[auto_minmax(0,1fr)_auto] gap-3 px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6">
+        <div className="flex min-h-12 w-full items-center justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="dd-btn dd-btn-secondary rounded-full bg-white px-4 py-2 text-sm text-[#092046] shadow-xl shadow-slate-950/30"
-            aria-label="이미지 확대 보기 닫기"
+            className="dd-btn pointer-events-auto min-h-11 rounded-full border border-white/30 bg-white px-4 py-2 text-sm font-black text-[#092046] shadow-2xl shadow-black/40 transition hover:bg-sky-50"
+            aria-label="이미지 확대 닫기"
           >
-            닫기
+            닫기 ×
           </button>
         </div>
-        <div className="max-h-[calc(100dvh-8rem)] w-full overflow-auto rounded-2xl bg-slate-950/30 p-2 shadow-2xl shadow-slate-950/40 sm:p-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={image.src}
-            alt={image.alt}
-            className="mx-auto h-auto max-h-[calc(100dvh-10rem)] max-w-full rounded-xl object-contain"
-          />
+        <div className="flex min-h-0 w-full items-center justify-center px-1 py-2">
+          <div className="pointer-events-auto max-h-[78dvh] max-w-[94vw] overflow-auto rounded-xl shadow-2xl shadow-black/60">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={image.src}
+              alt={image.alt}
+              className="mx-auto h-auto max-h-[78dvh] max-w-[94vw] object-contain"
+            />
+          </div>
         </div>
         {image.caption ? (
-          <p className="max-w-3xl rounded-full bg-slate-950/65 px-4 py-2 text-center text-sm font-bold leading-6 text-white">
-            {image.caption}
-          </p>
+          <div className="flex min-h-10 w-full justify-center">
+            <p className="pointer-events-auto line-clamp-2 max-w-3xl rounded-2xl bg-black/70 px-4 py-2 text-center text-sm font-bold leading-6 text-white shadow-lg shadow-black/30">
+              {image.caption}
+            </p>
+          </div>
         ) : null}
       </div>
     </section>
