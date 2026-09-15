@@ -33,7 +33,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
       active="audio"
       projectId={projectId}
       title="음성 소식지 검수"
-      description="음성 파일과 대본이 본문 내용과 맞는지 확인합니다."
+      description="MP3와 대본 상태를 확인합니다."
       sidebarTitle={
         <>
           음성 소식지
@@ -41,9 +41,9 @@ export default async function AudioManagementPage({ params }: { params: Promise<
           검수
         </>
       }
-      sidebarDescription="작성된 페이지와 기사에 맞춰 대본, MP3, 재생 상태를 함께 검수합니다."
+      sidebarDescription="MP3, 대본, 재생 상태를 검수합니다."
       sidebarNoteTitle="운영 기준"
-      sidebarNote="음성은 별도 산출물이 아니라 모바일 페이지를 보완하는 접근성 콘텐츠로 관리합니다."
+      sidebarNote="음성은 모바일 읽기를 보완하는 콘텐츠입니다."
       actions={
         <Link
           href={`/projects/${projectId}/assets`}
@@ -60,9 +60,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                   <div>
                     <span className="rounded-full bg-[#092046] px-3 py-1 text-xs font-black text-white">필수</span>
                     <h3 className="mt-2 text-lg font-bold text-[#092046]">MP3 파일 업로드와 재생 확인</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      MP3를 올린 뒤 재생해 보고, 대본이 본문 내용과 맞는지 확인합니다.
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">MP3 업로드 후 재생을 확인합니다.</p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
                     Supabase Storage 저장
@@ -73,7 +71,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                   <FileUploadCard
                     accept="audio/mpeg,audio/mp3"
                     buttonLabel="MP3 선택"
-                    description="권장: 기사별 1개 파일, 파일명은 기사명이나 페이지 번호를 포함합니다."
+                    description="MP3 파일을 업로드합니다."
                     kind="audio_mp3"
                     projectSlug={projectId}
                     title="MP3 파일을 선택하거나 이 영역에 끌어다 놓기"
@@ -130,9 +128,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                         <tr>
                           <td colSpan={7} className="px-4 py-12 text-center">
                             <p className="text-base font-black text-[#092046]">등록된 MP3 파일이 없습니다.</p>
-                            <p className="mt-2 text-sm leading-6 text-slate-500">
-                              위 업로드 영역에서 MP3를 저장하면 실제 파일 목록과 재생기가 여기에 표시됩니다.
-                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">MP3 파일을 업로드하세요.</p>
                           </td>
                         </tr>
                       ) : (
@@ -186,9 +182,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">보조</span>
                   <span className="ml-2">선택 기사 대본 확인</span>
                 </summary>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  외부 TTS에 넣기 전 최종 대본을 확인합니다. 본문과 다른 표현을 쓰는 경우 검수 상태를 남깁니다.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">최종 대본을 확인합니다.</p>
                 <textarea
                   defaultValue={`무안군의 주요 정책과 생활 정보를 안내드립니다. 이번 소식에서는 군정 주요 사업, 생활 지원 정보, 문화 행사 일정을 확인할 수 있습니다.\n\n자세한 내용은 화면의 본문과 연결 버튼을 함께 확인해 주세요.`}
                   className="mt-4 min-h-36 w-full resize-y rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
@@ -198,7 +192,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
 
             <aside className="space-y-5">
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">상태</p>
                 <h3 className="mt-1 text-lg font-bold text-[#092046]">재생 미리보기</h3>
                 <div className="mt-4 rounded-lg bg-[#092046] p-5 text-white">
                   <p className="text-sm font-semibold text-sky-200">
@@ -215,9 +209,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                     <span className="text-xs font-semibold text-slate-300">외부 TTS 제작 파일</span>
                   </div>
                   <div className="mt-4 rounded-lg bg-white/10 p-3">
-                    <p className="mb-2 text-xs font-semibold text-sky-100">
-                      업로드된 MP3는 private Storage에서 불러와 브라우저 플레이어로 검수합니다.
-                    </p>
+                    <p className="mb-2 text-xs font-semibold text-sky-100">브라우저 재생 검수</p>
                     <audio
                       aria-label={firstAudioFile ? `${firstAudioFile.title} 브라우저 재생 검수` : "MP3 파일 브라우저 재생 검수"}
                       className="h-10 w-full rounded-md"
@@ -259,9 +251,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">다음 작업</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  음성 파일과 대본을 확인한 뒤 공개 모바일 화면과 PC e-book 미리보기, URL·QR 발행 화면으로 이동합니다.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">검수 후 발행 화면으로 이동합니다.</p>
                 <Link
                   href={`/projects/${projectId}/publish`}
                   className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"

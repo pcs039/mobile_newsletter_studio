@@ -740,9 +740,7 @@ export function ProjectArticleEditorForm({
             <h3 className="mt-1 text-lg font-black text-[#092046]">
               {article ? "선택 기사 수정" : "새 기사 작성"}
             </h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              먼저 필수 정보를 입력한 뒤 저장하세요. 저장 후 오른쪽 미리보기에서 모바일 화면을 확인합니다.
-            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">필수 입력 후 저장하세요.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <SectionBadge tone="required">필수</SectionBadge>
@@ -828,10 +826,8 @@ export function ProjectArticleEditorForm({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">본문과 선택 콘텐츠</p>
-            <h3 className="mt-1 text-lg font-black text-[#092046]">첫 문단을 먼저 작성하고 필요한 콘텐츠를 추가합니다.</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              1번 블록은 모바일 본문의 시작점입니다. 이미지, URL, 유튜브, 지도는 필요한 경우에만 추가합니다.
-            </p>
+            <h3 className="mt-1 text-lg font-black text-[#092046]">본문 블록을 작성합니다.</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">이미지, URL, 영상, 지도는 필요한 경우에만 추가합니다.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -850,9 +846,7 @@ export function ProjectArticleEditorForm({
             <SectionBadge tone="optional">선택</SectionBadge>
             <span className="ml-2">선택 콘텐츠 추가</span>
           </summary>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            필요할 때만 이미지, 버튼, 영상, 지도, 추가 문단, 음성 대본을 추가합니다.
-          </p>
+          <p className="mt-3 text-sm leading-6 text-slate-500">필요한 콘텐츠만 추가합니다.</p>
           <div className="mt-4 grid gap-3 lg:grid-cols-3">
             {blockUseCases.map((item) => (
               <div key={item.title} className="rounded-lg border border-[#d8e8ff] bg-white px-4 py-3">
@@ -1011,17 +1005,13 @@ export function ProjectArticleEditorForm({
                       </button>
                     </div>
                   </div>
-                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">
-                    업로드한 이미지는 소재 보관함에도 저장되고, 현재 블록에는 공개 화면용 이미지 주소가 자동 입력됩니다.
-                  </p>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">업로드 후 이미지 주소가 자동 입력됩니다.</p>
                 </div>
               )}
 
               {isUrlBlockType(block.type) && block.type !== "image" && (
                 <div className="mt-4 flex flex-col gap-3 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs font-semibold leading-5 text-slate-600">
-                    유튜브·지도·URL 버튼은 파일보다 공유 주소가 기준입니다. 복사해 둔 주소를 바로 붙여넣을 수 있습니다.
-                  </p>
+                  <p className="text-xs font-semibold leading-5 text-slate-500">공유 주소를 붙여넣습니다.</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -1036,9 +1026,7 @@ export function ProjectArticleEditorForm({
 
               {block.type === "audio" && (
                 <div className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs font-semibold leading-5 text-slate-700">
-                    별도 메모장에 정리한 낭독 원고가 있으면 .txt 또는 .md 파일로 불러올 수 있습니다.
-                  </p>
+                  <p className="text-xs font-semibold leading-5 text-slate-700">대본 파일을 불러올 수 있습니다.</p>
                   <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-amber-600 px-3 text-xs font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-amber-700 hover:shadow-md">
                     대본 파일 불러오기
                     <input
@@ -1063,7 +1051,7 @@ export function ProjectArticleEditorForm({
               <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">저장 전 구성 확인</p>
               <h4 className="text-base font-black text-[#092046]">모바일 표시 순서</h4>
             </div>
-            <p className="text-xs font-semibold text-slate-500">실제 공개 화면은 저장 후 모바일 미리보기에서 확인합니다.</p>
+            <p className="text-xs font-semibold text-slate-500">저장 후 미리보기 확인</p>
           </div>
           <div className="mt-4 space-y-2">
             {blocks.map((block, index) => (
@@ -1087,9 +1075,7 @@ export function ProjectArticleEditorForm({
           <SectionBadge tone="advanced">고급 설정</SectionBadge>
           <span className="ml-2">상태, Word 원고, 문의 정보</span>
         </summary>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          고급 설정은 기본 제작에는 자주 사용하지 않습니다. 검수 상태나 Word 원고 가져오기, 문의처가 필요할 때만 확인하세요.
-        </p>
+        <p className="mt-3 text-sm leading-6 text-slate-500">필요할 때만 수정합니다.</p>
 
         <div className="mt-5 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <div>
@@ -1111,9 +1097,7 @@ export function ProjectArticleEditorForm({
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">Word 원고 가져오기</p>
                 <h4 className="mt-1 text-base font-black text-[#092046]">.docx 원고를 모바일 기사 블록으로 변환</h4>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Word의 글꼴·크기·줄간격은 가져오지 않고, 제목과 문단 구조만 가져와 모바일 스타일로 정리합니다.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">제목과 문단 구조만 가져옵니다.</p>
               </div>
               <label className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]">
                 {isImportingWord ? "가져오는 중..." : "Word 원고 선택"}

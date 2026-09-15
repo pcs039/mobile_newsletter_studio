@@ -130,10 +130,10 @@ export function ProjectPageImageBulkDelete({
           <div>
             <p className="text-sm font-black text-rose-900">페이지 이미지 선택 삭제</p>
             <p className="mt-1 text-xs font-bold leading-5 text-rose-700">
-              선택된 페이지 {selectedCount}개 · 페이지 이미지만 삭제합니다. PDF 원본, 사진·이미지 소재, 음성 파일은 삭제하지 않습니다.
+              선택 {selectedCount}개 · page_image만 삭제
             </p>
             <p className="mt-1 text-xs font-bold leading-5 text-rose-700">
-              페이지 이미지를 삭제해도 해당 페이지의 클릭 영역은 별도 관리가 필요할 수 있습니다.
+              클릭 영역은 별도 확인이 필요할 수 있습니다.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

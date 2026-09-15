@@ -20,19 +20,19 @@ const requiredFields = [
 const publishOptions = [
   {
     title: "모바일 읽기 보기",
-    description: "시민이 휴대전화에서 읽기 쉬운 기사형 화면을 기본 공개 화면으로 사용합니다.",
+    description: "기사형 공개 화면",
   },
   {
     title: "PC e-book 보기",
-    description: "원본 PDF 지면을 큰 화면에서 확인할 수 있는 PC 중심 보기를 함께 준비합니다.",
+    description: "원본 지면 확인",
   },
   {
     title: "음성 듣기 준비",
-    description: "외부 TTS로 만든 MP3를 나중에 기사별 또는 페이지별로 연결할 수 있게 둡니다.",
+    description: "MP3 연결",
   },
   {
     title: "외부 AI·프로그램 결과물 등록",
-    description: "운영 초기에는 AI나 외부 제작 도구를 직접 실행하지 않고, 완성된 이미지·원고·음성·e-book 링크를 등록합니다.",
+    description: "완성 파일 등록",
   },
 ];
 
@@ -50,9 +50,7 @@ export default async function NewProjectPage() {
               <br />
               기본 정보
             </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              새 프로젝트는 작성/수정의 첫 단계인 기본 정보 입력에서 시작합니다.
-            </p>
+            <p className="mt-3 text-sm leading-6 text-slate-300">기본 정보를 먼저 저장합니다.</p>
           </div>
 
           <AdminMainNavigation active="edit" />
@@ -76,9 +74,7 @@ export default async function NewProjectPage() {
               <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
                 새 프로젝트 기본 정보 입력
               </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                기관명, 담당자, 상품 옵션, 제작 방식을 먼저 저장한 뒤 해당 제작 화면으로 이동합니다.
-              </p>
+              <p className="mt-2 text-sm text-slate-500">필수 정보를 저장한 뒤 제작 화면으로 이동합니다.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <HomeButton />
@@ -96,7 +92,7 @@ export default async function NewProjectPage() {
 
             <aside className="space-y-5">
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기준</p>
                 <h3 className="mt-1 text-lg font-bold text-[#092046]">상품 옵션 기준</h3>
                 <div className="mt-4 space-y-3">
                   {packageOptions.map((option) => (
@@ -105,14 +101,14 @@ export default async function NewProjectPage() {
                         <p className="text-sm font-bold text-[#092046]">{option.label}</p>
                         <span className="text-xs font-black text-[#184a88]">{option.status}</span>
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{option.detail}</p>
+                      <p className="mt-2 text-xs leading-5 text-slate-500">{option.detail}</p>
                     </div>
                   ))}
                 </div>
               </article>
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기준</p>
                 <h3 className="mt-1 text-lg font-bold text-[#092046]">제작 방식 기준</h3>
                 <div className="mt-4 space-y-3">
                   {productionModeOptions.map((option) => (
@@ -121,7 +117,7 @@ export default async function NewProjectPage() {
                         <p className="text-sm font-bold text-[#092046]">{option.label}</p>
                         <span className="text-xs font-black text-[#184a88]">{option.status}</span>
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{option.detail}</p>
+                      <p className="mt-2 text-xs leading-5 text-slate-500">{option.detail}</p>
                     </div>
                   ))}
                 </div>
@@ -133,7 +129,7 @@ export default async function NewProjectPage() {
                   {publishOptions.map((option) => (
                     <div key={option.title} className="rounded-lg bg-slate-50 p-4">
                       <p className="text-sm font-bold text-[#092046]">{option.title}</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{option.description}</p>
+                      <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{option.description}</p>
                     </div>
                   ))}
                 </div>
@@ -141,10 +137,10 @@ export default async function NewProjectPage() {
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">운영 메모</h3>
-                <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-                  <li>PDF 원본은 PC e-book 기준 자산으로 보존합니다.</li>
-                  <li>모바일 공개 화면은 읽기 보기와 음성 듣기를 중심으로 구성합니다.</li>
-                  <li>이미지 소재는 출처, 권리 확인, 대체텍스트를 함께 관리합니다.</li>
+                <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-500">
+                  <li>PDF 원본 보관</li>
+                  <li>모바일 읽기·음성 구성</li>
+                  <li>이미지 권리 상태 확인</li>
                 </ul>
               </article>
             </aside>

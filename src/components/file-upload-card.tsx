@@ -200,7 +200,7 @@ export function FileUploadCard({
       />
 
       <p className="text-base font-bold text-[#092046]">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
 
       {kind === "page_image" && (
         <label className="mx-auto mt-4 flex max-w-44 items-center justify-center gap-2 text-sm font-bold text-[#092046]">
