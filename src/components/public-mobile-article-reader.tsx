@@ -12,6 +12,8 @@ import {
   makeArticleTitleSegmentId,
 } from "@/lib/audio-text-sync";
 import type {
+  ArticleElementMotionEffect,
+  ArticleElementMotionSpeed,
   ArticleMotionPreset,
   ArticleMotionSpeed,
   ProjectContentArticle,
@@ -35,11 +37,24 @@ type SwipeStart = {
   y: number;
 } | null;
 
+type ArticleMotionTarget = "title" | "textBox" | "image" | "link";
+
+type ResolvedArticleElementMotion = {
+  effect: ArticleElementMotionEffect;
+  speed: ArticleMotionSpeed;
+};
+
+type ResolvedArticleMotionSettings = {
+  image: ResolvedArticleElementMotion;
+  link: ResolvedArticleElementMotion;
+  textBox: ResolvedArticleElementMotion;
+  title: ResolvedArticleElementMotion;
+};
+
 const mobileReaderQuery = "(max-width: 767px)";
 const swipeThreshold = 50;
 const openingTitlePunctuation = new Set(["‘", "“", "'", "\"", "(", "[", "{"]);
 const closingTitlePunctuation = new Set(["’", "”", ")", "]", "}"]);
-const characterTitleMotionPresets = new Set<ArticleMotionPreset>(["promotion", "dynamic"]);
 const articleMotionPresetClassNames: Record<ArticleMotionPreset, string> = {
   none: "article-motion-preset-none",
   calm: "article-motion-preset-calm",
@@ -56,6 +71,39 @@ const articleMotionSpeedSettings: Record<ArticleMotionSpeed, { characterDelayMs:
   slow: { characterDelayMs: 30, maxDelayMs: 700 },
   normal: { characterDelayMs: 22, maxDelayMs: 520 },
   fast: { characterDelayMs: 14, maxDelayMs: 360 },
+};
+
+const presetElementMotionEffects: Record<ArticleMotionPreset, Record<ArticleMotionTarget, ArticleElementMotionEffect>> = {
+  none: {
+    title: "none",
+    textBox: "none",
+    image: "none",
+    link: "none",
+  },
+  calm: {
+    title: "fade_up",
+    textBox: "fade_up",
+    image: "fade_in",
+    link: "none",
+  },
+  image_focus: {
+    title: "fade_up",
+    textBox: "fade_up",
+    image: "blur_clear",
+    link: "none",
+  },
+  promotion: {
+    title: "char_by_char",
+    textBox: "card_lift",
+    image: "reveal_up",
+    link: "soft_emphasis",
+  },
+  dynamic: {
+    title: "char_by_char",
+    textBox: "fade_up",
+    image: "reveal_up",
+    link: "soft_emphasis",
+  },
 };
 
 function subscribeToMobileReader(onStoreChange: () => void) {
@@ -174,6 +222,46 @@ function normalizeArticleMotionSpeed(value: string | null | undefined): ArticleM
   return allowed.includes(value as ArticleMotionSpeed) ? (value as ArticleMotionSpeed) : "normal";
 }
 
+function resolveElementMotionEffect(
+  value: ArticleElementMotionEffect | null | undefined,
+  preset: ArticleMotionPreset,
+  target: ArticleMotionTarget,
+): ArticleElementMotionEffect {
+  return value && value !== "inherit" ? value : presetElementMotionEffects[preset][target];
+}
+
+function resolveElementMotionSpeed(
+  value: ArticleElementMotionSpeed | null | undefined,
+  motionSpeed: ArticleMotionSpeed,
+): ArticleMotionSpeed {
+  return value && value !== "inherit" ? value : motionSpeed;
+}
+
+function getResolvedArticleMotionSettings(
+  article: ProjectContentArticle,
+  motionPreset: ArticleMotionPreset,
+  motionSpeed: ArticleMotionSpeed,
+): ResolvedArticleMotionSettings {
+  return {
+    title: {
+      effect: resolveElementMotionEffect(article.titleMotionEffect, motionPreset, "title"),
+      speed: resolveElementMotionSpeed(article.titleMotionSpeed, motionSpeed),
+    },
+    textBox: {
+      effect: resolveElementMotionEffect(article.textBoxMotionEffect, motionPreset, "textBox"),
+      speed: resolveElementMotionSpeed(article.textBoxMotionSpeed, motionSpeed),
+    },
+    image: {
+      effect: resolveElementMotionEffect(article.imageMotionEffect, motionPreset, "image"),
+      speed: resolveElementMotionSpeed(article.imageMotionSpeed, motionSpeed),
+    },
+    link: {
+      effect: resolveElementMotionEffect(article.linkMotionEffect, motionPreset, "link"),
+      speed: resolveElementMotionSpeed(article.linkMotionSpeed, motionSpeed),
+    },
+  };
+}
+
 function getArticleTitleMotionTokens(title: string, motionSpeed: ArticleMotionSpeed) {
   const rawTokens = title.trim().split(/\s+/).filter(Boolean);
   const tokens: string[] = [];
@@ -235,6 +323,7 @@ function getInitialArticleIndex(articles: ProjectContentArticle[], initialArticl
 function renderContentBlock(
   article: ProjectContentArticle,
   block: ProjectContentBlock,
+  motionSettings: ResolvedArticleMotionSettings,
   onOpenArticleImage: (image: PublicArticleLightboxImage) => void,
 ) {
   const link = getBlockLink(article, block);
@@ -258,7 +347,12 @@ function renderContentBlock(
     }
 
     return (
-      <figure key={block.id} className="article-motion-image overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+      <figure
+        key={block.id}
+        className={`article-motion-image ${articleMotionSpeedClassNames[motionSettings.image.speed]} overflow-hidden rounded-2xl border border-slate-200 bg-slate-50`}
+        data-motion-effect={motionSettings.image.effect}
+        data-motion-speed={motionSettings.image.speed}
+      >
         <button
           type="button"
           className="group relative block w-full cursor-zoom-in border-0 bg-transparent p-0 text-left"
@@ -279,7 +373,11 @@ function renderContentBlock(
           </span>
         </button>
         {block.title ? (
-          <figcaption className="article-motion-caption px-4 py-3 text-sm font-bold leading-6 text-slate-700">
+          <figcaption
+            className={`article-motion-caption ${articleMotionSpeedClassNames[motionSettings.image.speed]} px-4 py-3 text-sm font-bold leading-6 text-slate-700`}
+            data-motion-effect={motionSettings.image.effect}
+            data-motion-speed={motionSettings.image.speed}
+          >
             {block.title}
           </figcaption>
         ) : null}
@@ -298,7 +396,9 @@ function renderContentBlock(
     return (
       <section
         key={block.id}
-        className="article-motion-content-block overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm"
+        className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm`}
+        data-motion-effect={motionSettings.textBox.effect}
+        data-motion-speed={motionSettings.textBox.speed}
       >
         <iframe
           src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
@@ -331,7 +431,9 @@ function renderContentBlock(
         href={href}
         target="_blank"
         rel="noreferrer"
-        className="article-motion-content-block block rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4"
+        className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} block rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4`}
+        data-motion-effect={motionSettings.textBox.effect}
+        data-motion-speed={motionSettings.textBox.speed}
       >
         <p className="text-xs font-black text-[#184a88]">지도 보기</p>
         <p className="mt-1 text-base font-black leading-7 text-[#092046]">{block.title || link?.label || "위치 확인"}</p>
@@ -352,7 +454,9 @@ function renderContentBlock(
         href={href}
         target="_blank"
         rel="noreferrer"
-        className="article-motion-link-button dd-btn dd-btn-primary block rounded-xl px-4 py-3 text-center text-sm font-black"
+        className={`article-motion-link-button ${articleMotionSpeedClassNames[motionSettings.link.speed]} dd-btn dd-btn-primary block rounded-xl px-4 py-3 text-center text-sm font-black`}
+        data-motion-effect={motionSettings.link.effect}
+        data-motion-speed={motionSettings.link.speed}
       >
         {getArticleLinkButtonLabel(block.title || link?.label)}
       </a>
@@ -361,7 +465,12 @@ function renderContentBlock(
 
   if (block.type === "audio") {
     return (
-      <details key={block.id} className="article-motion-content-block rounded-xl bg-[#f4f8ff] px-4 py-3">
+      <details
+        key={block.id}
+        className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} rounded-xl bg-[#f4f8ff] px-4 py-3`}
+        data-motion-effect={motionSettings.textBox.effect}
+        data-motion-speed={motionSettings.textBox.speed}
+      >
         <summary className="cursor-pointer text-sm font-black text-[#092046]">{block.title || "음성 대본 보기"}</summary>
         <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">{block.body}</p>
       </details>
@@ -390,8 +499,9 @@ function ArticleCard({
   const articleTitle = getArticleTitle(article, index);
   const motionPreset = normalizeArticleMotionPreset(article.motionPreset);
   const motionSpeed = normalizeArticleMotionSpeed(article.motionSpeed);
-  const shouldRenderCharacterTitleMotion = characterTitleMotionPresets.has(motionPreset);
-  const titleMotionTokens = shouldRenderCharacterTitleMotion ? getArticleTitleMotionTokens(articleTitle, motionSpeed) : [];
+  const motionSettings = getResolvedArticleMotionSettings(article, motionPreset, motionSpeed);
+  const shouldRenderCharacterTitleMotion = motionSettings.title.effect === "char_by_char";
+  const titleMotionTokens = shouldRenderCharacterTitleMotion ? getArticleTitleMotionTokens(articleTitle, motionSettings.title.speed) : [];
 
   return (
     <article
@@ -412,7 +522,12 @@ function ArticleCard({
           </Link>
         ) : null}
       </div>
-      <div key={`article-title-${article.id}-${motionPreset}-${motionSpeed}`} className="article-title-motion">
+      <div
+        key={`article-title-${article.id}-${motionPreset}-${motionSpeed}-${motionSettings.title.effect}-${motionSettings.title.speed}`}
+        className={`article-title-motion ${articleMotionSpeedClassNames[motionSettings.title.speed]}`}
+        data-motion-effect={motionSettings.title.effect}
+        data-motion-speed={motionSettings.title.speed}
+      >
         <h2
           aria-label={articleTitle}
           data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
@@ -441,14 +556,16 @@ function ArticleCard({
         <p
           data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
           data-public-text-scale-target="article-summary"
-          className="article-motion-summary public-audio-sync-segment mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]"
+          className={`article-motion-summary ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} public-audio-sync-segment mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]`}
+          data-motion-effect={motionSettings.textBox.effect}
+          data-motion-speed={motionSettings.textBox.speed}
         >
           {article.summary}
         </p>
       ) : null}
       {visibleBlocks.length > 0 ? (
         <div className="public-article-content mt-6 space-y-6">
-          {visibleBlocks.map((block) => renderContentBlock(article, block, onOpenArticleImage))}
+          {visibleBlocks.map((block) => renderContentBlock(article, block, motionSettings, onOpenArticleImage))}
         </div>
       ) : (
         renderArticleBody(getPreviewBody(article), "mt-6", `article-${article.id}-body`)
