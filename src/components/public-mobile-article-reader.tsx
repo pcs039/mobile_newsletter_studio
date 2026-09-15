@@ -298,6 +298,7 @@ function ArticleCard({
   slug: string;
 }) {
   const visibleBlocks = getVisibleBlocks(article);
+  const articleTitle = getArticleTitle(article, index);
 
   return (
     <article className={`public-card public-article-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>
@@ -316,11 +317,21 @@ function ArticleCard({
       </div>
       <div key={`article-title-${article.id}`} className="article-title-motion">
         <h2
+          aria-label={articleTitle}
           data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
           data-public-text-scale-target="article-title"
           className="public-article-title public-audio-sync-segment text-2xl font-black leading-tight text-[#092046]"
         >
-          {getArticleTitle(article, index)}
+          {Array.from(articleTitle).map((character, characterIndex) => (
+            <span
+              key={`${character}-${characterIndex}`}
+              aria-hidden="true"
+              className="article-title-motion-char"
+              style={{ animationDelay: `${Math.min(characterIndex * 22, 520)}ms` }}
+            >
+              {character === " " ? "\u00A0" : character}
+            </span>
+          ))}
         </h2>
       </div>
       {article.summary ? (
