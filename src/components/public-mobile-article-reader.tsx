@@ -11,7 +11,12 @@ import {
   makeArticleSummarySegmentId,
   makeArticleTitleSegmentId,
 } from "@/lib/audio-text-sync";
-import type { ProjectContentArticle, ProjectContentBlock } from "@/lib/newsletter-repository";
+import type {
+  ArticleMotionPreset,
+  ArticleMotionSpeed,
+  ProjectContentArticle,
+  ProjectContentBlock,
+} from "@/lib/newsletter-repository";
 import { getArticleLinkButtonLabel, getValidArticleUrl } from "@/lib/public-article-url";
 
 type PublicMobileArticleReaderProps = {
@@ -32,10 +37,26 @@ type SwipeStart = {
 
 const mobileReaderQuery = "(max-width: 767px)";
 const swipeThreshold = 50;
-const titleMotionCharacterDelayMs = 22;
-const titleMotionMaxDelayMs = 520;
 const openingTitlePunctuation = new Set(["‘", "“", "'", "\"", "(", "[", "{"]);
 const closingTitlePunctuation = new Set(["’", "”", ")", "]", "}"]);
+const characterTitleMotionPresets = new Set<ArticleMotionPreset>(["promotion", "dynamic"]);
+const articleMotionPresetClassNames: Record<ArticleMotionPreset, string> = {
+  none: "article-motion-preset-none",
+  calm: "article-motion-preset-calm",
+  image_focus: "article-motion-preset-image-focus",
+  promotion: "article-motion-preset-promotion",
+  dynamic: "article-motion-preset-dynamic",
+};
+const articleMotionSpeedClassNames: Record<ArticleMotionSpeed, string> = {
+  slow: "article-motion-speed-slow",
+  normal: "article-motion-speed-normal",
+  fast: "article-motion-speed-fast",
+};
+const articleMotionSpeedSettings: Record<ArticleMotionSpeed, { characterDelayMs: number; maxDelayMs: number }> = {
+  slow: { characterDelayMs: 30, maxDelayMs: 700 },
+  normal: { characterDelayMs: 22, maxDelayMs: 520 },
+  fast: { characterDelayMs: 14, maxDelayMs: 360 },
+};
 
 function subscribeToMobileReader(onStoreChange: () => void) {
   const mediaQuery = window.matchMedia(mobileReaderQuery);
@@ -141,10 +162,23 @@ function getArticleTitle(article: ProjectContentArticle, index: number) {
   return article.title.trim() || `기사 ${index + 1}`;
 }
 
-function getArticleTitleMotionTokens(title: string) {
+function normalizeArticleMotionPreset(value: string | null | undefined): ArticleMotionPreset {
+  const allowed: ArticleMotionPreset[] = ["none", "calm", "image_focus", "promotion", "dynamic"];
+
+  return allowed.includes(value as ArticleMotionPreset) ? (value as ArticleMotionPreset) : "dynamic";
+}
+
+function normalizeArticleMotionSpeed(value: string | null | undefined): ArticleMotionSpeed {
+  const allowed: ArticleMotionSpeed[] = ["slow", "normal", "fast"];
+
+  return allowed.includes(value as ArticleMotionSpeed) ? (value as ArticleMotionSpeed) : "normal";
+}
+
+function getArticleTitleMotionTokens(title: string, motionSpeed: ArticleMotionSpeed) {
   const rawTokens = title.trim().split(/\s+/).filter(Boolean);
   const tokens: string[] = [];
   let pendingPrefix = "";
+  const speedSettings = articleMotionSpeedSettings[motionSpeed];
 
   rawTokens.forEach((rawToken) => {
     let token = rawToken;
@@ -178,7 +212,7 @@ function getArticleTitleMotionTokens(title: string) {
 
   return tokens.map((token) => ({
     characters: Array.from(token).map((character) => {
-      const delay = Math.min(characterIndex * titleMotionCharacterDelayMs, titleMotionMaxDelayMs);
+      const delay = Math.min(characterIndex * speedSettings.characterDelayMs, speedSettings.maxDelayMs);
 
       characterIndex += 1;
 
@@ -224,7 +258,7 @@ function renderContentBlock(
     }
 
     return (
-      <figure key={block.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+      <figure key={block.id} className="article-motion-image overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
         <button
           type="button"
           className="group relative block w-full cursor-zoom-in border-0 bg-transparent p-0 text-left"
@@ -244,7 +278,11 @@ function renderContentBlock(
             확대
           </span>
         </button>
-        {block.title ? <figcaption className="px-4 py-3 text-sm font-bold leading-6 text-slate-700">{block.title}</figcaption> : null}
+        {block.title ? (
+          <figcaption className="article-motion-caption px-4 py-3 text-sm font-bold leading-6 text-slate-700">
+            {block.title}
+          </figcaption>
+        ) : null}
       </figure>
     );
   }
@@ -314,7 +352,7 @@ function renderContentBlock(
         href={href}
         target="_blank"
         rel="noreferrer"
-        className="dd-btn dd-btn-primary block rounded-xl px-4 py-3 text-center text-sm font-black"
+        className="article-motion-link-button dd-btn dd-btn-primary block rounded-xl px-4 py-3 text-center text-sm font-black"
       >
         {getArticleLinkButtonLabel(block.title || link?.label)}
       </a>
@@ -350,10 +388,17 @@ function ArticleCard({
 }) {
   const visibleBlocks = getVisibleBlocks(article);
   const articleTitle = getArticleTitle(article, index);
-  const titleMotionTokens = getArticleTitleMotionTokens(articleTitle);
+  const motionPreset = normalizeArticleMotionPreset(article.motionPreset);
+  const motionSpeed = normalizeArticleMotionSpeed(article.motionSpeed);
+  const shouldRenderCharacterTitleMotion = characterTitleMotionPresets.has(motionPreset);
+  const titleMotionTokens = shouldRenderCharacterTitleMotion ? getArticleTitleMotionTokens(articleTitle, motionSpeed) : [];
 
   return (
-    <article className={`public-card public-article-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>
+    <article
+      className={`public-card public-article-card ${articleMotionPresetClassNames[motionPreset]} ${articleMotionSpeedClassNames[motionSpeed]} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}
+      data-motion-preset={motionPreset}
+      data-motion-speed={motionSpeed}
+    >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-black text-[#184a88]">
           {article.pageNumber ? `${article.pageNumber}쪽` : `${index + 1}번 기사`}
@@ -367,34 +412,36 @@ function ArticleCard({
           </Link>
         ) : null}
       </div>
-      <div key={`article-title-${article.id}`} className="article-title-motion">
+      <div key={`article-title-${article.id}-${motionPreset}-${motionSpeed}`} className="article-title-motion">
         <h2
           aria-label={articleTitle}
           data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
           data-public-text-scale-target="article-title"
           className="public-article-title public-audio-sync-segment text-2xl font-black leading-tight text-[#092046]"
         >
-          {titleMotionTokens.map((token, tokenIndex) => (
-            <span key={`${token.token}-${tokenIndex}`} className="article-title-motion-token" aria-hidden="true">
-              {token.characters.map(({ character, delay }, characterIndex) => (
-                <span
-                  key={`${character}-${tokenIndex}-${characterIndex}`}
-                  className="article-title-motion-char"
-                  style={{ animationDelay: `${delay}ms` }}
-                >
-                  {character}
+          {shouldRenderCharacterTitleMotion
+            ? titleMotionTokens.map((token, tokenIndex) => (
+                <span key={`${token.token}-${tokenIndex}`} className="article-title-motion-token" aria-hidden="true">
+                  {token.characters.map(({ character, delay }, characterIndex) => (
+                    <span
+                      key={`${character}-${tokenIndex}-${characterIndex}`}
+                      className="article-title-motion-char"
+                      style={{ animationDelay: `${delay}ms` }}
+                    >
+                      {character}
+                    </span>
+                  ))}
+                  {tokenIndex < titleMotionTokens.length - 1 ? "\u00A0" : null}
                 </span>
-              ))}
-              {tokenIndex < titleMotionTokens.length - 1 ? "\u00A0" : null}
-            </span>
-          ))}
+              ))
+            : articleTitle}
         </h2>
       </div>
       {article.summary ? (
         <p
           data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
           data-public-text-scale-target="article-summary"
-          className="public-audio-sync-segment mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]"
+          className="article-motion-summary public-audio-sync-segment mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]"
         >
           {article.summary}
         </p>

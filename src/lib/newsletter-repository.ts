@@ -524,6 +524,8 @@ type ContentBlockType =
 type LinkActionType = "url" | "phone" | "map" | "video" | "internal_page" | "download";
 type LinkDisplayStyle = "button" | "text_link" | "thumbnail_card" | "map_card";
 type PageHotspotLinkType = "url" | "phone" | "map" | "video";
+export type ArticleMotionPreset = "none" | "calm" | "image_focus" | "promotion" | "dynamic";
+export type ArticleMotionSpeed = "slow" | "normal" | "fast";
 
 type NewsletterArticleRow = {
   id: string;
@@ -535,6 +537,8 @@ type NewsletterArticleRow = {
   body: string | null;
   contact_name: string | null;
   contact_phone: string | null;
+  motion_preset: string | null;
+  motion_speed: string | null;
   status: string;
   representative_asset_id: string | null;
   audio_id: string | null;
@@ -808,6 +812,8 @@ export type ProjectContentArticle = {
   body: string;
   contactName: string;
   contactPhone: string;
+  motionPreset: ArticleMotionPreset;
+  motionSpeed: ArticleMotionSpeed;
   status: string;
   updated: string;
   blocks: ProjectContentBlock[];
@@ -843,6 +849,8 @@ export type UpsertProjectArticleInput = {
   }>;
   contactName?: string;
   contactPhone?: string;
+  motionPreset?: string;
+  motionSpeed?: string;
   status?: string;
   buttonLabel?: string;
   buttonTarget?: string;
@@ -1619,6 +1627,8 @@ function mapArticleRowToProjectContentArticle(
     body: article.body || "",
     contactName: article.contact_name || "",
     contactPhone: article.contact_phone || "",
+    motionPreset: normalizeArticleMotionPreset(article.motion_preset),
+    motionSpeed: normalizeArticleMotionSpeed(article.motion_speed),
     status: article.status,
     updated: formatCompactDateTime(article.updated_at),
     blocks: blocks.map(mapContentBlockRowToProjectBlock),
@@ -1641,6 +1651,20 @@ function normalizeArticleStatus(value: string | undefined) {
   const cleaned = cleanText(value);
 
   return allowed.includes(cleaned) ? cleaned : "draft";
+}
+
+function normalizeArticleMotionPreset(value: string | null | undefined): ArticleMotionPreset {
+  const allowed: ArticleMotionPreset[] = ["none", "calm", "image_focus", "promotion", "dynamic"];
+  const cleaned = value?.trim() ?? "";
+
+  return allowed.includes(cleaned as ArticleMotionPreset) ? (cleaned as ArticleMotionPreset) : "dynamic";
+}
+
+function normalizeArticleMotionSpeed(value: string | null | undefined): ArticleMotionSpeed {
+  const allowed: ArticleMotionSpeed[] = ["slow", "normal", "fast"];
+  const cleaned = value?.trim() ?? "";
+
+  return allowed.includes(cleaned as ArticleMotionSpeed) ? (cleaned as ArticleMotionSpeed) : "normal";
 }
 
 function normalizeArticleSortOrder(value: number | undefined) {
@@ -4056,7 +4080,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,summary,body,contact_name,contact_phone,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,summary,body,contact_name,contact_phone,motion_preset,motion_speed,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -4470,6 +4494,8 @@ export async function upsertProjectArticle(
       body: nullableText(input.body),
       contact_name: nullableText(input.contactName),
       contact_phone: nullableText(input.contactPhone),
+      motion_preset: normalizeArticleMotionPreset(input.motionPreset),
+      motion_speed: normalizeArticleMotionSpeed(input.motionSpeed),
       status: normalizeArticleStatus(input.status),
     };
 

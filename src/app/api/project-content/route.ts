@@ -105,6 +105,8 @@ export async function POST(request: Request) {
     contentBlocks: asContentBlocks(payload.contentBlocks),
     contactName: asText(payload.contactName),
     contactPhone: asText(payload.contactPhone),
+    motionPreset: asText(payload.motionPreset),
+    motionSpeed: asText(payload.motionSpeed),
     status: asText(payload.status),
     buttonLabel: asText(payload.buttonLabel),
     buttonTarget: asText(payload.buttonTarget),

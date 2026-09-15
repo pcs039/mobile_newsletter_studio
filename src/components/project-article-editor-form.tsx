@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/status-pill";
 import type {
+  ArticleMotionPreset,
+  ArticleMotionSpeed,
   ProjectAssetFile,
   ProjectContentArticle,
   ProjectContentBlock,
@@ -71,6 +73,20 @@ const articleStatuses = [
   { value: "needs_revision", label: "수정 필요" },
   { value: "approved", label: "검수 완료" },
   { value: "published", label: "발행 반영" },
+];
+
+const articleMotionPresetOptions: Array<{ value: ArticleMotionPreset; label: string; description: string }> = [
+  { value: "none", label: "기본형", description: "효과를 거의 사용하지 않습니다." },
+  { value: "calm", label: "단정한 등장형", description: "제목과 요약이 부드럽게 나타납니다." },
+  { value: "image_focus", label: "이미지 강조형", description: "이미지가 선명하게 드러나도록 강조합니다." },
+  { value: "promotion", label: "홍보형", description: "제목과 버튼을 조금 더 눈에 띄게 보여줍니다." },
+  { value: "dynamic", label: "모션 강화형", description: "제목 글자가 순차적으로 등장하고 이미지도 부드럽게 표시됩니다." },
+];
+
+const articleMotionSpeedOptions: Array<{ value: ArticleMotionSpeed; label: string; description: string }> = [
+  { value: "slow", label: "느리게", description: "차분한 보고형 소식지에 적합합니다." },
+  { value: "normal", label: "기본", description: "일반 모바일 소식지에 적합합니다." },
+  { value: "fast", label: "빠르게", description: "홍보·행사 안내형 콘텐츠에 적합합니다." },
 ];
 
 const editableBlockTypes: Array<{ type: EditorBlockType; label: string; help: string }> = [
@@ -698,6 +714,8 @@ export function ProjectArticleEditorForm({
       contentBlocks,
       contactName: getValue(formData, "contactName"),
       contactPhone: getValue(formData, "contactPhone"),
+      motionPreset: getValue(formData, "motionPreset"),
+      motionSpeed: getValue(formData, "motionSpeed"),
       status: getValue(formData, "status"),
     };
 
@@ -1076,6 +1094,63 @@ export function ProjectArticleEditorForm({
           <span className="ml-2">상태, Word 원고, 문의 정보</span>
         </summary>
         <p className="mt-3 text-sm leading-6 text-slate-500">필요할 때만 수정합니다.</p>
+
+        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">선택</p>
+            <h3 className="mt-1 text-lg font-black text-[#092046]">그래픽 효과</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              모바일 기사 화면에서 제목, 이미지, 버튼이 나타나는 방식을 선택합니다.
+            </p>
+          </div>
+          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <div>
+              <FieldLabel>그래픽 효과</FieldLabel>
+              <select
+                name="motionPreset"
+                defaultValue={article?.motionPreset ?? "dynamic"}
+                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              >
+                {articleMotionPresetOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-3 grid gap-2">
+                {articleMotionPresetOptions.map((option) => (
+                  <p key={option.value} className="text-xs font-semibold leading-5 text-slate-600">
+                    <span className="font-black text-[#092046]">{option.label}</span>: {option.description}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div>
+              <FieldLabel>효과 속도</FieldLabel>
+              <select
+                name="motionSpeed"
+                defaultValue={article?.motionSpeed ?? "normal"}
+                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              >
+                {articleMotionSpeedOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-3 grid gap-2">
+                {articleMotionSpeedOptions.map((option) => (
+                  <p key={option.value} className="text-xs font-semibold leading-5 text-slate-600">
+                    <span className="font-black text-[#092046]">{option.label}</span>: {option.description}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
+          <p className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold leading-5 text-slate-600">
+            효과는 모바일 기사 화면과 작성자 모바일 미리보기에만 적용됩니다.
+          </p>
+        </div>
 
         <div className="mt-5 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <div>
