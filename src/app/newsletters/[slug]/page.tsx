@@ -1,14 +1,8 @@
 import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
+import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
-import {
-  buildAudioTextSegmentCandidates,
-  getArticleBodyParagraphs,
-  makeArticleBodySegmentId,
-  makeArticleSummarySegmentId,
-  makeArticleTitleSegmentId,
-} from "@/lib/audio-text-sync";
 import {
   getProjectAudioFiles,
   getProjectContent,
@@ -17,8 +11,6 @@ import {
   getPublicProjectSurveys,
   getProjectWorkspace,
   makePublicStoragePreviewHref,
-  type ProjectContentArticle,
-  type ProjectContentBlock,
   type ProjectPageHotspotLink,
 } from "@/lib/newsletter-repository";
 
@@ -29,94 +21,6 @@ type PublicNewsletterPageProps = {
 
 function hasSearchParamValue(value: string | string[] | undefined, expectedValue: string) {
   return Array.isArray(value) ? value.includes(expectedValue) : value === expectedValue;
-}
-
-function getPreviewBody(article: ProjectContentArticle) {
-  const body = article.body.trim();
-
-  if (!body) {
-    return "본문이 아직 입력되지 않았습니다.";
-  }
-
-  return body;
-}
-
-function renderArticleBody(value: string, className: string, audioSegmentBaseId?: string) {
-  const paragraphs = getArticleBodyParagraphs(value);
-
-  return (
-    <div data-public-text-scale-target="article-body" className={`public-article-body text-base leading-8 text-slate-700 ${className}`}>
-      {paragraphs.map((paragraph, paragraphIndex) => (
-        <div key={paragraphIndex} className="public-article-paragraph">
-          {paragraph.map((sentence, sentenceIndex) => {
-            const segmentId = audioSegmentBaseId
-              ? makeArticleBodySegmentId(audioSegmentBaseId, paragraphIndex, sentenceIndex)
-              : undefined;
-
-            return (
-              <span
-                key={`${paragraphIndex}-${sentenceIndex}`}
-                data-audio-segment-id={segmentId}
-                className="public-article-sentence public-audio-sync-segment"
-              >
-                {sentence}
-              </span>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function getVisibleBlocks(article: ProjectContentArticle) {
-  return article.blocks
-    .filter((block) => block.isVisible && (block.title || block.body))
-    .sort((a, b) => a.sortOrder - b.sortOrder);
-}
-
-function getBlockLink(article: ProjectContentArticle, block: ProjectContentBlock) {
-  if (block.linkActionId) {
-    return article.links.find((link) => link.id === block.linkActionId) ?? null;
-  }
-
-  if (block.type === "video_link") {
-    return article.links.find((link) => link.actionType === "video" && link.targetValue === block.body) ?? null;
-  }
-
-  if (block.type === "map_link") {
-    return article.links.find((link) => link.actionType === "map" && link.targetValue === block.body) ?? null;
-  }
-
-  if (block.type === "button_group") {
-    return article.links.find((link) => link.displayStyle === "button" && link.targetValue === block.body) ?? null;
-  }
-
-  return null;
-}
-
-function getYoutubeId(value: string) {
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return "";
-  }
-
-  try {
-    const url = new URL(trimmed);
-
-    if (url.hostname.includes("youtu.be")) {
-      return url.pathname.replace("/", "");
-    }
-
-    if (url.hostname.includes("youtube.com")) {
-      return url.searchParams.get("v") ?? url.pathname.split("/").filter(Boolean).pop() ?? "";
-    }
-  } catch {
-    return "";
-  }
-
-  return "";
 }
 
 function getHotspotHref(link: ProjectPageHotspotLink) {
@@ -131,97 +35,6 @@ function getHotspotsForPage(links: ProjectPageHotspotLink[], pageId: string) {
   return links
     .filter((link) => link.pageId === pageId && link.isVisible)
     .sort((a, b) => a.sortOrder - b.sortOrder);
-}
-
-function renderContentBlock(article: ProjectContentArticle, block: ProjectContentBlock) {
-  const link = getBlockLink(article, block);
-  const href = link?.targetValue || block.body;
-
-  if (block.type === "paragraph") {
-    return (
-      <section key={block.id}>
-        {block.title ? <h3 className="text-base font-black leading-7 text-[#092046]">{block.title}</h3> : null}
-        {block.body ? renderArticleBody(block.body, "mt-3", `article-${article.id}-block-${block.id}`) : null}
-      </section>
-    );
-  }
-
-  if (block.type === "image") {
-    return (
-      <figure key={block.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-        {block.body ? <img src={block.body} alt={block.title || article.title} className="w-full object-cover" /> : null}
-        {block.title ? <figcaption className="px-4 py-3 text-sm font-bold leading-6 text-slate-700">{block.title}</figcaption> : null}
-      </figure>
-    );
-  }
-
-  if (block.type === "video_link") {
-    const youtubeId = getYoutubeId(href);
-
-    return (
-      <section
-        key={block.id}
-        className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm"
-      >
-        {youtubeId ? (
-          <iframe
-            src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
-            title={block.title || "영상 보기"}
-            className="aspect-video w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
-        ) : null}
-        <div className="px-4 py-3">
-          <p className="text-xs font-black text-sky-200">영상 보기</p>
-          <p className="mt-1 text-sm font-black leading-6">{block.title || link?.label || "영상 보기"}</p>
-          <a href={href} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-sky-100 underline">
-            새 창에서 열기
-          </a>
-        </div>
-      </section>
-    );
-  }
-
-  if (block.type === "map_link") {
-    return (
-      <a
-        key={block.id}
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className="block rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4"
-      >
-        <p className="text-xs font-black text-[#184a88]">지도 보기</p>
-        <p className="mt-1 text-base font-black leading-7 text-[#092046]">{block.title || link?.label || "위치 확인"}</p>
-      </a>
-    );
-  }
-
-  if (block.type === "button_group") {
-    return (
-      <a
-        key={block.id}
-        href={href.startsWith("tel:") || href.startsWith("http") ? href : `tel:${href}`}
-        target={href.startsWith("http") ? "_blank" : undefined}
-        rel={href.startsWith("http") ? "noreferrer" : undefined}
-        className="block rounded-xl bg-[#092046] px-4 py-3 text-center text-sm font-black text-white transition hover:bg-[#123a78]"
-      >
-        {block.title || link?.label || "바로가기"}
-      </a>
-    );
-  }
-
-  if (block.type === "audio") {
-    return (
-      <details key={block.id} className="rounded-xl bg-[#f4f8ff] px-4 py-3">
-        <summary className="cursor-pointer text-sm font-black text-[#092046]">{block.title || "음성 대본 보기"}</summary>
-        <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">{block.body}</p>
-      </details>
-    );
-  }
-
-  return null;
 }
 
 function PublicUnavailablePage({
@@ -299,7 +112,6 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const headerColor = project?.primaryColor ?? "#071f46";
   const publicAudioFile = audioData.files[0] ?? null;
   const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
-  const audioTextSegments = isImagePageMode ? [] : buildAudioTextSegmentCandidates(articles);
 
   return (
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
@@ -351,7 +163,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           </div>
         </header>
 
-        <section className={`space-y-5 px-5 py-5 ${publicAudioSrc ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
+        <section className={`space-y-5 px-5 py-5 ${isImagePageMode && publicAudioSrc ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
           {isImagePageMode && pageImages.length > 0 ? (
             <section className="public-image-page-list space-y-4">
               {pageImages.map((page) => (
@@ -402,56 +214,12 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               ))}
             </section>
           ) : articles.length > 0 ? (
-            articles.map((article, index) => {
-              const visibleBlocks = getVisibleBlocks(article);
-
-              return (
-                <article key={article.id} className="public-card public-article-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-black text-[#184a88]">
-                      {article.pageNumber ? `${article.pageNumber}쪽` : `${index + 1}번 기사`}
-                    </p>
-                    {showAdminPreviewControls ? (
-                      <Link
-                        href={`/projects/${slug}/reading?articleId=${article.id}`}
-                        className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]"
-                      >
-                        수정
-                      </Link>
-                    ) : null}
-                  </div>
-                  <h2
-                    data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
-                    data-public-text-scale-target="article-title"
-                    className="public-article-title public-audio-sync-segment mt-4 text-2xl font-black leading-tight text-[#092046]"
-                  >
-                    {article.title}
-                  </h2>
-                  {article.summary ? (
-                    <p
-                      data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
-                      data-public-text-scale-target="article-summary"
-                      className="public-audio-sync-segment mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]"
-                    >
-                      {article.summary}
-                    </p>
-                  ) : null}
-                  {visibleBlocks.length > 0 ? (
-                    <div className="public-article-content mt-6 space-y-6">{visibleBlocks.map((block) => renderContentBlock(article, block))}</div>
-                  ) : (
-                    renderArticleBody(getPreviewBody(article), "mt-6", `article-${article.id}-body`)
-                  )}
-                  {article.contactName || article.contactPhone ? (
-                    <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
-                      <p className="text-xs font-black text-[#184a88]">문의</p>
-                      <p className="mt-1 font-bold">
-                        {[article.contactName, article.contactPhone].filter(Boolean).join(" · ")}
-                      </p>
-                    </div>
-                  ) : null}
-                </article>
-              );
-            })
+            <PublicMobileArticleReader
+              articles={articles}
+              publicAudio={publicAudioSrc ? { src: publicAudioSrc, title: publicAudioFile?.title } : undefined}
+              showAdminPreviewControls={showAdminPreviewControls}
+              slug={slug}
+            />
           ) : (
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
               <p className="text-sm font-black text-[#092046]">
@@ -508,8 +276,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           ) : null}
         </section>
       </section>
-      {publicAudioSrc ? (
-        <PublicAudioTextSyncPlayer src={publicAudioSrc} title={publicAudioFile?.title} segments={audioTextSegments} />
+      {isImagePageMode && publicAudioSrc ? (
+        <PublicAudioTextSyncPlayer src={publicAudioSrc} title={publicAudioFile?.title} segments={[]} />
       ) : null}
     </main>
   );
