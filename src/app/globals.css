@@ -595,47 +595,47 @@ select {
   white-space: nowrap;
 }
 
-.public-mobile-article-reader .article-motion-summary[data-motion-effect="fade_up"] {
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-summary[data-motion-effect="fade_up"] {
   animation: public-article-summary-enter var(--article-motion-summary-duration, 520ms) cubic-bezier(0.22, 1, 0.36, 1) var(--article-motion-summary-delay, 130ms) both;
 }
 
-.public-mobile-article-reader .article-motion-summary[data-motion-effect="card_lift"] {
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-summary[data-motion-effect="card_lift"] {
   animation: public-article-card-lift var(--article-motion-summary-duration, 520ms) cubic-bezier(0.22, 1, 0.36, 1) var(--article-motion-summary-delay, 130ms) both;
 }
 
-.public-mobile-article-reader .article-motion-content-block[data-motion-effect="fade_up"] {
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-content-block[data-motion-effect="fade_up"] {
   animation: public-article-summary-enter var(--article-motion-block-duration, 540ms) cubic-bezier(0.22, 1, 0.36, 1) var(--article-motion-block-delay, 190ms) both;
 }
 
-.public-mobile-article-reader .article-motion-content-block[data-motion-effect="card_lift"] {
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-content-block[data-motion-effect="card_lift"] {
   animation: public-article-card-lift var(--article-motion-block-duration, 540ms) cubic-bezier(0.22, 1, 0.36, 1) var(--article-motion-block-delay, 190ms) both;
 }
 
-.public-mobile-article-reader .article-motion-image[data-motion-effect="fade_in"] {
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-image[data-motion-effect="fade_in"] {
   animation: public-article-summary-enter var(--article-motion-image-duration, 620ms) ease-out var(--article-motion-image-delay, 130ms) both;
 }
 
-.public-mobile-article-reader .article-motion-image[data-motion-effect="reveal_up"],
-.public-mobile-article-reader .article-motion-image[data-motion-effect="blur_clear"] {
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-image[data-motion-effect="reveal_up"],
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-image[data-motion-effect="blur_clear"] {
   animation: public-article-image-reveal var(--article-motion-image-duration, 620ms) cubic-bezier(0.22, 1, 0.36, 1) var(--article-motion-image-delay, 130ms) both;
 }
 
-.public-mobile-article-reader .article-motion-image[data-motion-effect="soft_zoom"] {
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-image[data-motion-effect="soft_zoom"] {
   animation: public-article-soft-zoom var(--article-motion-image-duration, 620ms) cubic-bezier(0.22, 1, 0.36, 1) var(--article-motion-image-delay, 130ms) both;
 }
 
-.public-mobile-article-reader .article-motion-caption[data-motion-effect="fade_in"],
-.public-mobile-article-reader .article-motion-caption[data-motion-effect="reveal_up"],
-.public-mobile-article-reader .article-motion-caption[data-motion-effect="soft_zoom"],
-.public-mobile-article-reader .article-motion-caption[data-motion-effect="blur_clear"] {
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-caption[data-motion-effect="fade_in"],
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-caption[data-motion-effect="reveal_up"],
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-caption[data-motion-effect="soft_zoom"],
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-caption[data-motion-effect="blur_clear"] {
   animation: public-article-summary-enter var(--article-motion-summary-duration, 520ms) ease-out calc(var(--article-motion-image-delay, 130ms) + 160ms) both;
 }
 
-.public-mobile-article-reader .article-motion-link-button[data-motion-effect="soft_emphasis"] {
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-link-button[data-motion-effect="soft_emphasis"] {
   animation: public-article-button-emphasis var(--article-motion-button-duration, 440ms) cubic-bezier(0.22, 1, 0.36, 1) var(--article-motion-button-delay, 260ms) both;
 }
 
-.public-mobile-article-reader .article-motion-link-button[data-motion-effect="card_lift"] {
+.public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-link-button[data-motion-effect="card_lift"] {
   animation: public-article-card-lift var(--article-motion-button-duration, 440ms) cubic-bezier(0.22, 1, 0.36, 1) var(--article-motion-button-delay, 260ms) both;
 }
 
