@@ -314,13 +314,15 @@ function ArticleCard({
           </Link>
         ) : null}
       </div>
-      <h2
-        data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
-        data-public-text-scale-target="article-title"
-        className="public-article-title public-audio-sync-segment mt-4 text-2xl font-black leading-tight text-[#092046]"
-      >
-        {getArticleTitle(article, index)}
-      </h2>
+      <div key={`article-title-${article.id}`} className="article-title-motion">
+        <h2
+          data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
+          data-public-text-scale-target="article-title"
+          className="public-article-title public-audio-sync-segment text-2xl font-black leading-tight text-[#092046]"
+        >
+          {getArticleTitle(article, index)}
+        </h2>
+      </div>
       {article.summary ? (
         <p
           data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
