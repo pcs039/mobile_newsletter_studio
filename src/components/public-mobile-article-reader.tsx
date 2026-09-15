@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type TouchEvent } from "react";
+import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import {
   buildAudioTextSegmentCandidates,
@@ -146,7 +147,11 @@ function getInitialArticleIndex(articles: ProjectContentArticle[], initialArticl
   return matchedIndex >= 0 ? matchedIndex : 0;
 }
 
-function renderContentBlock(article: ProjectContentArticle, block: ProjectContentBlock) {
+function renderContentBlock(
+  article: ProjectContentArticle,
+  block: ProjectContentBlock,
+  onOpenArticleImage: (image: PublicArticleLightboxImage) => void,
+) {
   const link = getBlockLink(article, block);
   const rawHref = link?.targetValue || block.body;
 
@@ -160,10 +165,34 @@ function renderContentBlock(article: ProjectContentArticle, block: ProjectConten
   }
 
   if (block.type === "image") {
+    const imageSrc = block.body.trim();
+    const imageAlt = block.title || article.title || "기사 이미지";
+
+    if (!imageSrc) {
+      return null;
+    }
+
     return (
       <figure key={block.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {block.body ? <img src={block.body} alt={block.title || article.title} className="w-full object-cover" /> : null}
+        <button
+          type="button"
+          className="group relative block w-full cursor-zoom-in border-0 bg-transparent p-0 text-left"
+          aria-label={`${imageAlt} 확대 보기`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenArticleImage({
+              alt: imageAlt,
+              caption: block.title || undefined,
+              src: imageSrc,
+            });
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageSrc} alt={imageAlt} className="w-full object-cover transition duration-200 group-hover:scale-[1.01]" />
+          <span className="absolute right-3 top-3 rounded-full bg-slate-950/72 px-3 py-1 text-xs font-black text-white shadow-sm">
+            확대
+          </span>
+        </button>
         {block.title ? <figcaption className="px-4 py-3 text-sm font-bold leading-6 text-slate-700">{block.title}</figcaption> : null}
       </figure>
     );
@@ -257,12 +286,14 @@ function ArticleCard({
   article,
   className = "",
   index,
+  onOpenArticleImage,
   showAdminPreviewControls,
   slug,
 }: {
   article: ProjectContentArticle;
   className?: string;
   index: number;
+  onOpenArticleImage: (image: PublicArticleLightboxImage) => void;
   showAdminPreviewControls: boolean;
   slug: string;
 }) {
@@ -300,7 +331,9 @@ function ArticleCard({
         </p>
       ) : null}
       {visibleBlocks.length > 0 ? (
-        <div className="public-article-content mt-6 space-y-6">{visibleBlocks.map((block) => renderContentBlock(article, block))}</div>
+        <div className="public-article-content mt-6 space-y-6">
+          {visibleBlocks.map((block) => renderContentBlock(article, block, onOpenArticleImage))}
+        </div>
       ) : (
         renderArticleBody(getPreviewBody(article), "mt-6", `article-${article.id}-body`)
       )}
@@ -326,6 +359,7 @@ export function PublicMobileArticleReader({
   const isMobileReader = useSyncExternalStore(subscribeToMobileReader, readMobileReaderSnapshot, () => false);
   const [currentIndex, setCurrentIndex] = useState(() => getInitialArticleIndex(articles, initialArticleId));
   const [isIndexOpen, setIsIndexOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<PublicArticleLightboxImage | null>(null);
   const articleTopRef = useRef<HTMLDivElement>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
   const safeCurrentIndex = Math.min(currentIndex, Math.max(articles.length - 1, 0));
@@ -420,6 +454,7 @@ export function PublicMobileArticleReader({
             <ArticleCard
               article={currentArticle}
               index={safeCurrentIndex}
+              onOpenArticleImage={setLightboxImage}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
             />
@@ -519,6 +554,7 @@ export function PublicMobileArticleReader({
               key={article.id}
               article={article}
               index={index}
+              onOpenArticleImage={setLightboxImage}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
             />
@@ -529,6 +565,7 @@ export function PublicMobileArticleReader({
       {publicAudio ? (
         <PublicAudioTextSyncPlayer src={publicAudio.src} title={publicAudio.title} segments={activeAudioSegments} />
       ) : null}
+      <PublicArticleImageLightbox image={lightboxImage} onClose={() => setLightboxImage(null)} />
     </>
   );
 }
