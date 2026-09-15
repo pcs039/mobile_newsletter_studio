@@ -35,12 +35,17 @@ type NewsletterProjectRow = {
 
 type FontAssetRow = {
   id: string;
+  family_id: string | null;
   font_name: string;
   font_family: string;
   font_file_path: string;
   font_file_format: string;
   font_weight: string | null;
   font_style: string | null;
+  source_file_name: string | null;
+  detected_weight: string | null;
+  detected_style: string | null;
+  package_source: string | null;
   font_type: string;
   license_type: string | null;
   license_note: string | null;
@@ -54,6 +59,13 @@ type FontAssetRow = {
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;
+  font_families: {
+    id: string;
+    display_name: string;
+    css_family_name: string;
+    is_active: boolean;
+    webfont_allowed: boolean;
+  } | null;
 };
 
 export type CreateNewsletterProjectInput = {
@@ -427,6 +439,11 @@ export type ProjectBasicInfo = {
 
 export type FontAsset = {
   id: string;
+  familyId: string;
+  familyDisplayName: string;
+  familyCssFamily: string;
+  familyIsActive: boolean;
+  familyWebfontAllowed: boolean;
   name: string;
   family: string;
   cssFamily: string;
@@ -435,6 +452,10 @@ export type FontAsset = {
   fileUrl: string;
   weight: string;
   style: string;
+  sourceFileName: string;
+  detectedWeight: string;
+  detectedStyle: string;
+  packageSource: string;
   type: string;
   licenseType: string;
   licenseNote: string;
@@ -1032,12 +1053,17 @@ const projectSelectColumns = [
 
 const fontAssetSelectColumns = [
   "id",
+  "family_id",
   "font_name",
   "font_family",
   "font_file_path",
   "font_file_format",
   "font_weight",
   "font_style",
+  "source_file_name",
+  "detected_weight",
+  "detected_style",
+  "package_source",
   "font_type",
   "license_type",
   "license_note",
@@ -1051,6 +1077,7 @@ const fontAssetSelectColumns = [
   "uploaded_by",
   "created_at",
   "updated_at",
+  "font_families(id,display_name,css_family_name,is_active,webfont_allowed)",
 ].join(",");
 
 const statusLabels: Record<ProjectStatus, string> = {
@@ -1586,16 +1613,27 @@ function makeInternalFontFamilyName(id: string) {
 }
 
 function mapFontAssetRowToFontAsset(font: FontAssetRow): FontAsset {
+  const family = font.font_families;
+
   return {
     id: font.id,
-    name: font.font_name,
+    familyId: font.family_id || "",
+    familyDisplayName: family?.display_name || "",
+    familyCssFamily: family?.css_family_name || "",
+    familyIsActive: family?.is_active ?? false,
+    familyWebfontAllowed: family?.webfont_allowed ?? false,
+    name: family?.display_name || font.font_name,
     family: font.font_family,
-    cssFamily: makeInternalFontFamilyName(font.id),
+    cssFamily: family?.css_family_name || makeInternalFontFamilyName(font.id),
     filePath: font.font_file_path,
     fileFormat: font.font_file_format,
     fileUrl: makePublicStoragePreviewHref("fonts", font.font_file_path) ?? "",
-    weight: font.font_weight || "400",
-    style: font.font_style || "normal",
+    weight: font.detected_weight || font.font_weight || "400",
+    style: font.detected_style || font.font_style || "normal",
+    sourceFileName: font.source_file_name || "",
+    detectedWeight: font.detected_weight || "",
+    detectedStyle: font.detected_style || "",
+    packageSource: font.package_source || "single",
     type: font.font_type,
     licenseType: font.license_type || "",
     licenseNote: font.license_note || "",

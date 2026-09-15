@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
 import { StatusPill } from "@/components/status-pill";
+import { getSelectableFontAssets } from "@/lib/font-css";
 import type {
   ArticleElementMotionEffect,
   ArticleElementMotionSpeed,
@@ -507,6 +508,8 @@ function FontSelect({
   label: string;
   name: string;
 }) {
+  const selectableFonts = getSelectableFontAssets(fonts);
+
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
@@ -516,7 +519,7 @@ function FontSelect({
         className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
       >
         <option value="">{inheritLabel}</option>
-        {fonts.map((font) => (
+        {selectableFonts.map((font) => (
           <option key={font.id} value={font.id}>
             {font.name}
           </option>

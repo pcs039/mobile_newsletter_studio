@@ -20,14 +20,66 @@ export function getFontAssetById(fonts: FontAsset[], id: string | null | undefin
     return null;
   }
 
-  return fonts.find((font) => font.id === id && font.isActive && font.webfontAllowed && font.fileUrl) ?? null;
+  return (
+    fonts.find((font) => {
+      const familyReady = font.familyId ? font.familyIsActive && font.familyWebfontAllowed : true;
+
+      return font.id === id && font.isActive && font.webfontAllowed && familyReady && font.fileUrl;
+    }) ?? null
+  );
+}
+
+export function getSelectableFontAssets(fonts: FontAsset[]) {
+  const selectable: FontAsset[] = [];
+  const grouped = new Map<string, FontAsset[]>();
+
+  fonts
+    .filter((font) => font.isActive && font.webfontAllowed && font.fileUrl)
+    .forEach((font) => {
+      if (!font.familyId) {
+        selectable.push(font);
+        return;
+      }
+
+      if (!font.familyIsActive || !font.familyWebfontAllowed) {
+        return;
+      }
+
+      grouped.set(font.familyId, [...(grouped.get(font.familyId) ?? []), font]);
+    });
+
+  grouped.forEach((familyFonts) => {
+    const representative =
+      familyFonts.find((font) => font.weight === "400" && font.style === "normal") ??
+      familyFonts.find((font) => font.style === "normal") ??
+      familyFonts[0];
+
+    if (representative) {
+      selectable.push(representative);
+    }
+  });
+
+  return selectable.sort((first, second) => first.name.localeCompare(second.name, "ko"));
 }
 
 export function getFontFaceCss(fonts: FontAsset[]) {
+  const uniqueFaces = new Set<string>();
+
   return fonts
-    .filter((font) => font.isActive && font.webfontAllowed && font.fileUrl)
+    .filter((font) => {
+      const familyReady = font.familyId ? font.familyIsActive && font.familyWebfontAllowed : true;
+
+      return font.isActive && font.webfontAllowed && familyReady && font.fileUrl;
+    })
     .map((font) => {
       const format = fontFormatMap[font.fileFormat] ?? font.fileFormat;
+      const faceKey = [font.cssFamily, font.fileUrl, font.weight || "400", font.style || "normal"].join("|");
+
+      if (uniqueFaces.has(faceKey)) {
+        return "";
+      }
+
+      uniqueFaces.add(faceKey);
 
       return [
         "@font-face {",
