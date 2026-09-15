@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ProjectFileUploadKind } from "@/lib/newsletter-file-storage";
 
 type ConversionStatus = "idle" | "loading" | "ready" | "converting" | "success" | "error";
-type RenderWidth = 1080 | 1440;
+type RenderWidth = 1080 | 1440 | 1920;
 
 type UploadPrepareResult = {
   ok?: boolean;
@@ -26,6 +26,29 @@ type PageConversionResult = {
 };
 
 const pdfWorkerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
+const pdfCMapUrl = "/pdfjs/cmaps/";
+const pdfStandardFontDataUrl = "/pdfjs/standard_fonts/";
+const pdfWasmUrl = "/pdfjs/wasm/";
+const pdfQualityOptions: Array<{ label: string; width: RenderWidth }> = [
+  { label: "표준 1080px", width: 1080 },
+  { label: "고품질 1440px", width: 1440 },
+  { label: "초고품질 1920px", width: 1920 },
+];
+const pdfReviewNotice =
+  "PDF 구조에 따라 일부 삽화·사진이 누락될 수 있습니다. 변환 후 PC e-book 보기에서 원본과 비교해 확인하세요.";
+
+function getPdfDocumentOptions(data: ArrayBuffer) {
+  return {
+    cMapPacked: true,
+    cMapUrl: pdfCMapUrl,
+    data,
+    disableFontFace: false,
+    enableXfa: true,
+    standardFontDataUrl: pdfStandardFontDataUrl,
+    useSystemFonts: true,
+    wasmUrl: pdfWasmUrl,
+  };
+}
 
 function formatFileSize(size: number) {
   if (size >= 1024 * 1024) {
@@ -144,7 +167,7 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [pageCount, setPageCount] = useState(0);
-  const [renderWidth, setRenderWidth] = useState<RenderWidth>(1080);
+  const [renderWidth, setRenderWidth] = useState<RenderWidth>(1440);
   const [status, setStatus] = useState<ConversionStatus>("idle");
   const [message, setMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
@@ -177,11 +200,13 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
       pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
       const data = await nextFile.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data }).promise;
+      const pdf = await pdfjs.getDocument(getPdfDocumentOptions(data)).promise;
 
       setPageCount(pdf.numPages);
       setStatus("ready");
-      setMessage(`${pdf.numPages}쪽 PDF입니다. 변환을 시작하면 PDF 원본 저장 후 페이지 이미지를 자동 생성합니다.`);
+      setMessage(
+        `${pdf.numPages}쪽 PDF입니다. 변환을 시작하면 PDF 원본 저장 후 페이지 이미지를 자동 생성합니다. ${pdfReviewNotice}`,
+      );
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "PDF 정보를 확인하지 못했습니다.");
@@ -203,11 +228,19 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
     canvas.width = Math.ceil(viewport.width);
     canvas.height = Math.ceil(viewport.height);
 
-    await page.render({
+    context.save();
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.restore();
+
+    const renderTask = page.render({
+      background: "rgb(255, 255, 255)",
       canvas,
       canvasContext: context,
       viewport,
-    }).promise;
+    });
+
+    await renderTask.promise;
 
     const blob = await blobFromCanvas(canvas);
 
@@ -249,7 +282,7 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
       pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
       const data = await file.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data }).promise;
+      const pdf = await pdfjs.getDocument(getPdfDocumentOptions(data)).promise;
 
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
         setCurrentPage(pageNumber);
@@ -282,8 +315,8 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
       setStatus(failureCount > 0 ? "error" : "success");
       setMessage(
         failureCount > 0
-          ? `변환을 마쳤지만 ${failureCount}개 페이지는 실패했습니다. 실패 항목을 확인하세요.`
-          : `PDF ${pdf.numPages}쪽을 모두 페이지 이미지로 저장했습니다.`,
+          ? `변환을 마쳤지만 ${failureCount}개 페이지는 실패했습니다. 실패 항목을 확인하세요. ${pdfReviewNotice}`
+          : `PDF ${pdf.numPages}쪽을 모두 페이지 이미지로 저장했습니다. ${pdfReviewNotice}`,
       );
       router.refresh();
     } catch (error) {
@@ -303,20 +336,25 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
             텍스트가 많은 지면을 고려해 PNG 형식을 사용합니다.
           </p>
         </div>
-        <div className="flex shrink-0 gap-2 rounded-lg border border-slate-200 bg-white p-1">
-          {[1080, 1440].map((width) => (
+        <div className="flex shrink-0 flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-1">
+          {pdfQualityOptions.map((option) => (
             <button
-              key={width}
+              key={option.width}
               type="button"
-              onClick={() => setRenderWidth(width as RenderWidth)}
+              onClick={() => setRenderWidth(option.width)}
               className={`rounded-md px-3 py-2 text-xs font-black ${
-                renderWidth === width ? "bg-[#092046] text-white" : "text-[#092046] hover:bg-[#eaf3ff]"
+                renderWidth === option.width ? "bg-[#092046] text-white" : "text-[#092046] hover:bg-[#eaf3ff]"
               }`}
             >
-              {width}px
+              {option.label}
             </button>
           ))}
         </div>
+      </div>
+      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+        <p className="text-sm font-bold leading-6 text-amber-900">
+          고품질/초고품질 변환은 시간이 더 걸릴 수 있습니다. {pdfReviewNotice}
+        </p>
       </div>
 
       <input

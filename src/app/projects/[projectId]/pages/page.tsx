@@ -4,6 +4,7 @@ import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectPageHotspotManager } from "@/components/project-page-hotspot-manager";
 import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { ProjectPageImageBulkDelete } from "@/components/project-page-image-bulk-delete";
 import { PdfToPageImageConverter } from "@/components/pdf-to-page-image-converter";
 import { StatusPill } from "@/components/status-pill";
 import { pageConversionSteps, pageQualityChecks } from "@/lib/newsletter-data";
@@ -302,55 +303,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                     </p>
                   </div>
                 ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {pages.map((page) => (
-                      <article key={page.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-                        <div className="aspect-[3/4] overflow-hidden rounded-md border border-slate-200 bg-[#eef4fb]">
-                          {page.previewHref ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={page.previewHref}
-                              alt={`${page.pageNumber}쪽 페이지 이미지`}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full flex-col justify-between bg-white p-3">
-                              <div>
-                                <div className="h-3 w-2/3 rounded bg-[#092046]" />
-                                <div className="mt-4 rounded-lg bg-sky-50 px-3 py-8 text-center">
-                                  <p className="text-xs font-black text-[#184a88]">Storage 파일</p>
-                                  <p className="mt-2 break-all text-xs font-semibold leading-5 text-slate-500">
-                                    이미지 경로 없음
-                                  </p>
-                                </div>
-                              </div>
-                              <p className="whitespace-nowrap text-xs font-semibold text-slate-500">
-                                최근 수정 {page.updated}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-black text-[#092046]">{page.pageNumber}쪽</p>
-                            <p className="mt-1 text-xs font-semibold text-slate-500">{page.title}</p>
-                          </div>
-                          <StatusPill value={page.status} />
-                        </div>
-                        {page.imagePath ? (
-                          <div className="mt-3 flex justify-end">
-                            <ProjectFileDeleteButton
-                              fileLabel={`${page.pageNumber}쪽 페이지 이미지`}
-                              kind="page_image"
-                              path={page.imagePath}
-                              projectSlug={projectId}
-                              recordId={page.id}
-                            />
-                          </div>
-                        ) : null}
-                      </article>
-                    ))}
-                  </div>
+                  <ProjectPageImageBulkDelete pages={pages} projectSlug={projectId} />
                 )}
               </article>
 
