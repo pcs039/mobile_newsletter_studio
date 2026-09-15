@@ -500,7 +500,10 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                     {article.title}
                   </h2>
                   {article.summary ? (
-                    <p className="mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]">
+                    <p
+                      data-public-text-scale-target="article-summary"
+                      className="mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]"
+                    >
                       {article.summary}
                     </p>
                   ) : null}
