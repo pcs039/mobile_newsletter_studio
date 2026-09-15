@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { StatusPill } from "@/components/status-pill";
+import { getCustomPageTitle } from "@/lib/page-labels";
 
 type PageImageItem = {
   id: string;
@@ -207,6 +208,7 @@ export function ProjectPageImageBulkDelete({
         {pages.map((page) => {
           const canDelete = Boolean(page.imagePath);
           const isSelected = selectedIds.has(page.id);
+          const customTitle = getCustomPageTitle(page.title, page.pageNumber);
 
           return (
             <article
@@ -254,7 +256,7 @@ export function ProjectPageImageBulkDelete({
               <div className="mt-3 flex items-start justify-between gap-2">
                 <div>
                   <p className="text-sm font-black text-[#092046]">{page.pageNumber}쪽</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">{page.title}</p>
+                  {customTitle ? <p className="mt-1 text-xs font-semibold text-slate-500">{customTitle}</p> : null}
                 </div>
               </div>
               {page.imagePath ? (

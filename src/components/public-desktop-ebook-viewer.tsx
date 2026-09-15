@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
 
 type EbookPage = {
   id: string;
@@ -88,17 +89,6 @@ async function playPageFlipSound() {
   }
 }
 
-function formatEbookPageLabel(pageNumber: number, title?: string | null) {
-  const pageLabel = `${pageNumber}쪽`;
-  const trimmedTitle = title?.trim();
-
-  if (!trimmedTitle || trimmedTitle.replace(/\s+/g, "") === pageLabel) {
-    return pageLabel;
-  }
-
-  return `${pageLabel} · ${trimmedTitle}`;
-}
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -148,7 +138,7 @@ export function PublicDesktopEbookViewer({
   const soundEnabled = useSyncExternalStore(subscribeToSoundPreference, getInitialSoundEnabled, () => true);
   const currentPage = pages[currentIndex] ?? null;
   const coverPage = pages.find((page) => page.previewHref) ?? pages[0] ?? null;
-  const currentPageLabel = currentPage ? formatEbookPageLabel(currentPage.pageNumber, currentPage.title) : "페이지 미등록";
+  const currentPageCustomTitle = currentPage ? getCustomPageTitle(currentPage.title, currentPage.pageNumber) : "";
   const visiblePages = useMemo(() => {
     if (!currentPage) {
       return [];
@@ -406,7 +396,7 @@ export function PublicDesktopEbookViewer({
                           : "border-white/10 bg-white/8 text-slate-200 hover:bg-white/15"
                       }`}
                     >
-                      <span className="block">{formatEbookPageLabel(page.pageNumber, page.title)}</span>
+                      <span className="block">{formatPageLabel(page.pageNumber, page.title)}</span>
                       <span className={`mt-1 block text-[10px] font-bold ${isActive ? "text-[#184a88]" : "text-slate-400"}`}>
                         {page.status}
                       </span>
@@ -464,14 +454,14 @@ export function PublicDesktopEbookViewer({
                   style={{ width: viewMode === "double" ? "50%" : "100%" }}
                 >
                   <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                    <h2 className="text-sm font-black text-[#092046]">{formatEbookPageLabel(page.pageNumber, page.title)}</h2>
+                    <h2 className="text-sm font-black text-[#092046]">{formatPageLabel(page.pageNumber, page.title)}</h2>
                     <span className="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-bold text-[#184a88]">{page.status}</span>
                   </div>
                   {page.previewHref ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={page.previewHref}
-                      alt={formatEbookPageLabel(page.pageNumber, page.title)}
+                      alt={formatPageLabel(page.pageNumber, page.title)}
                       className="mx-auto h-auto w-full rounded-lg border border-slate-200 bg-white object-contain shadow-lg shadow-slate-950/10"
                     />
                   ) : (
@@ -496,7 +486,7 @@ export function PublicDesktopEbookViewer({
           <div className="mx-auto flex max-w-[1400px] flex-col gap-2 lg:flex-row lg:items-center">
             <div className="min-w-0 lg:w-72">
               <p className="truncate text-xs font-black">{currentPage ? `${currentPage.pageNumber}쪽 / ${pages.length}쪽` : `0쪽 / ${pages.length}쪽`}</p>
-              <p className="truncate text-xs font-semibold text-slate-300">{currentPageLabel}</p>
+              {currentPageCustomTitle ? <p className="truncate text-xs font-semibold text-slate-300">{currentPageCustomTitle}</p> : null}
             </div>
             <input
               type="range"
