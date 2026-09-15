@@ -1,6 +1,5 @@
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicDesktopEbookViewer } from "@/components/public-desktop-ebook-viewer";
-import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import { getProjectPageImages, getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type PublicEbookPageProps = {
@@ -26,9 +25,6 @@ function PublicUnavailablePage({
   return (
     <main className="public-newsletter-screen grid min-h-screen place-items-center bg-[#eef4fb] px-5 text-slate-950">
       <section className="w-full max-w-[560px] rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-blue-950/10">
-        <div className="mb-5 flex justify-center">
-          <PublicTextSizeToggle />
-        </div>
         <p className="text-sm font-black text-[#184a88]">DataDiction Newsletter</p>
         <h1 className="mt-3 text-2xl font-black leading-tight text-[#092046]">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600 [word-break:keep-all]">{message}</p>
