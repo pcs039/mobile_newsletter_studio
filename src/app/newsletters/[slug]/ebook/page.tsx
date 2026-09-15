@@ -73,9 +73,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
     <>
       <NewsletterViewTracker slug={slug} viewMode="ebook" disabled={isAdminPreview || !isPublished} />
       <PublicDesktopEbookViewer
-        adminPagesHref={`/projects/${slug}/pages`}
         initialPageNumber={initialPageNumber}
-        isAdminPreview={isAdminPreview}
         isEmbeddedAdminPreview={isEmbeddedAdminPreview}
         mobileEbookHref={mobileEbookHref}
         mobileReadingHref={mobileHref}
