@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { getProjectPageImages, getProjectWorkspace } from "@/lib/newsletter-repository";
+import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
 
 type PublicMobileEbookPageProps = {
   params: Promise<{ slug: string }>;
@@ -13,17 +14,6 @@ function hasSearchParamValue(value: string | string[] | undefined, expectedValue
 
 function getSearchParamValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function formatEbookPageLabel(pageNumber: number, title?: string | null) {
-  const pageLabel = `${pageNumber}쪽`;
-  const trimmedTitle = title?.trim();
-
-  if (!trimmedTitle || trimmedTitle.replace(/\s+/g, "") === pageLabel) {
-    return pageLabel;
-  }
-
-  return `${pageLabel} · ${trimmedTitle}`;
 }
 
 function makeMobileEbookHref(slug: string, pageNumber: number, isAdminPreview: boolean, isEmbeddedAdminPreview: boolean) {
@@ -94,6 +84,7 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
   const requestedIndex = pages.findIndex((page) => page.pageNumber === requestedPageNumber);
   const currentIndex = requestedIndex >= 0 ? requestedIndex : 0;
   const currentPage = pages[currentIndex] ?? null;
+  const currentPageCustomTitle = currentPage ? getCustomPageTitle(currentPage.title, currentPage.pageNumber) : "";
   const previousPage = currentIndex > 0 ? pages[currentIndex - 1] : null;
   const nextPage = currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
   const mobileReadingHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : project.publicUrl ?? `/newsletters/${slug}`;
@@ -109,9 +100,12 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
             {project.title} {project.issue}
           </h1>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-bold text-slate-600">
-              {currentPage ? `${currentIndex + 1} / ${pages.length} · ${formatEbookPageLabel(currentPage.pageNumber, currentPage.title)}` : "페이지 미등록"}
-            </p>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-slate-600">
+                {currentPage ? `${currentPage.pageNumber}쪽 / ${pages.length}쪽` : "페이지 미등록"}
+              </p>
+              {currentPageCustomTitle ? <p className="mt-1 truncate text-sm font-bold text-slate-500">{currentPageCustomTitle}</p> : null}
+            </div>
             {!isEmbeddedAdminPreview ? (
               <div className="flex flex-wrap gap-2">
                 <Link href={mobileReadingHref} className="rounded-full border border-[#2f73b7] px-3 py-2 text-xs font-black text-[#092046]">
@@ -130,14 +124,14 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
             <article className="public-mobile-ebook-page rounded-2xl bg-[#e7f0f8] p-3 shadow-inner shadow-blue-950/10">
               <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-xl shadow-blue-950/15">
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-black text-[#092046]">{formatEbookPageLabel(currentPage.pageNumber, currentPage.title)}</h2>
+                  <h2 className="text-sm font-black text-[#092046]">{formatPageLabel(currentPage.pageNumber, currentPage.title)}</h2>
                   <span className="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-bold text-[#184a88]">{currentPage.status}</span>
                 </div>
                 {currentPage.previewHref ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={currentPage.previewHref}
-                    alt={formatEbookPageLabel(currentPage.pageNumber, currentPage.title)}
+                    alt={formatPageLabel(currentPage.pageNumber, currentPage.title)}
                     className="mx-auto w-full max-w-full rounded-xl border border-slate-200 bg-white"
                   />
                 ) : (
@@ -184,7 +178,7 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
                           : "border-slate-200 bg-[#f8fbff] text-[#092046]"
                       }`}
                     >
-                      {formatEbookPageLabel(page.pageNumber, page.title)}
+                      {formatPageLabel(page.pageNumber, page.title)}
                     </Link>
                   ))}
                 </div>
