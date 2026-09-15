@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type TouchEvent } from "react";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
+import { ScrollMotionReveal } from "@/components/scroll-motion-reveal";
 import {
   buildAudioTextSegmentCandidates,
   getArticleBodyParagraphs,
@@ -347,41 +348,46 @@ function renderContentBlock(
     }
 
     return (
-      <figure
+      <ScrollMotionReveal
         key={block.id}
-        className={`article-motion-image ${articleMotionSpeedClassNames[motionSettings.image.speed]} overflow-hidden rounded-2xl border border-slate-200 bg-slate-50`}
-        data-motion-effect={motionSettings.image.effect}
-        data-motion-speed={motionSettings.image.speed}
+        motionEffect={motionSettings.image.effect}
+        motionSpeed={motionSettings.image.speed}
       >
-        <button
-          type="button"
-          className="group relative block w-full cursor-zoom-in border-0 bg-transparent p-0 text-left"
-          aria-label={`${imageAlt} 확대 보기`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenArticleImage({
-              alt: imageAlt,
-              caption: block.title || undefined,
-              src: imageSrc,
-            });
-          }}
+        <figure
+          className={`article-motion-image ${articleMotionSpeedClassNames[motionSettings.image.speed]} overflow-hidden rounded-2xl border border-slate-200 bg-slate-50`}
+          data-motion-effect={motionSettings.image.effect}
+          data-motion-speed={motionSettings.image.speed}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageSrc} alt={imageAlt} className="w-full object-cover transition duration-200 group-hover:scale-[1.01]" />
-          <span className="absolute right-3 top-3 rounded-full bg-slate-950/72 px-3 py-1 text-xs font-black text-white shadow-sm">
-            확대
-          </span>
-        </button>
-        {block.title ? (
-          <figcaption
-            className={`article-motion-caption ${articleMotionSpeedClassNames[motionSettings.image.speed]} px-4 py-3 text-sm font-bold leading-6 text-slate-700`}
-            data-motion-effect={motionSettings.image.effect}
-            data-motion-speed={motionSettings.image.speed}
+          <button
+            type="button"
+            className="group relative block w-full cursor-zoom-in border-0 bg-transparent p-0 text-left"
+            aria-label={`${imageAlt} 확대 보기`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenArticleImage({
+                alt: imageAlt,
+                caption: block.title || undefined,
+                src: imageSrc,
+              });
+            }}
           >
-            {block.title}
-          </figcaption>
-        ) : null}
-      </figure>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageSrc} alt={imageAlt} className="w-full object-cover transition duration-200 group-hover:scale-[1.01]" />
+            <span className="absolute right-3 top-3 rounded-full bg-slate-950/72 px-3 py-1 text-xs font-black text-white shadow-sm">
+              확대
+            </span>
+          </button>
+          {block.title ? (
+            <figcaption
+              className={`article-motion-caption ${articleMotionSpeedClassNames[motionSettings.image.speed]} px-4 py-3 text-sm font-bold leading-6 text-slate-700`}
+              data-motion-effect={motionSettings.image.effect}
+              data-motion-speed={motionSettings.image.speed}
+            >
+              {block.title}
+            </figcaption>
+          ) : null}
+        </figure>
+      </ScrollMotionReveal>
     );
   }
 
@@ -394,27 +400,32 @@ function renderContentBlock(
     }
 
     return (
-      <section
+      <ScrollMotionReveal
         key={block.id}
-        className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm`}
-        data-motion-effect={motionSettings.textBox.effect}
-        data-motion-speed={motionSettings.textBox.speed}
+        motionEffect={motionSettings.textBox.effect}
+        motionSpeed={motionSettings.textBox.speed}
       >
-        <iframe
-          src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
-          title={block.title || "영상 보기"}
-          className="aspect-video w-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-        />
-        <div className="px-4 py-3">
-          <p className="text-xs font-black text-sky-200">영상 보기</p>
-          <p className="mt-1 text-sm font-black leading-6">{block.title || link?.label || "영상 보기"}</p>
-          <a href={href} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-sky-100 underline">
-            새 창에서 열기
-          </a>
-        </div>
-      </section>
+        <section
+          className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm`}
+          data-motion-effect={motionSettings.textBox.effect}
+          data-motion-speed={motionSettings.textBox.speed}
+        >
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
+            title={block.title || "영상 보기"}
+            className="aspect-video w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+          <div className="px-4 py-3">
+            <p className="text-xs font-black text-sky-200">영상 보기</p>
+            <p className="mt-1 text-sm font-black leading-6">{block.title || link?.label || "영상 보기"}</p>
+            <a href={href} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-sky-100 underline">
+              새 창에서 열기
+            </a>
+          </div>
+        </section>
+      </ScrollMotionReveal>
     );
   }
 
@@ -426,18 +437,23 @@ function renderContentBlock(
     }
 
     return (
-      <a
+      <ScrollMotionReveal
         key={block.id}
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} block rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4`}
-        data-motion-effect={motionSettings.textBox.effect}
-        data-motion-speed={motionSettings.textBox.speed}
+        motionEffect={motionSettings.textBox.effect}
+        motionSpeed={motionSettings.textBox.speed}
       >
-        <p className="text-xs font-black text-[#184a88]">지도 보기</p>
-        <p className="mt-1 text-base font-black leading-7 text-[#092046]">{block.title || link?.label || "위치 확인"}</p>
-      </a>
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} block rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4`}
+          data-motion-effect={motionSettings.textBox.effect}
+          data-motion-speed={motionSettings.textBox.speed}
+        >
+          <p className="text-xs font-black text-[#184a88]">지도 보기</p>
+          <p className="mt-1 text-base font-black leading-7 text-[#092046]">{block.title || link?.label || "위치 확인"}</p>
+        </a>
+      </ScrollMotionReveal>
     );
   }
 
@@ -449,31 +465,41 @@ function renderContentBlock(
     }
 
     return (
-      <a
+      <ScrollMotionReveal
         key={block.id}
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className={`article-motion-link-button ${articleMotionSpeedClassNames[motionSettings.link.speed]} dd-btn dd-btn-primary block rounded-xl px-4 py-3 text-center text-sm font-black`}
-        data-motion-effect={motionSettings.link.effect}
-        data-motion-speed={motionSettings.link.speed}
+        motionEffect={motionSettings.link.effect}
+        motionSpeed={motionSettings.link.speed}
       >
-        {getArticleLinkButtonLabel(block.title || link?.label)}
-      </a>
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className={`article-motion-link-button ${articleMotionSpeedClassNames[motionSettings.link.speed]} dd-btn dd-btn-primary block rounded-xl px-4 py-3 text-center text-sm font-black`}
+          data-motion-effect={motionSettings.link.effect}
+          data-motion-speed={motionSettings.link.speed}
+        >
+          {getArticleLinkButtonLabel(block.title || link?.label)}
+        </a>
+      </ScrollMotionReveal>
     );
   }
 
   if (block.type === "audio") {
     return (
-      <details
+      <ScrollMotionReveal
         key={block.id}
-        className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} rounded-xl bg-[#f4f8ff] px-4 py-3`}
-        data-motion-effect={motionSettings.textBox.effect}
-        data-motion-speed={motionSettings.textBox.speed}
+        motionEffect={motionSettings.textBox.effect}
+        motionSpeed={motionSettings.textBox.speed}
       >
-        <summary className="cursor-pointer text-sm font-black text-[#092046]">{block.title || "음성 대본 보기"}</summary>
-        <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">{block.body}</p>
-      </details>
+        <details
+          className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} rounded-xl bg-[#f4f8ff] px-4 py-3`}
+          data-motion-effect={motionSettings.textBox.effect}
+          data-motion-speed={motionSettings.textBox.speed}
+        >
+          <summary className="cursor-pointer text-sm font-black text-[#092046]">{block.title || "음성 대본 보기"}</summary>
+          <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">{block.body}</p>
+        </details>
+      </ScrollMotionReveal>
     );
   }
 
@@ -553,15 +579,20 @@ function ArticleCard({
         </h2>
       </div>
       {article.summary ? (
-        <p
-          data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
-          data-public-text-scale-target="article-summary"
-          className={`article-motion-summary ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} public-audio-sync-segment mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]`}
-          data-motion-effect={motionSettings.textBox.effect}
-          data-motion-speed={motionSettings.textBox.speed}
+        <ScrollMotionReveal
+          motionEffect={motionSettings.textBox.effect}
+          motionSpeed={motionSettings.textBox.speed}
         >
-          {article.summary}
-        </p>
+          <p
+            data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
+            data-public-text-scale-target="article-summary"
+            className={`article-motion-summary ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} public-audio-sync-segment mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]`}
+            data-motion-effect={motionSettings.textBox.effect}
+            data-motion-speed={motionSettings.textBox.speed}
+          >
+            {article.summary}
+          </p>
+        </ScrollMotionReveal>
       ) : null}
       {visibleBlocks.length > 0 ? (
         <div className="public-article-content mt-6 space-y-6">
