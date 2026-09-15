@@ -4,6 +4,7 @@ import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectPageHotspotManager } from "@/components/project-page-hotspot-manager";
 import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { PdfToPageImageConverter } from "@/components/pdf-to-page-image-converter";
 import { StatusPill } from "@/components/status-pill";
 import { pageConversionSteps, pageQualityChecks } from "@/lib/newsletter-data";
 import {
@@ -192,6 +193,8 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   projectSlug={projectId}
                   title="PDF 파일을 선택하거나 이 영역에 끌어다 놓기"
                 />
+
+                <PdfToPageImageConverter projectSlug={projectId} />
 
                 <div className="mt-5 rounded-lg border border-slate-300 bg-[#f8fbff] p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
