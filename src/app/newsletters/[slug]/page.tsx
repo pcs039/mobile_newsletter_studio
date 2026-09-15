@@ -117,19 +117,19 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
       <NewsletterViewTracker slug={slug} viewMode="reading" disabled={isAdminPreview || !isPublished} />
       {showAdminPreviewControls && (
-        <div className="sticky top-0 z-20 border-b border-slate-300 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
-          <div className="mx-auto flex max-w-[520px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">관리자 미리보기</p>
-            <div className="flex flex-wrap gap-2">
+        <div className="border-b border-slate-300 bg-white px-3 py-2 shadow-sm md:sticky md:top-0 md:z-20 md:bg-white/95 md:px-4 md:py-3 md:backdrop-blur">
+          <div className="mx-auto flex max-w-[520px] items-center justify-between gap-2 md:flex-row">
+            <p className="shrink-0 text-[11px] font-black uppercase tracking-wide text-[#184a88] md:text-xs">관리자 미리보기</p>
+            <div className="flex min-w-0 flex-wrap justify-end gap-1.5 md:gap-2">
               <Link
                 href={backToEditorHref}
-                className="rounded-md border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                className="dd-btn dd-btn-secondary dd-btn-sm rounded-md px-2.5 py-1.5 text-[11px] md:px-3 md:py-2 md:text-xs"
               >
-                작성 화면으로 돌아가기
+                작성 화면
               </Link>
               <Link
                 href={`/projects/${slug}/publish`}
-                className="rounded-md bg-[#092046] px-3 py-2 text-xs font-black text-white transition hover:bg-[#123a78]"
+                className="dd-btn dd-btn-primary dd-btn-sm rounded-md px-2.5 py-1.5 text-[11px] md:px-3 md:py-2 md:text-xs"
               >
                 발행 관리
               </Link>

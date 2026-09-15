@@ -384,17 +384,15 @@ export function PublicMobileArticleReader({
     <>
       {isMobileReader ? (
         <section
-          className={`public-mobile-article-reader -mx-1 ${publicAudio ? "pb-[calc(13rem+env(safe-area-inset-bottom))]" : "pb-6"}`}
+          className={`public-mobile-article-reader -mx-1 ${publicAudio ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(4rem+env(safe-area-inset-bottom))]"}`}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          <div ref={articleTopRef} className="mb-4 rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-3">
+          <div ref={articleTopRef} className="mb-3 rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-3.5 py-2.5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black text-[#184a88]">기사 보기</p>
-                <p className="mt-1 text-lg font-black text-[#092046]">
-                  {safeCurrentIndex + 1} / {articles.length}
-                </p>
+                <p className="mt-0.5 text-sm font-black text-[#092046]">좌우로 넘겨 읽을 수 있습니다.</p>
               </div>
               <button
                 type="button"
@@ -409,7 +407,6 @@ export function PublicMobileArticleReader({
           {currentArticle ? (
             <ArticleCard
               article={currentArticle}
-              className="max-h-[calc(100svh-15rem)] overflow-y-auto overscroll-contain"
               index={safeCurrentIndex}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
@@ -417,34 +414,36 @@ export function PublicMobileArticleReader({
           ) : null}
 
           <nav
-            className={`sticky z-30 mt-5 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-xl shadow-blue-950/10 backdrop-blur ${
-              publicAudio ? "bottom-[calc(8.5rem+env(safe-area-inset-bottom))]" : "bottom-3"
+            className={`sticky z-30 mt-3 rounded-full border border-slate-200 bg-white/95 p-1.5 shadow-lg shadow-blue-950/10 backdrop-blur ${
+              publicAudio ? "bottom-[calc(7.5rem+env(safe-area-inset-bottom))]" : "bottom-[calc(0.75rem+env(safe-area-inset-bottom))]"
             }`}
             aria-label="기사 이동"
           >
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] gap-1.5">
               <button
                 type="button"
                 onClick={() => goToArticle(safeCurrentIndex - 1)}
                 disabled={!canGoPrevious}
-                className="dd-btn dd-btn-secondary min-h-12 text-sm"
+                className="dd-btn dd-btn-secondary h-10 rounded-full px-0 text-lg leading-none"
+                aria-label="이전 기사"
               >
-                이전
+                ‹
               </button>
               <button
                 type="button"
                 onClick={() => setIsIndexOpen(true)}
-                className="dd-btn dd-btn-primary min-h-12 text-sm"
+                className="dd-btn dd-btn-primary h-10 rounded-full px-3 text-sm"
               >
-                목차
+                목차 · {safeCurrentIndex + 1} / {articles.length}
               </button>
               <button
                 type="button"
                 onClick={() => goToArticle(safeCurrentIndex + 1)}
                 disabled={!canGoNext}
-                className="dd-btn dd-btn-secondary min-h-12 text-sm"
+                className="dd-btn dd-btn-secondary h-10 rounded-full px-0 text-lg leading-none"
+                aria-label="다음 기사"
               >
-                다음
+                ›
               </button>
             </div>
           </nav>
