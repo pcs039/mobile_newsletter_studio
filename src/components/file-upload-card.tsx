@@ -7,10 +7,10 @@ import type { ProjectFileUploadKind } from "@/lib/newsletter-file-storage";
 type UploadStatus = "idle" | "selected" | "uploading" | "success" | "error";
 
 const primaryButtonClass =
-  "inline-flex h-11 items-center justify-center rounded-lg bg-[#092046] px-5 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:bg-[#0f3a78] disabled:cursor-not-allowed disabled:bg-slate-400";
+  "dd-btn dd-btn-primary h-11 px-5 text-sm disabled:bg-slate-400";
 
 const secondaryButtonClass =
-  "inline-flex h-11 items-center justify-center rounded-lg border border-[#2f73b7] bg-white px-5 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]";
+  "dd-btn dd-btn-secondary h-11 px-5 text-sm";
 
 function formatFileSize(size: number) {
   if (size >= 1024 * 1024) {

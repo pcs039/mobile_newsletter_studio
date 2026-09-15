@@ -108,10 +108,10 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
             </div>
             {!isEmbeddedAdminPreview ? (
               <div className="flex flex-wrap gap-2">
-                <Link href={mobileReadingHref} className="rounded-full border border-[#2f73b7] px-3 py-2 text-xs font-black text-[#092046]">
+                <Link href={mobileReadingHref} className="dd-btn dd-btn-secondary dd-btn-sm rounded-full text-xs">
                   모바일 읽기
                 </Link>
-                <Link href={desktopEbookHref} className="rounded-full bg-[#092046] px-3 py-2 text-xs font-black text-white">
+                <Link href={desktopEbookHref} className="dd-btn dd-btn-primary dd-btn-sm rounded-full text-xs">
                   PC e-book
                 </Link>
               </div>
@@ -155,7 +155,7 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
               {previousPage ? (
                 <Link
                   href={makeMobileEbookHref(slug, previousPage.pageNumber, isAdminPreview, isEmbeddedAdminPreview)}
-                  className="min-h-12 rounded-lg border border-[#2f73b7] bg-white px-3 py-3 text-center text-sm font-black text-[#092046]"
+                  className="dd-btn dd-btn-secondary min-h-12 px-3 py-3 text-center text-sm"
                 >
                   이전쪽
                 </Link>
@@ -187,7 +187,7 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
               {nextPage ? (
                 <Link
                   href={makeMobileEbookHref(slug, nextPage.pageNumber, isAdminPreview, isEmbeddedAdminPreview)}
-                  className="min-h-12 rounded-lg bg-[#092046] px-3 py-3 text-center text-sm font-black text-white"
+                  className="dd-btn dd-btn-primary min-h-12 px-3 py-3 text-center text-sm"
                 >
                   다음쪽
                 </Link>

@@ -64,7 +64,7 @@ export function ProjectFileDeleteButton({
         type="button"
         onClick={handleDelete}
         disabled={isDeleting}
-        className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700 transition hover:border-rose-500 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+        className="dd-btn dd-btn-danger px-4 py-3 text-sm"
       >
         {isDeleting ? "삭제 중" : "삭제"}
       </button>
