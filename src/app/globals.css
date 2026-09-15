@@ -513,6 +513,16 @@ select {
   font-family: var(--newsletter-button-font, var(--newsletter-body-font, var(--font-app-sans, system-ui, sans-serif)));
 }
 
+.public-mobile-article-reader .public-article-index-title {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  line-break: strict;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
 .public-mobile-article-reader .article-title-motion {
   margin-top: 1rem;
   padding-bottom: 0.8rem;

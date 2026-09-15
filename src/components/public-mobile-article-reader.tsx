@@ -811,16 +811,19 @@ export function PublicMobileArticleReader({
                   <div className="space-y-2">
                     {articles.map((article, index) => {
                       const isActive = index === safeCurrentIndex;
+                      const articleTitle = getArticleTitle(article, index);
 
                       return (
                         <button
                           key={article.id}
                           type="button"
+                          aria-label={`${index + 1}번 기사: ${articleTitle}`}
+                          title={articleTitle}
                           onClick={() => {
                             goToArticle(index);
                             setIsIndexOpen(false);
                           }}
-                          className={`block w-full rounded-2xl border px-4 py-3 text-left transition ${
+                          className={`block min-w-0 w-full max-w-full overflow-hidden rounded-2xl border px-4 py-3 text-left transition ${
                             isActive
                               ? "border-[#092046] bg-[#092046] text-white shadow-md"
                               : "border-slate-200 bg-[#f8fbff] text-[#092046] hover:border-[#2f73b7]"
@@ -829,7 +832,9 @@ export function PublicMobileArticleReader({
                           <span className={`text-xs font-black ${isActive ? "text-sky-100" : "text-[#184a88]"}`}>
                             {index + 1} / {articles.length}
                           </span>
-                          <span className="mt-1 block text-sm font-black leading-6">{getArticleTitle(article, index)}</span>
+                          <span className="public-article-index-title mt-1 block min-w-0 max-w-full overflow-hidden text-sm font-black leading-6">
+                            {articleTitle}
+                          </span>
                         </button>
                       );
                     })}
