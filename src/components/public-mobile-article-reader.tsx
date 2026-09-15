@@ -298,7 +298,7 @@ function renderContentBlock(
     return (
       <section
         key={block.id}
-        className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm"
+        className="article-motion-content-block overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm"
       >
         <iframe
           src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
@@ -331,7 +331,7 @@ function renderContentBlock(
         href={href}
         target="_blank"
         rel="noreferrer"
-        className="block rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4"
+        className="article-motion-content-block block rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4"
       >
         <p className="text-xs font-black text-[#184a88]">지도 보기</p>
         <p className="mt-1 text-base font-black leading-7 text-[#092046]">{block.title || link?.label || "위치 확인"}</p>
@@ -361,7 +361,7 @@ function renderContentBlock(
 
   if (block.type === "audio") {
     return (
-      <details key={block.id} className="rounded-xl bg-[#f4f8ff] px-4 py-3">
+      <details key={block.id} className="article-motion-content-block rounded-xl bg-[#f4f8ff] px-4 py-3">
         <summary className="cursor-pointer text-sm font-black text-[#092046]">{block.title || "음성 대본 보기"}</summary>
         <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">{block.body}</p>
       </details>

@@ -129,6 +129,16 @@ export function ArticleMotionPreviewCard({ preset, speed, summary, title }: Arti
                 <p className="mt-3 text-sm font-black text-[#184a88]">사진·포스터·지도 영역</p>
               </div>
             </div>
+            <p className="article-motion-caption border-t border-slate-200 bg-white/85 px-3 py-2 text-xs font-bold leading-5 text-slate-600">
+              이미지 설명 예시
+            </p>
+          </div>
+
+          <div className="article-motion-content-block mt-4 rounded-xl border border-[#d8e8ff] bg-[#f7fbff] px-3 py-3">
+            <p className="text-xs font-black text-[#184a88]">핵심 내용</p>
+            <p className="mt-1 text-sm font-bold leading-6 text-[#092046]">
+              핵심 내용이 카드 형태로 부드럽게 나타납니다.
+            </p>
           </div>
 
           <button type="button" className="article-motion-link-button dd-btn dd-btn-primary dd-btn-sm mt-4 w-full">
