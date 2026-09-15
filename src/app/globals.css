@@ -294,7 +294,8 @@ select {
   word-break: keep-all;
 }
 
-.public-newsletter-screen [data-public-text-scale-target="article-title"] {
+.public-newsletter-screen [data-public-text-scale-target="article-title"],
+.public-newsletter-screen [data-public-text-scale-target="article-summary"] {
   text-align: left;
   word-break: keep-all;
 }
@@ -331,6 +332,16 @@ select {
 [data-public-text-scale="xlarge"] .public-newsletter-screen [data-public-text-scale-target="article-title"] {
   font-size: clamp(2.375rem, 10vw, 3.25rem);
   line-height: 1.15;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen [data-public-text-scale-target="article-summary"] {
+  font-size: 1.3125rem;
+  line-height: 1.65;
+}
+
+[data-public-text-scale="xlarge"] .public-newsletter-screen [data-public-text-scale-target="article-summary"] {
+  font-size: 1.625rem;
+  line-height: 1.6;
 }
 
 [data-public-text-scale="large"] .public-newsletter-screen [data-public-text-scale-target="article-body"] {
