@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
+import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
 import { StatusPill } from "@/components/status-pill";
 import type {
   ArticleMotionPreset,
@@ -371,6 +372,14 @@ function readUploadMessage(response: ProjectFileUploadResponse | null, fallback:
   return response && response.ok === false ? response.message || fallback : fallback;
 }
 
+function readArticleMotionPreset(value: string): ArticleMotionPreset {
+  return articleMotionPresetOptions.some((option) => option.value === value) ? (value as ArticleMotionPreset) : "dynamic";
+}
+
+function readArticleMotionSpeed(value: string): ArticleMotionSpeed {
+  return articleMotionSpeedOptions.some((option) => option.value === value) ? (value as ArticleMotionSpeed) : "normal";
+}
+
 function isUrlBlockType(type: EditorBlockType) {
   return type === "image" || type === "video_link" || type === "map_link" || type === "button_group";
 }
@@ -391,6 +400,10 @@ export function ProjectArticleEditorForm({
   const [uploadingImageBlockId, setUploadingImageBlockId] = useState("");
   const [wordImportMessage, setWordImportMessage] = useState("");
   const [blocks, setBlocks] = useState<EditorBlock[]>(() => makeInitialBlocks(article));
+  const [motionPreviewTitle, setMotionPreviewTitle] = useState(article?.title ?? "");
+  const [motionPreviewSummary, setMotionPreviewSummary] = useState(article?.summary ?? "");
+  const [selectedMotionPreset, setSelectedMotionPreset] = useState<ArticleMotionPreset>(article?.motionPreset ?? "dynamic");
+  const [selectedMotionSpeed, setSelectedMotionSpeed] = useState<ArticleMotionSpeed>(article?.motionSpeed ?? "normal");
   const imageAssets = useMemo(
     () => assets.filter((asset) => asset.mimeType.startsWith("image/") || asset.previewHref),
     [assets],
@@ -649,6 +662,8 @@ export function ProjectArticleEditorForm({
 
     setFormFieldValue("title", result.imported.title);
     setFormFieldValue("summary", result.imported.summary);
+    setMotionPreviewTitle(result.imported.title);
+    setMotionPreviewSummary(result.imported.summary);
     setBlocks(
       result.imported.blocks.map((block, index) => ({
         id: makeBlockId(`word-${block.type}-${index}`),
@@ -772,6 +787,7 @@ export function ProjectArticleEditorForm({
             <input
               name="title"
               defaultValue={article?.title ?? ""}
+              onChange={(event) => setMotionPreviewTitle(event.currentTarget.value)}
               placeholder="예: 군정 주요 소식"
               className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
             />
@@ -783,6 +799,7 @@ export function ProjectArticleEditorForm({
           <textarea
             name="summary"
             defaultValue={article?.summary ?? ""}
+            onChange={(event) => setMotionPreviewSummary(event.currentTarget.value)}
             placeholder="목록 카드와 모바일 첫 화면에 표시할 핵심 요약을 입력합니다."
             className="min-h-24 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
           />
@@ -1108,7 +1125,8 @@ export function ProjectArticleEditorForm({
               <FieldLabel>그래픽 효과</FieldLabel>
               <select
                 name="motionPreset"
-                defaultValue={article?.motionPreset ?? "dynamic"}
+                value={selectedMotionPreset}
+                onChange={(event) => setSelectedMotionPreset(readArticleMotionPreset(event.currentTarget.value))}
                 className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
               >
                 {articleMotionPresetOptions.map((option) => (
@@ -1129,7 +1147,8 @@ export function ProjectArticleEditorForm({
               <FieldLabel>효과 속도</FieldLabel>
               <select
                 name="motionSpeed"
-                defaultValue={article?.motionSpeed ?? "normal"}
+                value={selectedMotionSpeed}
+                onChange={(event) => setSelectedMotionSpeed(readArticleMotionSpeed(event.currentTarget.value))}
                 className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
               >
                 {articleMotionSpeedOptions.map((option) => (
@@ -1150,6 +1169,14 @@ export function ProjectArticleEditorForm({
           <p className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold leading-5 text-slate-600">
             효과는 모바일 기사 화면과 작성자 모바일 미리보기에만 적용됩니다.
           </p>
+          <div className="mt-4">
+            <ArticleMotionPreviewCard
+              preset={selectedMotionPreset}
+              speed={selectedMotionSpeed}
+              summary={motionPreviewSummary}
+              title={motionPreviewTitle}
+            />
+          </div>
         </div>
 
         <div className="mt-5 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
