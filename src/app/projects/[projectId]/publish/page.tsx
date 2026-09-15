@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectPublishStatusControls } from "@/components/project-publish-status-controls";
 import { StatusPill } from "@/components/status-pill";
-import { publishChecks } from "@/lib/newsletter-data";
 import {
   getProjectAudioFiles,
   getProjectContent,
@@ -29,6 +28,52 @@ function getSiteOrigin() {
   }
 
   return "";
+}
+
+type PublishChecklistStatus = "완료" | "주의" | "미완료";
+
+type PublishChecklistItem = {
+  title: string;
+  section: string;
+  status: PublishChecklistStatus;
+  detail: string;
+  href: string;
+  actionLabel: string;
+};
+
+function getChecklistStatusTone(status: PublishChecklistStatus) {
+  if (status === "완료") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+
+  if (status === "주의") {
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+
+  return "border-rose-200 bg-rose-50 text-rose-800";
+}
+
+function getChecklistItemBorder(status: PublishChecklistStatus) {
+  if (status === "완료") {
+    return "border-emerald-200 bg-emerald-50/50";
+  }
+
+  if (status === "주의") {
+    return "border-amber-200 bg-amber-50/60";
+  }
+
+  return "border-rose-200 bg-rose-50/60";
+}
+
+function countChecklistItems(items: PublishChecklistItem[], status: PublishChecklistStatus) {
+  return items.filter((item) => item.status === status).length;
+}
+
+function hasArticleBody(article: { body: string; blocks: Array<{ type: string; body: string; isVisible: boolean }> }) {
+  return (
+    article.body.trim().length > 0 ||
+    article.blocks.some((block) => block.isVisible && block.type === "paragraph" && block.body.trim().length > 0)
+  );
 }
 
 export default async function PublishPage({ params }: { params: Promise<{ projectId: string }> }) {
@@ -98,6 +143,157 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
   const publicUrl = project?.publicUrl ?? `/newsletters/${projectId}`;
   const publicQrTarget = `${getSiteOrigin()}${publicUrl}`;
   const publicQrHref = `/api/qr?value=${encodeURIComponent(publicQrTarget)}`;
+  const projectPageCount = project?.pageCount ?? 0;
+  const registeredPageCount = pageImageData.pages.length;
+  const hasAnyArticle = articles.length > 0;
+  const articleTitleMissingCount = articles.filter((article) => !article.title.trim()).length;
+  const articleSummaryMissingCount = articles.filter((article) => !article.summary.trim()).length;
+  const articleBodyMissingCount = articles.filter((article) => !hasArticleBody(article)).length;
+  const hasAudioContent =
+    audioData.files.length > 0 || articles.some((article) => article.blocks.some((block) => block.type === "audio" && block.body.trim()));
+  const pageImageCountStatus: PublishChecklistStatus =
+    registeredPageCount === 0 ? "미완료" : projectPageCount > 0 && registeredPageCount < projectPageCount ? "주의" : "완료";
+  const publishChecklistItems: PublishChecklistItem[] = [
+    {
+      title: "프로젝트명 또는 소식지 제목",
+      section: "기본 정보",
+      status: project?.title?.trim() ? "완료" : "미완료",
+      detail: project?.title?.trim() ? project.title : "소식지 제목이 비어 있습니다.",
+      href: `/projects/${projectId}/settings`,
+      actionLabel: "기본 정보 수정",
+    },
+    {
+      title: "기관/지역명",
+      section: "기본 정보",
+      status: project?.organization?.trim() ? "완료" : "미완료",
+      detail: project?.organization?.trim() ? project.organization : "기관 또는 지역명을 입력해야 합니다.",
+      href: `/projects/${projectId}/settings`,
+      actionLabel: "기본 정보 수정",
+    },
+    {
+      title: "호수 정보",
+      section: "기본 정보",
+      status: project?.issue?.trim() ? "완료" : "주의",
+      detail: project?.issue?.trim() ? project.issue : "호수 정보가 없으면 공개 화면에서 식별이 어렵습니다.",
+      href: `/projects/${projectId}/settings`,
+      actionLabel: "기본 정보 수정",
+    },
+    {
+      title: "페이지 수 정보",
+      section: "기본 정보",
+      status: projectPageCount > 0 ? "완료" : "주의",
+      detail: projectPageCount > 0 ? `프로젝트 기준 ${projectPageCount}쪽` : "프로젝트 기준 페이지 수를 확인하세요.",
+      href: `/projects/${projectId}/settings`,
+      actionLabel: "기본 정보 수정",
+    },
+    {
+      title: "기사 1개 이상",
+      section: "기사 콘텐츠",
+      status: hasAnyArticle ? "완료" : "미완료",
+      detail: hasAnyArticle ? `모바일 기사 ${articles.length}개 작성` : "공개 모바일 읽기 화면에 표시할 기사가 없습니다.",
+      href: `/projects/${projectId}/reading`,
+      actionLabel: "기사 작성으로 이동",
+    },
+    {
+      title: "기사 제목",
+      section: "기사 콘텐츠",
+      status: !hasAnyArticle ? "미완료" : articleTitleMissingCount === 0 ? "완료" : "미완료",
+      detail:
+        !hasAnyArticle || articleTitleMissingCount > 0
+          ? `제목 미입력 기사 ${articleTitleMissingCount || articles.length}개`
+          : "모든 기사에 제목이 있습니다.",
+      href: `/projects/${projectId}/reading`,
+      actionLabel: "기사 작성으로 이동",
+    },
+    {
+      title: "기사 요약문/리드문",
+      section: "기사 콘텐츠",
+      status: !hasAnyArticle ? "미완료" : articleSummaryMissingCount === 0 ? "완료" : "주의",
+      detail:
+        !hasAnyArticle || articleSummaryMissingCount > 0
+          ? `요약문 미입력 기사 ${articleSummaryMissingCount || articles.length}개`
+          : "모든 기사에 요약문이 있습니다.",
+      href: `/projects/${projectId}/reading`,
+      actionLabel: "기사 작성으로 이동",
+    },
+    {
+      title: "기사 본문",
+      section: "기사 콘텐츠",
+      status: !hasAnyArticle ? "미완료" : articleBodyMissingCount === 0 ? "완료" : "미완료",
+      detail:
+        !hasAnyArticle || articleBodyMissingCount > 0
+          ? `본문 미입력 기사 ${articleBodyMissingCount || articles.length}개`
+          : "모든 기사에 본문이 있습니다.",
+      href: `/projects/${projectId}/reading`,
+      actionLabel: "기사 작성으로 이동",
+    },
+    {
+      title: "등록된 페이지 이미지",
+      section: "페이지 이미지",
+      status: registeredPageCount > 0 ? "완료" : "미완료",
+      detail: registeredPageCount > 0 ? `페이지 이미지 ${registeredPageCount}개 등록` : "PC/mobile e-book용 페이지 이미지가 없습니다.",
+      href: `/projects/${projectId}/pages`,
+      actionLabel: "이미지 페이지 관리",
+    },
+    {
+      title: "기준 페이지 수와 이미지 수",
+      section: "페이지 이미지",
+      status: pageImageCountStatus,
+      detail:
+        projectPageCount > 0
+          ? `기준 ${projectPageCount}쪽 · 등록 ${registeredPageCount}쪽`
+          : `기준 페이지 수 미입력 · 등록 ${registeredPageCount}쪽`,
+      href: `/projects/${projectId}/pages`,
+      actionLabel: "이미지 페이지 관리",
+    },
+    {
+      title: "모바일 읽기 보기",
+      section: "공개 화면",
+      status: publicUrl ? "완료" : "미완료",
+      detail: publicUrl ? `공개 URL: ${publicUrl}` : "공개 모바일 읽기 URL을 확인할 수 없습니다.",
+      href: publicUrl,
+      actionLabel: "공개 URL 확인",
+    },
+    {
+      title: "PC e-book 보기",
+      section: "공개 화면",
+      status: registeredPageCount > 0 ? "완료" : "미완료",
+      detail: registeredPageCount > 0 ? `/newsletters/${projectId}/ebook 연결 가능` : "페이지 이미지가 없어 PC e-book 검수가 어렵습니다.",
+      href: ebookPreviewHref,
+      actionLabel: "PC e-book 보기",
+    },
+    {
+      title: "모바일 e-book 보기",
+      section: "공개 화면",
+      status: registeredPageCount > 0 ? "완료" : "미완료",
+      detail:
+        registeredPageCount > 0 ? `/newsletters/${projectId}/ebook/mobile 연결 가능` : "페이지 이미지가 없어 모바일 e-book 검수가 어렵습니다.",
+      href: `/newsletters/${projectId}/ebook/mobile?preview=admin`,
+      actionLabel: "모바일 e-book 보기",
+    },
+    {
+      title: "공개 URL / QR",
+      section: "공개 URL",
+      status: project?.slug?.trim() && publicUrl && publicQrHref ? "완료" : "미완료",
+      detail: project?.slug?.trim() && publicUrl ? "공개 URL과 QR 코드 표시가 가능합니다." : "공개 slug 또는 URL을 확인하세요.",
+      href: `/projects/${projectId}/publish`,
+      actionLabel: "발행 정보 확인",
+    },
+    {
+      title: "음성 소식지",
+      section: "음성",
+      status: hasAudioContent ? "완료" : "주의",
+      detail: hasAudioContent
+        ? `MP3 ${audioData.files.length}개 · 기사 대본 ${articles.filter((article) => article.blocks.some((block) => block.type === "audio")).length}개`
+        : "음성 파일은 선택 항목입니다. 필요 시 검수 화면에서 MP3와 대본을 확인하세요.",
+      href: `/projects/${projectId}/audio`,
+      actionLabel: "음성 소식지 검수",
+    },
+  ];
+  const completedChecklistCount = countChecklistItems(publishChecklistItems, "완료");
+  const warningChecklistCount = countChecklistItems(publishChecklistItems, "주의");
+  const incompleteChecklistCount = countChecklistItems(publishChecklistItems, "미완료");
+  const hasBlockingChecklistIssues = incompleteChecklistCount > 0;
 
   return (
     <ProjectAdminShell
@@ -146,6 +342,55 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     >
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
         <section className="space-y-5">
+          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">자동 검수</p>
+                <h3 className="mt-1 text-lg font-bold text-[#092046]">발행 전 자동 검수 체크리스트</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600 [word-break:keep-all]">
+                  공개 전 누락되기 쉬운 기본 정보, 기사, e-book 이미지, URL, QR, 음성 상태를 자동으로 점검합니다.
+                  이번 단계에서는 발행을 막지 않고 확인용 안내로 표시합니다.
+                </p>
+              </div>
+              <div className="shrink-0 rounded-xl border border-slate-200 bg-[#f8fbff] px-4 py-3">
+                <p className="text-xs font-black text-[#184a88]">전체 요약</p>
+                <p className="mt-1 text-sm font-black text-[#092046]">
+                  완료 {completedChecklistCount}개 · 주의 {warningChecklistCount}개 · 미완료 {incompleteChecklistCount}개
+                </p>
+                <p className={`mt-2 text-xs font-black ${hasBlockingChecklistIssues ? "text-rose-700" : "text-emerald-700"}`}>
+                  {hasBlockingChecklistIssues ? "발행 전 확인 필요" : "발행 가능 상태"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-2">
+              {publishChecklistItems.map((item) => (
+                <div key={`${item.section}-${item.title}`} className={`rounded-xl border p-4 ${getChecklistItemBorder(item.status)}`}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-[#184a88]">{item.section}</p>
+                      <h4 className="mt-1 text-sm font-black leading-6 text-[#092046]">{item.title}</h4>
+                    </div>
+                    <span
+                      className={`inline-flex shrink-0 items-center self-start rounded-full border px-2.5 py-1 text-xs font-black ${getChecklistStatusTone(
+                        item.status,
+                      )}`}
+                    >
+                      {item.status}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs font-semibold leading-5 text-slate-600 [word-break:keep-all]">{item.detail}</p>
+                  <Link
+                    href={item.href}
+                    className="mt-4 inline-flex rounded-lg border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                  >
+                    {item.actionLabel}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </article>
+
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -272,17 +517,6 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
             </article>
           </section>
 
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-bold text-[#092046]">발행 전 체크리스트</h3>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {publishChecks.map((check) => (
-                <label key={check} className="flex gap-3 rounded-lg bg-[#f4f8ff] px-3 py-3 text-sm leading-6 text-slate-600">
-                  <input type="checkbox" className="mt-1 h-4 w-4 accent-[#092046]" />
-                  <span>{check}</span>
-                </label>
-              ))}
-            </div>
-          </article>
         </section>
 
         <aside className="space-y-5">
