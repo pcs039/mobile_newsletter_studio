@@ -58,7 +58,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
   if (!project) {
     return (
       <PublicUnavailablePage
-        title="PC e-book을 찾지 못했습니다."
+        title="e-book을 찾지 못했습니다."
         message="프로젝트 주소가 변경됐거나 아직 공개 준비가 끝나지 않았습니다."
       />
     );
@@ -68,7 +68,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
     return (
       <PublicUnavailablePage
         title="아직 공개 전입니다."
-        message="이 PC e-book은 현재 제작 또는 검수 중입니다. 발행 완료 처리 후 공개 화면이 열립니다."
+        message="이 e-book은 현재 제작 또는 검수 중입니다. 발행 완료 처리 후 공개 화면이 열립니다."
       />
     );
   }
@@ -76,7 +76,6 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
   const pages = pageImageData.pages;
   const initialPageNumber = Number(pageParam) || pages[0]?.pageNumber || 1;
   const mobileHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : project?.publicUrl ?? `/newsletters/${slug}`;
-  const mobileEbookHref = isAdminPreview ? `/newsletters/${slug}/ebook/mobile?preview=admin` : `/newsletters/${slug}/ebook/mobile`;
   const publicAudioFile = audioData.files[0] ?? null;
   const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
 
@@ -86,7 +85,6 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
       <PublicDesktopEbookViewer
         initialPageNumber={initialPageNumber}
         isEmbeddedAdminPreview={isEmbeddedAdminPreview}
-        mobileEbookHref={mobileEbookHref}
         mobileReadingHref={mobileHref}
         pageCount={project.pageCount ?? 0}
         pages={pages}

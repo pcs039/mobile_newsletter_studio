@@ -105,12 +105,12 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       detail: originalPdfData.pdf ? originalPdfData.pdf.fileName : "원본 자료 화면에서 PDF를 업로드하세요.",
     },
     {
-      label: "PC e-book",
+      label: "e-book",
       status: getReadinessStatus(pageImageData.pages.length > 0, "이미지 등록"),
       detail:
         pageImageData.pages.length > 0
           ? `페이지 이미지 ${pageImageData.pages.length}개 등록`
-          : "PC e-book용 페이지 이미지를 등록하세요.",
+          : "e-book용 페이지 이미지를 등록하세요.",
     },
     {
       label: "모바일 기사",
@@ -135,7 +135,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
   ];
   const distributionItems = [
     { label: "공개 URL", value: project?.publicUrl ?? `/newsletters/${projectId}` },
-    { label: "PC e-book URL", value: project?.ebookUrl ?? `/newsletters/${projectId}/ebook` },
+    { label: "e-book URL", value: project?.ebookUrl ?? `/newsletters/${projectId}/ebook` },
     { label: "공개 상태", value: project?.status ?? "프로젝트 확인 필요" },
     { label: "최종 수정", value: project?.updated ?? "-" },
   ];
@@ -231,7 +231,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       title: "등록된 페이지 이미지",
       section: "페이지 이미지",
       status: registeredPageCount > 0 ? "완료" : "미완료",
-      detail: registeredPageCount > 0 ? `페이지 이미지 ${registeredPageCount}개 등록` : "PC/mobile e-book용 페이지 이미지가 없습니다.",
+      detail: registeredPageCount > 0 ? `페이지 이미지 ${registeredPageCount}개 등록` : "e-book용 페이지 이미지가 없습니다.",
       href: `/projects/${projectId}/pages`,
       actionLabel: "이미지 페이지 관리",
     },
@@ -255,21 +255,12 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       actionLabel: "공개 URL 확인",
     },
     {
-      title: "PC e-book 보기",
+      title: "e-book 보기",
       section: "공개 화면",
       status: registeredPageCount > 0 ? "완료" : "미완료",
-      detail: registeredPageCount > 0 ? `/newsletters/${projectId}/ebook 연결 가능` : "페이지 이미지가 없어 PC e-book 검수가 어렵습니다.",
+      detail: registeredPageCount > 0 ? `/newsletters/${projectId}/ebook 연결 가능` : "페이지 이미지가 없어 e-book 검수가 어렵습니다.",
       href: ebookPreviewHref,
-      actionLabel: "PC e-book 보기",
-    },
-    {
-      title: "모바일 e-book 보기",
-      section: "공개 화면",
-      status: registeredPageCount > 0 ? "완료" : "미완료",
-      detail:
-        registeredPageCount > 0 ? `/newsletters/${projectId}/ebook/mobile 연결 가능` : "페이지 이미지가 없어 모바일 e-book 검수가 어렵습니다.",
-      href: `/newsletters/${projectId}/ebook/mobile?preview=admin`,
-      actionLabel: "모바일 e-book 보기",
+      actionLabel: "e-book 보기",
     },
     {
       title: "공개 URL / QR",
@@ -476,8 +467,8 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
             <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-bold text-[#092046]">PC e-book 보기</h3>
-                  <p className="mt-1 text-sm text-slate-500">등록 페이지 이미지 기준 PC 화면</p>
+                  <h3 className="text-lg font-bold text-[#092046]">e-book 보기</h3>
+                  <p className="mt-1 text-sm text-slate-500">등록 페이지 이미지 기준 PC·태블릿 화면</p>
                 </div>
                 <StatusPill value={pageImageData.pages.length > 0 ? "이미지 있음" : "이미지 없음"} />
               </div>
@@ -485,11 +476,11 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
                 href={ebookPreviewHref}
                 className="mb-4 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
               >
-                PC e-book 열기
+                e-book 열기
               </Link>
               <div className="rounded-lg border border-slate-200 bg-slate-100 p-4">
                 <div className="rounded-t-lg bg-[#092046] px-4 py-3 text-sm font-bold text-white">
-                  PC e-book 미리보기
+                  e-book 미리보기
                 </div>
                 {firstPages.length > 0 ? (
                   <div className="grid gap-4 rounded-b-lg bg-white p-4 md:grid-cols-2">
