@@ -495,12 +495,14 @@ function ElementMotionSettingRow({
 function FontSelect({
   defaultValue,
   fonts,
+  help,
   inheritLabel,
   label,
   name,
 }: {
   defaultValue?: string | null;
   fonts: FontAsset[];
+  help?: string;
   inheritLabel: string;
   label: string;
   name: string;
@@ -520,6 +522,7 @@ function FontSelect({
           </option>
         ))}
       </select>
+      {help ? <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{help}</p> : null}
     </div>
   );
 }
@@ -960,7 +963,7 @@ export function ProjectArticleEditorForm({
           </div>
         </div>
 
-        <div className="mt-5">
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div>
             <FieldLabel required>기사 제목</FieldLabel>
             <input
@@ -971,16 +974,34 @@ export function ProjectArticleEditorForm({
               className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
             />
           </div>
+          <FontSelect
+            name="titleFontAssetId"
+            label="제목 글꼴"
+            fonts={fonts}
+            defaultValue={article?.titleFontAssetId}
+            inheritLabel={projectTitleFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
+            help="공개 모바일 기사 제목에 적용됩니다."
+          />
         </div>
 
-        <div className="mt-5">
-          <FieldLabel>요약 문장</FieldLabel>
-          <textarea
-            name="summary"
-            defaultValue={article?.summary ?? ""}
-            onChange={(event) => setMotionPreviewSummary(event.currentTarget.value)}
-            placeholder="목록 카드와 모바일 첫 화면에 표시할 핵심 요약을 입력합니다."
-            className="min-h-24 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div>
+            <FieldLabel>요약 문장</FieldLabel>
+            <textarea
+              name="summary"
+              defaultValue={article?.summary ?? ""}
+              onChange={(event) => setMotionPreviewSummary(event.currentTarget.value)}
+              placeholder="목록 카드와 모바일 첫 화면에 표시할 핵심 요약을 입력합니다."
+              className="min-h-24 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+            />
+          </div>
+          <FontSelect
+            name="bodyFontAssetId"
+            label="본문 글꼴"
+            fonts={fonts}
+            defaultValue={article?.bodyFontAssetId}
+            inheritLabel={projectBodyFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
+            help="요약과 기사 본문 문단에 적용됩니다."
           />
         </div>
 
@@ -1090,6 +1111,39 @@ export function ProjectArticleEditorForm({
             })}
           </div>
         </details>
+
+        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이미지·URL 글꼴</p>
+              <h4 className="text-base font-black text-[#092046]">선택 콘텐츠 표시 기준</h4>
+            </div>
+            <p className="text-xs font-semibold text-slate-500">프로젝트 기본값 따름 가능</p>
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <FontSelect
+              name="captionFontAssetId"
+              label="이미지 캡션 글꼴"
+              fonts={fonts}
+              defaultValue={article?.captionFontAssetId}
+              inheritLabel="본문 글꼴 사용"
+              help="이미지 블록의 캡션 문구에 적용됩니다."
+            />
+            <FontSelect
+              name="buttonFontAssetId"
+              label="URL 버튼 글꼴"
+              fonts={fonts}
+              defaultValue={article?.buttonFontAssetId}
+              inheritLabel="본문 글꼴 사용"
+              help="URL 버튼 블록의 버튼 문구에 적용됩니다."
+            />
+          </div>
+          {fonts.length === 0 ? (
+            <p className="mt-3 text-xs font-semibold text-slate-500">
+              활성화된 폰트가 없어 시스템 기본 글꼴로 표시됩니다.
+            </p>
+          ) : null}
+        </div>
 
         <div className="mt-5 space-y-4">
           {blocks.map((block, index) => (
@@ -1413,48 +1467,6 @@ export function ProjectArticleEditorForm({
             />
           </div>
         </div>
-
-        <details className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
-          <summary className="cursor-pointer text-sm font-black text-[#092046]">
-            글꼴 설정
-            <span className="ml-2 text-xs font-bold text-slate-500">기사별로 프로젝트 기본값을 덮어씁니다.</span>
-          </summary>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <FontSelect
-              name="titleFontAssetId"
-              label="기사 제목 글꼴"
-              fonts={fonts}
-              defaultValue={article?.titleFontAssetId}
-              inheritLabel={projectTitleFontAssetId ? "프로젝트 제목 글꼴 사용" : "시스템 기본 글꼴"}
-            />
-            <FontSelect
-              name="bodyFontAssetId"
-              label="기사 본문 글꼴"
-              fonts={fonts}
-              defaultValue={article?.bodyFontAssetId}
-              inheritLabel={projectBodyFontAssetId ? "프로젝트 본문 글꼴 사용" : "시스템 기본 글꼴"}
-            />
-            <FontSelect
-              name="captionFontAssetId"
-              label="이미지 캡션 글꼴"
-              fonts={fonts}
-              defaultValue={article?.captionFontAssetId}
-              inheritLabel="본문 글꼴 사용"
-            />
-            <FontSelect
-              name="buttonFontAssetId"
-              label="URL 버튼 글꼴"
-              fonts={fonts}
-              defaultValue={article?.buttonFontAssetId}
-              inheritLabel="본문 글꼴 사용"
-            />
-          </div>
-          {fonts.length === 0 ? (
-            <p className="mt-3 text-xs font-semibold text-slate-500">
-              활성화된 폰트가 없어 시스템 기본 글꼴로 표시됩니다.
-            </p>
-          ) : null}
-        </details>
 
         <div className="mt-5 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <div>
