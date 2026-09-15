@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
-import { PublicAudioPlayer } from "@/components/public-audio-player";
+import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
+import {
+  buildAudioTextSegmentCandidates,
+  getArticleBodyParagraphs,
+  makeArticleBodySegmentId,
+  makeArticleSummarySegmentId,
+  makeArticleTitleSegmentId,
+} from "@/lib/audio-text-sync";
 import {
   getProjectAudioFiles,
   getProjectContent,
@@ -34,116 +41,28 @@ function getPreviewBody(article: ProjectContentArticle) {
   return body;
 }
 
-function restoreProtectedText(value: string, protectedValues: Map<string, string>) {
-  let restored = value;
-
-  protectedValues.forEach((protectedValue, token) => {
-    restored = restored.replaceAll(token, protectedValue);
-  });
-
-  return restored.trim();
-}
-
-function protectArticleText(value: string, protectedValues: Map<string, string>) {
-  return value.replace(/https?:\/\/[^\s]+|[^\s@]+@[^\s@]+\.[^\s@]+/g, (protectedValue) => {
-    const token = `__PUBLIC_ARTICLE_PROTECTED_${protectedValues.size}__`;
-
-    protectedValues.set(token, protectedValue);
-    return token;
-  });
-}
-
-function getPreviousNonSpaceCharacter(value: string, index: number) {
-  for (let position = index - 1; position >= 0; position -= 1) {
-    const character = value[position];
-
-    if (character && !/\s/.test(character)) {
-      return character;
-    }
-  }
-
-  return "";
-}
-
-function isSentenceDelimiter(value: string, index: number) {
-  const character = value[index];
-
-  if (!character) {
-    return false;
-  }
-
-  if ("!?。？！".includes(character)) {
-    return true;
-  }
-
-  if (character !== ".") {
-    return false;
-  }
-
-  return !/\d/.test(getPreviousNonSpaceCharacter(value, index));
-}
-
-function splitArticleLineIntoSentences(value: string) {
-  const sentences: string[] = [];
-  let sentenceStart = 0;
-
-  for (let index = 0; index < value.length; index += 1) {
-    if (!isSentenceDelimiter(value, index)) {
-      continue;
-    }
-
-    let sentenceEnd = index + 1;
-
-    while (sentenceEnd < value.length && /["'”’)]/.test(value[sentenceEnd] ?? "")) {
-      sentenceEnd += 1;
-    }
-
-    const sentence = value.slice(sentenceStart, sentenceEnd).trim();
-
-    if (sentence) {
-      sentences.push(sentence);
-    }
-
-    sentenceStart = sentenceEnd;
-  }
-
-  const remainder = value.slice(sentenceStart).trim();
-
-  if (remainder) {
-    sentences.push(remainder);
-  }
-
-  return sentences;
-}
-
-function getArticleBodyParagraphs(value: string) {
-  const protectedValues = new Map<string, string>();
-  const protectedText = protectArticleText(value.trim(), protectedValues);
-
-  return protectedText
-    .split(/\n{2,}/)
-    .map((paragraph) =>
-      paragraph
-        .split(/\n+/)
-        .flatMap(splitArticleLineIntoSentences)
-        .map((sentence) => restoreProtectedText(sentence, protectedValues))
-        .filter(Boolean),
-    )
-    .filter((paragraph) => paragraph.length > 0);
-}
-
-function renderArticleBody(value: string, className: string) {
+function renderArticleBody(value: string, className: string, audioSegmentBaseId?: string) {
   const paragraphs = getArticleBodyParagraphs(value);
 
   return (
     <div data-public-text-scale-target="article-body" className={`public-article-body text-base leading-8 text-slate-700 ${className}`}>
       {paragraphs.map((paragraph, paragraphIndex) => (
         <div key={paragraphIndex} className="public-article-paragraph">
-          {paragraph.map((sentence, sentenceIndex) => (
-            <span key={`${paragraphIndex}-${sentenceIndex}`} className="public-article-sentence">
-              {sentence}
-            </span>
-          ))}
+          {paragraph.map((sentence, sentenceIndex) => {
+            const segmentId = audioSegmentBaseId
+              ? makeArticleBodySegmentId(audioSegmentBaseId, paragraphIndex, sentenceIndex)
+              : undefined;
+
+            return (
+              <span
+                key={`${paragraphIndex}-${sentenceIndex}`}
+                data-audio-segment-id={segmentId}
+                className="public-article-sentence public-audio-sync-segment"
+              >
+                {sentence}
+              </span>
+            );
+          })}
         </div>
       ))}
     </div>
@@ -222,7 +141,7 @@ function renderContentBlock(article: ProjectContentArticle, block: ProjectConten
     return (
       <section key={block.id}>
         {block.title ? <h3 className="text-base font-black leading-7 text-[#092046]">{block.title}</h3> : null}
-        {block.body ? renderArticleBody(block.body, "mt-3") : null}
+        {block.body ? renderArticleBody(block.body, "mt-3", `article-${article.id}-block-${block.id}`) : null}
       </section>
     );
   }
@@ -380,6 +299,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const headerColor = project?.primaryColor ?? "#071f46";
   const publicAudioFile = audioData.files[0] ?? null;
   const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
+  const audioTextSegments = isImagePageMode ? [] : buildAudioTextSegmentCandidates(articles);
 
   return (
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
@@ -501,15 +421,17 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                     ) : null}
                   </div>
                   <h2
+                    data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
                     data-public-text-scale-target="article-title"
-                    className="public-article-title mt-4 text-2xl font-black leading-tight text-[#092046]"
+                    className="public-article-title public-audio-sync-segment mt-4 text-2xl font-black leading-tight text-[#092046]"
                   >
                     {article.title}
                   </h2>
                   {article.summary ? (
                     <p
+                      data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
                       data-public-text-scale-target="article-summary"
-                      className="mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]"
+                      className="public-audio-sync-segment mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]"
                     >
                       {article.summary}
                     </p>
@@ -517,7 +439,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                   {visibleBlocks.length > 0 ? (
                     <div className="public-article-content mt-6 space-y-6">{visibleBlocks.map((block) => renderContentBlock(article, block))}</div>
                   ) : (
-                    renderArticleBody(getPreviewBody(article), "mt-6")
+                    renderArticleBody(getPreviewBody(article), "mt-6", `article-${article.id}-body`)
                   )}
                   {article.contactName || article.contactPhone ? (
                     <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
@@ -586,7 +508,9 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           ) : null}
         </section>
       </section>
-      {publicAudioSrc ? <PublicAudioPlayer src={publicAudioSrc} title={publicAudioFile?.title} /> : null}
+      {publicAudioSrc ? (
+        <PublicAudioTextSyncPlayer src={publicAudioSrc} title={publicAudioFile?.title} segments={audioTextSegments} />
+      ) : null}
     </main>
   );
 }
