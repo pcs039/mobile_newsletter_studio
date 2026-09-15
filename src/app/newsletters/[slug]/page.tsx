@@ -133,7 +133,7 @@ function renderArticleBody(value: string, className: string) {
   const paragraphs = getArticleBodyParagraphs(value);
 
   return (
-    <div className={`public-article-body text-base leading-8 text-slate-700 ${className}`}>
+    <div data-public-text-scale-target="article-body" className={`public-article-body text-base leading-8 text-slate-700 ${className}`}>
       {paragraphs.map((paragraph, paragraphIndex) => (
         <div key={paragraphIndex} className="public-article-paragraph">
           {paragraph.map((sentence, sentenceIndex) => (
@@ -493,7 +493,12 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                       </Link>
                     ) : null}
                   </div>
-                  <h2 className="public-article-title mt-4 text-2xl font-black leading-tight text-[#092046]">{article.title}</h2>
+                  <h2
+                    data-public-text-scale-target="article-title"
+                    className="public-article-title mt-4 text-2xl font-black leading-tight text-[#092046]"
+                  >
+                    {article.title}
+                  </h2>
                   {article.summary ? (
                     <p className="mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]">
                       {article.summary}

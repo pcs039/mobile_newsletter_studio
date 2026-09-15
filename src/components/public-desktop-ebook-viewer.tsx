@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 
 type EbookPage = {
   id: string;
@@ -335,7 +334,6 @@ export function PublicDesktopEbookViewer({
             >
               효과음 {soundEnabled ? "켜짐" : "꺼짐"}
             </button>
-            <PublicTextSizeToggle />
             {!isEmbeddedAdminPreview ? (
               <>
                 <Link
