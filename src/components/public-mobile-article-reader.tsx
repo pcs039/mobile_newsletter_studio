@@ -15,6 +15,7 @@ import { getArticleLinkButtonLabel, getValidArticleUrl } from "@/lib/public-arti
 
 type PublicMobileArticleReaderProps = {
   articles: ProjectContentArticle[];
+  initialArticleId?: string | null;
   publicAudio?: {
     src: string;
     title?: string;
@@ -133,6 +134,16 @@ function getYoutubeId(value: string) {
 
 function getArticleTitle(article: ProjectContentArticle, index: number) {
   return article.title.trim() || `기사 ${index + 1}`;
+}
+
+function getInitialArticleIndex(articles: ProjectContentArticle[], initialArticleId?: string | null) {
+  if (!initialArticleId) {
+    return 0;
+  }
+
+  const matchedIndex = articles.findIndex((article) => article.id === initialArticleId);
+
+  return matchedIndex >= 0 ? matchedIndex : 0;
 }
 
 function renderContentBlock(article: ProjectContentArticle, block: ProjectContentBlock) {
@@ -307,12 +318,13 @@ function ArticleCard({
 
 export function PublicMobileArticleReader({
   articles,
+  initialArticleId,
   publicAudio,
   showAdminPreviewControls,
   slug,
 }: PublicMobileArticleReaderProps) {
   const isMobileReader = useSyncExternalStore(subscribeToMobileReader, readMobileReaderSnapshot, () => false);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => getInitialArticleIndex(articles, initialArticleId));
   const [isIndexOpen, setIsIndexOpen] = useState(false);
   const articleTopRef = useRef<HTMLDivElement>(null);
   const swipeStartRef = useRef<SwipeStart>(null);

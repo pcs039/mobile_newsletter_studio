@@ -17,7 +17,6 @@ type EbookPage = {
 type PublicDesktopEbookViewerProps = {
   initialPageNumber: number;
   isEmbeddedAdminPreview: boolean;
-  mobileEbookHref: string;
   mobileReadingHref: string;
   pageCount: number;
   pages: EbookPage[];
@@ -137,7 +136,6 @@ function getInitialFollowPagesEnabled() {
 export function PublicDesktopEbookViewer({
   initialPageNumber,
   isEmbeddedAdminPreview,
-  mobileEbookHref,
   mobileReadingHref,
   pageCount,
   pages,
@@ -425,20 +423,12 @@ export function PublicDesktopEbookViewer({
               효과음 {soundEnabled ? "켜짐" : "꺼짐"}
             </button>
             {!isEmbeddedAdminPreview ? (
-              <>
-                <Link
-                  href={mobileReadingHref}
-                  className="dd-btn dd-btn-sm rounded-lg bg-white text-xs text-[#092046] hover:bg-sky-50"
-                >
-                  모바일 읽기
-                </Link>
-                <Link
-                  href={mobileEbookHref}
-                  className="dd-btn dd-btn-ghost dd-btn-sm rounded-lg text-xs"
-                >
-                  모바일 e-book
-                </Link>
-              </>
+              <Link
+                href={mobileReadingHref}
+                className="dd-btn dd-btn-sm rounded-lg bg-white text-xs text-[#092046] hover:bg-sky-50"
+              >
+                모바일 읽기
+              </Link>
             ) : null}
           </div>
         </div>

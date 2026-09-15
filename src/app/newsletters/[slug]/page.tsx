@@ -108,7 +108,6 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const hotspotLinks = hotspotData.links;
   const isImagePageMode = project?.productionMode === "이미지 페이지형";
   const ebookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
-  const mobileEbookHref = isAdminPreview ? `/newsletters/${slug}/ebook/mobile?preview=admin` : `/newsletters/${slug}/ebook/mobile`;
   const headerColor = project?.primaryColor ?? "#071f46";
   const publicAudioFile = audioData.files[0] ?? null;
   const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
@@ -150,10 +149,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             {!isEmbeddedAdminPreview ? (
               <>
                 <Link href={ebookHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046]">
-                  PC e-book 보기
-                </Link>
-                <Link href={mobileEbookHref} className="rounded-full border border-white/40 px-4 py-2 text-xs font-black text-white">
-                  모바일 e-book 보기
+                  e-book 보기
                 </Link>
               </>
             ) : null}
@@ -216,6 +212,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           ) : articles.length > 0 ? (
             <PublicMobileArticleReader
               articles={articles}
+              initialArticleId={previewArticleId}
               publicAudio={publicAudioSrc ? { src: publicAudioSrc, title: publicAudioFile?.title } : undefined}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
