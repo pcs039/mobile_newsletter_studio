@@ -332,6 +332,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const previewArticleId = Array.isArray(previewArticleParam) ? previewArticleParam[0] : previewArticleParam;
   const isAdminPreview = hasSearchParamValue(previewMode, "admin");
   const isEmbeddedAdminPreview = hasSearchParamValue(embeddedMode, "adminPreview");
+  const showAdminPreviewControls = isAdminPreview && !isEmbeddedAdminPreview;
   const backToEditorHref = previewArticleId
     ? `/projects/${slug}/reading?articleId=${previewArticleId}`
     : `/projects/${slug}/reading`;
@@ -377,7 +378,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   return (
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
       <NewsletterViewTracker slug={slug} viewMode="reading" disabled={isAdminPreview || !isPublished} />
-      {isAdminPreview && (
+      {showAdminPreviewControls && (
         <div className="sticky top-0 z-20 border-b border-slate-300 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
           <div className="mx-auto flex max-w-[520px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">관리자 미리보기</p>
@@ -429,7 +430,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             <section className="public-image-page-list space-y-4">
               {pageImages.map((page) => (
                 <article key={page.id} className="public-card public-image-page-frame overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  {isAdminPreview ? (
+                  {showAdminPreviewControls ? (
                     <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-[#f8fbff] px-4 py-3">
                       <p className="text-xs font-black text-[#184a88]">{page.pageNumber}쪽 이미지 페이지</p>
                       <Link
@@ -452,7 +453,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                         aria-label={link.label}
                         title={link.label}
                         className={`absolute rounded-md ${
-                          isAdminPreview ? "border-2 border-[#f97316] bg-orange-400/20" : "focus:outline focus:outline-2 focus:outline-[#2f73b7]"
+                          showAdminPreviewControls ? "border-2 border-[#f97316] bg-orange-400/20" : "focus:outline focus:outline-2 focus:outline-[#2f73b7]"
                         }`}
                         style={{
                           left: `${link.xPercent}%`,
@@ -461,7 +462,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                           height: `${link.heightPercent}%`,
                         }}
                       >
-                        {isAdminPreview ? (
+                        {showAdminPreviewControls ? (
                           <span className="m-1 inline-flex rounded bg-[#f97316] px-2 py-1 text-[11px] font-black text-white">
                             {link.label}
                           </span>
@@ -484,7 +485,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                     <p className="text-xs font-black text-[#184a88]">
                       {article.pageNumber ? `${article.pageNumber}쪽` : `${index + 1}번 기사`}
                     </p>
-                    {isAdminPreview ? (
+                    {showAdminPreviewControls ? (
                       <Link
                         href={`/projects/${slug}/reading?articleId=${article.id}`}
                         className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]"
@@ -526,14 +527,14 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           ) : (
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
               <p className="text-sm font-black text-[#092046]">
-                {isAdminPreview ? "저장된 모바일 기사가 없습니다." : "공개된 모바일 기사가 없습니다."}
+                {showAdminPreviewControls ? "저장된 모바일 기사가 없습니다." : "표시할 모바일 기사가 없습니다."}
               </p>
               <p className="mt-2 text-xs leading-5 text-slate-500">
-                {isAdminPreview
+                {showAdminPreviewControls
                   ? "작성/수정 화면에서 기사를 저장하면 이 공개 화면에 바로 표시됩니다."
-                  : "관리자가 공개 승인한 뒤 이 화면에 표시됩니다."}
+                  : "기사 내용이 준비되면 이 화면에 표시됩니다."}
               </p>
-              {isAdminPreview ? (
+              {showAdminPreviewControls ? (
                 <Link
                   href={`/projects/${slug}/reading`}
                   className="mt-5 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white transition hover:bg-[#123a78]"
