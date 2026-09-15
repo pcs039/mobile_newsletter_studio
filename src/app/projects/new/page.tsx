@@ -5,6 +5,7 @@ import { HomeButton } from "@/components/home-button";
 import { ProjectCreateForm } from "@/components/project-create-form";
 import { requireAppUser } from "@/lib/app-auth";
 import { packageOptions, productionModeOptions } from "@/lib/newsletter-data";
+import { getFontAssets } from "@/lib/newsletter-repository";
 
 const requiredFields = [
   "소식지명",
@@ -38,6 +39,7 @@ const publishOptions = [
 
 export default async function NewProjectPage() {
   await requireAppUser("/projects/new");
+  const fontData = await getFontAssets({ activeOnly: true });
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
@@ -88,7 +90,7 @@ export default async function NewProjectPage() {
           </header>
 
           <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
-            <ProjectCreateForm />
+            <ProjectCreateForm fonts={fontData.fonts} />
 
             <aside className="space-y-5">
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

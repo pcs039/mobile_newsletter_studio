@@ -102,6 +102,8 @@ export async function POST(request: Request) {
     productionMode: payload.productionMode,
     estimatedHours: asOptionalText(payload.estimatedHours),
     designerHoursCap: asOptionalText(payload.designerHoursCap),
+    titleFontAssetId: asOptionalText(payload.titleFontAssetId),
+    bodyFontAssetId: asOptionalText(payload.bodyFontAssetId),
     projectPassword,
   };
 
@@ -223,6 +225,8 @@ export async function PATCH(request: Request) {
     productionMode: payload.productionMode,
     estimatedHours: asOptionalText(payload.estimatedHours),
     designerHoursCap: asOptionalText(payload.designerHoursCap),
+    titleFontAssetId: asOptionalText(payload.titleFontAssetId),
+    bodyFontAssetId: asOptionalText(payload.bodyFontAssetId),
     projectPassword,
     clearProjectPassword,
   };

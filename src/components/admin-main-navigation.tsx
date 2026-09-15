@@ -3,7 +3,7 @@ import { AdminInteractionSound } from "@/components/admin-interaction-sound";
 import { AuthUserPanel } from "@/components/auth-user-panel";
 import { getCurrentUser } from "@/lib/app-auth";
 
-export type AdminMainSection = "dashboard" | "edit" | "publish" | "distribution" | "survey";
+export type AdminMainSection = "dashboard" | "edit" | "publish" | "distribution" | "survey" | "fonts";
 
 type AdminMainNavigationProps = {
   active: AdminMainSection;
@@ -20,6 +20,7 @@ export async function AdminMainNavigation({ active, projectId }: AdminMainNaviga
   }> = [
     { key: "dashboard", label: "프로젝트 현황", detail: "전체 목록", href: "/" },
     { key: "edit", label: "작성/수정", detail: "작업 대상", href: "/projects/edit" },
+    { key: "fonts", label: "폰트 관리", detail: "글꼴", href: "/projects/fonts" },
     {
       key: "publish",
       label: "미리보기/발행",
