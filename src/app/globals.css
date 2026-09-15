@@ -524,6 +524,13 @@ select {
   white-space: pre;
 }
 
+.public-mobile-article-reader .article-title-motion-token {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
 @keyframes public-article-title-char-enter {
   from {
     opacity: 0;
