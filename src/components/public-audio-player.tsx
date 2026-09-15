@@ -1,8 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
 type PublicAudioPlayerProps = {
+  actionSlot?: ReactNode;
   label?: string;
   onDurationChange?: (duration: number) => void;
   onPause?: () => void;
@@ -51,6 +53,7 @@ function readStoredNumber(key: string, fallbackValue: number, min: number, max: 
 }
 
 export function PublicAudioPlayer({
+  actionSlot,
   label = "음성 소식지",
   onDurationChange,
   onPause,
@@ -220,6 +223,7 @@ export function PublicAudioPlayer({
         </div>
 
         <div className="flex items-center gap-2">
+          {actionSlot ? <div className="shrink-0">{actionSlot}</div> : null}
           <label className="flex min-w-0 flex-1 items-center gap-2 text-xs font-bold text-slate-200 lg:w-36 lg:flex-none">
             <span className="shrink-0">볼륨</span>
             <input
