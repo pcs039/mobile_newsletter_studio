@@ -76,18 +76,14 @@ export default async function DistributionProjectsPage() {
               <br />
               운영 관리
             </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300 [word-break:keep-all]">
-              발행 완료된 소식지의 공개 주소, QR, 접속 현황, 후속 관리 이동을 한곳에서 확인합니다.
-            </p>
+            <p className="mt-3 text-sm leading-6 text-slate-300 [word-break:keep-all]">공개 URL과 QR을 관리합니다.</p>
           </div>
 
           <AdminMainNavigation active="distribution" />
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
             <p className="text-sm font-bold text-white">운영 기준</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300 [word-break:keep-all]">
-              이 화면에는 실제 공개 처리된 프로젝트를 중심으로 표시합니다. 발행 전 프로젝트는 대기 목록에서 검수 상태를 확인합니다.
-            </p>
+            <p className="mt-2 text-xs leading-5 text-slate-300 [word-break:keep-all]">발행 완료 프로젝트 중심</p>
           </div>
         </aside>
 
@@ -96,9 +92,7 @@ export default async function DistributionProjectsPage() {
             <div>
               <p className="text-sm font-semibold text-[#184a88]">공개 운영대장</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">배포 관리 프로젝트</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600 [word-break:keep-all]">
-                발행 완료된 모바일 소식지의 공개 링크와 QR 파일, 접속 현황을 운영자 기준으로 정리합니다.
-              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">공개 링크, QR, 접속 현황을 확인합니다.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <HomeButton />
@@ -134,9 +128,7 @@ export default async function DistributionProjectsPage() {
             <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h3 className="text-lg font-bold text-[#092046]">공개 중인 소식지</h3>
-                <p className="mt-1 text-sm leading-6 text-slate-500 [word-break:keep-all]">
-                  발행 완료 상태인 프로젝트만 운영 목록에 표시합니다. QR은 현재 공개 URL 기준 SVG 파일로 내려받습니다.
-                </p>
+                <p className="mt-1 text-sm leading-6 text-slate-500 [word-break:keep-all]">발행 완료 프로젝트만 표시합니다.</p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
                 <span className="rounded-full bg-slate-100 px-3 py-1">운영 {publishedProjects.length}</span>
@@ -148,9 +140,7 @@ export default async function DistributionProjectsPage() {
               {publishedProjects.length === 0 && (
                 <div className="px-5 py-12 text-center">
                   <p className="text-base font-bold text-[#092046]">공개 운영 중인 프로젝트가 없습니다.</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">
-                    미리보기/발행 화면에서 검수를 마치고 발행 완료 처리하면 이 목록에 표시됩니다.
-                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">발행 완료 처리 후 표시됩니다.</p>
                   <Link
                     href="/projects/publish"
                     className="mt-5 inline-flex rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
@@ -206,9 +196,7 @@ export default async function DistributionProjectsPage() {
                             <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
                               <div className="h-full rounded-full bg-[#184a88]" style={{ width: `${percent}%` }} />
                             </div>
-                            <p className="mt-2 text-xs leading-5 text-slate-500 [word-break:keep-all]">
-                              PDF, 이미지, 기사, 링크, 음성 항목을 발행 상세에서 계속 보완할 수 있습니다.
-                            </p>
+                            <p className="mt-2 text-xs leading-5 text-slate-500 [word-break:keep-all]">발행 상세에서 보완 가능</p>
                           </div>
                         </div>
 
@@ -275,9 +263,7 @@ export default async function DistributionProjectsPage() {
             <section className="mt-7 rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-200 px-5 py-4">
                 <h3 className="text-lg font-bold text-[#092046]">배포 대기 프로젝트</h3>
-                <p className="mt-1 text-sm leading-6 text-slate-500 [word-break:keep-all]">
-                  아직 발행 완료 처리되지 않은 프로젝트입니다. 검수와 작성 보완을 진행하면서 배포 대상도 미리 입력할 수 있습니다.
-                </p>
+                <p className="mt-1 text-sm leading-6 text-slate-500 [word-break:keep-all]">발행 전 프로젝트입니다.</p>
               </div>
               <div className="divide-y divide-slate-200">
                 {waitingProjects.map((project) => {

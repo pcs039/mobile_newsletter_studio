@@ -21,18 +21,14 @@ export default async function EditProjectsPage() {
               <br />
               작업 관리
             </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              아직 발행 완료되지 않은 프로젝트만 모아 실제 제작 작업으로 진입합니다.
-            </p>
+            <p className="mt-3 text-sm leading-6 text-slate-300">제작 중 프로젝트를 관리합니다.</p>
           </div>
 
           <AdminMainNavigation active="edit" />
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
             <p className="text-sm font-bold text-white">작업 대상 기준</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              제작 중, 검수 중, 비공개 프로젝트를 작성/수정 대상으로 봅니다. 발행 완료 프로젝트는 배포 관리에서 다룹니다.
-            </p>
+            <p className="mt-2 text-xs leading-5 text-slate-300">발행 완료 전 프로젝트</p>
           </div>
         </aside>
 
@@ -43,9 +39,7 @@ export default async function EditProjectsPage() {
               <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
                 작성/수정 프로젝트
               </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                프로젝트별 추천 작업을 먼저 보여주고, 세부 제작 메뉴는 필요할 때 펼쳐 확인합니다.
-              </p>
+              <p className="mt-2 text-sm text-slate-500">추천 작업과 상태를 확인합니다.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <HomeButton />

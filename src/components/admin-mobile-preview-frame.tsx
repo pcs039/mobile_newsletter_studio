@@ -24,7 +24,7 @@ function appendEmbeddedPreviewParams(previewHref: string, previewVersion: number
 export function AdminMobilePreviewFrame({
   previewHref,
   title = "모바일 미리보기",
-  description = "저장된 내용을 기준으로 표시됩니다. 최종 확인은 새 탭의 실제 공개 화면에서도 진행하세요.",
+  description = "저장본을 미리 확인합니다.",
   iframeTitle = "저장된 모바일 소식지 미리보기",
 }: AdminMobilePreviewFrameProps) {
   const [previewVersion, setPreviewVersion] = useState(0);
@@ -58,14 +58,14 @@ export function AdminMobilePreviewFrame({
           <button
             type="button"
             onClick={() => setPreviewVersion((version) => version + 1)}
-            className="rounded-lg border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+            className="dd-btn dd-btn-secondary dd-btn-sm rounded-lg text-xs"
           >
             미리보기 새로고침
           </button>
           <button
             type="button"
             onClick={openLargePreviewWindow}
-            className="rounded-lg bg-[#092046] px-3 py-2 text-xs font-black text-white transition hover:bg-[#123a78]"
+            className="dd-btn dd-btn-primary dd-btn-sm rounded-lg text-xs"
           >
             큰 창으로 보기
           </button>

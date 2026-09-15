@@ -50,18 +50,14 @@ export default async function PublishProjectsPage() {
               <br />
               발행 관리
             </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300 [word-break:keep-all]">
-              프로젝트를 먼저 선택한 뒤 모바일 보기, PC e-book, 공개 URL, QR 상태를 확인합니다.
-            </p>
+            <p className="mt-3 text-sm leading-6 text-slate-300 [word-break:keep-all]">발행 전 상태를 확인합니다.</p>
           </div>
 
           <AdminMainNavigation active="publish" />
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
             <p className="text-sm font-bold text-white">검수 기준</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300 [word-break:keep-all]">
-              PDF, 페이지 이미지, 모바일 기사, 연결 링크, 음성 소식지를 모두 확인한 뒤 공개합니다.
-            </p>
+            <p className="mt-2 text-xs leading-5 text-slate-300 [word-break:keep-all]">PDF·이미지·기사·음성 확인</p>
           </div>
         </aside>
 
@@ -72,9 +68,7 @@ export default async function PublishProjectsPage() {
               <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">
                 미리보기/발행 프로젝트
               </h2>
-              <p className="mt-2 text-sm text-slate-600 [word-break:keep-all]">
-                발행을 앞둔 프로젝트를 목록에서 선택하고, 부족한 작업을 바로 보완합니다.
-              </p>
+              <p className="mt-2 text-sm text-slate-500 [word-break:keep-all]">부족한 항목을 바로 보완합니다.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <HomeButton />
@@ -122,9 +116,7 @@ export default async function PublishProjectsPage() {
               {projects.length === 0 && (
                 <div className="px-5 py-12 text-center">
                   <p className="text-base font-bold text-[#092046]">미리보기/발행할 프로젝트가 없습니다.</p>
-                  <p className="mt-2 text-sm text-slate-500 [word-break:keep-all]">
-                    작성/수정 목록에서 프로젝트를 생성하고 콘텐츠를 저장하면 이 목록에 표시됩니다.
-                  </p>
+                  <p className="mt-2 text-sm text-slate-500 [word-break:keep-all]">프로젝트를 생성하면 표시됩니다.</p>
                   <Link
                     href="/projects/edit"
                     className="mt-5 inline-flex rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:bg-[#eaf3ff] hover:shadow-md"
