@@ -107,7 +107,7 @@ export async function ProjectAdminShell({
           </p>
           <Link
             href="/projects/edit"
-            className="mt-6 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md"
+            className="dd-btn dd-btn-primary dd-btn-lg mt-6 text-sm"
           >
             작업 목록으로 돌아가기
           </Link>
@@ -174,7 +174,7 @@ export async function ProjectAdminShell({
               <HomeButton />
               <Link
                 href="/projects/edit"
-                className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-black text-[#092046] shadow-sm shadow-blue-950/10 transition hover:-translate-y-0.5 hover:border-[#2f73b7] hover:bg-[#eaf3ff] hover:shadow-md"
+                className="dd-btn dd-btn-secondary dd-btn-lg border-slate-300 text-sm"
               >
                 작성/수정 목록
               </Link>
@@ -196,14 +196,14 @@ export async function ProjectAdminShell({
                   href={`/newsletters/${projectId}?preview=admin`}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-lg border border-[#2f73b7] bg-white px-4 py-2.5 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+                  className="dd-btn dd-btn-secondary px-4 py-2.5 text-sm"
                 >
                   모바일 미리보기
                 </Link>
                 {nextStep ? (
                   <Link
                     href={`/projects/${projectId}/${nextStep.path}`}
-                    className="rounded-lg bg-[#092046] px-4 py-2.5 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:bg-[#123a78]"
+                    className="dd-btn dd-btn-primary px-4 py-2.5 text-sm"
                   >
                     다음 단계: {nextStep.label}
                   </Link>
@@ -226,7 +226,7 @@ export async function ProjectAdminShell({
                   <Link
                     key={stage.label}
                     href={`/projects/${projectId}/${stage.path}`}
-                    className={`rounded-lg border px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-sm ${
+                    className={`dd-btn flex-col !items-start !justify-start rounded-lg border px-3 py-3 text-left ${
                       isActive
                         ? "border-[#092046] bg-[#092046] text-white shadow-sm shadow-blue-950/20"
                         : isDone
@@ -268,7 +268,7 @@ export async function ProjectAdminShell({
                       <Link
                         key={item.key}
                         href={`/projects/${projectId}/${item.path}`}
-                        className={`rounded-full border px-3 py-2 text-xs font-black transition ${
+                        className={`dd-btn dd-btn-sm rounded-full border px-3 py-2 text-xs ${
                           isActive
                             ? "border-[#092046] bg-[#092046] text-white"
                             : "border-[#d8e8ff] bg-white text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
@@ -293,7 +293,7 @@ export async function ProjectAdminShell({
                       <Link
                         key={item.key}
                         href={`/projects/${projectId}/${item.path}`}
-                        className={`rounded-full border px-3 py-2 text-xs font-black transition ${
+                        className={`dd-btn dd-btn-sm rounded-full border px-3 py-2 text-xs ${
                           isActive
                             ? "border-[#092046] bg-[#092046] text-white"
                             : "border-[#d8e8ff] bg-white text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"

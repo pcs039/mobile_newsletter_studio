@@ -342,8 +342,8 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
               key={option.width}
               type="button"
               onClick={() => setRenderWidth(option.width)}
-              className={`rounded-md px-3 py-2 text-xs font-black ${
-                renderWidth === option.width ? "bg-[#092046] text-white" : "text-[#092046] hover:bg-[#eaf3ff]"
+              className={`dd-btn dd-btn-sm rounded-md text-xs ${
+                renderWidth === option.width ? "dd-btn-primary" : "dd-btn-secondary"
               }`}
             >
               {option.label}
@@ -372,7 +372,7 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={status === "converting"}
-          className="inline-flex h-11 items-center justify-center rounded-lg border border-[#2f73b7] bg-white px-5 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff] disabled:cursor-not-allowed disabled:opacity-60"
+          className="dd-btn dd-btn-secondary h-11 px-5 text-sm"
         >
           PDF 선택
         </button>
@@ -382,7 +382,7 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
             void convertPdf();
           }}
           disabled={!file || pageCount < 1 || status === "converting"}
-          className="inline-flex h-11 items-center justify-center rounded-lg bg-[#092046] px-5 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:bg-[#0f3a78] disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="dd-btn dd-btn-primary h-11 px-5 text-sm disabled:bg-slate-400"
         >
           {status === "converting" ? "변환 중" : "변환 시작"}
         </button>

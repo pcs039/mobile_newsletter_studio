@@ -141,7 +141,7 @@ export function ProjectPageImageBulkDelete({
               type="button"
               onClick={selectAll}
               disabled={isDeleting || deletablePages.length === 0}
-              className="rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-black text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="dd-btn dd-btn-secondary dd-btn-sm border-rose-300 px-4 text-sm text-rose-700 hover:bg-rose-100"
             >
               전체 선택
             </button>
@@ -149,7 +149,7 @@ export function ProjectPageImageBulkDelete({
               type="button"
               onClick={clearSelection}
               disabled={isDeleting || selectedCount === 0}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="dd-btn dd-btn-secondary dd-btn-sm border-slate-300 px-4 text-sm text-slate-700 hover:bg-slate-50"
             >
               전체 해제
             </button>
@@ -159,7 +159,7 @@ export function ProjectPageImageBulkDelete({
                 void deletePages(selectedPages, `선택한 ${selectedPages.length}개 페이지 이미지를 삭제하시겠습니까?`);
               }}
               disabled={isDeleting || selectedPages.length === 0}
-              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-black text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-300"
+              className="dd-btn dd-btn-danger dd-btn-sm px-4 text-sm disabled:bg-rose-300"
             >
               선택 삭제
             </button>
@@ -172,7 +172,7 @@ export function ProjectPageImageBulkDelete({
                 );
               }}
               disabled={isDeleting || deletablePages.length === 0}
-              className="rounded-lg bg-rose-800 px-4 py-2 text-sm font-black text-white transition hover:bg-rose-900 disabled:cursor-not-allowed disabled:bg-rose-300"
+              className="dd-btn dd-btn-danger dd-btn-sm px-4 text-sm disabled:bg-rose-300"
             >
               전체 페이지 이미지 삭제
             </button>

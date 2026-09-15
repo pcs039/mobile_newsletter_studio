@@ -239,7 +239,7 @@ export function PublicDesktopEbookViewer({
             <button
               type="button"
               onClick={() => setIsDrawerOpen(true)}
-              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/15"
+              className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
               aria-expanded={isDrawerOpen}
             >
               목차
@@ -257,8 +257,8 @@ export function PublicDesktopEbookViewer({
               <button
                 type="button"
                 onClick={() => setViewMode("single")}
-                className={`rounded-md px-3 py-2 text-xs font-black transition ${
-                  viewMode === "single" ? "bg-white text-[#092046]" : "text-slate-200 hover:bg-white/10"
+                className={`dd-btn dd-btn-sm rounded-md text-xs ${
+                  viewMode === "single" ? "bg-white text-[#092046] ring-1 ring-white/80" : "dd-btn-ghost text-slate-200"
                 }`}
               >
                 1쪽
@@ -266,8 +266,8 @@ export function PublicDesktopEbookViewer({
               <button
                 type="button"
                 onClick={() => setViewMode("double")}
-                className={`rounded-md px-3 py-2 text-xs font-black transition ${
-                  viewMode === "double" ? "bg-white text-[#092046]" : "text-slate-200 hover:bg-white/10"
+                className={`dd-btn dd-btn-sm rounded-md text-xs ${
+                  viewMode === "double" ? "bg-white text-[#092046] ring-1 ring-white/80" : "dd-btn-ghost text-slate-200"
                 }`}
               >
                 2쪽
@@ -276,21 +276,21 @@ export function PublicDesktopEbookViewer({
             <button
               type="button"
               onClick={fitToScreen}
-              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/15"
+              className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
             >
               화면 맞춤
             </button>
             <button
               type="button"
               onClick={fitToWidth}
-              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/15"
+              className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
             >
               폭 맞춤
             </button>
             <button
               type="button"
               onClick={requestFullscreen}
-              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/15"
+              className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
             >
               전체화면
             </button>
@@ -301,7 +301,7 @@ export function PublicDesktopEbookViewer({
               <button
                 type="button"
                 onClick={() => updateZoom(zoom - zoomStep)}
-                className="rounded-md px-3 py-2 text-xs font-black text-slate-100 hover:bg-white/10"
+                className="dd-btn dd-btn-ghost dd-btn-sm rounded-md text-xs text-slate-100"
               >
                 축소
               </button>
@@ -309,7 +309,7 @@ export function PublicDesktopEbookViewer({
               <button
                 type="button"
                 onClick={() => updateZoom(zoom + zoomStep)}
-                className="rounded-md px-3 py-2 text-xs font-black text-slate-100 hover:bg-white/10"
+                className="dd-btn dd-btn-ghost dd-btn-sm rounded-md text-xs text-slate-100"
               >
                 확대
               </button>
@@ -317,7 +317,7 @@ export function PublicDesktopEbookViewer({
             <button
               type="button"
               onClick={() => updateSoundPreference(!soundEnabled)}
-              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/15"
+              className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
             >
               효과음 {soundEnabled ? "켜짐" : "꺼짐"}
             </button>
@@ -325,13 +325,13 @@ export function PublicDesktopEbookViewer({
               <>
                 <Link
                   href={mobileReadingHref}
-                  className="rounded-lg bg-white px-3 py-2 text-xs font-black text-[#092046] shadow-sm hover:bg-sky-50"
+                  className="dd-btn dd-btn-sm rounded-lg bg-white text-xs text-[#092046] hover:bg-sky-50"
                 >
                   모바일 읽기
                 </Link>
                 <Link
                   href={mobileEbookHref}
-                  className="rounded-lg border border-white/20 px-3 py-2 text-xs font-black text-white hover:bg-white/10"
+                  className="dd-btn dd-btn-ghost dd-btn-sm rounded-lg text-xs"
                 >
                   모바일 e-book
                 </Link>
@@ -360,7 +360,7 @@ export function PublicDesktopEbookViewer({
                 <button
                   type="button"
                   onClick={() => setIsDrawerOpen(false)}
-                  className="rounded-lg border border-white/15 px-3 py-2 text-xs font-black text-white hover:bg-white/10"
+                  className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
                 >
                   닫기
                 </button>
@@ -425,7 +425,7 @@ export function PublicDesktopEbookViewer({
           type="button"
           onClick={() => goToIndex(currentIndex - pageStep, true)}
           disabled={!canGoPrevious}
-          className="absolute left-4 top-1/2 z-20 hidden h-16 w-16 -translate-y-1/2 rounded-full border border-white/20 bg-white/10 text-sm font-black text-white shadow-xl backdrop-blur transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-25 lg:block"
+          className="public-ebook-side-nav dd-btn dd-btn-ghost absolute left-4 top-1/2 z-20 !hidden h-16 w-16 rounded-full text-sm backdrop-blur disabled:opacity-25 lg:!flex"
         >
           이전
         </button>
@@ -433,7 +433,7 @@ export function PublicDesktopEbookViewer({
           type="button"
           onClick={() => goToIndex(currentIndex + pageStep, true)}
           disabled={!canGoNext}
-          className="absolute right-4 top-1/2 z-20 hidden h-16 w-16 -translate-y-1/2 rounded-full border border-white/20 bg-white/10 text-sm font-black text-white shadow-xl backdrop-blur transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-25 lg:block"
+          className="public-ebook-side-nav dd-btn dd-btn-ghost absolute right-4 top-1/2 z-20 !hidden h-16 w-16 rounded-full text-sm backdrop-blur disabled:opacity-25 lg:!flex"
         >
           다음
         </button>
@@ -504,8 +504,8 @@ export function PublicDesktopEbookViewer({
                   key={preset}
                   type="button"
                   onClick={() => updateZoom(preset)}
-                  className={`rounded-md px-2.5 py-2 text-xs font-black transition ${
-                    zoom === preset ? "bg-white text-[#092046]" : "text-slate-100 hover:bg-white/10"
+                  className={`dd-btn dd-btn-sm rounded-md px-2.5 py-2 text-xs ${
+                    zoom === preset ? "bg-white text-[#092046] ring-1 ring-white/80" : "dd-btn-ghost text-slate-100"
                   }`}
                 >
                   {preset}%
