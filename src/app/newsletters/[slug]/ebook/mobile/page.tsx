@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
-import { getProjectPageImages, getProjectWorkspace } from "@/lib/newsletter-repository";
+import { PublicAudioPlayer } from "@/components/public-audio-player";
+import {
+  getProjectAudioFiles,
+  getProjectPageImages,
+  getProjectWorkspace,
+  makePublicStoragePreviewHref,
+} from "@/lib/newsletter-repository";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
 
 type PublicMobileEbookPageProps = {
@@ -56,7 +62,11 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
   const pageParam = getSearchParamValue(resolvedSearchParams?.page);
   const isAdminPreview = hasSearchParamValue(previewMode, "admin");
   const isEmbeddedAdminPreview = hasSearchParamValue(embeddedMode, "adminPreview");
-  const [workspace, pageImageData] = await Promise.all([getProjectWorkspace(slug), getProjectPageImages(slug)]);
+  const [workspace, pageImageData, audioData] = await Promise.all([
+    getProjectWorkspace(slug),
+    getProjectPageImages(slug),
+    getProjectAudioFiles(slug),
+  ]);
   const project = workspace.project;
   const isPublished = project?.status === "발행 완료";
   const isPubliclyVisible = isAdminPreview || isPublished;
@@ -89,6 +99,8 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
   const nextPage = currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
   const mobileReadingHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : project.publicUrl ?? `/newsletters/${slug}`;
   const desktopEbookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : `/newsletters/${slug}/ebook`;
+  const publicAudioFile = audioData.files[0] ?? null;
+  const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
 
   return (
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
@@ -119,7 +131,7 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
           </div>
         </header>
 
-        <section className="px-4 py-5">
+        <section className={`px-4 py-5 ${publicAudioSrc ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
           {currentPage ? (
             <article className="public-mobile-ebook-page rounded-2xl bg-[#e7f0f8] p-3 shadow-inner shadow-blue-950/10">
               <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-xl shadow-blue-950/15">
@@ -200,6 +212,7 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
           ) : null}
         </section>
       </section>
+      {publicAudioSrc ? <PublicAudioPlayer src={publicAudioSrc} title={publicAudioFile?.title} /> : null}
     </main>
   );
 }

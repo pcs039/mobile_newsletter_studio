@@ -1,6 +1,11 @@
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicDesktopEbookViewer } from "@/components/public-desktop-ebook-viewer";
-import { getProjectPageImages, getProjectWorkspace } from "@/lib/newsletter-repository";
+import {
+  getProjectAudioFiles,
+  getProjectPageImages,
+  getProjectWorkspace,
+  makePublicStoragePreviewHref,
+} from "@/lib/newsletter-repository";
 
 type PublicEbookPageProps = {
   params: Promise<{ slug: string }>;
@@ -41,7 +46,11 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
   const pageParam = getSearchParamValue(resolvedSearchParams?.page);
   const isAdminPreview = hasSearchParamValue(previewMode, "admin");
   const isEmbeddedAdminPreview = hasSearchParamValue(embeddedMode, "adminPreview");
-  const [workspace, pageImageData] = await Promise.all([getProjectWorkspace(slug), getProjectPageImages(slug)]);
+  const [workspace, pageImageData, audioData] = await Promise.all([
+    getProjectWorkspace(slug),
+    getProjectPageImages(slug),
+    getProjectAudioFiles(slug),
+  ]);
   const project = workspace.project;
   const isPublished = project?.status === "발행 완료";
   const isPubliclyVisible = isAdminPreview || isPublished;
@@ -68,6 +77,8 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
   const initialPageNumber = Number(pageParam) || pages[0]?.pageNumber || 1;
   const mobileHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : project?.publicUrl ?? `/newsletters/${slug}`;
   const mobileEbookHref = isAdminPreview ? `/newsletters/${slug}/ebook/mobile?preview=admin` : `/newsletters/${slug}/ebook/mobile`;
+  const publicAudioFile = audioData.files[0] ?? null;
+  const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
 
   return (
     <>
@@ -79,6 +90,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
         mobileReadingHref={mobileHref}
         pageCount={project.pageCount ?? 0}
         pages={pages}
+        publicAudio={publicAudioSrc ? { src: publicAudioSrc, title: publicAudioFile?.title } : undefined}
         projectIssue={project.issue}
         projectOrganization={project.organization}
         projectTitle={project.title}

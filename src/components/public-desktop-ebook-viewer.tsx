@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { PublicAudioPlayer } from "@/components/public-audio-player";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
 
 type EbookPage = {
@@ -19,6 +20,10 @@ type PublicDesktopEbookViewerProps = {
   mobileReadingHref: string;
   pageCount: number;
   pages: EbookPage[];
+  publicAudio?: {
+    src: string;
+    title?: string;
+  };
   projectIssue: string;
   projectOrganization: string;
   projectTitle: string;
@@ -122,6 +127,7 @@ export function PublicDesktopEbookViewer({
   mobileReadingHref,
   pageCount,
   pages,
+  publicAudio,
   projectIssue,
   projectOrganization,
   projectTitle,
@@ -515,6 +521,7 @@ export function PublicDesktopEbookViewer({
           </div>
         </div>
       </section>
+      {publicAudio ? <PublicAudioPlayer src={publicAudio.src} title={publicAudio.title} variant="desktop" /> : null}
     </main>
   );
 }
