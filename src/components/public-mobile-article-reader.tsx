@@ -32,6 +32,10 @@ type SwipeStart = {
 
 const mobileReaderQuery = "(max-width: 767px)";
 const swipeThreshold = 50;
+const titleMotionCharacterDelayMs = 22;
+const titleMotionMaxDelayMs = 520;
+const openingTitlePunctuation = new Set(["‘", "“", "'", "\"", "(", "[", "{"]);
+const closingTitlePunctuation = new Set(["’", "”", ")", "]", "}"]);
 
 function subscribeToMobileReader(onStoreChange: () => void) {
   const mediaQuery = window.matchMedia(mobileReaderQuery);
@@ -135,6 +139,53 @@ function getYoutubeId(value: string) {
 
 function getArticleTitle(article: ProjectContentArticle, index: number) {
   return article.title.trim() || `기사 ${index + 1}`;
+}
+
+function getArticleTitleMotionTokens(title: string) {
+  const rawTokens = title.trim().split(/\s+/).filter(Boolean);
+  const tokens: string[] = [];
+  let pendingPrefix = "";
+
+  rawTokens.forEach((rawToken) => {
+    let token = rawToken;
+    const firstCharacter = Array.from(token)[0];
+    const isSingleOpeningPunctuation = Array.from(token).length === 1 && openingTitlePunctuation.has(token);
+    const shouldAttachToPrevious = firstCharacter ? closingTitlePunctuation.has(firstCharacter) : false;
+
+    if (isSingleOpeningPunctuation) {
+      pendingPrefix += token;
+      return;
+    }
+
+    if (pendingPrefix) {
+      token = `${pendingPrefix}${token}`;
+      pendingPrefix = "";
+    }
+
+    if (shouldAttachToPrevious && tokens.length > 0) {
+      tokens[tokens.length - 1] = `${tokens[tokens.length - 1]}${token}`;
+      return;
+    }
+
+    tokens.push(token);
+  });
+
+  if (pendingPrefix) {
+    tokens.push(pendingPrefix);
+  }
+
+  let characterIndex = 0;
+
+  return tokens.map((token) => ({
+    characters: Array.from(token).map((character) => {
+      const delay = Math.min(characterIndex * titleMotionCharacterDelayMs, titleMotionMaxDelayMs);
+
+      characterIndex += 1;
+
+      return { character, delay };
+    }),
+    token,
+  }));
 }
 
 function getInitialArticleIndex(articles: ProjectContentArticle[], initialArticleId?: string | null) {
@@ -299,6 +350,7 @@ function ArticleCard({
 }) {
   const visibleBlocks = getVisibleBlocks(article);
   const articleTitle = getArticleTitle(article, index);
+  const titleMotionTokens = getArticleTitleMotionTokens(articleTitle);
 
   return (
     <article className={`public-card public-article-card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>
@@ -322,14 +374,18 @@ function ArticleCard({
           data-public-text-scale-target="article-title"
           className="public-article-title public-audio-sync-segment text-2xl font-black leading-tight text-[#092046]"
         >
-          {Array.from(articleTitle).map((character, characterIndex) => (
-            <span
-              key={`${character}-${characterIndex}`}
-              aria-hidden="true"
-              className="article-title-motion-char"
-              style={{ animationDelay: `${Math.min(characterIndex * 22, 520)}ms` }}
-            >
-              {character === " " ? "\u00A0" : character}
+          {titleMotionTokens.map((token, tokenIndex) => (
+            <span key={`${token.token}-${tokenIndex}`} className="article-title-motion-token" aria-hidden="true">
+              {token.characters.map(({ character, delay }, characterIndex) => (
+                <span
+                  key={`${character}-${tokenIndex}-${characterIndex}`}
+                  className="article-title-motion-char"
+                  style={{ animationDelay: `${delay}ms` }}
+                >
+                  {character}
+                </span>
+              ))}
+              {tokenIndex < titleMotionTokens.length - 1 ? "\u00A0" : null}
             </span>
           ))}
         </h2>
