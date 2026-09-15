@@ -300,7 +300,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       active="publish"
       projectId={projectId}
       title="검수·발행"
-      description="모바일 화면, e-book 화면, 공개 URL, QR 코드를 최종 확인합니다."
+      description="공개 전 상태를 최종 확인합니다."
       sidebarTitle={
         <>
           검수
@@ -308,9 +308,9 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
           발행
         </>
       }
-      sidebarDescription="공개 전 모바일 화면, PC e-book, 공개 URL, QR 코드 상태를 최종 확인합니다."
+      sidebarDescription="화면, URL, QR 상태를 확인합니다."
       sidebarNoteTitle="공개 기준"
-      sidebarNote="모바일은 작성 기사와 연결 블록, PC는 등록된 페이지 이미지 기준으로 검수합니다."
+      sidebarNote="모바일은 기사, e-book은 페이지 이미지 기준입니다."
       actions={
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
@@ -347,10 +347,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">자동 검수</p>
                 <h3 className="mt-1 text-lg font-bold text-[#092046]">발행 전 자동 검수 체크리스트</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600 [word-break:keep-all]">
-                  공개 전 누락되기 쉬운 기본 정보, 기사, e-book 이미지, URL, QR, 음성 상태를 자동으로 점검합니다.
-                  이번 단계에서는 발행을 막지 않고 확인용 안내로 표시합니다.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">누락 항목을 자동 점검합니다. 발행 차단은 하지 않습니다.</p>
               </div>
               <div className="shrink-0 rounded-xl border border-slate-200 bg-[#f8fbff] px-4 py-3">
                 <p className="text-xs font-black text-[#184a88]">전체 요약</p>
@@ -379,7 +376,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
                       {item.status}
                     </span>
                   </div>
-                  <p className="mt-3 text-xs font-semibold leading-5 text-slate-600 [word-break:keep-all]">{item.detail}</p>
+                  <p className="mt-3 text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">{item.detail}</p>
                   <Link
                     href={item.href}
                     className="mt-4 inline-flex rounded-lg border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
@@ -395,9 +392,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-lg font-bold text-[#092046]">발행 준비 상태</h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  실제 저장된 프로젝트 자료를 기준으로 완료 여부를 확인합니다.
-                </p>
+                <p className="mt-1 text-sm text-slate-500">저장 데이터 기준</p>
               </div>
               <span
                 className={`rounded-full px-3 py-1 text-xs font-bold ${
@@ -536,9 +531,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg font-bold text-[#092046]">QR 코드</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600 [word-break:keep-all]">
-                  공개 URL 기준 QR을 생성합니다. 인쇄물에는 SVG 파일을 사용하는 편이 선명합니다.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">공개 URL 기준 QR</p>
               </div>
               <div className="shrink-0 rounded-lg border border-slate-200 bg-white p-2">
                 <img src={publicQrHref} alt={`${project?.title ?? projectId} 공개 URL QR`} className="h-28 w-28" />

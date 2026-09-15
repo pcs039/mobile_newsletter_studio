@@ -204,9 +204,7 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
 
       setPageCount(pdf.numPages);
       setStatus("ready");
-      setMessage(
-        `${pdf.numPages}쪽 PDF입니다. 변환을 시작하면 PDF 원본 저장 후 페이지 이미지를 자동 생성합니다. ${pdfReviewNotice}`,
-      );
+      setMessage(`${pdf.numPages}쪽 PDF입니다. 변환을 시작할 수 있습니다.`);
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "PDF 정보를 확인하지 못했습니다.");
@@ -331,10 +329,7 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">자동 생성</p>
           <h4 className="mt-1 text-base font-black text-[#092046]">PDF에서 페이지 이미지 자동 생성</h4>
-          <p className="mt-2 text-sm leading-6 text-slate-600 [word-break:keep-all]">
-            선택한 PDF를 원본으로 저장한 뒤, 각 페이지를 PNG 이미지로 변환해 1쪽부터 순서대로 등록합니다.
-            텍스트가 많은 지면을 고려해 PNG 형식을 사용합니다.
-          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">PDF에서 e-book 페이지 이미지를 생성합니다.</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-1">
           {pdfQualityOptions.map((option) => (
@@ -351,11 +346,12 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
           ))}
         </div>
       </div>
-      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-        <p className="text-sm font-bold leading-6 text-amber-900">
-          고품질/초고품질 변환은 시간이 더 걸릴 수 있습니다. {pdfReviewNotice}
+      <details className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+        <summary className="cursor-pointer text-sm font-black text-amber-900">작업 안내</summary>
+        <p className="mt-2 text-sm font-bold leading-6 text-amber-900">
+          고품질 변환은 시간이 더 걸릴 수 있습니다. {pdfReviewNotice}
         </p>
-      </div>
+      </details>
 
       <input
         ref={inputRef}

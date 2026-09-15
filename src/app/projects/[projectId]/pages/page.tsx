@@ -66,7 +66,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
       active="pages"
       projectId={projectId}
       title="이미지 페이지 편집"
-      description="PDF나 디자인 이미지로 만든 페이지를 올리고, 클릭 영역과 링크를 지정합니다."
+      description="페이지 이미지와 클릭 영역을 관리합니다."
       sidebarTitle={
         <>
           이미지 페이지
@@ -74,9 +74,9 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
           편집
         </>
       }
-      sidebarDescription="디자인된 이미지 페이지를 공개 화면에 반영하고 클릭 영역과 링크를 연결합니다."
+      sidebarDescription="페이지 이미지와 클릭 영역을 정리합니다."
       sidebarNoteTitle="운영 기준"
-      sidebarNote="이미지 페이지형은 페이지 이미지 자체가 모바일 본문이며, URL과 영상은 이미지 위 투명 클릭 영역으로 연결합니다."
+      sidebarNote="URL과 영상은 이미지 위 클릭 영역으로 연결합니다."
       actions={
         <div className="flex flex-wrap gap-2">
           <Link
@@ -106,17 +106,13 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
     >
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)]">
             <section className="space-y-5">
-              <article className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5 shadow-sm">
+              <article className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이미지 페이지 구성</p>
                     <h3 className="mt-1 text-lg font-black text-[#092046]">
-                      모바일 규격 이미지 파일을 페이지 순서대로 구성합니다.
+                      페이지 이미지 {pages.length}개 등록
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      이미지 페이지형은 Word식 편집이 아니라 디자이너가 완성한 페이지 이미지를 업로드하고, 공개 화면에서 이미지 중심으로
-                      보여주는 방식입니다.
-                    </p>
                   </div>
                   <StatusPill value={isImagePageMode ? "이미지 페이지형" : "공통 자료 관리"} />
                 </div>
@@ -131,8 +127,8 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   ))}
                 </div>
 
-                <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
-                  <p className="text-sm font-black text-[#092046]">작업 순서</p>
+                <details className="mt-4 rounded-lg border border-[#d8e8ff] bg-white p-4">
+                  <summary className="cursor-pointer text-sm font-black text-[#092046]">도움말 보기</summary>
                   <ol className="mt-3 grid gap-2 lg:grid-cols-4">
                     {imagePageWorkflow.map((item, index) => (
                       <li key={item} className="rounded-lg bg-[#f4f8ff] px-3 py-3 text-sm font-bold leading-6 text-slate-700">
@@ -141,15 +137,13 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                       </li>
                     ))}
                   </ol>
-                </div>
+                </details>
 
-                <div className="mt-5 rounded-lg border border-[#b8d7ff] bg-white p-4">
+                <details className="mt-4 rounded-lg border border-[#b8d7ff] bg-white p-4">
+                  <summary className="cursor-pointer text-sm font-black text-[#092046]">반영 방식</summary>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                      <p className="text-sm font-black text-[#092046]">모바일 소식지 반영 방식</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        이미지를 다시 합성 파일로 만들지 않고, 공개 웹페이지가 페이지 이미지와 클릭 영역을 실시간으로 조립해 보여줍니다.
-                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">페이지 이미지와 클릭 영역을 공개 화면에서 함께 표시합니다.</p>
                     </div>
                     <Link
                       href={`/newsletters/${projectId}?preview=admin`}
@@ -169,7 +163,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                       </div>
                     ))}
                   </div>
-                </div>
+                </details>
               </article>
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -177,9 +171,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   <div>
                     <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">선택</span>
                     <h3 className="text-lg font-bold text-[#092046]">PDF 원본 업로드</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      PDF는 원본 보관용으로 저장하고, 모바일 공개 화면에 사용할 페이지 이미지는 아래에서 별도로 등록합니다.
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">원본 PDF를 보관합니다.</p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
                     Supabase Storage 저장
@@ -189,7 +181,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <FileUploadCard
                   accept="application/pdf"
                   buttonLabel="PDF 선택"
-                  description="권장: 10~20쪽 지자체 소식지 PDF. 모바일 페이지 이미지는 아래에서 별도 등록합니다."
+                  description="PDF 원본을 저장합니다."
                   kind="pdf_original"
                   projectSlug={projectId}
                   title="PDF 파일을 선택하거나 이 영역에 끌어다 놓기"
@@ -241,9 +233,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                     </div>
                   ) : (
                     <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-5 text-center">
-                      <p className="text-sm font-bold text-slate-600">
-                        PDF를 업로드하면 파일명, 업로드일, Storage 경로가 이곳에 표시됩니다.
-                      </p>
+                      <p className="text-sm font-bold text-slate-600">PDF 원본 미등록</p>
                     </div>
                   )}
                 </div>
@@ -254,10 +244,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   <div>
                     <span className="rounded-full bg-[#092046] px-3 py-1 text-xs font-black text-white">필수</span>
                     <h3 className="text-lg font-bold text-[#092046]">페이지 이미지 업로드</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      먼저 페이지 번호와 이미지를 저장하세요. 업로드한 이미지는 공개 모바일
-                      화면에서 해당 번호 순서대로 표시됩니다.
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">페이지 번호와 이미지를 저장하세요.</p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
                     Supabase Storage 저장
@@ -267,7 +254,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <FileUploadCard
                   accept="image/png,image/jpeg,image/webp"
                   buttonLabel="페이지 이미지 선택"
-                  description="페이지 번호를 먼저 확인한 뒤 PNG, JPG, WebP 파일을 업로드하세요. 저장 후 아래 등록 현황과 모바일 미리보기에 반영됩니다."
+                  description="PNG, JPG, WebP를 업로드합니다."
                   kind="page_image"
                   projectSlug={projectId}
                   title="페이지 이미지를 선택하거나 이 영역에 끌어다 놓기"
@@ -278,9 +265,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-[#092046]">페이지 이미지 등록 현황</h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {pageImageData.message} 등록된 이미지는 모바일 공개 화면에서 페이지 순서대로 표시됩니다.
-                    </p>
+                    <p className="mt-1 text-sm text-slate-500">{pageImageData.message}</p>
                   </div>
                   <div className="flex gap-2">
                     <button className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
@@ -298,9 +283,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 {pages.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-12 text-center">
                     <p className="text-base font-black text-[#092046]">등록된 페이지 이미지가 없습니다.</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                      위 업로드 영역에서 페이지 번호와 이미지를 저장하면 이 목록에 실제 작업 현황이 표시됩니다.
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">페이지 이미지를 업로드하세요.</p>
                   </div>
                 ) : (
                   <ProjectPageImageBulkDelete pages={pages} projectSlug={projectId} />
@@ -312,9 +295,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">선택</span>
                   <span className="ml-2">고급 편집: 클릭 영역·URL 연결</span>
                 </summary>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  클릭 영역과 URL 연결은 필요한 경우에만 추가합니다. 페이지 이미지 업로드 후 미리보기에서 위치를 확인하세요.
-                </p>
+                <p className="mt-3 text-sm leading-6 text-slate-500">필요한 링크만 이미지 위에 지정합니다.</p>
                 <div className="mt-4">
                   <ProjectPageHotspotManager links={hotspotData.links} pages={pages} projectSlug={projectId} />
                 </div>
@@ -326,7 +307,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <AdminMobilePreviewFrame
                   previewHref={ebookPreviewHref}
                   title="e-book 미리보기"
-                  description="저장된 페이지 이미지를 기준으로 e-book 화면만 표시합니다. 최종 확인은 새 탭의 실제 공개 화면에서도 진행하세요."
+                  description="e-book 화면을 미리 확인합니다."
                   iframeTitle="저장된 e-book 소식지 미리보기"
                 />
               </div>
@@ -363,10 +344,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                 <h3 className="text-lg font-bold text-[#092046]">다음 작업</h3>
                 {isImagePageMode ? (
                   <>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      페이지 이미지를 올린 뒤 왼쪽의 클릭 영역 지정에서 URL, 유튜브, 전화 연결을 저장하세요. 이후 모바일 미리보기에서
-                      이미지와 링크가 함께 반영됐는지 확인합니다.
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">이미지와 클릭 영역 반영을 확인하세요.</p>
                     <Link
                       href={`/newsletters/${projectId}?preview=admin`}
                       target="_blank"
@@ -378,10 +356,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
                   </>
                 ) : (
                   <>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      이미지 페이지형이 아니라면 기사 작성/편집으로 이동합니다. 이 단계에서 기사 제목, 본문, 대표 이미지,
-                      문의처, 음성 대본을 정리합니다.
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">기사 화면은 작성/편집에서 관리합니다.</p>
                     <Link
                       href={`/projects/${projectId}/reading`}
                       className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"

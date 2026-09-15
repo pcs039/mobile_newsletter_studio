@@ -36,31 +36,31 @@ const workflowStages: Array<{
   },
   {
     label: "콘텐츠 제작",
-    detail: "기사·이미지·URL·음성 대본 작성",
+    detail: "기사·이미지·음성",
     path: "reading",
     sections: ["reading", "pages", "assets", "audio"],
   },
   {
     label: "검수·발행",
-    detail: "모바일·e-book·음성·URL·QR 확인",
+    detail: "화면·URL·QR",
     path: "publish",
     sections: ["publish"],
   },
   {
     label: "배포 관리",
-    detail: "배포 기록·공유 문안 관리",
+    detail: "기록·공유 문안",
     path: "distribution",
     sections: ["distribution", "survey"],
   },
 ];
 
 const nextSteps: Partial<Record<ProjectSection, { label: string; path: ProjectSection; detail: string }>> = {
-  settings: { label: "콘텐츠 제작", path: "reading", detail: "기사, 이미지, URL, 음성 대본을 작성합니다." },
-  reading: { label: "검수·발행", path: "publish", detail: "모바일 화면, e-book, 음성, 공개 URL, QR을 최종 확인합니다." },
-  pages: { label: "검수·발행", path: "publish", detail: "이미지와 클릭 영역을 확인한 뒤 최종 검수 화면으로 이동합니다." },
-  assets: { label: "검수·발행", path: "publish", detail: "사진·이미지 소재를 확인한 뒤 최종 검수 화면으로 이동합니다." },
-  audio: { label: "검수·발행", path: "publish", detail: "음성 파일과 대본을 확인한 뒤 최종 검수 화면으로 이동합니다." },
-  publish: { label: "배포 관리", path: "distribution", detail: "공개 URL과 QR을 어디에 배포했는지 기록합니다." },
+  settings: { label: "콘텐츠 제작", path: "reading", detail: "기사와 이미지 작업으로 이동합니다." },
+  reading: { label: "검수·발행", path: "publish", detail: "공개 전 상태를 확인합니다." },
+  pages: { label: "검수·발행", path: "publish", detail: "페이지 이미지 상태를 확인합니다." },
+  assets: { label: "검수·발행", path: "publish", detail: "소재 상태를 확인합니다." },
+  audio: { label: "검수·발행", path: "publish", detail: "음성 상태를 확인합니다." },
+  publish: { label: "배포 관리", path: "distribution", detail: "배포 기록을 남깁니다." },
 };
 
 function getWorkflowStageIndex(active: ProjectSection) {
@@ -151,7 +151,7 @@ export async function ProjectAdminShell({
 
           <div className="mt-10 rounded-lg border border-white/15 bg-white/8 p-4">
             <p className="text-sm font-bold text-white">{sidebarNoteTitle}</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{sidebarNote}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-300">{sidebarNote}</p>
           </div>
         </aside>
 
@@ -168,7 +168,7 @@ export async function ProjectAdminShell({
                 </span>
                 <span className="text-xs font-semibold text-slate-500">{projectMeta}</span>
               </div>
-              <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600 [word-break:keep-all]">{description}</p>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-500 [word-break:keep-all]">{description}</p>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
               <HomeButton />
@@ -187,9 +187,6 @@ export async function ProjectAdminShell({
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제작 흐름</p>
                 <h3 className="mt-1 text-lg font-black text-[#092046]">기본정보 → 콘텐츠 제작 → 검수·발행 → 배포 관리</h3>
-                <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
-                  이미지 페이지, 사진·이미지, 음성은 콘텐츠 제작 안의 하위 도구로 정리했습니다.
-                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Link
@@ -212,8 +209,8 @@ export async function ProjectAdminShell({
             </div>
 
             {nextStep ? (
-              <p className="mt-3 rounded-lg border border-[#d8e8ff] bg-white px-3 py-2 text-xs font-bold leading-5 text-slate-600">
-                다음 단계 안내: {nextStep.detail}
+              <p className="mt-3 rounded-lg border border-[#d8e8ff] bg-white px-3 py-2 text-xs font-bold leading-5 text-slate-500">
+                다음: {nextStep.detail}
               </p>
             ) : null}
 

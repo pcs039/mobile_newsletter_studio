@@ -99,7 +99,7 @@ export default async function ReadingEditorPage({
       active="reading"
       projectId={projectId}
       title="기사 작성/편집"
-      description="모바일 화면에 표시될 기사 제목, 요약, 본문, 이미지, 버튼을 작성합니다."
+      description="기사 제목, 본문, 이미지, 버튼을 작성합니다."
       sidebarTitle={
         <>
           기사 작성
@@ -107,9 +107,9 @@ export default async function ReadingEditorPage({
           편집
         </>
       }
-      sidebarDescription="모바일 독자가 읽을 기사와 문단·이미지·URL 버튼을 순서대로 작성합니다."
+      sidebarDescription="기사와 콘텐츠 블록을 작성합니다."
       sidebarNoteTitle="작성 기준"
-      sidebarNote="PDF와 지면 이미지는 참고 원본입니다. 공개 화면은 저장된 기사와 문단·이미지·URL 버튼을 기준으로 구성됩니다."
+      sidebarNote="공개 화면은 저장된 기사 블록 기준입니다."
       actions={
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
@@ -201,7 +201,7 @@ export default async function ReadingEditorPage({
           </article>
 
           <article className="rounded-lg border border-slate-200 bg-[#eef6ff] p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">상태</p>
             <h3 className="mt-1 text-lg font-bold text-[#092046]">제작 자료 상태</h3>
             <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
               <p>{originalPdfData.pdf ? `PDF 등록: ${originalPdfData.pdf.fileName}` : "PDF 원본이 아직 없습니다."}</p>
@@ -212,7 +212,8 @@ export default async function ReadingEditorPage({
         </aside>
 
         <section className="space-y-5">
-          <article className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
+          <details className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
+            <summary className="cursor-pointer text-sm font-black text-[#092046]">작업 안내</summary>
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">콘텐츠 블록 작성 방식</p>
             <h3 className="mt-1 text-lg font-black text-[#092046]">문단 사이에 이미지·URL·유튜브를 블록으로 끼워 넣습니다.</h3>
             <div className="mt-4 grid gap-3 lg:grid-cols-4">
@@ -223,10 +224,7 @@ export default async function ReadingEditorPage({
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              예를 들어 본문 설명 뒤에 사진을 넣고, 다시 설명 문단을 이어 쓴 뒤 마지막에 신청 링크나 유튜브 영상을 배치할 수 있습니다.
-            </p>
-          </article>
+          </details>
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -235,9 +233,7 @@ export default async function ReadingEditorPage({
                 <h3 className="mt-1 text-xl font-black text-[#092046]">
                   {selectedArticle ? selectedArticle.title : "새 기사 작성"}
                 </h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {contentData.message} 저장 후 목록과 오른쪽 모바일 미리보기가 갱신됩니다.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{contentData.message}</p>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold text-slate-600">
                 <div className="rounded-lg bg-[#eef6ff] px-3 py-2">
@@ -304,7 +300,7 @@ export default async function ReadingEditorPage({
           </div>
 
           <article className="rounded-lg border border-slate-200 bg-[#eef6ff] p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참고 설명 영역</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">작업 안내</p>
             <h3 className="mt-1 text-lg font-bold text-[#092046]">작성 흐름</h3>
             <ol className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
               <li className="rounded-lg bg-white px-3 py-2">1. 기본 정보와 제작 자료를 확인</li>
@@ -316,11 +312,8 @@ export default async function ReadingEditorPage({
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이미지 페이지 참고</p>
-            <h3 className="mt-1 text-lg font-bold text-[#092046]">디자인 이미지형은 이미지 페이지 편집에서 관리</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              Illustrator나 Photoshop으로 완성한 모바일 페이지 이미지는 기사 본문에 억지로 넣기보다 페이지 이미지로 올리고,
-              이후 클릭 영역과 링크를 별도로 관리하는 흐름이 적합합니다.
-            </p>
+            <h3 className="mt-1 text-lg font-bold text-[#092046]">이미지형은 페이지 편집에서 관리</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-500">완성 이미지와 클릭 영역은 이미지 페이지 편집에서 관리합니다.</p>
             <div className="mt-4 grid gap-2">
               <Link
                 href={`/projects/${projectId}/pages`}

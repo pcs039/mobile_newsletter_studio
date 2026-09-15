@@ -16,7 +16,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
       active="assets"
       projectId={projectId}
       title="사진·이미지 관리"
-      description="기사에 사용할 이미지, URL, 유튜브 링크를 모아 관리합니다."
+      description="기사용 이미지 소재를 관리합니다."
       sidebarTitle={
         <>
           사진·이미지
@@ -24,9 +24,9 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
           관리
         </>
       }
-      sidebarDescription="기사 작성과 이미지 페이지 편집에서 사용할 사진, 이미지, URL, 유튜브 소재를 정리합니다."
+      sidebarDescription="사진, 이미지, 링크 소재를 정리합니다."
       sidebarNoteTitle="운영 기준"
-      sidebarNote="이 화면은 독립 산출물이 아니라 기사 작성/편집과 이미지 페이지 편집에 붙는 사진·이미지 보관 공간입니다."
+      sidebarNote="기사와 이미지 페이지에 붙는 소재 보관함입니다."
       actions={
         <Link
           href={`/projects/${projectId}/reading`}
@@ -43,10 +43,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                   <div>
                     <span className="rounded-full bg-[#092046] px-3 py-1 text-xs font-black text-white">기본 입력</span>
                     <h3 className="mt-2 text-lg font-bold text-[#092046]">자주 쓰는 이미지 등록</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      소재 이름은 파일명으로 먼저 저장됩니다. 파일을 올린 뒤 용도와 권리 상태를 목록에서 확인하세요.
-                      URL과 유튜브 주소는 기사 작성/편집 또는 이미지 페이지 클릭 영역에서 연결합니다.
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">이미지를 올리고 목록에서 상태를 확인합니다.</p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
                     Supabase Storage 저장
@@ -57,7 +54,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                   <FileUploadCard
                     accept="image/png,image/jpeg,image/webp"
                     buttonLabel="이미지 선택"
-                    description="권장: 원본 사진, 웹용 배너, 카드 이미지. PDF 발췌 이미지는 품질 확인 후 사용합니다."
+                    description="PNG, JPG, WebP를 업로드합니다."
                     kind="asset_image"
                     projectSlug={projectId}
                     title="이미지 파일을 선택하거나 이 영역에 끌어다 놓기"
@@ -68,7 +65,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                       <span className="ml-2">선택 정보 확인</span>
                     </summary>
                     <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
-                      설명, 연결 원본 페이지, 보조 메모는 필요한 경우 목록에서 보완합니다.
+                      필요한 경우 목록에서 보완합니다.
                     </p>
                     <div className="mt-3 grid gap-2 text-sm text-slate-600">
                       <span className="rounded-md bg-slate-50 px-3 py-2">출처</span>
@@ -102,9 +99,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                 {assets.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-12 text-center">
                     <p className="text-base font-black text-[#092046]">등록된 이미지 소재가 없습니다.</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                      위 업로드 영역에서 이미지를 저장하면 실제 파일 목록과 썸네일이 여기에 표시됩니다.
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">이미지를 업로드하세요.</p>
                   </div>
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
@@ -163,10 +158,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">AI 이미지 사용 기준</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  AI 이미지는 상징적 배경, 설명용 일러스트, 분위기 보조 이미지에 한정합니다.
-                  실제 행사, 인물, 장소를 촬영한 것처럼 오해될 수 있는 방식은 사용하지 않습니다.
-                </p>
+                <p className="mt-3 text-sm leading-6 text-slate-500">AI 이미지는 보조 이미지에만 사용합니다.</p>
               </article>
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -182,9 +174,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
 
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-bold text-[#092046]">다음 작업</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  이미지 소재를 정리한 뒤 음성 소식지 검수 화면으로 이동합니다. 외부 TTS로 제작한 음성 파일을 기사별로 연결합니다.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">다음은 음성 파일 검수입니다.</p>
                 <Link
                   href={`/projects/${projectId}/audio`}
                   className="mt-5 block w-full rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
