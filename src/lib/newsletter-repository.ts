@@ -526,6 +526,18 @@ type LinkDisplayStyle = "button" | "text_link" | "thumbnail_card" | "map_card";
 type PageHotspotLinkType = "url" | "phone" | "map" | "video";
 export type ArticleMotionPreset = "none" | "calm" | "image_focus" | "promotion" | "dynamic";
 export type ArticleMotionSpeed = "slow" | "normal" | "fast";
+export type ArticleElementMotionEffect =
+  | "inherit"
+  | "none"
+  | "fade_up"
+  | "char_by_char"
+  | "card_lift"
+  | "fade_in"
+  | "reveal_up"
+  | "soft_zoom"
+  | "blur_clear"
+  | "soft_emphasis";
+export type ArticleElementMotionSpeed = "inherit" | ArticleMotionSpeed;
 
 type NewsletterArticleRow = {
   id: string;
@@ -539,6 +551,14 @@ type NewsletterArticleRow = {
   contact_phone: string | null;
   motion_preset: string | null;
   motion_speed: string | null;
+  title_motion_effect: string | null;
+  title_motion_speed: string | null;
+  text_box_motion_effect: string | null;
+  text_box_motion_speed: string | null;
+  image_motion_effect: string | null;
+  image_motion_speed: string | null;
+  link_motion_effect: string | null;
+  link_motion_speed: string | null;
   status: string;
   representative_asset_id: string | null;
   audio_id: string | null;
@@ -814,6 +834,14 @@ export type ProjectContentArticle = {
   contactPhone: string;
   motionPreset: ArticleMotionPreset;
   motionSpeed: ArticleMotionSpeed;
+  titleMotionEffect: ArticleElementMotionEffect;
+  titleMotionSpeed: ArticleElementMotionSpeed;
+  textBoxMotionEffect: ArticleElementMotionEffect;
+  textBoxMotionSpeed: ArticleElementMotionSpeed;
+  imageMotionEffect: ArticleElementMotionEffect;
+  imageMotionSpeed: ArticleElementMotionSpeed;
+  linkMotionEffect: ArticleElementMotionEffect;
+  linkMotionSpeed: ArticleElementMotionSpeed;
   status: string;
   updated: string;
   blocks: ProjectContentBlock[];
@@ -851,6 +879,14 @@ export type UpsertProjectArticleInput = {
   contactPhone?: string;
   motionPreset?: string;
   motionSpeed?: string;
+  titleMotionEffect?: string;
+  titleMotionSpeed?: string;
+  textBoxMotionEffect?: string;
+  textBoxMotionSpeed?: string;
+  imageMotionEffect?: string;
+  imageMotionSpeed?: string;
+  linkMotionEffect?: string;
+  linkMotionSpeed?: string;
   status?: string;
   buttonLabel?: string;
   buttonTarget?: string;
@@ -1629,6 +1665,14 @@ function mapArticleRowToProjectContentArticle(
     contactPhone: article.contact_phone || "",
     motionPreset: normalizeArticleMotionPreset(article.motion_preset),
     motionSpeed: normalizeArticleMotionSpeed(article.motion_speed),
+    titleMotionEffect: normalizeArticleElementMotionEffect(article.title_motion_effect),
+    titleMotionSpeed: normalizeArticleElementMotionSpeed(article.title_motion_speed),
+    textBoxMotionEffect: normalizeArticleElementMotionEffect(article.text_box_motion_effect),
+    textBoxMotionSpeed: normalizeArticleElementMotionSpeed(article.text_box_motion_speed),
+    imageMotionEffect: normalizeArticleElementMotionEffect(article.image_motion_effect),
+    imageMotionSpeed: normalizeArticleElementMotionSpeed(article.image_motion_speed),
+    linkMotionEffect: normalizeArticleElementMotionEffect(article.link_motion_effect),
+    linkMotionSpeed: normalizeArticleElementMotionSpeed(article.link_motion_speed),
     status: article.status,
     updated: formatCompactDateTime(article.updated_at),
     blocks: blocks.map(mapContentBlockRowToProjectBlock),
@@ -1665,6 +1709,31 @@ function normalizeArticleMotionSpeed(value: string | null | undefined): ArticleM
   const cleaned = value?.trim() ?? "";
 
   return allowed.includes(cleaned as ArticleMotionSpeed) ? (cleaned as ArticleMotionSpeed) : "normal";
+}
+
+function normalizeArticleElementMotionEffect(value: string | null | undefined): ArticleElementMotionEffect {
+  const allowed: ArticleElementMotionEffect[] = [
+    "inherit",
+    "none",
+    "fade_up",
+    "char_by_char",
+    "card_lift",
+    "fade_in",
+    "reveal_up",
+    "soft_zoom",
+    "blur_clear",
+    "soft_emphasis",
+  ];
+  const cleaned = value?.trim() ?? "";
+
+  return allowed.includes(cleaned as ArticleElementMotionEffect) ? (cleaned as ArticleElementMotionEffect) : "inherit";
+}
+
+function normalizeArticleElementMotionSpeed(value: string | null | undefined): ArticleElementMotionSpeed {
+  const allowed: ArticleElementMotionSpeed[] = ["inherit", "slow", "normal", "fast"];
+  const cleaned = value?.trim() ?? "";
+
+  return allowed.includes(cleaned as ArticleElementMotionSpeed) ? (cleaned as ArticleElementMotionSpeed) : "inherit";
 }
 
 function normalizeArticleSortOrder(value: number | undefined) {
@@ -4080,7 +4149,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,summary,body,contact_name,contact_phone,motion_preset,motion_speed,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,summary,body,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -4496,6 +4565,14 @@ export async function upsertProjectArticle(
       contact_phone: nullableText(input.contactPhone),
       motion_preset: normalizeArticleMotionPreset(input.motionPreset),
       motion_speed: normalizeArticleMotionSpeed(input.motionSpeed),
+      title_motion_effect: normalizeArticleElementMotionEffect(input.titleMotionEffect),
+      title_motion_speed: normalizeArticleElementMotionSpeed(input.titleMotionSpeed),
+      text_box_motion_effect: normalizeArticleElementMotionEffect(input.textBoxMotionEffect),
+      text_box_motion_speed: normalizeArticleElementMotionSpeed(input.textBoxMotionSpeed),
+      image_motion_effect: normalizeArticleElementMotionEffect(input.imageMotionEffect),
+      image_motion_speed: normalizeArticleElementMotionSpeed(input.imageMotionSpeed),
+      link_motion_effect: normalizeArticleElementMotionEffect(input.linkMotionEffect),
+      link_motion_speed: normalizeArticleElementMotionSpeed(input.linkMotionSpeed),
       status: normalizeArticleStatus(input.status),
     };
 

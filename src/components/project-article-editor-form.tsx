@@ -5,6 +5,8 @@ import { useMemo, useRef, useState } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
 import { StatusPill } from "@/components/status-pill";
 import type {
+  ArticleElementMotionEffect,
+  ArticleElementMotionSpeed,
   ArticleMotionPreset,
   ArticleMotionSpeed,
   ProjectAssetFile,
@@ -88,6 +90,43 @@ const articleMotionSpeedOptions: Array<{ value: ArticleMotionSpeed; label: strin
   { value: "slow", label: "느리게", description: "차분한 보고형 소식지에 적합합니다." },
   { value: "normal", label: "기본", description: "일반 모바일 소식지에 적합합니다." },
   { value: "fast", label: "빠르게", description: "홍보·행사 안내형 콘텐츠에 적합합니다." },
+];
+
+const titleMotionEffectOptions: Array<{ value: ArticleElementMotionEffect; label: string }> = [
+  { value: "inherit", label: "기본값 따름" },
+  { value: "none", label: "효과 없음" },
+  { value: "fade_up", label: "부드럽게 등장" },
+  { value: "char_by_char", label: "글자별 등장" },
+];
+
+const textBoxMotionEffectOptions: Array<{ value: ArticleElementMotionEffect; label: string }> = [
+  { value: "inherit", label: "기본값 따름" },
+  { value: "none", label: "효과 없음" },
+  { value: "fade_up", label: "부드럽게 등장" },
+  { value: "card_lift", label: "카드가 떠오름" },
+];
+
+const imageMotionEffectOptions: Array<{ value: ArticleElementMotionEffect; label: string }> = [
+  { value: "inherit", label: "기본값 따름" },
+  { value: "none", label: "효과 없음" },
+  { value: "fade_in", label: "서서히 표시" },
+  { value: "reveal_up", label: "아래에서 나타남" },
+  { value: "soft_zoom", label: "살짝 확대" },
+  { value: "blur_clear", label: "흐림에서 선명" },
+];
+
+const linkMotionEffectOptions: Array<{ value: ArticleElementMotionEffect; label: string }> = [
+  { value: "inherit", label: "기본값 따름" },
+  { value: "none", label: "효과 없음" },
+  { value: "soft_emphasis", label: "부드러운 강조" },
+  { value: "card_lift", label: "카드가 떠오름" },
+];
+
+const elementMotionSpeedOptions: Array<{ value: ArticleElementMotionSpeed; label: string }> = [
+  { value: "inherit", label: "기본값 따름" },
+  { value: "slow", label: "느리게" },
+  { value: "normal", label: "기본" },
+  { value: "fast", label: "빠르게" },
 ];
 
 const editableBlockTypes: Array<{ type: EditorBlockType; label: string; help: string }> = [
@@ -380,8 +419,73 @@ function readArticleMotionSpeed(value: string): ArticleMotionSpeed {
   return articleMotionSpeedOptions.some((option) => option.value === value) ? (value as ArticleMotionSpeed) : "normal";
 }
 
+function readArticleElementMotionEffect(
+  value: string,
+  options: Array<{ value: ArticleElementMotionEffect; label: string }>,
+): ArticleElementMotionEffect {
+  return options.some((option) => option.value === value) ? (value as ArticleElementMotionEffect) : "inherit";
+}
+
+function readArticleElementMotionSpeed(value: string): ArticleElementMotionSpeed {
+  return elementMotionSpeedOptions.some((option) => option.value === value)
+    ? (value as ArticleElementMotionSpeed)
+    : "inherit";
+}
+
 function isUrlBlockType(type: EditorBlockType) {
   return type === "image" || type === "video_link" || type === "map_link" || type === "button_group";
+}
+
+function ElementMotionSettingRow({
+  effectName,
+  effectOptions,
+  effectValue,
+  label,
+  onEffectChange,
+  onSpeedChange,
+  speedName,
+  speedValue,
+}: {
+  effectName: string;
+  effectOptions: Array<{ value: ArticleElementMotionEffect; label: string }>;
+  effectValue: ArticleElementMotionEffect;
+  label: string;
+  onEffectChange: (value: ArticleElementMotionEffect) => void;
+  onSpeedChange: (value: ArticleElementMotionSpeed) => void;
+  speedName: string;
+  speedValue: ArticleElementMotionSpeed;
+}) {
+  return (
+    <div className="rounded-lg border border-[#d8e8ff] bg-white p-3">
+      <p className="text-xs font-black text-[#092046]">{label}</p>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <select
+          name={effectName}
+          value={effectValue}
+          onChange={(event) => onEffectChange(readArticleElementMotionEffect(event.currentTarget.value, effectOptions))}
+          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs font-black text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+        >
+          {effectOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <select
+          name={speedName}
+          value={speedValue}
+          onChange={(event) => onSpeedChange(readArticleElementMotionSpeed(event.currentTarget.value))}
+          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs font-black text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+        >
+          {elementMotionSpeedOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
 }
 
 export function ProjectArticleEditorForm({
@@ -404,6 +508,30 @@ export function ProjectArticleEditorForm({
   const [motionPreviewSummary, setMotionPreviewSummary] = useState(article?.summary ?? "");
   const [selectedMotionPreset, setSelectedMotionPreset] = useState<ArticleMotionPreset>(article?.motionPreset ?? "dynamic");
   const [selectedMotionSpeed, setSelectedMotionSpeed] = useState<ArticleMotionSpeed>(article?.motionSpeed ?? "normal");
+  const [titleMotionEffect, setTitleMotionEffect] = useState<ArticleElementMotionEffect>(
+    article?.titleMotionEffect ?? "inherit",
+  );
+  const [titleMotionSpeed, setTitleMotionSpeed] = useState<ArticleElementMotionSpeed>(
+    article?.titleMotionSpeed ?? "inherit",
+  );
+  const [textBoxMotionEffect, setTextBoxMotionEffect] = useState<ArticleElementMotionEffect>(
+    article?.textBoxMotionEffect ?? "inherit",
+  );
+  const [textBoxMotionSpeed, setTextBoxMotionSpeed] = useState<ArticleElementMotionSpeed>(
+    article?.textBoxMotionSpeed ?? "inherit",
+  );
+  const [imageMotionEffect, setImageMotionEffect] = useState<ArticleElementMotionEffect>(
+    article?.imageMotionEffect ?? "inherit",
+  );
+  const [imageMotionSpeed, setImageMotionSpeed] = useState<ArticleElementMotionSpeed>(
+    article?.imageMotionSpeed ?? "inherit",
+  );
+  const [linkMotionEffect, setLinkMotionEffect] = useState<ArticleElementMotionEffect>(
+    article?.linkMotionEffect ?? "inherit",
+  );
+  const [linkMotionSpeed, setLinkMotionSpeed] = useState<ArticleElementMotionSpeed>(
+    article?.linkMotionSpeed ?? "inherit",
+  );
   const imageAssets = useMemo(
     () => assets.filter((asset) => asset.mimeType.startsWith("image/") || asset.previewHref),
     [assets],
@@ -731,6 +859,14 @@ export function ProjectArticleEditorForm({
       contactPhone: getValue(formData, "contactPhone"),
       motionPreset: getValue(formData, "motionPreset"),
       motionSpeed: getValue(formData, "motionSpeed"),
+      titleMotionEffect: getValue(formData, "titleMotionEffect"),
+      titleMotionSpeed: getValue(formData, "titleMotionSpeed"),
+      textBoxMotionEffect: getValue(formData, "textBoxMotionEffect"),
+      textBoxMotionSpeed: getValue(formData, "textBoxMotionSpeed"),
+      imageMotionEffect: getValue(formData, "imageMotionEffect"),
+      imageMotionSpeed: getValue(formData, "imageMotionSpeed"),
+      linkMotionEffect: getValue(formData, "linkMotionEffect"),
+      linkMotionSpeed: getValue(formData, "linkMotionSpeed"),
       status: getValue(formData, "status"),
     };
 
@@ -1122,7 +1258,7 @@ export function ProjectArticleEditorForm({
           </div>
           <div className="mt-4 grid gap-4 xl:grid-cols-2">
             <div>
-              <FieldLabel>그래픽 효과</FieldLabel>
+              <FieldLabel>그래픽 효과 기본값</FieldLabel>
               <select
                 name="motionPreset"
                 value={selectedMotionPreset}
@@ -1144,7 +1280,7 @@ export function ProjectArticleEditorForm({
               </div>
             </div>
             <div>
-              <FieldLabel>효과 속도</FieldLabel>
+              <FieldLabel>효과 속도 기본값</FieldLabel>
               <select
                 name="motionSpeed"
                 value={selectedMotionSpeed}
@@ -1169,12 +1305,68 @@ export function ProjectArticleEditorForm({
           <p className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold leading-5 text-slate-600">
             효과는 모바일 기사 화면과 작성자 모바일 미리보기에만 적용됩니다.
           </p>
+          <details className="mt-4 rounded-lg border border-[#d8e8ff] bg-[#eef6ff] p-3">
+            <summary className="cursor-pointer text-sm font-black text-[#092046]">
+              세부 효과 설정
+              <span className="ml-2 text-xs font-bold text-slate-500">요소별로 기본값을 덮어씁니다.</span>
+            </summary>
+            <div className="mt-3 grid gap-3 xl:grid-cols-2">
+              <ElementMotionSettingRow
+                effectName="titleMotionEffect"
+                effectOptions={titleMotionEffectOptions}
+                effectValue={titleMotionEffect}
+                label="타이틀 효과"
+                onEffectChange={setTitleMotionEffect}
+                onSpeedChange={setTitleMotionSpeed}
+                speedName="titleMotionSpeed"
+                speedValue={titleMotionSpeed}
+              />
+              <ElementMotionSettingRow
+                effectName="textBoxMotionEffect"
+                effectOptions={textBoxMotionEffectOptions}
+                effectValue={textBoxMotionEffect}
+                label="텍스트 박스 효과"
+                onEffectChange={setTextBoxMotionEffect}
+                onSpeedChange={setTextBoxMotionSpeed}
+                speedName="textBoxMotionSpeed"
+                speedValue={textBoxMotionSpeed}
+              />
+              <ElementMotionSettingRow
+                effectName="imageMotionEffect"
+                effectOptions={imageMotionEffectOptions}
+                effectValue={imageMotionEffect}
+                label="이미지 효과"
+                onEffectChange={setImageMotionEffect}
+                onSpeedChange={setImageMotionSpeed}
+                speedName="imageMotionSpeed"
+                speedValue={imageMotionSpeed}
+              />
+              <ElementMotionSettingRow
+                effectName="linkMotionEffect"
+                effectOptions={linkMotionEffectOptions}
+                effectValue={linkMotionEffect}
+                label="URL 버튼 효과"
+                onEffectChange={setLinkMotionEffect}
+                onSpeedChange={setLinkMotionSpeed}
+                speedName="linkMotionSpeed"
+                speedValue={linkMotionSpeed}
+              />
+            </div>
+          </details>
           <div className="mt-4">
             <ArticleMotionPreviewCard
+              imageEffect={imageMotionEffect}
+              imageSpeed={imageMotionSpeed}
+              linkEffect={linkMotionEffect}
+              linkSpeed={linkMotionSpeed}
               preset={selectedMotionPreset}
               speed={selectedMotionSpeed}
               summary={motionPreviewSummary}
+              textBoxEffect={textBoxMotionEffect}
+              textBoxSpeed={textBoxMotionSpeed}
               title={motionPreviewTitle}
+              titleEffect={titleMotionEffect}
+              titleSpeed={titleMotionSpeed}
             />
           </div>
         </div>
