@@ -68,7 +68,7 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
     return (
       <PublicUnavailablePage
         title="아직 공개 전입니다."
-        message="이 모바일 e-book은 현재 제작 또는 검수 중입니다. 발행 완료 처리 후 공개 화면이 열립니다."
+        message="이 모바일 e-book은 현재 제작 또는 검수 중입니다. 발행하기 완료 후 공개 화면이 열립니다."
       />
     );
   }

@@ -214,7 +214,7 @@ export function ProjectPublishCompletionPanel({
           disabled={isPublishing}
           className="dd-btn dd-btn-primary dd-btn-lg shrink-0 rounded-xl px-6 py-4 text-base"
         >
-          {isPublishing ? "발행 중..." : published ? "발행 정보 갱신" : "발행하기"}
+          {isPublishing ? "발행 중..." : published ? "다시 발행하기" : "발행하기"}
         </button>
       </div>
 

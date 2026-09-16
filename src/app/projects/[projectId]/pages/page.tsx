@@ -43,7 +43,7 @@ const imagePageAssemblySteps = [
   {
     label: "3. 공개 URL·QR",
     title: "발행 후 그대로 배포",
-    detail: "발행 완료 처리 후 공개 URL과 QR로 고객·독자에게 전달합니다.",
+    detail: "발행하기 완료 후 공개 URL과 QR로 고객·독자에게 전달합니다.",
   },
 ];
 
