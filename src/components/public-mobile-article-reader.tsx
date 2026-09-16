@@ -557,19 +557,16 @@ function ArticleCard({
       data-motion-speed={motionSpeed}
       style={fontStyle}
     >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-black text-[#184a88]">
-          {article.pageNumber ? `${article.pageNumber}쪽` : `${index + 1}번 기사`}
-        </p>
-        {showAdminPreviewControls ? (
+      {showAdminPreviewControls ? (
+        <div className="flex justify-end">
           <Link
             href={`/projects/${slug}/reading?articleId=${article.id}`}
             className="dd-btn dd-btn-secondary dd-btn-sm rounded-full text-xs"
           >
             수정
           </Link>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <div
         key={`article-title-${article.id}-${motionPreset}-${motionSpeed}-${motionSettings.title.effect}-${motionSettings.title.speed}`}
         className={`article-title-motion ${articleMotionSpeedClassNames[motionSettings.title.speed]}`}
@@ -594,7 +591,7 @@ function ArticleCard({
                       {character}
                     </span>
                   ))}
-                  {tokenIndex < titleMotionTokens.length - 1 ? "\u00A0" : null}
+                  {tokenIndex < titleMotionTokens.length - 1 ? " " : null}
                 </span>
               ))
             : articleTitle}

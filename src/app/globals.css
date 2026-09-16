@@ -496,21 +496,37 @@ select {
 
 .public-newsletter-screen .public-article-title {
   font-family: var(--newsletter-title-font, var(--font-app-sans, system-ui, sans-serif));
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   text-align: left;
+  text-wrap: balance;
   word-break: keep-all;
 }
 
 .public-newsletter-screen .article-motion-summary,
 .public-newsletter-screen .article-motion-content-block {
   font-family: var(--newsletter-body-font, var(--font-app-sans, system-ui, sans-serif));
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .public-newsletter-screen .article-motion-caption {
   font-family: var(--newsletter-caption-font, var(--newsletter-body-font, var(--font-app-sans, system-ui, sans-serif)));
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .public-newsletter-screen .article-motion-link-button {
   font-family: var(--newsletter-button-font, var(--newsletter-body-font, var(--font-app-sans, system-ui, sans-serif)));
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .public-mobile-article-reader .public-article-index-title {
@@ -525,8 +541,46 @@ select {
 
 .public-mobile-article-reader .article-title-motion {
   margin-top: 1rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
   padding-bottom: 0.8rem;
   position: relative;
+}
+
+.public-mobile-article-reader .public-article-card > .article-title-motion:first-child {
+  margin-top: 0;
+}
+
+.public-mobile-article-reader .public-article-card,
+.public-mobile-article-reader .public-article-content {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.public-mobile-article-reader .public-article-title {
+  font-size: clamp(1.5rem, 7.5vw, 2.5rem);
+  line-break: strict;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.public-mobile-article-reader :where(
+  .article-motion-summary,
+  .public-article-body,
+  .public-article-paragraph,
+  .public-article-sentence,
+  .article-motion-caption,
+  .article-motion-content-block,
+  .article-motion-link-button
+) {
+  line-break: strict;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .public-mobile-article-reader .article-title-motion::after {
@@ -606,7 +660,7 @@ select {
 
 .public-mobile-article-reader .article-title-motion-char {
   display: inline-block;
-  white-space: pre;
+  white-space: normal;
 }
 
 .public-mobile-article-reader .article-title-motion[data-motion-effect="char_by_char"] .article-title-motion-char {
@@ -616,8 +670,10 @@ select {
 .public-mobile-article-reader .article-title-motion-token {
   display: inline-block;
   max-width: 100%;
+  overflow-wrap: anywhere;
   vertical-align: baseline;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: keep-all;
 }
 
 .public-mobile-article-reader :where(.article-motion-reveal[data-motion-ready="true"], .article-motion-preview-card) .article-motion-summary[data-motion-effect="fade_up"] {
@@ -834,6 +890,16 @@ select {
 [data-public-text-scale="xlarge"] .public-newsletter-screen [data-public-text-scale-target="article-title"] {
   font-size: clamp(2.375rem, 10vw, 3.25rem);
   line-height: 1.15;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen .public-mobile-article-reader [data-public-text-scale-target="article-title"] {
+  font-size: clamp(2rem, 9.5vw, 3.4rem);
+  line-height: 1.16;
+}
+
+[data-public-text-scale="xlarge"] .public-newsletter-screen .public-mobile-article-reader [data-public-text-scale-target="article-title"] {
+  font-size: clamp(2.25rem, 10.5vw, 3.75rem);
+  line-height: 1.12;
 }
 
 [data-public-text-scale="large"] .public-newsletter-screen [data-public-text-scale-target="article-summary"] {
