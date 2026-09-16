@@ -1,36 +1,12 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
 import { HomeButton } from "@/components/home-button";
 import { StatusPill } from "@/components/status-pill";
 import { filterProjectsForUser, requireAppUser } from "@/lib/app-auth";
 import { getPublishQueueProjects } from "@/lib/newsletter-repository";
-
-function getSiteOrigin() {
-  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
-
-  if (configuredOrigin) {
-    return configuredOrigin.replace(/\/$/, "");
-  }
-
-  const vercelUrl = process.env.VERCEL_URL?.trim();
-
-  if (vercelUrl) {
-    return `https://${vercelUrl}`;
-  }
-
-  return "";
-}
-
-function makeAbsoluteUrl(path: string) {
-  if (/^https?:\/\//.test(path)) {
-    return path;
-  }
-
-  const origin = getSiteOrigin();
-
-  return origin ? `${origin}${path.startsWith("/") ? path : `/${path}`}` : path;
-}
+import { getAbsoluteSiteUrl, getRequestOriginFromHeaders } from "@/lib/site-url";
 
 function splitDateTime(value: string) {
   const [date, time] = value.split(" ");
@@ -55,6 +31,7 @@ function readinessPercent(readyCount: number, totalCount: number) {
 
 export default async function DistributionProjectsPage() {
   const user = await requireAppUser("/projects/distribution");
+  const requestOrigin = getRequestOriginFromHeaders(await headers());
   const publishData = await getPublishQueueProjects();
   const projects = filterProjectsForUser(
     publishData.projects.filter((project) => project.status !== "삭제됨"),
@@ -161,8 +138,8 @@ export default async function DistributionProjectsPage() {
               )}
 
               {publishedProjects.map((project) => {
-                const publicUrl = makeAbsoluteUrl(`/newsletters/${project.slug}`);
-                const ebookUrl = makeAbsoluteUrl(`/newsletters/${project.slug}/ebook`);
+                const publicUrl = getAbsoluteSiteUrl(`/newsletters/${project.slug}`, requestOrigin);
+                const ebookUrl = getAbsoluteSiteUrl(`/newsletters/${project.slug}/ebook`, requestOrigin);
                 const qrHref = `/api/qr?value=${encodeURIComponent(publicUrl)}`;
                 const updated = splitDateTime(project.updated);
                 const percent = readinessPercent(project.readiness.readyCount, project.readiness.totalCount);

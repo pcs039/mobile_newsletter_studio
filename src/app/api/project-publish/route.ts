@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { updateNewsletterProjectStatus } from "@/lib/newsletter-repository";
+import { getAbsoluteSiteUrl, getCanonicalSiteOrigin } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
 function asText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-function getRequestOrigin(request: Request) {
-  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
-
-  if (configuredOrigin) {
-    return configuredOrigin.replace(/\/$/, "");
-  }
-
-  const url = new URL(request.url);
-
-  return url.origin;
 }
 
 export async function POST(request: Request) {
@@ -50,7 +39,8 @@ export async function POST(request: Request) {
     });
   }
 
-  const origin = getRequestOrigin(request);
+  const requestOrigin = new URL(request.url).origin;
+  const origin = getCanonicalSiteOrigin(requestOrigin);
   const publicUrl = `/newsletters/${result.project.slug}`;
   const ebookUrl = `/newsletters/${result.project.slug}/ebook`;
   const publishedAt = new Date().toISOString();
@@ -58,10 +48,10 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     ebookUrl,
-    ebookUrlAbsolute: `${origin}${ebookUrl}`,
+    ebookUrlAbsolute: getAbsoluteSiteUrl(ebookUrl, origin),
     project: result.project,
     publicUrl,
-    publicUrlAbsolute: `${origin}${publicUrl}`,
+    publicUrlAbsolute: getAbsoluteSiteUrl(publicUrl, origin),
     publishedAt,
   });
 }
