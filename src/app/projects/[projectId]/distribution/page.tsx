@@ -1,36 +1,12 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { ProjectDistributionCopyTools } from "@/components/project-distribution-copy-tools";
 import { ProjectDistributionForm } from "@/components/project-distribution-form";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectSendCampaignActions } from "@/components/project-send-campaign-actions";
 import { StatusPill } from "@/components/status-pill";
 import { getProjectDistribution, getProjectWorkspace } from "@/lib/newsletter-repository";
-
-function getSiteOrigin() {
-  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
-
-  if (configuredOrigin) {
-    return configuredOrigin.replace(/\/$/, "");
-  }
-
-  const vercelUrl = process.env.VERCEL_URL?.trim();
-
-  if (vercelUrl) {
-    return `https://${vercelUrl}`;
-  }
-
-  return "";
-}
-
-function makeAbsoluteUrl(path: string) {
-  if (/^https?:\/\//.test(path)) {
-    return path;
-  }
-
-  const origin = getSiteOrigin();
-
-  return origin ? `${origin}${path.startsWith("/") ? path : `/${path}`}` : path;
-}
+import { getAbsoluteSiteUrl, getRequestOriginFromHeaders } from "@/lib/site-url";
 
 function splitDateTime(value: string) {
   const [date, time] = value.split(" ");
@@ -43,12 +19,13 @@ function splitDateTime(value: string) {
 
 export default async function ProjectDistributionPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const requestOrigin = getRequestOriginFromHeaders(await headers());
   const [workspace, distribution] = await Promise.all([
     getProjectWorkspace(projectId),
     getProjectDistribution(projectId),
   ]);
   const project = workspace.project;
-  const publicUrl = makeAbsoluteUrl(project?.publicUrl ?? `/newsletters/${projectId}`);
+  const publicUrl = getAbsoluteSiteUrl(project?.publicUrl ?? `/newsletters/${projectId}`, requestOrigin);
   const qrHref = `/api/qr?value=${encodeURIComponent(publicUrl)}`;
   const totalRecipients = distribution.groups.reduce((total, group) => total + group.recipientCount, 0);
   const sentCampaigns = distribution.campaigns.filter((campaign) => campaign.status === "발송 완료");

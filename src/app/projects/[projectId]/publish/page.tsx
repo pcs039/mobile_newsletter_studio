@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectPublishCompletionPanel } from "@/components/project-publish-completion-panel";
 import { StatusPill } from "@/components/status-pill";
@@ -9,25 +10,10 @@ import {
   getProjectPageImages,
   getProjectWorkspace,
 } from "@/lib/newsletter-repository";
+import { getAbsoluteSiteUrl, getRequestOriginFromHeaders } from "@/lib/site-url";
 
 function getReadinessStatus(done: boolean, label = "완료") {
   return done ? label : "보완 필요";
-}
-
-function getSiteOrigin() {
-  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
-
-  if (configuredOrigin) {
-    return configuredOrigin.replace(/\/$/, "");
-  }
-
-  const vercelUrl = process.env.VERCEL_URL?.trim();
-
-  if (vercelUrl) {
-    return `https://${vercelUrl}`;
-  }
-
-  return "";
 }
 
 type PublishChecklistStatus = "완료" | "주의" | "미완료";
@@ -78,6 +64,7 @@ function hasArticleBody(article: { body: string; blocks: Array<{ type: string; b
 
 export default async function PublishPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
+  const requestOrigin = getRequestOriginFromHeaders(await headers());
   const [workspace, contentData, pageImageData, originalPdfData, audioData] = await Promise.all([
     getProjectWorkspace(projectId),
     getProjectContent(projectId),
@@ -140,8 +127,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     { label: "최종 수정", value: project?.updated ?? "-" },
   ];
   const publicUrl = project?.publicUrl ?? `/newsletters/${projectId}`;
-  const siteOrigin = getSiteOrigin();
-  const publicUrlAbsolute = siteOrigin ? `${siteOrigin}${publicUrl}` : publicUrl;
+  const publicUrlAbsolute = getAbsoluteSiteUrl(publicUrl, requestOrigin);
   const ebookUrl = project?.ebookUrl ?? `/newsletters/${projectId}/ebook`;
   const publicQrTarget = publicUrlAbsolute;
   const publicQrHref = `/api/qr?value=${encodeURIComponent(publicQrTarget)}`;

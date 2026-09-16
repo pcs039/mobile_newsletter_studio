@@ -81,7 +81,11 @@ function saveTextScalePreference(scale: PublicTextScale) {
   textScaleListeners.forEach((listener) => listener());
 }
 
-export function PublicTextSizeToggle() {
+type PublicTextSizeToggleProps = {
+  compact?: boolean;
+};
+
+export function PublicTextSizeToggle({ compact = false }: PublicTextSizeToggleProps = {}) {
   const textScale: PublicTextScale = useSyncExternalStore<PublicTextScale>(
     subscribeToTextScalePreference,
     readTextScalePreference,
@@ -91,6 +95,35 @@ export function PublicTextSizeToggle() {
   useEffect(() => {
     applyTextScale(textScale);
   }, [textScale]);
+
+  if (compact) {
+    return (
+      <div className="public-text-size-toggle flex w-full items-center gap-2 rounded-xl border border-[#2f73b7] bg-white p-1.5 shadow-sm shadow-blue-950/10">
+        <p className="shrink-0 px-1 text-xs font-black text-[#184a88]">글자</p>
+        <div className="grid min-w-0 flex-1 grid-cols-3 gap-1" role="group" aria-label="글자 크기">
+          {textScaleOptions.map((option) => {
+            const isSelected = option.value === textScale;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={isSelected}
+                aria-label={`글자 크기 ${option.accessibleLabel}`}
+                title={`글자 크기 ${option.accessibleLabel}`}
+                onClick={() => saveTextScalePreference(option.value as PublicTextScale)}
+                className={`public-text-size-option inline-flex min-h-9 items-center justify-center rounded-lg px-1.5 py-1.5 text-xs font-black transition focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[#2f73b7] ${
+                  isSelected ? "bg-[#092046] text-white" : "bg-[#eaf3ff] text-[#092046] hover:bg-[#d8eaff]"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="public-text-size-toggle w-full max-w-[360px] rounded-2xl border border-[#2f73b7] bg-white p-2 shadow-sm shadow-blue-950/10">

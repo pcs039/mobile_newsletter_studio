@@ -197,6 +197,9 @@ export function ProjectPublishCompletionPanel({
           <p className="mt-2 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">
             발행하면 공개 URL과 QR코드가 표시됩니다. 발행 후에도 수정할 수 있으며 공개 URL은 유지됩니다.
           </p>
+          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
+            공개 배포용 URL은 production domain 기준으로 생성됩니다. Vercel preview URL은 외부 사용자에게 로그인을 요구할 수 있습니다.
+          </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className={`rounded-full px-3 py-1 text-xs font-black ${published ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
               {published ? "발행 완료" : currentStatus || "작성 중"}

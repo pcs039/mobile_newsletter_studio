@@ -118,7 +118,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const pageImages = pageImageData.pages.filter((page) => page.previewHref);
   const hotspotLinks = hotspotData.links;
   const isImagePageMode = project?.productionMode === "이미지 페이지형";
-  const ebookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
+  const ebookDesktopHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
+  const ebookMobileHref = isAdminPreview ? `/newsletters/${slug}/ebook/mobile?preview=admin` : `/newsletters/${slug}/ebook/mobile`;
   const headerColor = project?.primaryColor ?? "#071f46";
   const publicAudioFile = audioData.files[0] ?? null;
   const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
@@ -150,9 +151,6 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
       )}
       <section className="mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10">
         <header className="px-5 pb-7 pt-7 text-white" style={{ backgroundColor: headerColor }}>
-          <div className="mb-5 flex justify-end">
-            <PublicTextSizeToggle />
-          </div>
           <p className="text-sm font-semibold text-sky-200">{project?.organization ?? "프로젝트 정보 확인 필요"}</p>
           <h1 className="mt-3 text-3xl font-black leading-tight">{project?.title ?? slug}</h1>
           <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
@@ -160,7 +158,10 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           <div className="mt-5 flex gap-2">
             {!isEmbeddedAdminPreview ? (
               <>
-                <Link href={ebookHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046]">
+                <Link href={ebookMobileHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:hidden">
+                  e-book 보기
+                </Link>
+                <Link href={ebookDesktopHref} className="hidden rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:inline-flex">
                   e-book 보기
                 </Link>
               </>
@@ -222,16 +223,21 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               ))}
             </section>
           ) : articles.length > 0 ? (
-            <PublicMobileArticleReader
-              articles={articles}
-              fontAssets={fontData.fonts}
-              initialArticleId={previewArticleId}
-              projectBodyFontAssetId={project?.bodyFontAssetId}
-              projectTitleFontAssetId={project?.titleFontAssetId}
-              publicAudio={publicAudioSrc ? { src: publicAudioSrc, title: publicAudioFile?.title } : undefined}
-              showAdminPreviewControls={showAdminPreviewControls}
-              slug={slug}
-            />
+            <>
+              <div className="sticky top-2 z-20 rounded-2xl border border-[#b8d7ff] bg-white/95 p-2 shadow-lg shadow-blue-950/10 backdrop-blur">
+                <PublicTextSizeToggle compact />
+              </div>
+              <PublicMobileArticleReader
+                articles={articles}
+                fontAssets={fontData.fonts}
+                initialArticleId={previewArticleId}
+                projectBodyFontAssetId={project?.bodyFontAssetId}
+                projectTitleFontAssetId={project?.titleFontAssetId}
+                publicAudio={publicAudioSrc ? { src: publicAudioSrc, title: publicAudioFile?.title } : undefined}
+                showAdminPreviewControls={showAdminPreviewControls}
+                slug={slug}
+              />
+            </>
           ) : (
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
               <p className="text-sm font-black text-[#092046]">
