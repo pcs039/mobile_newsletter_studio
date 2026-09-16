@@ -628,6 +628,7 @@ type NewsletterArticleRow = {
   page_id: string | null;
   sort_order: number;
   title: string;
+  display_title: string | null;
   summary: string | null;
   body: string | null;
   contact_name: string | null;
@@ -915,6 +916,7 @@ export type ProjectContentArticle = {
   pageNumber: number | null;
   sortOrder: number;
   title: string;
+  displayTitle: string;
   summary: string;
   body: string;
   contactName: string;
@@ -952,6 +954,7 @@ export type UpsertProjectArticleInput = {
   sourcePageNumber?: number;
   sortOrder?: number;
   title: string;
+  displayTitle?: string;
   summary?: string;
   body?: string;
   contentSections?: Array<{
@@ -1881,6 +1884,7 @@ function mapArticleRowToProjectContentArticle(
     pageNumber: article.page_id ? pageNumberById.get(article.page_id) ?? null : null,
     sortOrder: article.sort_order,
     title: article.title,
+    displayTitle: article.display_title || "",
     summary: article.summary || "",
     body: article.body || "",
     contactName: article.contact_name || "",
@@ -4375,7 +4379,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,summary,body,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -4785,6 +4789,7 @@ export async function upsertProjectArticle(
       page_id: resolvedPageId,
       sort_order: normalizeArticleSortOrder(input.sortOrder),
       title,
+      display_title: nullableText(input.displayTitle),
       summary: nullableText(input.summary),
       body: nullableText(input.body),
       contact_name: nullableText(input.contactName),

@@ -99,6 +99,7 @@ export async function POST(request: Request) {
     sourcePageNumber: asOptionalNumber(payload.sourcePageNumber),
     sortOrder: asOptionalNumber(payload.sortOrder),
     title: asText(payload.title),
+    displayTitle: asText(payload.displayTitle),
     summary: asText(payload.summary),
     body: asText(payload.body),
     contentSections: asContentSections(payload.contentSections),
