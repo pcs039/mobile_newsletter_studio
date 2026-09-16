@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
+import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import {
   getProjectAudioFiles,
   getProjectContent,
+  getFontAssets,
   getProjectPageHotspotLinks,
   getProjectPageImages,
   getPublicProjectSurveys,
@@ -71,13 +73,14 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const backToEditorHref = previewArticleId
     ? `/projects/${slug}/reading?articleId=${previewArticleId}`
     : `/projects/${slug}/reading`;
-  const [workspace, contentData, pageImageData, hotspotData, surveyData, audioData] = await Promise.all([
+  const [workspace, contentData, pageImageData, hotspotData, surveyData, audioData, fontData] = await Promise.all([
     getProjectWorkspace(slug),
     getProjectContent(slug),
     getProjectPageImages(slug),
     getProjectPageHotspotLinks(slug),
     getPublicProjectSurveys(slug),
     getProjectAudioFiles(slug),
+    getFontAssets({ activeOnly: true }),
   ]);
   const project = workspace.project;
   const isPublished = project?.status === "발행 완료";
@@ -96,7 +99,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     return (
       <PublicUnavailablePage
         title="아직 공개 전입니다."
-        message="이 소식지는 현재 제작 또는 검수 중입니다. 발행 완료 처리 후 공개 화면이 열립니다."
+        message="이 소식지는 현재 제작 또는 검수 중입니다. 발행하기 완료 후 공개 화면이 열립니다."
       />
     );
   }
@@ -114,6 +117,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
 
   return (
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
+      <PublicFontFaceStyle fonts={fontData.fonts} />
       <NewsletterViewTracker slug={slug} viewMode="reading" disabled={isAdminPreview || !isPublished} />
       {showAdminPreviewControls && (
         <div className="border-b border-slate-300 bg-white px-3 py-2 shadow-sm md:sticky md:top-0 md:z-20 md:bg-white/95 md:px-4 md:py-3 md:backdrop-blur">
@@ -212,7 +216,10 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           ) : articles.length > 0 ? (
             <PublicMobileArticleReader
               articles={articles}
+              fontAssets={fontData.fonts}
               initialArticleId={previewArticleId}
+              projectBodyFontAssetId={project?.bodyFontAssetId}
+              projectTitleFontAssetId={project?.titleFontAssetId}
               publicAudio={publicAudioSrc ? { src: publicAudioSrc, title: publicAudioFile?.title } : undefined}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}

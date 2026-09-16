@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
-import { ProjectPublishStatusControls } from "@/components/project-publish-status-controls";
+import { ProjectPublishCompletionPanel } from "@/components/project-publish-completion-panel";
 import { StatusPill } from "@/components/status-pill";
 import {
   getProjectAudioFiles,
@@ -139,9 +139,11 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     { label: "공개 상태", value: project?.status ?? "프로젝트 확인 필요" },
     { label: "최종 수정", value: project?.updated ?? "-" },
   ];
-  const isReadyToPublish = readyCount === readinessItems.length;
   const publicUrl = project?.publicUrl ?? `/newsletters/${projectId}`;
-  const publicQrTarget = `${getSiteOrigin()}${publicUrl}`;
+  const siteOrigin = getSiteOrigin();
+  const publicUrlAbsolute = siteOrigin ? `${siteOrigin}${publicUrl}` : publicUrl;
+  const ebookUrl = project?.ebookUrl ?? `/newsletters/${projectId}/ebook`;
+  const publicQrTarget = publicUrlAbsolute;
   const publicQrHref = `/api/qr?value=${encodeURIComponent(publicQrTarget)}`;
   const projectPageCount = project?.pageCount ?? 0;
   const registeredPageCount = pageImageData.pages.length;
@@ -291,7 +293,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       active="publish"
       projectId={projectId}
       title="검수·발행"
-      description="공개 전 상태를 최종 확인합니다."
+      description="발행 전 최종 확인 후 공개 URL과 QR코드를 생성합니다."
       sidebarTitle={
         <>
           검수
@@ -333,6 +335,56 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     >
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
         <section className="space-y-5">
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">발행 상태 요약</p>
+                <h3 className="mt-1 text-xl font-black text-[#092046]">
+                  {project?.statusCode === "published" ? "발행 완료" : hasBlockingChecklistIssues ? "발행 전 확인 필요" : "발행 가능 상태"}
+                </h3>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">
+                  검수 결과를 확인하고 발행하기를 누르면 공개 URL과 QR코드가 활성화됩니다.
+                </p>
+              </div>
+              <span
+                className={`inline-flex self-start rounded-full px-3 py-1 text-xs font-black ${
+                  project?.statusCode === "published"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : hasBlockingChecklistIssues
+                      ? "bg-rose-100 text-rose-800"
+                      : "bg-emerald-100 text-emerald-800"
+                }`}
+              >
+                {project?.statusCode === "published" ? "발행 완료" : hasBlockingChecklistIssues ? "검수 필요" : "발행 가능"}
+              </span>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              {[
+                { label: "현재 상태", value: project?.status ?? "작성 중" },
+                { label: "공개 URL", value: publicUrl },
+                { label: "e-book URL", value: ebookUrl },
+                { label: "최종 수정", value: project?.updated ?? "-" },
+                { label: "발행일시", value: project?.publishedAt || "미발행" },
+              ].map((item) => (
+                <div key={item.label} className="min-w-0 rounded-xl border border-slate-200 bg-[#f8fbff] px-4 py-3">
+                  <p className="text-xs font-black text-[#184a88]">{item.label}</p>
+                  <p className="mt-1 break-words text-sm font-black leading-6 text-[#092046]">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <ProjectPublishCompletionPanel
+            currentStatus={project?.status ?? "작성 중"}
+            ebookUrl={ebookUrl}
+            hasChecklistIssues={hasBlockingChecklistIssues}
+            initialPublishedAt={project?.publishedAt ?? ""}
+            isPublished={project?.statusCode === "published"}
+            projectId={projectId}
+            publicUrl={publicUrl}
+            publicUrlAbsolute={publicUrlAbsolute}
+          />
+
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -515,39 +567,6 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
                   <p className="mt-1 break-words text-sm font-bold text-slate-700">{item.value}</p>
                 </div>
               ))}
-            </div>
-          </article>
-
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-bold text-[#092046]">QR 코드</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">공개 URL 기준 QR</p>
-              </div>
-              <div className="shrink-0 rounded-lg border border-slate-200 bg-white p-2">
-                <img src={publicQrHref} alt={`${project?.title ?? projectId} 공개 URL QR`} className="h-28 w-28" />
-              </div>
-            </div>
-            <p className="mt-4 break-all rounded-lg bg-slate-50 px-3 py-2 text-xs font-bold leading-5 text-slate-600">
-              {publicQrTarget || publicUrl}
-            </p>
-            <a
-              href={publicQrHref}
-              download
-              className="mt-3 inline-flex w-full justify-center rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
-            >
-              QR SVG 다운로드
-            </a>
-          </article>
-
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-bold text-[#092046]">공개 상태 변경</h3>
-            <div className="mt-3">
-              <ProjectPublishStatusControls
-                currentStatus={project?.status ?? "확인 필요"}
-                isReady={isReadyToPublish}
-                projectId={projectId}
-              />
             </div>
           </article>
         </aside>

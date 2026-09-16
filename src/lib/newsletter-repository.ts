@@ -5107,7 +5107,7 @@ export async function updateNewsletterProjectStatus(
       return {
         ok: false,
         status: "request_failed",
-        message: responseText || "Supabase 공개 상태 변경 요청에 실패했습니다.",
+        message: responseText || "Supabase 프로젝트 상태 저장 요청에 실패했습니다.",
         httpStatus: response.status,
       };
     }
@@ -5133,7 +5133,7 @@ export async function updateNewsletterProjectStatus(
     return {
       ok: false,
       status: "request_failed",
-      message: "Supabase 공개 상태 변경 중 오류가 발생했습니다.",
+      message: "Supabase 프로젝트 상태 저장 중 오류가 발생했습니다.",
     };
   }
 }

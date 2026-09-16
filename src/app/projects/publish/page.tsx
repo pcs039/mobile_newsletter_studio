@@ -194,7 +194,7 @@ export default async function PublishProjectsPage() {
                             href={`/projects/${project.slug}/publish`}
                             className="inline-flex h-10 items-center justify-center rounded-md border border-[#2f73b7] bg-white px-3 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
                           >
-                            발행 상세
+                            {project.status === "발행 완료" ? "발행 관리" : "검수·발행하기"}
                           </Link>
                           <Link
                             href={project.actions.previewHref}

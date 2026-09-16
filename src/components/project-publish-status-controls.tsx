@@ -11,17 +11,17 @@ type ProjectPublishStatusControlsProps = {
 
 const statusOptions = [
   {
-    label: "검수 중으로 변경",
+    label: "관리자용 검수 상태 저장",
     status: "in_review",
     tone: "border-[#2f73b7] bg-white text-[#092046] hover:bg-[#eaf3ff]",
   },
   {
-    label: "비공개로 전환",
+    label: "관리자용 비공개 저장",
     status: "private",
     tone: "border-slate-300 bg-white text-slate-700 hover:border-[#184a88] hover:bg-[#f4f8ff]",
   },
   {
-    label: "발행 완료 처리",
+    label: "발행하기",
     status: "published",
     tone: "border-[#092046] bg-[#092046] text-white shadow-sm hover:bg-[#123a78]",
   },
@@ -40,7 +40,7 @@ export function ProjectPublishStatusControls({
   async function updateStatus(status: (typeof statusOptions)[number]["status"]) {
     if (status === "published" && !isReady) {
       const confirmed = window.confirm(
-        "아직 모든 발행 준비 항목이 완료되지 않았습니다. 그래도 발행 완료로 변경할까요?",
+        "아직 모든 발행 준비 항목이 완료되지 않았습니다. 그래도 발행할까요?",
       );
 
       if (!confirmed) {
@@ -68,12 +68,12 @@ export function ProjectPublishStatusControls({
     if (!response.ok || !result?.ok) {
       setPendingStatus(null);
       setIsError(true);
-      setMessage(result?.message ?? "공개 상태 변경에 실패했습니다.");
+      setMessage(result?.message ?? "상태 저장에 실패했습니다.");
       return;
     }
 
     setPendingStatus(null);
-    setMessage("공개 상태를 저장했습니다.");
+    setMessage("상태를 저장했습니다.");
     router.refresh();
   }
 
