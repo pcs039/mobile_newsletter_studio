@@ -4,6 +4,7 @@ import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-p
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
+import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import {
   getProjectAudioFiles,
   getProjectContent,
@@ -37,6 +38,10 @@ function getHotspotsForPage(links: ProjectPageHotspotLink[], pageId: string) {
   return links
     .filter((link) => link.pageId === pageId && link.isVisible)
     .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function hasPublicArticleTitle(article: { displayTitle?: string | null; title?: string | null }) {
+  return Boolean(getDisplayArticleTitle(article, "").trim());
 }
 
 function PublicUnavailablePage({
@@ -104,9 +109,12 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     );
   }
 
-  const articles = contentData.articles.filter((article) =>
-    isAdminPreview ? true : article.status === "approved" || article.status === "published",
-  );
+  const articles = contentData.articles.filter(hasPublicArticleTitle);
+  console.info("[public-newsletter] article visibility", {
+    rawArticleCount: contentData.articles.length,
+    slug,
+    visibleArticleCount: articles.length,
+  });
   const pageImages = pageImageData.pages.filter((page) => page.previewHref);
   const hotspotLinks = hotspotData.links;
   const isImagePageMode = project?.productionMode === "이미지 페이지형";
