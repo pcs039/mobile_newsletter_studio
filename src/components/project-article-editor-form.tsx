@@ -1619,6 +1619,13 @@ export function ProjectArticleEditorForm({
           새 기사 입력
         </button>
         <button
+          type="button"
+          onClick={() => router.push(`/projects/${projectSlug}/publish`)}
+          className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+        >
+          검수·발행으로 이동
+        </button>
+        <button
           type="submit"
           disabled={isSaving}
           className="rounded-lg bg-[#092046] px-6 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#123a78] disabled:cursor-not-allowed disabled:bg-slate-400"

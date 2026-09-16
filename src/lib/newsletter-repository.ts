@@ -2,7 +2,7 @@ import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase
 import { hashProjectPassword, verifyProjectPasswordHash } from "@/lib/project-password";
 import type { DashboardProject } from "@/types/newsletter";
 
-type ProjectStatus = "draft" | "in_review" | "published" | "private" | "archived";
+export type ProjectStatus = "draft" | "in_review" | "published" | "private" | "archived";
 type PackageTier = "basic" | "standard" | "advanced" | "premium" | "retainer";
 type ProductionMode = "template" | "hybrid" | "full_image" | "external_ebook" | "ocr_assist";
 
@@ -24,6 +24,7 @@ type NewsletterProjectRow = {
   pdf_original_path: string | null;
   pdf_original_file_name: string | null;
   pdf_original_uploaded_at: string | null;
+  published_at: string | null;
   project_password_hash: string | null;
   project_password_updated_at: string | null;
   title_font_asset_id: string | null;
@@ -389,6 +390,8 @@ export type ProjectWorkspaceInfo = {
   description: string;
   primaryColor: string;
   status: string;
+  statusCode: ProjectStatus;
+  publishedAt: string;
   packageTier: string;
   productionMode: string;
   publicUrl: string;
@@ -1045,6 +1048,7 @@ const projectSelectColumns = [
   "pdf_original_path",
   "pdf_original_file_name",
   "pdf_original_uploaded_at",
+  "published_at",
   "project_password_hash",
   "project_password_updated_at",
   "title_font_asset_id",
@@ -1575,6 +1579,8 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     description: project.description || "등록된 프로젝트 설명이 없습니다.",
     primaryColor: project.primary_color || "#092046",
     status: statusLabels[project.status],
+    statusCode: project.status,
+    publishedAt: project.published_at ? formatCompactDateTime(project.published_at) : "",
     packageTier: packageTierLabels[project.package_tier],
     productionMode: productionModeLabels[project.production_mode],
     publicUrl: `/newsletters/${project.slug}`,
