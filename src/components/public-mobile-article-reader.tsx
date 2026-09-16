@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type TouchEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type TouchEvent } from "react";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { ScrollMotionReveal } from "@/components/scroll-motion-reveal";
@@ -13,6 +13,11 @@ import {
   makeArticleTitleSegmentId,
 } from "@/lib/audio-text-sync";
 import { getFontAssetById, getFontFamilyValue } from "@/lib/font-css";
+import {
+  getDisplayArticleTitle,
+  tokenizeKoreanTitleForBreaks,
+  renderKoreanTitleWithBreaks,
+} from "@/lib/korean-title-breaks";
 import type {
   ArticleElementMotionEffect,
   ArticleElementMotionSpeed,
@@ -59,8 +64,6 @@ type ResolvedArticleMotionSettings = {
 
 const mobileReaderQuery = "(max-width: 767px)";
 const swipeThreshold = 50;
-const openingTitlePunctuation = new Set(["‘", "“", "'", "\"", "(", "[", "{"]);
-const closingTitlePunctuation = new Set(["’", "”", ")", "]", "}"]);
 const articleMotionPresetClassNames: Record<ArticleMotionPreset, string> = {
   none: "article-motion-preset-none",
   calm: "article-motion-preset-calm",
@@ -213,7 +216,7 @@ function getYoutubeId(value: string) {
 }
 
 function getArticleTitle(article: ProjectContentArticle, index: number) {
-  return article.title.trim() || `기사 ${index + 1}`;
+  return getDisplayArticleTitle(article, `기사 ${index + 1}`);
 }
 
 function normalizeArticleMotionPreset(value: string | null | undefined): ArticleMotionPreset {
@@ -269,50 +272,25 @@ function getResolvedArticleMotionSettings(
 }
 
 function getArticleTitleMotionTokens(title: string, motionSpeed: ArticleMotionSpeed) {
-  const rawTokens = title.trim().split(/\s+/).filter(Boolean);
-  const tokens: string[] = [];
-  let pendingPrefix = "";
   const speedSettings = articleMotionSpeedSettings[motionSpeed];
-
-  rawTokens.forEach((rawToken) => {
-    let token = rawToken;
-    const firstCharacter = Array.from(token)[0];
-    const isSingleOpeningPunctuation = Array.from(token).length === 1 && openingTitlePunctuation.has(token);
-    const shouldAttachToPrevious = firstCharacter ? closingTitlePunctuation.has(firstCharacter) : false;
-
-    if (isSingleOpeningPunctuation) {
-      pendingPrefix += token;
-      return;
-    }
-
-    if (pendingPrefix) {
-      token = `${pendingPrefix}${token}`;
-      pendingPrefix = "";
-    }
-
-    if (shouldAttachToPrevious && tokens.length > 0) {
-      tokens[tokens.length - 1] = `${tokens[tokens.length - 1]}${token}`;
-      return;
-    }
-
-    tokens.push(token);
-  });
-
-  if (pendingPrefix) {
-    tokens.push(pendingPrefix);
-  }
-
+  const tokens = tokenizeKoreanTitleForBreaks(title);
   let characterIndex = 0;
 
   return tokens.map((token) => ({
-    characters: Array.from(token).map((character) => {
-      const delay = Math.min(characterIndex * speedSettings.characterDelayMs, speedSettings.maxDelayMs);
+    kind: token.kind,
+    segments:
+      token.kind === "text"
+        ? token.segments.map((segment) =>
+            Array.from(segment).map((character) => {
+              const delay = Math.min(characterIndex * speedSettings.characterDelayMs, speedSettings.maxDelayMs);
 
-      characterIndex += 1;
+              characterIndex += 1;
 
-      return { character, delay };
-    }),
-    token,
+              return { character, delay };
+            }),
+          )
+        : [],
+    value: token.value,
   }));
 }
 
@@ -577,24 +555,35 @@ function ArticleCard({
           aria-label={articleTitle}
           data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
           data-public-text-scale-target="article-title"
+          title={articleTitle}
           className="public-article-title public-audio-sync-segment text-2xl font-black leading-tight text-[#092046]"
         >
           {shouldRenderCharacterTitleMotion
-            ? titleMotionTokens.map((token, tokenIndex) => (
-                <span key={`${token.token}-${tokenIndex}`} className="article-title-motion-token" aria-hidden="true">
-                  {token.characters.map(({ character, delay }, characterIndex) => (
-                    <span
-                      key={`${character}-${tokenIndex}-${characterIndex}`}
-                      className="article-title-motion-char"
-                      style={{ animationDelay: `${delay}ms` }}
-                    >
-                      {character}
-                    </span>
-                  ))}
-                  {tokenIndex < titleMotionTokens.length - 1 ? " " : null}
-                </span>
-              ))
-            : articleTitle}
+            ? titleMotionTokens.map((token, tokenIndex) => {
+                if (token.kind === "space") {
+                  return token.value;
+                }
+
+                return (
+                  <span key={`${token.value}-${tokenIndex}`} className="article-title-motion-token" aria-hidden="true">
+                    {token.segments.map((segment, segmentIndex) => (
+                      <Fragment key={`${token.value}-${tokenIndex}-${segmentIndex}`}>
+                        {segment.map(({ character, delay }, characterIndex) => (
+                          <span
+                            key={`${character}-${tokenIndex}-${segmentIndex}-${characterIndex}`}
+                            className="article-title-motion-char"
+                            style={{ animationDelay: `${delay}ms` }}
+                          >
+                            {character}
+                          </span>
+                        ))}
+                        {segmentIndex < token.segments.length - 1 ? <wbr /> : null}
+                      </Fragment>
+                    ))}
+                  </span>
+                );
+              })
+            : renderKoreanTitleWithBreaks(articleTitle)}
         </h2>
       </div>
       {article.summary ? (
@@ -809,13 +798,16 @@ export function PublicMobileArticleReader({
                     {articles.map((article, index) => {
                       const isActive = index === safeCurrentIndex;
                       const articleTitle = getArticleTitle(article, index);
+                      const originalTitle = article.title.trim() || `기사 ${index + 1}`;
+                      const titleDescription =
+                        articleTitle === originalTitle ? articleTitle : `${articleTitle} / 원문: ${originalTitle}`;
 
                       return (
                         <button
                           key={article.id}
                           type="button"
-                          aria-label={`${index + 1}번 기사: ${articleTitle}`}
-                          title={articleTitle}
+                          aria-label={`${index + 1}번 기사: ${titleDescription}`}
+                          title={titleDescription}
                           onClick={() => {
                             goToArticle(index);
                             setIsIndexOpen(false);

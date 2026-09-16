@@ -1,4 +1,5 @@
 import type { ProjectContentArticle, ProjectContentBlock } from "@/lib/newsletter-repository";
+import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 
 export type AudioTextSegment = {
   endTime: number;
@@ -165,7 +166,7 @@ export function buildAudioTextSegmentCandidates(articles: ProjectContentArticle[
   const candidates: AudioTextSegmentCandidate[] = [];
 
   articles.forEach((article) => {
-    pushCandidate(candidates, makeArticleTitleSegmentId(article.id), article.title);
+    pushCandidate(candidates, makeArticleTitleSegmentId(article.id), getDisplayArticleTitle(article));
     pushCandidate(candidates, makeArticleSummarySegmentId(article.id), article.summary);
 
     const textBlocks = getVisibleTextBlocks(article);

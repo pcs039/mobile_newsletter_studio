@@ -5,6 +5,11 @@ import { useMemo, useRef, useState } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
 import { StatusPill } from "@/components/status-pill";
 import { getSelectableFontAssets } from "@/lib/font-css";
+import {
+  detectLongKoreanTitleTokens,
+  getDisplayArticleTitle,
+  renderKoreanTitleWithBreaks,
+} from "@/lib/korean-title-breaks";
 import type {
   ArticleElementMotionEffect,
   ArticleElementMotionSpeed,
@@ -550,6 +555,7 @@ export function ProjectArticleEditorForm({
   const [wordImportMessage, setWordImportMessage] = useState("");
   const [blocks, setBlocks] = useState<EditorBlock[]>(() => makeInitialBlocks(article));
   const [motionPreviewTitle, setMotionPreviewTitle] = useState(article?.title ?? "");
+  const [mobileDisplayTitle, setMobileDisplayTitle] = useState(article?.displayTitle ?? "");
   const [motionPreviewSummary, setMotionPreviewSummary] = useState(article?.summary ?? "");
   const [selectedMotionPreset, setSelectedMotionPreset] = useState<ArticleMotionPreset>(article?.motionPreset ?? "dynamic");
   const [selectedMotionSpeed, setSelectedMotionSpeed] = useState<ArticleMotionSpeed>(article?.motionSpeed ?? "normal");
@@ -587,6 +593,14 @@ export function ProjectArticleEditorForm({
         .map((block, index) => `${index + 1}. ${blockTypeLabels[block.type]}`)
         .join(" / "),
     [blocks],
+  );
+  const effectiveMobileTitle = useMemo(
+    () => getDisplayArticleTitle({ displayTitle: mobileDisplayTitle, title: motionPreviewTitle }, "기사 제목 미리보기"),
+    [mobileDisplayTitle, motionPreviewTitle],
+  );
+  const mobileTitleRiskTokens = useMemo(
+    () => detectLongKoreanTitleTokens(effectiveMobileTitle),
+    [effectiveMobileTitle],
   );
 
   function updateBlock(blockId: string, field: "title" | "body", value: string) {
@@ -834,8 +848,10 @@ export function ProjectArticleEditorForm({
     }
 
     setFormFieldValue("title", result.imported.title);
+    setFormFieldValue("displayTitle", "");
     setFormFieldValue("summary", result.imported.summary);
     setMotionPreviewTitle(result.imported.title);
+    setMobileDisplayTitle("");
     setMotionPreviewSummary(result.imported.summary);
     setBlocks(
       result.imported.blocks.map((block, index) => ({
@@ -897,6 +913,7 @@ export function ProjectArticleEditorForm({
       sourcePageNumber: Number(getValue(formData, "sourcePageNumber")) || 0,
       sortOrder: Number(getValue(formData, "sortOrder")) || 0,
       title: getValue(formData, "title"),
+      displayTitle: getValue(formData, "displayTitle"),
       summary: getValue(formData, "summary"),
       body,
       contentBlocks,
@@ -985,6 +1002,47 @@ export function ProjectArticleEditorForm({
             inheritLabel={projectTitleFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
             help="공개 모바일 기사 제목에 적용됩니다."
           />
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div>
+            <FieldLabel>모바일 표시 제목</FieldLabel>
+            <textarea
+              name="displayTitle"
+              defaultValue={article?.displayTitle ?? ""}
+              onChange={(event) => setMobileDisplayTitle(event.currentTarget.value)}
+              placeholder="비워두면 원문 제목을 사용합니다."
+              className="min-h-20 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+            />
+            <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+              모바일 화면에서만 사용할 제목입니다. 원문 제목은 그대로 유지됩니다.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[#d8e8ff] bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-black text-[#184a88]">모바일 제목 미리보기</p>
+              <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-[11px] font-black text-[#184a88]">
+                최대 기준
+              </span>
+            </div>
+            <p className="mt-3 whitespace-pre-wrap break-words text-[clamp(1.6rem,8vw,2.35rem)] font-black leading-tight text-[#092046] [line-break:strict] [overflow-wrap:anywhere] [text-wrap:balance]">
+              {renderKoreanTitleWithBreaks(effectiveMobileTitle)}
+            </p>
+            {mobileTitleRiskTokens.length > 0 ? (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-xs font-black text-amber-900">
+                  긴 고유명사가 있어 최대 글자 크기에서 줄바꿈을 확인하세요.
+                </p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-amber-800">
+                  {mobileTitleRiskTokens.join(" · ")}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
+                긴 제목은 의미 단위 줄바꿈 후보를 자동으로 보정합니다.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -1464,7 +1522,7 @@ export function ProjectArticleEditorForm({
               summary={motionPreviewSummary}
               textBoxEffect={textBoxMotionEffect}
               textBoxSpeed={textBoxMotionSpeed}
-              title={motionPreviewTitle}
+              title={effectiveMobileTitle}
               titleEffect={titleMotionEffect}
               titleSpeed={titleMotionSpeed}
             />

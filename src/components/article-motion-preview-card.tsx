@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import { renderKoreanTitleWithBreaks, tokenizeKoreanTitleForBreaks } from "@/lib/korean-title-breaks";
 import type {
   ArticleElementMotionEffect,
   ArticleElementMotionSpeed,
@@ -24,8 +25,12 @@ type ArticleMotionPreviewCardProps = {
 };
 
 type MotionTitleToken = {
-  chars: Array<{ char: string; delayMs: number }>;
-  token: string;
+  kind: "space";
+  value: string;
+} | {
+  kind: "text";
+  segments: Array<Array<{ char: string; delayMs: number }>>;
+  value: string;
 };
 
 const fallbackTitle = "무안군, 첨단산업 기반 미래도시로 도약";
@@ -88,21 +93,27 @@ const articleMotionSpeedSettings: Record<ArticleMotionSpeed, { characterDelayMs:
 
 function makeMotionTitleTokens(title: string, speed: ArticleMotionSpeed): MotionTitleToken[] {
   const { characterDelayMs, maxDelayMs } = articleMotionSpeedSettings[speed];
+  const tokens = tokenizeKoreanTitleForBreaks(title);
   let characterIndex = 0;
 
-  return title
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((token) => ({
-      chars: Array.from(token).map((char) => {
-        const delayMs = Math.min(characterIndex * characterDelayMs, maxDelayMs);
-        characterIndex += 1;
+  return tokens.map((token) => {
+    if (token.kind === "space") {
+      return token;
+    }
 
-        return { char, delayMs };
-      }),
-      token,
-    }));
+    return {
+      kind: "text",
+      segments: token.segments.map((segment) =>
+        Array.from(segment).map((char) => {
+          const delayMs = Math.min(characterIndex * characterDelayMs, maxDelayMs);
+          characterIndex += 1;
+
+          return { char, delayMs };
+        }),
+      ),
+      value: token.value,
+    };
+  });
 }
 
 function resolveElementMotionEffect(
@@ -178,24 +189,35 @@ export function ArticleMotionPreviewCard({
           >
             <h4
               aria-label={previewTitle}
-              className="text-xl font-black leading-tight text-[#092046]"
+              title={previewTitle}
+              className="whitespace-pre-wrap text-xl font-black leading-tight text-[#092046] [line-break:strict] [overflow-wrap:anywhere] [text-wrap:balance]"
             >
               {shouldRenderCharacterMotion
-                ? titleTokens.map((token, tokenIndex) => (
-                    <span key={`${token.token}-${tokenIndex}`} className="article-title-motion-token" aria-hidden="true">
-                      {token.chars.map((item, charIndex) => (
-                        <span
-                          key={`${token.token}-${charIndex}-${item.char}`}
-                          className="article-title-motion-char"
-                          style={{ animationDelay: `${item.delayMs}ms` }}
-                        >
-                          {item.char}
-                        </span>
-                      ))}
-                      {tokenIndex < titleTokens.length - 1 ? "\u00A0" : null}
-                    </span>
-                  ))
-                : previewTitle}
+                ? titleTokens.map((token, tokenIndex) => {
+                    if (token.kind === "space") {
+                      return token.value;
+                    }
+
+                    return (
+                      <span key={`${token.value}-${tokenIndex}`} className="article-title-motion-token" aria-hidden="true">
+                        {token.segments.map((segment, segmentIndex) => (
+                          <Fragment key={`${token.value}-${tokenIndex}-${segmentIndex}`}>
+                            {segment.map((item, charIndex) => (
+                              <span
+                                key={`${token.value}-${segmentIndex}-${charIndex}-${item.char}`}
+                                className="article-title-motion-char"
+                                style={{ animationDelay: `${item.delayMs}ms` }}
+                              >
+                                {item.char}
+                              </span>
+                            ))}
+                            {segmentIndex < token.segments.length - 1 ? <wbr /> : null}
+                          </Fragment>
+                        ))}
+                      </span>
+                    );
+                  })
+                : renderKoreanTitleWithBreaks(previewTitle)}
             </h4>
           </div>
 
