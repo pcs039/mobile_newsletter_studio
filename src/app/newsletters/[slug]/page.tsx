@@ -2,7 +2,7 @@ import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
-import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
+import { PublicMobileArticleReader, PublicMobileArticleTocButton } from "@/components/public-mobile-article-reader";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import {
   getProjectAudioFiles,
@@ -146,8 +146,15 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
         </div>
       )}
       <section className="mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10">
-        <header className="px-5 pb-7 pt-7 text-white" style={{ backgroundColor: headerColor }}>
-          <p className="text-sm font-semibold text-sky-200">{project?.organization ?? "프로젝트 정보 확인 필요"}</p>
+        <header className="px-5 pb-7 pt-[calc(1.75rem+env(safe-area-inset-top))] text-white" style={{ backgroundColor: headerColor }}>
+          <div className="flex items-start justify-between gap-4">
+            <p className="min-w-0 pt-1 text-sm font-semibold text-sky-200">{project?.organization ?? "프로젝트 정보 확인 필요"}</p>
+            {!isImagePageMode && articles.length > 0 ? (
+              <div className="shrink-0 pr-[env(safe-area-inset-right)] md:hidden">
+                <PublicMobileArticleTocButton />
+              </div>
+            ) : null}
+          </div>
           <h1 className="mt-3 text-3xl font-black leading-tight">{project?.title ?? slug}</h1>
           <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
           <p className="mt-4 text-sm leading-6 text-slate-200">{project?.description ?? workspace.message}</p>
