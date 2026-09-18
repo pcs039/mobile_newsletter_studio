@@ -8,12 +8,12 @@ import { getProjectAudioFiles } from "@/lib/newsletter-repository";
 
 function BrowserAudioControl({ src, title }: { src: string; title: string }) {
   if (!src) {
-    return <span className="text-xs font-bold text-slate-500">MP3 등록 후 재생 가능</span>;
+    return <span className="text-xs font-bold text-slate-500">음성 파일 등록 후 재생 가능</span>;
   }
 
   return (
     <audio
-      aria-label={`${title} MP3 재생 검수`}
+      aria-label={`${title} 음성 파일 재생 검수`}
       className="h-10 w-full min-w-48 rounded-md"
       controls
       preload="metadata"
@@ -33,7 +33,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
       active="audio"
       projectId={projectId}
       title="음성 소식지 검수"
-      description="MP3와 대본 상태를 확인합니다."
+      description="MP3, WAV, M4A와 대본 상태를 확인합니다."
       sidebarTitle={
         <>
           음성 소식지
@@ -41,7 +41,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
           검수
         </>
       }
-      sidebarDescription="MP3, 대본, 재생 상태를 검수합니다."
+      sidebarDescription="음성 파일, 대본, 재생 상태를 검수합니다."
       sidebarNoteTitle="운영 기준"
       sidebarNote="음성은 모바일 읽기를 보완하는 콘텐츠입니다."
       actions={
@@ -59,8 +59,8 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <span className="rounded-full bg-[#092046] px-3 py-1 text-xs font-black text-white">필수</span>
-                    <h3 className="mt-2 text-lg font-bold text-[#092046]">MP3 파일 업로드와 재생 확인</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">MP3 업로드 후 재생을 확인합니다.</p>
+                    <h3 className="mt-2 text-lg font-bold text-[#092046]">음성 파일 업로드와 재생 확인</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">MP3, WAV 또는 M4A 업로드 후 재생을 확인합니다.</p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
                     Supabase Storage 저장
@@ -69,12 +69,12 @@ export default async function AudioManagementPage({ params }: { params: Promise<
 
                 <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_280px]">
                   <FileUploadCard
-                    accept="audio/mpeg,audio/mp3"
-                    buttonLabel="MP3 선택"
-                    description="MP3 파일을 업로드합니다."
+                    accept=".mp3,.wav,.m4a,audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/wave,audio/mp4,audio/x-m4a,audio/m4a,audio/aac"
+                    buttonLabel="음성 파일 선택"
+                    description="MP3, WAV 또는 M4A 파일을 업로드합니다. 최대 50MB까지 등록할 수 있습니다."
                     kind="audio_mp3"
                     projectSlug={projectId}
-                    title="MP3 파일을 선택하거나 이 영역에 끌어다 놓기"
+                    title="MP3, WAV 또는 M4A 파일을 선택하거나 이 영역에 끌어다 놓기"
                   />
                   <details className="rounded-lg border border-slate-200 bg-white p-4">
                     <summary className="cursor-pointer text-sm font-bold text-[#092046]">
@@ -127,8 +127,8 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                       {audioFiles.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-4 py-12 text-center">
-                            <p className="text-base font-black text-[#092046]">등록된 MP3 파일이 없습니다.</p>
-                            <p className="mt-2 text-sm leading-6 text-slate-500">MP3 파일을 업로드하세요.</p>
+                            <p className="text-base font-black text-[#092046]">등록된 음성 파일이 없습니다.</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">MP3, WAV 또는 M4A 파일을 업로드하세요.</p>
                           </td>
                         </tr>
                       ) : (
@@ -196,7 +196,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                 <h3 className="mt-1 text-lg font-bold text-[#092046]">재생 미리보기</h3>
                 <div className="mt-4 rounded-lg bg-[#092046] p-5 text-white">
                   <p className="text-sm font-semibold text-sky-200">
-                    {firstAudioFile?.title ?? "등록된 MP3 파일 없음"}
+                    {firstAudioFile?.title ?? "등록된 음성 파일 없음"}
                   </p>
                   <p className="mt-2 text-2xl font-black">{firstAudioFile?.duration ?? "--:--"}</p>
                   <div className="mt-5 h-2 rounded-full bg-white/20">
@@ -211,7 +211,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                   <div className="mt-4 rounded-lg bg-white/10 p-3">
                     <p className="mb-2 text-xs font-semibold text-sky-100">브라우저 재생 검수</p>
                     <audio
-                      aria-label={firstAudioFile ? `${firstAudioFile.title} 브라우저 재생 검수` : "MP3 파일 브라우저 재생 검수"}
+                      aria-label={firstAudioFile ? `${firstAudioFile.title} 브라우저 재생 검수` : "음성 파일 브라우저 재생 검수"}
                       className="h-10 w-full rounded-md"
                       controls
                       preload="metadata"

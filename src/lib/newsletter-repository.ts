@@ -4262,7 +4262,7 @@ export async function getProjectAudioFiles(projectSlug: string): Promise<Project
     return {
       files: [],
       source: "unconfigured",
-      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 MP3 목록과 재생기를 표시합니다.",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 음성 파일 목록과 재생기를 표시합니다.",
     };
   }
 
@@ -4276,7 +4276,7 @@ export async function getProjectAudioFiles(projectSlug: string): Promise<Project
       return {
         files: [],
         source: "error",
-        message: "MP3 파일 목록 조회에 실패했습니다.",
+        message: "음성 파일 목록 조회에 실패했습니다.",
       };
     }
 
@@ -4285,13 +4285,13 @@ export async function getProjectAudioFiles(projectSlug: string): Promise<Project
     return {
       files: rows.map(mapAudioRowToProjectAudioFile),
       source: "supabase",
-      message: rows.length > 0 ? "Supabase에 등록된 MP3 파일을 표시합니다." : "등록된 MP3 파일이 아직 없습니다.",
+      message: rows.length > 0 ? "Supabase에 등록된 음성 파일을 표시합니다." : "등록된 음성 파일이 아직 없습니다.",
     };
   } catch {
     return {
       files: [],
       source: "error",
-      message: "MP3 파일 목록 조회 중 오류가 발생했습니다.",
+      message: "음성 파일 목록 조회 중 오류가 발생했습니다.",
     };
   }
 }

@@ -20,6 +20,14 @@ function formatFileSize(size: number) {
   return `${Math.max(1, Math.round(size / 1024))}KB`;
 }
 
+function hasAudioFileExtension(fileName: string) {
+  return /\.(m4a|mp3|wav)$/i.test(fileName);
+}
+
+function isAudioFile(file: File) {
+  return file.type.startsWith("audio/") || hasAudioFileExtension(file.name);
+}
+
 async function readUploadError(response: Response, fallbackMessage: string) {
   const contentType = response.headers.get("content-type") ?? "";
 
@@ -70,7 +78,7 @@ export function FileUploadCard({
       previewUrlRef.current = "";
     }
 
-    if (nextFile && (nextFile.type.startsWith("image/") || nextFile.type.startsWith("audio/"))) {
+    if (nextFile && (nextFile.type.startsWith("image/") || isAudioFile(nextFile))) {
       previewUrlRef.current = URL.createObjectURL(nextFile);
       setPreviewUrl(previewUrlRef.current);
     } else {
@@ -234,7 +242,7 @@ export function FileUploadCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt="선택한 이미지 미리보기" className="mt-3 max-h-56 w-full rounded-md object-contain" />
           )}
-          {previewUrl && file.type.startsWith("audio/") && (
+          {previewUrl && isAudioFile(file) && (
             <audio className="mt-3 h-10 w-full" controls preload="metadata" src={previewUrl} />
           )}
         </div>

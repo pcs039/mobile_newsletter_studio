@@ -13,7 +13,7 @@ const contentToolNavigation: Array<{ key: ProjectSection; label: string; path: s
   { key: "reading", label: "기사 작성/편집", path: "reading", guide: "문단·이미지·URL 버튼" },
   { key: "pages", label: "이미지 페이지 편집", path: "pages", guide: "이미지·클릭 영역" },
   { key: "assets", label: "사진·이미지 관리", path: "assets", guide: "이미지·URL·유튜브 소재" },
-  { key: "audio", label: "음성 소식지 검수", path: "audio", guide: "MP3·대본 확인" },
+  { key: "audio", label: "음성 소식지 검수", path: "audio", guide: "음성 파일·대본 확인" },
 ];
 
 const operationNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [

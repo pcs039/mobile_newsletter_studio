@@ -29,7 +29,7 @@ const publishOptions = [
   },
   {
     title: "음성 듣기 준비",
-    description: "MP3 연결",
+    description: "음성 파일 연결",
   },
   {
     title: "외부 AI·프로그램 결과물 등록",
