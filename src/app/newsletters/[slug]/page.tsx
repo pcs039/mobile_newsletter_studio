@@ -233,7 +233,6 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                 initialArticleId={previewArticleId}
                 projectBodyFontAssetId={project?.bodyFontAssetId}
                 projectTitleFontAssetId={project?.titleFontAssetId}
-                publicAudio={publicAudioSrc ? { src: publicAudioSrc, title: publicAudioFile?.title } : undefined}
                 showAdminPreviewControls={showAdminPreviewControls}
                 slug={slug}
               />

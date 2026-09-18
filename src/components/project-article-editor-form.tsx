@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
@@ -980,8 +981,20 @@ export function ProjectArticleEditorForm({
           <div className="flex flex-wrap gap-2">
             <SectionBadge tone="required">필수</SectionBadge>
             <StatusPill value={article ? "DB 저장됨" : "신규 작성"} />
+            {article?.audioFile ? <StatusPill value="연결된 음성 있음" /> : null}
           </div>
         </div>
+        {article?.audioFile ? (
+          <div className="mt-4 flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-black text-emerald-800">연결된 음성</p>
+              <p className="mt-1 text-sm font-bold text-emerald-900">{article.audioFile.title}</p>
+            </div>
+            <Link href={`/projects/${projectSlug}/audio`} className="dd-btn dd-btn-secondary dd-btn-sm self-start sm:self-auto">
+              음성 파일 관리로 이동
+            </Link>
+          </div>
+        ) : null}
 
         <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div>

@@ -547,6 +547,7 @@ type NewsletterAssetRow = {
 
 type NewsletterAudioFileRow = {
   id: string;
+  article_id: string | null;
   title: string;
   file_path: string;
   duration_seconds: number | null;
@@ -877,6 +878,7 @@ export type ProjectAssetFilesResult = {
 
 export type ProjectAudioFile = {
   id: string;
+  articleId: string | null;
   title: string;
   filePath: string;
   previewHref: string;
@@ -915,6 +917,7 @@ export type ProjectLinkAction = {
 
 export type ProjectContentArticle = {
   id: string;
+  audioId: string | null;
   pageId: string | null;
   pageNumber: number | null;
   sortOrder: number;
@@ -942,6 +945,13 @@ export type ProjectContentArticle = {
   updated: string;
   blocks: ProjectContentBlock[];
   links: ProjectLinkAction[];
+  audioFile: ProjectArticleAudioFile | null;
+};
+
+export type ProjectArticleAudioFile = {
+  id: string;
+  title: string;
+  previewHref: string;
 };
 
 export type ProjectContentResult = {
@@ -949,6 +959,18 @@ export type ProjectContentResult = {
   source: "supabase" | "unconfigured" | "error" | "not_found";
   message: string;
 };
+
+export type UpdateProjectAudioArticleLinkResult =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "not_found" | "request_failed" | "invalid_input";
+      message: string;
+      httpStatus?: number;
+    };
 
 export type UpsertProjectArticleInput = {
   projectSlug: string;
@@ -1843,6 +1865,7 @@ function mapAssetRowToProjectAssetFile(asset: NewsletterAssetRow): ProjectAssetF
 function mapAudioRowToProjectAudioFile(file: NewsletterAudioFileRow): ProjectAudioFile {
   return {
     id: file.id,
+    articleId: file.article_id,
     title: file.title,
     filePath: file.file_path,
     previewHref: makeStoragePreviewHref("audio-files", file.file_path) ?? "",
@@ -1850,6 +1873,14 @@ function mapAudioRowToProjectAudioFile(file: NewsletterAudioFileRow): ProjectAud
     scriptStatus: audioScriptStatusLabels[file.script_status] ?? file.script_status,
     note: file.pronunciation_note || "검수 메모 없음",
     updated: formatCompactDateTime(file.updated_at),
+  };
+}
+
+function mapAudioRowToProjectArticleAudioFile(file: NewsletterAudioFileRow): ProjectArticleAudioFile {
+  return {
+    id: file.id,
+    title: file.title,
+    previewHref: makePublicStoragePreviewHref("audio-files", file.file_path) ?? "",
   };
 }
 
@@ -1883,9 +1914,14 @@ function mapArticleRowToProjectContentArticle(
   blocks: NewsletterContentBlockRow[],
   links: NewsletterLinkActionRow[],
   pageNumberById: Map<string, number>,
+  audioByArticleId = new Map<string, NewsletterAudioFileRow>(),
+  audioById = new Map<string, NewsletterAudioFileRow>(),
 ): ProjectContentArticle {
+  const audioFile = audioByArticleId.get(article.id) ?? (article.audio_id ? audioById.get(article.audio_id) : null) ?? null;
+
   return {
     id: article.id,
+    audioId: article.audio_id,
     pageId: article.page_id,
     pageNumber: article.page_id ? pageNumberById.get(article.page_id) ?? null : null,
     sortOrder: article.sort_order,
@@ -1913,6 +1949,7 @@ function mapArticleRowToProjectContentArticle(
     updated: formatCompactDateTime(article.updated_at),
     blocks: blocks.map(mapContentBlockRowToProjectBlock),
     links: links.map(mapLinkActionRowToProjectLink),
+    audioFile: audioFile ? mapAudioRowToProjectArticleAudioFile(audioFile) : null,
   };
 }
 
@@ -4252,7 +4289,7 @@ export async function getProjectAudioFiles(projectSlug: string): Promise<Project
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_audio_files?select=id,title,file_path,duration_seconds,script_status,pronunciation_note,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_status,pronunciation_note,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=updated_at.desc&limit=100`,
   );
@@ -4350,6 +4387,29 @@ async function fetchArticleLinks(articleIds: string[], headers: Record<string, s
   return (await response.json()) as NewsletterLinkActionRow[];
 }
 
+async function fetchProjectAudioFilesForContent(projectId: string, headers: Record<string, string>) {
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_status,pronunciation_note,updated_at&project_id=eq.${encodeURIComponent(
+      projectId,
+    )}&order=updated_at.desc`,
+  );
+
+  if (!endpoint) {
+    return [];
+  }
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  return (await response.json()) as NewsletterAudioFileRow[];
+}
+
 async function fetchProjectPageNumbers(projectId: string, headers: Record<string, string>) {
   const endpoint = getSupabaseRestEndpoint(
     `/rest/v1/newsletter_pages?select=id,page_number&project_id=eq.${encodeURIComponent(projectId)}&order=page_number.asc`,
@@ -4415,11 +4475,16 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
 
     const articleRows = (await response.json()) as NewsletterArticleRow[];
     const articleIds = articleRows.map((article) => article.id);
-    const [blockRows, linkRows, pageNumberById] = await Promise.all([
+    const [blockRows, linkRows, articleAudioRows, pageNumberById] = await Promise.all([
       fetchArticleBlocks(articleIds, headers),
       fetchArticleLinks(articleIds, headers),
+      fetchProjectAudioFilesForContent(workspace.project.id, headers),
       fetchProjectPageNumbers(workspace.project.id, headers),
     ]);
+    const audioByArticleId = new Map(
+      articleAudioRows.filter((file) => file.article_id).map((file) => [file.article_id as string, file]),
+    );
+    const audioById = new Map(articleAudioRows.map((file) => [file.id, file]));
 
     return {
       articles: articleRows.map((article) =>
@@ -4428,6 +4493,8 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
           blockRows.filter((block) => block.article_id === article.id),
           linkRows.filter((link) => link.article_id === article.id),
           pageNumberById,
+          audioByArticleId,
+          audioById,
         ),
       ),
       source: "supabase",
@@ -5136,6 +5203,225 @@ export async function updateNewsletterProjectStatus(
       message: "Supabase 프로젝트 상태 저장 중 오류가 발생했습니다.",
     };
   }
+}
+
+export async function updateProjectAudioArticleLink({
+  articleId,
+  audioId,
+  projectSlug,
+}: {
+  articleId?: string | null;
+  audioId: string;
+  projectSlug: string;
+}): Promise<UpdateProjectAudioArticleLinkResult> {
+  const normalizedArticleId = articleId?.trim() || null;
+  const normalizedAudioId = audioId.trim();
+  const normalizedProjectSlug = projectSlug.trim();
+  const headers = getRequestHeaders(true);
+
+  if (!normalizedAudioId || !normalizedProjectSlug) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "연결할 음성 파일과 프로젝트 정보를 확인하세요.",
+      httpStatus: 400,
+    };
+  }
+
+  if (!headers) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 음성 파일 연결을 저장할 수 있습니다.",
+    };
+  }
+
+  const workspace = await getProjectWorkspace(normalizedProjectSlug);
+
+  if (!workspace.ok) {
+    return {
+      ok: false,
+      status: "not_found",
+      message: workspace.message,
+      httpStatus: 404,
+    };
+  }
+
+  const projectId = workspace.project.id;
+  const audioEndpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_audio_files?id=eq.${encodeURIComponent(normalizedAudioId)}&project_id=eq.${encodeURIComponent(
+      projectId,
+    )}&select=id,article_id`,
+  );
+
+  if (!audioEndpoint) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase REST API 설정을 확인하세요.",
+    };
+  }
+
+  const audioResponse = await fetch(audioEndpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!audioResponse.ok) {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "음성 파일 정보를 확인하지 못했습니다.",
+      httpStatus: audioResponse.status,
+    };
+  }
+
+  const audioRows = (await audioResponse.json()) as Array<{ id: string; article_id: string | null }>;
+
+  if (!audioRows[0]) {
+    return {
+      ok: false,
+      status: "not_found",
+      message: "연결할 음성 파일을 찾지 못했습니다.",
+      httpStatus: 404,
+    };
+  }
+
+  if (normalizedArticleId) {
+    const articleEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_articles?id=eq.${encodeURIComponent(normalizedArticleId)}&project_id=eq.${encodeURIComponent(
+        projectId,
+      )}&select=id`,
+    );
+
+    if (!articleEndpoint) {
+      return {
+        ok: false,
+        status: "not_configured",
+        message: "Supabase REST API 설정을 확인하세요.",
+      };
+    }
+
+    const articleResponse = await fetch(articleEndpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!articleResponse.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "모바일 기사 정보를 확인하지 못했습니다.",
+        httpStatus: articleResponse.status,
+      };
+    }
+
+    const articleRows = (await articleResponse.json()) as Array<{ id: string }>;
+
+    if (!articleRows[0]) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "연결할 모바일 기사를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+  }
+
+  const clearArticleAudioEndpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_articles?project_id=eq.${encodeURIComponent(projectId)}&audio_id=eq.${encodeURIComponent(normalizedAudioId)}`,
+  );
+  const clearOtherAudioEndpoint = normalizedArticleId
+    ? getSupabaseRestEndpoint(
+        `/rest/v1/newsletter_audio_files?project_id=eq.${encodeURIComponent(projectId)}&article_id=eq.${encodeURIComponent(
+          normalizedArticleId,
+        )}&id=neq.${encodeURIComponent(normalizedAudioId)}`,
+      )
+    : null;
+  const updateAudioEndpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_audio_files?id=eq.${encodeURIComponent(normalizedAudioId)}&project_id=eq.${encodeURIComponent(projectId)}`,
+  );
+  const updateArticleEndpoint = normalizedArticleId
+    ? getSupabaseRestEndpoint(
+        `/rest/v1/newsletter_articles?id=eq.${encodeURIComponent(normalizedArticleId)}&project_id=eq.${encodeURIComponent(projectId)}`,
+      )
+    : null;
+
+  if (!clearArticleAudioEndpoint || !updateAudioEndpoint || (normalizedArticleId && !updateArticleEndpoint)) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase REST API 설정을 확인하세요.",
+    };
+  }
+
+  const writeHeaders = {
+    ...headers,
+    Prefer: "return=minimal",
+  };
+  const clearResponses = await Promise.all([
+    fetch(clearArticleAudioEndpoint, {
+      method: "PATCH",
+      headers: writeHeaders,
+      body: JSON.stringify({ audio_id: null }),
+      cache: "no-store",
+    }),
+    clearOtherAudioEndpoint
+      ? fetch(clearOtherAudioEndpoint, {
+          method: "PATCH",
+          headers: writeHeaders,
+          body: JSON.stringify({ article_id: null }),
+          cache: "no-store",
+        })
+      : Promise.resolve(new Response(null, { status: 204 })),
+  ]);
+
+  if (clearResponses.some((response) => !response.ok)) {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "기존 음성 연결을 정리하지 못했습니다.",
+    };
+  }
+
+  const updateAudioResponse = await fetch(updateAudioEndpoint, {
+    method: "PATCH",
+    headers: writeHeaders,
+    body: JSON.stringify({ article_id: normalizedArticleId }),
+    cache: "no-store",
+  });
+
+  if (!updateAudioResponse.ok) {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "음성 파일 연결 정보를 저장하지 못했습니다.",
+      httpStatus: updateAudioResponse.status,
+    };
+  }
+
+  if (normalizedArticleId && updateArticleEndpoint) {
+    const updateArticleResponse = await fetch(updateArticleEndpoint, {
+      method: "PATCH",
+      headers: writeHeaders,
+      body: JSON.stringify({ audio_id: normalizedAudioId }),
+      cache: "no-store",
+    });
+
+    if (!updateArticleResponse.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "기사의 연결 음성 정보를 저장하지 못했습니다.",
+        httpStatus: updateArticleResponse.status,
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    message: normalizedArticleId ? "음성 파일이 모바일 기사에 연결되었습니다." : "음성 파일 연결이 해제되었습니다.",
+  };
 }
 
 export async function archiveNewsletterProject(projectId: string): Promise<ArchiveNewsletterProjectResult> {

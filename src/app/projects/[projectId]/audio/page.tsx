@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { FileUploadCard } from "@/components/file-upload-card";
+import { ProjectAudioLinkManager, type ProjectAudioLinkArticleOption } from "@/components/project-audio-link-manager";
 import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
+import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import { audioReviewChecks, audioWorkflow } from "@/lib/newsletter-data";
-import { getProjectAudioFiles } from "@/lib/newsletter-repository";
+import { getProjectAudioFiles, getProjectContent } from "@/lib/newsletter-repository";
 
 function BrowserAudioControl({ src, title }: { src: string; title: string }) {
   if (!src) {
@@ -24,9 +26,17 @@ function BrowserAudioControl({ src, title }: { src: string; title: string }) {
 
 export default async function AudioManagementPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const audioData = await getProjectAudioFiles(projectId);
+  const [audioData, contentData] = await Promise.all([
+    getProjectAudioFiles(projectId),
+    getProjectContent(projectId),
+  ]);
   const audioFiles = audioData.files;
   const firstAudioFile = audioFiles[0];
+  const articleOptions: ProjectAudioLinkArticleOption[] = contentData.articles.map((article, index) => ({
+    id: article.id,
+    label: getDisplayArticleTitle(article, `제목 없음 기사 ${index + 1}`),
+  }));
+  const articleTitleById = new Map(articleOptions.map((article) => [article.id, article.label]));
 
   return (
     <ProjectAdminShell
@@ -139,7 +149,16 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                               <p className="mt-1 font-bold text-[#092046]">{item.title}</p>
                             </td>
                             <td className="px-4 py-4">
-                              <StatusPill value="업로드 완료" />
+                              <div className="space-y-2">
+                                <StatusPill value={item.articleId ? "연결 완료" : "미연결"} />
+                                {item.articleId ? (
+                                  <p className="max-w-56 text-xs font-bold leading-5 text-slate-600">
+                                    {articleTitleById.get(item.articleId) ?? "연결된 기사 확인 필요"}
+                                  </p>
+                                ) : (
+                                  <p className="text-xs font-semibold text-slate-500">모바일 기사 연결 전</p>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-4">
                               <p className="max-w-60 break-all font-semibold text-slate-600">{item.filePath}</p>
@@ -157,9 +176,12 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex flex-wrap gap-2">
-                                <button className="rounded-lg border border-[#2f73b7] bg-white px-4 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]">
-                                  연결 관리
-                                </button>
+                                <ProjectAudioLinkManager
+                                  articles={articleOptions}
+                                  audioId={item.id}
+                                  currentArticleId={item.articleId}
+                                  projectSlug={projectId}
+                                />
                                 <ProjectFileDeleteButton
                                   fileLabel={item.title}
                                   kind="audio_mp3"
