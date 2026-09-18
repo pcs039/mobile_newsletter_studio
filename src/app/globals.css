@@ -877,9 +877,11 @@ select {
   .article-motion-content-block,
   .public-article-content > section > h3
 ) {
+  hyphens: none;
   line-break: strict;
   overflow-wrap: break-word;
   text-align: justify;
+  text-align-last: left;
   text-justify: inter-character;
   word-break: break-all;
 }
@@ -909,9 +911,11 @@ select {
 }
 
 .public-newsletter-screen [data-text-alignment="justify"] {
+  hyphens: none;
   line-break: strict;
   overflow-wrap: break-word;
   text-align: justify;
+  text-align-last: left;
   text-justify: inter-character;
   word-break: break-all;
 }
@@ -954,8 +958,38 @@ select {
   display: block;
 }
 
+.public-newsletter-screen [data-text-alignment="justify"] .public-article-paragraph {
+  hyphens: none;
+  text-align: justify;
+  text-align-last: left;
+  text-justify: inter-character;
+  word-break: break-all;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen [data-text-alignment="justify"] .public-article-paragraph,
+[data-public-text-scale="xlarge"] .public-newsletter-screen [data-text-alignment="justify"] .public-article-paragraph {
+  overflow-wrap: anywhere;
+  text-align: left;
+  text-align-last: left;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
+.public-newsletter-screen .public-article-paragraph-inline-flow .public-article-sentence {
+  display: inline;
+}
+
 .public-newsletter-screen .public-article-sentence + .public-article-sentence {
   margin-top: 0.75rem;
+}
+
+.public-newsletter-screen .public-article-paragraph-inline-flow .public-article-sentence + .public-article-sentence {
+  margin-top: 0;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen .public-article-paragraph-inline-flow .public-article-sentence,
+[data-public-text-scale="xlarge"] .public-newsletter-screen .public-article-paragraph-inline-flow .public-article-sentence {
+  display: block;
 }
 
 .public-newsletter-screen .public-audio-sync-segment {
@@ -966,6 +1000,12 @@ select {
     background-color 180ms ease,
     border-color 180ms ease,
     box-shadow 180ms ease;
+}
+
+.public-newsletter-screen .public-article-paragraph-inline-flow .public-audio-sync-segment {
+  border-left: 0;
+  margin-left: 0;
+  padding-left: 0;
 }
 
 .public-newsletter-screen .public-audio-segment-active {

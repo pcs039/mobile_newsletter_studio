@@ -145,6 +145,7 @@ function renderArticleBody(
   textAlignment: ArticleTextAlignment = "left",
 ) {
   const paragraphs = getArticleBodyParagraphs(value);
+  const shouldUseInlineSentenceFlow = textAlignment === "justify";
 
   return (
     <div
@@ -153,20 +154,25 @@ function renderArticleBody(
       className={`public-article-body text-base leading-8 text-slate-700 ${className}`}
     >
       {paragraphs.map((paragraph, paragraphIndex) => (
-        <div key={paragraphIndex} className="public-article-paragraph">
+        <div
+          key={paragraphIndex}
+          className={`public-article-paragraph ${shouldUseInlineSentenceFlow ? "public-article-paragraph-inline-flow" : ""}`}
+        >
           {paragraph.map((sentence, sentenceIndex) => {
             const segmentId = audioSegmentBaseId
               ? makeArticleBodySegmentId(audioSegmentBaseId, paragraphIndex, sentenceIndex)
               : undefined;
 
             return (
-              <span
-                key={`${paragraphIndex}-${sentenceIndex}`}
-                data-audio-segment-id={segmentId}
-                className="public-article-sentence public-audio-sync-segment"
-              >
-                {sentence}
-              </span>
+              <Fragment key={`${paragraphIndex}-${sentenceIndex}`}>
+                <span
+                  data-audio-segment-id={segmentId}
+                  className="public-article-sentence public-audio-sync-segment"
+                >
+                  {sentence}
+                </span>
+                {shouldUseInlineSentenceFlow && sentenceIndex < paragraph.length - 1 ? " " : null}
+              </Fragment>
             );
           })}
         </div>
