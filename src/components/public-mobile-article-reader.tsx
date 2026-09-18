@@ -1,7 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type TouchEvent } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+  type TouchEvent,
+} from "react";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
@@ -147,7 +157,15 @@ function isInteractiveTouchTarget(target: EventTarget | null) {
   );
 }
 
-export function PublicMobileArticleTocButton() {
+export function PublicMobileArticleTocButton({
+  ariaLabel = "기사 목차 열기",
+  children = "☰",
+  className = "inline-flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-3 text-xl font-black leading-none text-white shadow-sm shadow-blue-950/10 backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
+}: {
+  ariaLabel?: string;
+  children?: ReactNode;
+  className?: string;
+}) {
   function openArticleToc() {
     window.dispatchEvent(new Event(openMobileArticleTocEventName));
   }
@@ -156,10 +174,10 @@ export function PublicMobileArticleTocButton() {
     <button
       type="button"
       onClick={openArticleToc}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-3 text-xl font-black leading-none text-white shadow-sm shadow-blue-950/10 backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-      aria-label="기사 목차 열기"
+      className={className}
+      aria-label={ariaLabel}
     >
-      ☰
+      {children}
     </button>
   );
 }

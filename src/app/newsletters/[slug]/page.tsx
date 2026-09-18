@@ -61,6 +61,81 @@ function PublicUnavailablePage({
   );
 }
 
+function PublicNewsletterCoverSection({
+  coverFit,
+  coverImageSrc,
+  coverIssueText,
+  coverLayout,
+  coverSubtitle,
+  coverTitle,
+}: {
+  coverFit: "contain" | "cover";
+  coverImageSrc: string;
+  coverIssueText: string;
+  coverLayout: "image" | "image_info" | "image_overlay";
+  coverSubtitle: string;
+  coverTitle: string;
+}) {
+  const hasInfo = Boolean(coverTitle || coverSubtitle || coverIssueText);
+  const imageFitClass = coverFit === "cover" || coverLayout === "image_overlay" ? "object-cover" : "object-contain";
+
+  return (
+    <section className="border-b border-slate-200 bg-[#f4f8ff] px-3 py-5">
+      <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-lg shadow-blue-950/10">
+        {coverLayout === "image_overlay" ? (
+          <div className="relative min-h-[76vh] bg-slate-950">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={coverImageSrc}
+              alt={coverTitle || "모바일 소식지 표지"}
+              className={`absolute inset-0 h-full w-full ${imageFitClass}`}
+            />
+            {hasInfo ? (
+              <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent p-6 text-white">
+                {coverIssueText ? <p className="text-sm font-black text-sky-100">{coverIssueText}</p> : null}
+                {coverTitle ? <h2 className="mt-2 text-4xl font-black leading-tight [word-break:keep-all]">{coverTitle}</h2> : null}
+                {coverSubtitle ? <p className="mt-3 text-base font-bold leading-7 text-white/90 [word-break:keep-all]">{coverSubtitle}</p> : null}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className="bg-white px-1 py-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverImageSrc}
+                alt={coverTitle || "모바일 소식지 표지"}
+                className={`mx-auto max-h-[82vh] w-full rounded-[1.1rem] ${imageFitClass}`}
+              />
+            </div>
+            {coverLayout === "image_info" && hasInfo ? (
+              <div className="border-t border-slate-100 px-5 py-5">
+                {coverTitle ? <h2 className="text-2xl font-black leading-tight text-[#092046] [word-break:keep-all]">{coverTitle}</h2> : null}
+                {coverSubtitle ? <p className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">{coverSubtitle}</p> : null}
+                {coverIssueText ? <p className="mt-3 text-xs font-black text-[#184a88]">{coverIssueText}</p> : null}
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <a
+          href="#newsletter-articles"
+          className="dd-btn dd-btn-primary min-h-11 justify-center rounded-full px-4 text-sm"
+        >
+          첫 기사 읽기
+        </a>
+        <PublicMobileArticleTocButton
+          ariaLabel="기사 목차 보기"
+          className="dd-btn dd-btn-secondary min-h-11 justify-center rounded-full px-4 text-sm"
+        >
+          목차 보기
+        </PublicMobileArticleTocButton>
+      </div>
+    </section>
+  );
+}
+
 export default async function PublicNewsletterPage({ params, searchParams }: PublicNewsletterPageProps) {
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
@@ -119,6 +194,10 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const headerColor = project?.primaryColor ?? "#071f46";
   const publicAudioFile = audioData.files[0] ?? null;
   const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
+  const coverImageSrc = project?.coverImagePath
+    ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) ?? ""
+    : project?.coverImageUrl || "";
+  const showCoverSection = Boolean(project?.coverEnabled && coverImageSrc && !isImagePageMode);
 
   return (
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
@@ -175,6 +254,18 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           </div>
         </header>
 
+        {showCoverSection ? (
+          <PublicNewsletterCoverSection
+            coverFit={project.coverFit}
+            coverImageSrc={coverImageSrc}
+            coverIssueText={project.coverIssueText || project.issue}
+            coverLayout={project.coverLayout}
+            coverSubtitle={project.coverSubtitle}
+            coverTitle={project.coverTitle || project.title}
+          />
+        ) : null}
+
+        <div id="newsletter-articles" />
         <section className={`space-y-5 px-5 py-5 ${isImagePageMode && publicAudioSrc ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
           {isImagePageMode && pageImages.length > 0 ? (
             <section className="public-image-page-list space-y-4">

@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { getSelectableFontAssets } from "@/lib/font-css";
-import type { FontAsset } from "@/lib/newsletter-repository";
+import type { FontAsset, NewsletterCoverFit, NewsletterCoverLayout } from "@/lib/newsletter-repository";
 
 type SubmitState =
   | { status: "idle"; message: string }
@@ -33,7 +33,21 @@ export type ProjectFormInitialValues = {
   projectPasswordUpdatedAt?: string;
   titleFontAssetId?: string;
   bodyFontAssetId?: string;
+  coverEnabled?: boolean;
+  coverLayout?: NewsletterCoverLayout;
+  coverImageUrl?: string;
+  coverImagePath?: string;
+  coverTitle?: string;
+  coverSubtitle?: string;
+  coverIssueText?: string;
+  coverFit?: NewsletterCoverFit;
 };
+
+type CoverUploadState =
+  | { status: "idle"; message: string }
+  | { status: "uploading"; message: string }
+  | { status: "success"; message: string }
+  | { status: "error"; message: string };
 
 const primaryColorOptions = [
   { label: "딥블루", value: "#092046" },
@@ -90,6 +104,31 @@ function getFormText(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function makePublicCoverPreviewHref(path: string) {
+  return `/api/public-files/preview?bucket=mobile-assets&path=${encodeURIComponent(path)}`;
+}
+
+function isCoverImageFile(file: File) {
+  return (
+    ["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+    /\.(jpe?g|png|webp)$/i.test(file.name)
+  );
+}
+
+async function readUploadError(response: Response, fallbackMessage: string) {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const result = (await response.json().catch(() => null)) as { message?: string } | null;
+
+    return result?.message ?? fallbackMessage;
+  }
+
+  const text = await response.text().catch(() => "");
+
+  return text || fallbackMessage;
+}
+
 function getNextAuthoringPath(projectSlug: string, productionMode: string) {
   if (productionMode === "full_image" || productionMode === "external_ebook") {
     return `/projects/${projectSlug}/pages`;
@@ -110,10 +149,140 @@ export function ProjectCreateForm({
   const router = useRouter();
   const isEditMode = mode === "edit";
   const [primaryColor, setPrimaryColor] = useState(initialValues.primaryColor || "#092046");
+  const [coverEnabled, setCoverEnabled] = useState(initialValues.coverEnabled === true);
+  const [coverLayout, setCoverLayout] = useState<NewsletterCoverLayout>(initialValues.coverLayout ?? "image");
+  const [coverFit, setCoverFit] = useState<NewsletterCoverFit>(initialValues.coverFit ?? "contain");
+  const [coverImageUrl, setCoverImageUrl] = useState(initialValues.coverImageUrl ?? "");
+  const [coverImagePath, setCoverImagePath] = useState(initialValues.coverImagePath ?? "");
+  const [coverUploadState, setCoverUploadState] = useState<CoverUploadState>({
+    status: "idle",
+    message: isEditMode ? "JPG, PNG, WEBP 이미지를 업로드할 수 있습니다." : "프로젝트 저장 후 표지 이미지를 업로드할 수 있습니다.",
+  });
   const [submitState, setSubmitState] = useState<SubmitState>({
     status: "idle",
     message: isEditMode ? "기본 정보 수정 준비됨" : "Supabase 저장 연결 준비됨",
   });
+
+  const coverPreviewSrc = coverImageUrl || (coverImagePath ? makePublicCoverPreviewHref(coverImagePath) : "");
+
+  async function uploadCoverImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+
+    if (!file) {
+      return;
+    }
+
+    if (!isEditMode || !initialValues.slug) {
+      setCoverUploadState({
+        status: "error",
+        message: "프로젝트를 먼저 저장한 뒤 표지 이미지를 업로드하세요.",
+      });
+      event.target.value = "";
+      return;
+    }
+
+    if (!isCoverImageFile(file)) {
+      setCoverUploadState({
+        status: "error",
+        message: "JPG, PNG, WEBP 이미지만 표지로 사용할 수 있습니다.",
+      });
+      event.target.value = "";
+      return;
+    }
+
+    setCoverUploadState({ status: "uploading", message: "표지 이미지 업로드 주소를 준비하는 중입니다." });
+
+    const prepareResponse = await fetch("/api/project-files", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "prepare",
+        fileName: file.name,
+        kind: "asset_image",
+        mimeType: file.type,
+        projectSlug: initialValues.slug,
+        size: file.size,
+      }),
+    });
+    const prepareResult = (await prepareResponse.json().catch(() => null)) as
+      | {
+          ok?: boolean;
+          bucket?: string;
+          fileName?: string;
+          message?: string;
+          mimeType?: string;
+          path?: string;
+          size?: number;
+          uploadUrl?: string;
+        }
+      | null;
+
+    if (!prepareResponse.ok || !prepareResult?.ok || !prepareResult.uploadUrl || !prepareResult.path) {
+      setCoverUploadState({
+        status: "error",
+        message: prepareResult?.message ?? "표지 이미지 업로드 주소를 준비하지 못했습니다.",
+      });
+      event.target.value = "";
+      return;
+    }
+
+    setCoverUploadState({ status: "uploading", message: "표지 이미지를 Storage에 업로드하는 중입니다." });
+
+    const uploadResponse = await fetch(prepareResult.uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": prepareResult.mimeType || file.type || "image/png",
+      },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      setCoverUploadState({
+        status: "error",
+        message: await readUploadError(uploadResponse, `Storage 업로드에 실패했습니다. (${uploadResponse.status})`),
+      });
+      event.target.value = "";
+      return;
+    }
+
+    setCoverUploadState({ status: "uploading", message: "업로드된 이미지를 프로젝트 자산에 연결하는 중입니다." });
+
+    const completeResponse = await fetch("/api/project-files", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "complete",
+        bucket: prepareResult.bucket,
+        fileName: prepareResult.fileName ?? file.name,
+        kind: "asset_image",
+        mimeType: prepareResult.mimeType ?? file.type,
+        path: prepareResult.path,
+        projectSlug: initialValues.slug,
+        size: prepareResult.size ?? file.size,
+      }),
+    });
+    const completeResult = (await completeResponse.json().catch(() => null)) as
+      | { ok?: boolean; message?: string }
+      | null;
+
+    if (!completeResponse.ok || !completeResult?.ok) {
+      setCoverUploadState({
+        status: "error",
+        message: completeResult?.message ?? "이미지는 올라갔지만 프로젝트 자산 연결에 실패했습니다.",
+      });
+      event.target.value = "";
+      return;
+    }
+
+    setCoverImagePath(prepareResult.path);
+    setCoverImageUrl(makePublicCoverPreviewHref(prepareResult.path));
+    setCoverEnabled(true);
+    setCoverUploadState({
+      status: "success",
+      message: "표지 이미지가 업로드됐습니다. 저장 버튼을 눌러 표지 설정을 반영하세요.",
+    });
+    event.target.value = "";
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -149,6 +318,14 @@ export function ProjectCreateForm({
         designerHoursCap: getFormText(formData, "designerHoursCap"),
         titleFontAssetId: getFormText(formData, "titleFontAssetId"),
         bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
+        coverEnabled,
+        coverLayout,
+        coverImageUrl: getFormText(formData, "coverImageUrl"),
+        coverImagePath: getFormText(formData, "coverImagePath"),
+        coverTitle: getFormText(formData, "coverTitle"),
+        coverSubtitle: getFormText(formData, "coverSubtitle"),
+        coverIssueText: getFormText(formData, "coverIssueText"),
+        coverFit,
         projectPassword: getFormText(formData, "projectPassword"),
         clearProjectPassword: formData.get("clearProjectPassword") === "on",
       }),
@@ -386,6 +563,157 @@ export function ProjectCreateForm({
                 활성화된 폰트가 없습니다. 관리자 계정으로 폰트 라이브러리에 먼저 업로드하세요.
               </p>
             ) : null}
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <div className="rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">모바일 표지</p>
+                <h4 className="mt-1 text-base font-black text-[#092046]">표지 설정</h4>
+              </div>
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-[#092046] shadow-sm">
+                <input
+                  type="checkbox"
+                  checked={coverEnabled}
+                  onChange={(event) => setCoverEnabled(event.target.checked)}
+                  className="h-4 w-4 accent-[#092046]"
+                />
+                표지 사용
+              </label>
+            </div>
+
+            <input name="coverImageUrl" type="hidden" value={coverImageUrl} />
+            <input name="coverImagePath" type="hidden" value={coverImagePath} />
+
+            <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
+              <div className="grid gap-4">
+                <div>
+                  <FieldLabel>표지 이미지</FieldLabel>
+                  <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-sky-200 bg-white px-4 py-5 text-center transition hover:border-[#2f73b7]">
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      disabled={!isEditMode || coverUploadState.status === "uploading"}
+                      onChange={uploadCoverImage}
+                    />
+                    <span className="text-sm font-black text-[#092046]">
+                      {isEditMode ? "표지 이미지 업로드" : "저장 후 업로드 가능"}
+                    </span>
+                    <span className="mt-1 text-xs font-semibold text-slate-500">
+                      JPG, PNG, WEBP 이미지를 사용합니다.
+                    </span>
+                  </label>
+                  <p
+                    className={`mt-2 text-xs font-semibold ${
+                      coverUploadState.status === "error"
+                        ? "text-rose-600"
+                        : coverUploadState.status === "success"
+                          ? "text-emerald-700"
+                          : "text-slate-500"
+                    }`}
+                  >
+                    {coverUploadState.message}
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <FieldLabel>표지 스타일</FieldLabel>
+                    <select
+                      name="coverLayout"
+                      value={coverLayout}
+                      onChange={(event) => setCoverLayout(event.target.value as NewsletterCoverLayout)}
+                      className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                    >
+                      <option value="image">이미지 원본형</option>
+                      <option value="image_info">이미지 + 정보형</option>
+                      <option value="image_overlay">이미지 배경형</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <FieldLabel>이미지 맞춤</FieldLabel>
+                    <select
+                      name="coverFit"
+                      value={coverFit}
+                      onChange={(event) => setCoverFit(event.target.value as NewsletterCoverFit)}
+                      className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                    >
+                      <option value="contain">원본 전체 보기</option>
+                      <option value="cover">화면 채우기</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <FieldLabel>표지 제목</FieldLabel>
+                    <TextInput
+                      name="coverTitle"
+                      placeholder="예: KBS비즈니스지부 특보"
+                      defaultValue={initialValues.coverTitle}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>부제</FieldLabel>
+                    <TextInput
+                      name="coverSubtitle"
+                      placeholder="예: 노동이 만드는 공정한 KBS"
+                      defaultValue={initialValues.coverSubtitle}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>호수 / 발행 정보</FieldLabel>
+                    <TextInput
+                      name="coverIssueText"
+                      placeholder="예: 2026년 9월호"
+                      defaultValue={initialValues.coverIssueText}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[1.25rem] border border-slate-200 bg-white p-3 shadow-sm">
+                <p className="mb-2 text-xs font-black text-[#184a88]">모바일 표지 미리보기</p>
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-[#edf4fb]">
+                  {coverPreviewSrc ? (
+                    <div
+                      className={`relative flex min-h-[240px] items-center justify-center ${
+                        coverLayout === "image_overlay" ? "bg-slate-950" : "bg-white"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={coverPreviewSrc}
+                        alt="모바일 표지 미리보기"
+                        className={`h-full max-h-[320px] w-full ${
+                          coverFit === "cover" || coverLayout === "image_overlay" ? "object-cover" : "object-contain"
+                        }`}
+                      />
+                      {coverLayout === "image_overlay" ? (
+                        <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent p-4 text-white">
+                          <p className="text-lg font-black leading-tight">
+                            {initialValues.coverTitle || initialValues.title || "표지 제목"}
+                          </p>
+                          <p className="mt-1 text-xs font-bold text-white/85">
+                            {initialValues.coverIssueText || initialValues.issueLabel || "발행 정보"}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="grid min-h-[240px] place-items-center px-4 text-center">
+                      <p className="text-sm font-bold leading-6 text-slate-500">
+                        표지 이미지를 업로드하면 이곳에서 확인할 수 있습니다.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
