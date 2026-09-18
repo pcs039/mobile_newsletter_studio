@@ -351,36 +351,28 @@ function PublicCompactPublicationHeader({
   publicationTitle: string;
   showToc: boolean;
 }) {
+  const hasEbookLinks = Boolean(ebookMobileHref || ebookDesktopHref);
+
   return (
     <header
       className="px-4 pb-4 pt-[calc(0.9rem+env(safe-area-inset-top))] text-white"
       style={{ backgroundColor: headerColor || "#071f46" }}
     >
-      <div className="flex min-h-16 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="line-clamp-2 text-lg font-black leading-6 [overflow-wrap:anywhere] [word-break:keep-all]">
+      <div className="flex min-h-14 items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="line-clamp-2 text-lg font-black leading-6 [line-break:strict] [overflow-wrap:break-word] [word-break:keep-all]">
             {publicationTitle}
           </h1>
-          {issue ? <p className="mt-1 text-sm font-bold text-sky-100 [overflow-wrap:anywhere]">{issue}</p> : null}
+          {issue ? (
+            <p className="mt-1 text-sm font-bold leading-5 text-sky-100 [line-break:strict] [overflow-wrap:break-word] [word-break:keep-all]">
+              {issue}
+            </p>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2 pr-[env(safe-area-inset-right)]">
-          {ebookMobileHref ? (
-            <Link
-              href={ebookMobileHref}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/30 bg-white px-3 text-xs font-black text-[#092046] shadow-sm backdrop-blur transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:hidden"
-            >
-              e-book 보기
-            </Link>
+          {!hasEbookLinks ? (
+            <PublicPageTurnSoundToggle className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2.5 text-[11px] font-black text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80" />
           ) : null}
-          {ebookDesktopHref ? (
-            <Link
-              href={ebookDesktopHref}
-              className="hidden min-h-10 items-center justify-center rounded-xl border border-white/30 bg-white px-3 text-xs font-black text-[#092046] shadow-sm backdrop-blur transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:inline-flex"
-            >
-              e-book 보기
-            </Link>
-          ) : null}
-          <PublicPageTurnSoundToggle className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2.5 text-[11px] font-black text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80" />
           {showToc ? (
             <button
               type="button"
@@ -393,6 +385,27 @@ function PublicCompactPublicationHeader({
           ) : null}
         </div>
       </div>
+      {hasEbookLinks ? (
+        <div className="mt-3 flex items-center gap-2">
+          {ebookMobileHref ? (
+            <Link
+              href={ebookMobileHref}
+              className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border border-white/30 bg-white px-4 text-[15px] font-bold text-[#092046] shadow-sm backdrop-blur transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:hidden"
+            >
+              e-book 보기
+            </Link>
+          ) : null}
+          {ebookDesktopHref ? (
+            <Link
+              href={ebookDesktopHref}
+              className="hidden min-h-10 flex-1 items-center justify-center rounded-xl border border-white/30 bg-white px-4 text-[15px] font-bold text-[#092046] shadow-sm backdrop-blur transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:inline-flex"
+            >
+              e-book 보기
+            </Link>
+          ) : null}
+          <PublicPageTurnSoundToggle className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-3 text-xs font-black text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80" />
+        </div>
+      ) : null}
     </header>
   );
 }
