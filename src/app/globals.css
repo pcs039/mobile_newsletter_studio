@@ -552,6 +552,10 @@ select {
   transition: none;
 }
 
+.public-newsletter-swipe-shell {
+  touch-action: pan-y;
+}
+
 .public-mobile-article-reader .public-article-page-slide-next {
   animation: public-mobile-page-slide-next 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
