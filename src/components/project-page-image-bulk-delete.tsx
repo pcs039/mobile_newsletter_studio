@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
+import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { StatusPill } from "@/components/status-pill";
 import { getCustomPageTitle } from "@/lib/page-labels";
 
@@ -16,7 +17,7 @@ type PageImageItem = {
   updated: string;
 };
 
-type BulkDeleteStatus = "idle" | "deleting" | "success" | "error";
+type BulkActionStatus = "idle" | "deleting" | "downloading" | "success" | "error";
 
 type DeleteResult = {
   message?: string;
@@ -59,12 +60,14 @@ export function ProjectPageImageBulkDelete({
   const router = useRouter();
   const deletablePages = useMemo(() => pages.filter((page) => Boolean(page.imagePath)), [pages]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [status, setStatus] = useState<BulkDeleteStatus>("idle");
+  const [status, setStatus] = useState<BulkActionStatus>("idle");
   const [message, setMessage] = useState("");
   const [deletedCount, setDeletedCount] = useState(0);
   const [deleteTotal, setDeleteTotal] = useState(0);
   const selectedCount = selectedIds.size;
   const isDeleting = status === "deleting";
+  const isDownloading = status === "downloading";
+  const isBusy = isDeleting || isDownloading;
 
   function togglePage(pageId: string) {
     setSelectedIds((current) => {
@@ -89,7 +92,7 @@ export function ProjectPageImageBulkDelete({
   }
 
   async function deletePages(targetPages: PageImageItem[], confirmMessage: string) {
-    if (targetPages.length === 0 || isDeleting) {
+    if (targetPages.length === 0 || isBusy) {
       return;
     }
 
@@ -123,16 +126,44 @@ export function ProjectPageImageBulkDelete({
 
   const selectedPages = deletablePages.filter((page) => selectedIds.has(page.id));
 
+  function downloadSelectedPages() {
+    if (selectedPages.length === 0 || isBusy) {
+      return;
+    }
+
+    const params = new URLSearchParams({
+      bucket: "page-images",
+      fileName: `${projectSlug}-pages.zip`,
+      pageIds: selectedPages.map((page) => page.id).join(","),
+      projectSlug,
+      zip: "1",
+    });
+    const link = document.createElement("a");
+
+    setStatus("downloading");
+    setMessage("다운로드 준비 중...");
+    link.href = `/api/project-files/download?${params.toString()}`;
+    link.download = `${projectSlug}-pages.zip`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.setTimeout(() => {
+      setStatus("success");
+      setMessage("선택한 페이지 파일 다운로드를 시작했습니다.");
+    }, 1200);
+  }
+
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
+      <div className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm font-black text-rose-900">페이지 이미지 선택 삭제</p>
-            <p className="mt-1 text-xs font-bold leading-5 text-rose-700">
-              선택 {selectedCount}개 · page_image만 삭제
+            <p className="text-sm font-black text-[#092046]">페이지 이미지 선택 작업</p>
+            <p className="mt-1 text-xs font-bold leading-5 text-[#184a88]">
+              선택 {selectedCount}개 · 다운로드와 삭제는 별도 동작입니다.
             </p>
-            <p className="mt-1 text-xs font-bold leading-5 text-rose-700">
+            <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
               클릭 영역은 별도 확인이 필요할 수 있습니다.
             </p>
           </div>
@@ -140,25 +171,33 @@ export function ProjectPageImageBulkDelete({
             <button
               type="button"
               onClick={selectAll}
-              disabled={isDeleting || deletablePages.length === 0}
-              className="dd-btn dd-btn-secondary dd-btn-sm border-rose-300 px-4 text-sm text-rose-700 hover:bg-rose-100"
+              disabled={isBusy || deletablePages.length === 0}
+              className="dd-btn dd-btn-secondary dd-btn-sm px-4 text-sm"
             >
               전체 선택
             </button>
             <button
               type="button"
               onClick={clearSelection}
-              disabled={isDeleting || selectedCount === 0}
+              disabled={isBusy || selectedCount === 0}
               className="dd-btn dd-btn-secondary dd-btn-sm border-slate-300 px-4 text-sm text-slate-700 hover:bg-slate-50"
             >
               전체 해제
             </button>
             <button
               type="button"
+              onClick={downloadSelectedPages}
+              disabled={isBusy || selectedPages.length === 0}
+              className="dd-btn dd-btn-secondary dd-btn-sm px-4 text-sm"
+            >
+              {isDownloading ? "다운로드 준비 중..." : "선택 다운로드"}
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 void deletePages(selectedPages, `선택한 ${selectedPages.length}개 페이지 이미지를 삭제하시겠습니까?`);
               }}
-              disabled={isDeleting || selectedPages.length === 0}
+              disabled={isBusy || selectedPages.length === 0}
               className="dd-btn dd-btn-danger dd-btn-sm px-4 text-sm disabled:bg-rose-300"
             >
               선택 삭제
@@ -171,7 +210,7 @@ export function ProjectPageImageBulkDelete({
                   "등록된 모든 페이지 이미지를 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
                 );
               }}
-              disabled={isDeleting || deletablePages.length === 0}
+              disabled={isBusy || deletablePages.length === 0}
               className="dd-btn dd-btn-danger dd-btn-sm px-4 text-sm disabled:bg-rose-300"
             >
               전체 페이지 이미지 삭제
@@ -222,7 +261,7 @@ export function ProjectPageImageBulkDelete({
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    disabled={!canDelete || isDeleting}
+                    disabled={!canDelete || isBusy}
                     onChange={() => togglePage(page.id)}
                     className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
                   />
@@ -260,7 +299,14 @@ export function ProjectPageImageBulkDelete({
                 </div>
               </div>
               {page.imagePath ? (
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex flex-wrap justify-end gap-2">
+                  <ProjectFileDownloadLink
+                    bucket="page-images"
+                    className="dd-btn dd-btn-secondary dd-btn-sm text-xs"
+                    fileName={`${projectSlug}-page-${String(page.pageNumber).padStart(3, "0")}`}
+                    path={page.imagePath}
+                    projectSlug={projectSlug}
+                  />
                   <ProjectFileDeleteButton
                     fileLabel={`${page.pageNumber}쪽 페이지 이미지`}
                     kind="page_image"
