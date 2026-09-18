@@ -551,7 +551,9 @@ type NewsletterAudioFileRow = {
   title: string;
   file_path: string;
   duration_seconds: number | null;
+  script_text: string | null;
   script_status: string;
+  transcript_type: string | null;
   pronunciation_note: string | null;
   updated_at: string;
 };
@@ -883,6 +885,10 @@ export type ProjectAudioFile = {
   filePath: string;
   previewHref: string;
   duration: string;
+  transcriptText: string;
+  transcriptType: AudioTranscriptType;
+  transcriptTypeLabel: string;
+  transcriptReviewStatus: AudioTranscriptReviewStatus;
   scriptStatus: string;
   note: string;
   updated: string;
@@ -952,6 +958,11 @@ export type ProjectArticleAudioFile = {
   id: string;
   title: string;
   previewHref: string;
+  transcriptText: string;
+  transcriptType: AudioTranscriptType;
+  transcriptTypeLabel: string;
+  transcriptReviewStatus: AudioTranscriptReviewStatus;
+  transcriptReviewStatusLabel: string;
 };
 
 export type ProjectContentResult = {
@@ -971,6 +982,9 @@ export type UpdateProjectAudioArticleLinkResult =
       message: string;
       httpStatus?: number;
     };
+
+export type AudioTranscriptType = "article_original" | "summary_script" | "custom_script";
+export type AudioTranscriptReviewStatus = "pending" | "approved" | "needs_revision";
 
 export type UpsertProjectArticleInput = {
   projectSlug: string;
@@ -1193,10 +1207,35 @@ const assetSourceLabels: Record<string, string> = {
 };
 
 const audioScriptStatusLabels: Record<string, string> = {
-  unchecked: "대본 검수 대기",
-  approved: "대본 확인 완료",
-  needs_revision: "대본 수정 필요",
+  unchecked: "검수 대기",
+  pending: "검수 대기",
+  approved: "검수 완료",
+  needs_revision: "수정 필요",
 };
+
+const audioTranscriptTypeLabels: Record<AudioTranscriptType, string> = {
+  article_original: "기사 원문 그대로",
+  summary_script: "요약 대본",
+  custom_script: "별도 낭독문",
+};
+
+function normalizeAudioTranscriptType(value: string | null | undefined): AudioTranscriptType {
+  return value === "article_original" || value === "summary_script" || value === "custom_script"
+    ? value
+    : "custom_script";
+}
+
+function normalizeAudioTranscriptReviewStatus(value: string | null | undefined): AudioTranscriptReviewStatus {
+  return value === "approved" || value === "needs_revision" ? value : "pending";
+}
+
+export function getAudioTranscriptTypeLabel(value: AudioTranscriptType) {
+  return audioTranscriptTypeLabels[value];
+}
+
+export function getAudioTranscriptReviewStatusLabel(value: AudioTranscriptReviewStatus) {
+  return audioScriptStatusLabels[value];
+}
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -1863,6 +1902,9 @@ function mapAssetRowToProjectAssetFile(asset: NewsletterAssetRow): ProjectAssetF
 }
 
 function mapAudioRowToProjectAudioFile(file: NewsletterAudioFileRow): ProjectAudioFile {
+  const transcriptType = normalizeAudioTranscriptType(file.transcript_type);
+  const transcriptReviewStatus = normalizeAudioTranscriptReviewStatus(file.script_status);
+
   return {
     id: file.id,
     articleId: file.article_id,
@@ -1870,17 +1912,29 @@ function mapAudioRowToProjectAudioFile(file: NewsletterAudioFileRow): ProjectAud
     filePath: file.file_path,
     previewHref: makeStoragePreviewHref("audio-files", file.file_path) ?? "",
     duration: formatDuration(file.duration_seconds),
-    scriptStatus: audioScriptStatusLabels[file.script_status] ?? file.script_status,
+    transcriptText: file.script_text || "",
+    transcriptType,
+    transcriptTypeLabel: audioTranscriptTypeLabels[transcriptType],
+    transcriptReviewStatus,
+    scriptStatus: audioScriptStatusLabels[transcriptReviewStatus],
     note: file.pronunciation_note || "검수 메모 없음",
     updated: formatCompactDateTime(file.updated_at),
   };
 }
 
 function mapAudioRowToProjectArticleAudioFile(file: NewsletterAudioFileRow): ProjectArticleAudioFile {
+  const transcriptType = normalizeAudioTranscriptType(file.transcript_type);
+  const transcriptReviewStatus = normalizeAudioTranscriptReviewStatus(file.script_status);
+
   return {
     id: file.id,
     title: file.title,
     previewHref: makePublicStoragePreviewHref("audio-files", file.file_path) ?? "",
+    transcriptText: file.script_text || "",
+    transcriptType,
+    transcriptTypeLabel: audioTranscriptTypeLabels[transcriptType],
+    transcriptReviewStatus,
+    transcriptReviewStatusLabel: audioScriptStatusLabels[transcriptReviewStatus],
   };
 }
 
@@ -4289,7 +4343,7 @@ export async function getProjectAudioFiles(projectSlug: string): Promise<Project
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_status,pronunciation_note,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_text,script_status,transcript_type,pronunciation_note,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=updated_at.desc&limit=100`,
   );
@@ -4389,7 +4443,7 @@ async function fetchArticleLinks(articleIds: string[], headers: Record<string, s
 
 async function fetchProjectAudioFilesForContent(projectId: string, headers: Record<string, string>) {
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_status,pronunciation_note,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_text,script_status,transcript_type,pronunciation_note,updated_at&project_id=eq.${encodeURIComponent(
       projectId,
     )}&order=updated_at.desc`,
   );
@@ -5209,14 +5263,26 @@ export async function updateProjectAudioArticleLink({
   articleId,
   audioId,
   projectSlug,
+  unlink,
+  transcriptReviewNote,
+  transcriptReviewStatus,
+  transcriptText,
+  transcriptType,
 }: {
   articleId?: string | null;
   audioId: string;
   projectSlug: string;
+  unlink?: boolean;
+  transcriptReviewNote?: string | null;
+  transcriptReviewStatus?: string | null;
+  transcriptText?: string | null;
+  transcriptType?: string | null;
 }): Promise<UpdateProjectAudioArticleLinkResult> {
   const normalizedArticleId = articleId?.trim() || null;
   const normalizedAudioId = audioId.trim();
   const normalizedProjectSlug = projectSlug.trim();
+  const normalizedTranscriptType = normalizeAudioTranscriptType(transcriptType);
+  const normalizedTranscriptReviewStatus = normalizeAudioTranscriptReviewStatus(transcriptReviewStatus);
   const headers = getRequestHeaders(true);
 
   if (!normalizedAudioId || !normalizedProjectSlug) {
@@ -5387,7 +5453,13 @@ export async function updateProjectAudioArticleLink({
   const updateAudioResponse = await fetch(updateAudioEndpoint, {
     method: "PATCH",
     headers: writeHeaders,
-    body: JSON.stringify({ article_id: normalizedArticleId }),
+    body: JSON.stringify({
+      article_id: normalizedArticleId,
+      pronunciation_note: transcriptReviewNote?.trim() || null,
+      script_status: normalizedTranscriptReviewStatus,
+      script_text: transcriptText?.trim() || null,
+      transcript_type: normalizedTranscriptType,
+    }),
     cache: "no-store",
   });
 
@@ -5420,7 +5492,11 @@ export async function updateProjectAudioArticleLink({
 
   return {
     ok: true,
-    message: normalizedArticleId ? "음성 파일이 모바일 기사에 연결되었습니다." : "음성 파일 연결이 해제되었습니다.",
+    message: normalizedArticleId
+      ? "음성 파일이 모바일 기사에 연결되었습니다."
+      : unlink
+        ? "음성 파일 연결이 해제되었습니다."
+        : "음성 대본 정보를 저장했습니다.",
   };
 }
 

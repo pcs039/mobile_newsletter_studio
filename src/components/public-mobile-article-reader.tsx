@@ -613,6 +613,17 @@ function ArticleCard({
             preload="metadata"
             src={article.audioFile.previewHref}
           />
+          {article.audioFile.transcriptText ? (
+            <details className="mt-3 rounded-xl border border-[#d8e7fb] bg-white px-3 py-2">
+              <summary className="cursor-pointer text-sm font-black text-[#092046]">음성 대본 보기</summary>
+              <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
+                음성 파일 제작에 사용된 낭독문입니다.
+              </p>
+              <p className="mt-3 whitespace-pre-wrap break-words text-sm font-semibold leading-7 text-slate-800">
+                {article.audioFile.transcriptText}
+              </p>
+            </details>
+          ) : null}
         </section>
       ) : null}
       {visibleBlocks.length > 0 ? (
