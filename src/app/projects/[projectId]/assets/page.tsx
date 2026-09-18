@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileUploadCard } from "@/components/file-upload-card";
+import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
@@ -128,13 +129,21 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
                           <p className="whitespace-nowrap text-xs font-semibold text-slate-500">
                             최근 수정 {asset.updated}
                           </p>
-                          <ProjectFileDeleteButton
-                            fileLabel={asset.title}
-                            kind="asset_image"
-                            path={asset.filePath}
-                            projectSlug={projectId}
-                            recordId={asset.id}
-                          />
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <ProjectFileDownloadLink
+                              className="dd-btn dd-btn-secondary px-4 py-3 text-sm"
+                              fileName={asset.title}
+                              path={asset.filePath}
+                              projectSlug={projectId}
+                            />
+                            <ProjectFileDeleteButton
+                              fileLabel={asset.title}
+                              kind="asset_image"
+                              path={asset.filePath}
+                              projectSlug={projectId}
+                              recordId={asset.id}
+                            />
+                          </div>
                         </div>
                       </article>
                     ))}

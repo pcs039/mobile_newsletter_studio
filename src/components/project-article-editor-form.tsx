@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
+import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { StatusPill } from "@/components/status-pill";
 import { getSelectableFontAssets } from "@/lib/font-css";
 import {
@@ -430,6 +431,26 @@ function shouldUseTextarea(type: EditorBlockType) {
 
 function makePublicAssetPreviewHref(path: string) {
   return `/api/public-files/preview?bucket=mobile-assets&path=${encodeURIComponent(path)}`;
+}
+
+function getMobileAssetPathFromPreviewHref(value: string) {
+  if (!value.trim()) {
+    return "";
+  }
+
+  try {
+    const url = new URL(value, "https://local.invalid");
+    const isMobileAssetPreview =
+      url.pathname === "/api/public-files/preview" && url.searchParams.get("bucket") === "mobile-assets";
+
+    return isMobileAssetPreview ? url.searchParams.get("path")?.trim() ?? "" : "";
+  } catch {
+    return "";
+  }
+}
+
+function isPersistedBlockId(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function readUploadMessage(response: ProjectFileUploadResponse | null, fallback: string) {
@@ -887,10 +908,37 @@ export function ProjectArticleEditorForm({
     setWordImportMessage("Word 원고를 모바일 기사 블록으로 가져왔습니다. 이미지와 추가 링크는 필요한 위치에 블록으로 보완하세요.");
   }
 
-  function removeBlock(blockId: string) {
-    setBlocks((currentBlocks) =>
-      currentBlocks.length === 1 ? currentBlocks : currentBlocks.filter((block) => block.id !== blockId),
-    );
+  async function removeBlock(blockId: string) {
+    const confirmed = window.confirm("이 콘텐츠 블록을 삭제하시겠습니까?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    if (article?.id && isPersistedBlockId(blockId)) {
+      setError("");
+      setMessage("콘텐츠 블록을 삭제하는 중입니다.");
+
+      const params = new URLSearchParams({
+        articleId: article.id,
+        blockId,
+        projectSlug,
+      });
+      const response = await fetch(`/api/project-content/blocks?${params.toString()}`, {
+        method: "DELETE",
+      });
+      const result = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        setError(result?.message ?? "콘텐츠 블록 삭제에 실패했습니다.");
+        setMessage("");
+        return;
+      }
+    }
+
+    setBlocks((currentBlocks) => currentBlocks.filter((block) => block.id !== blockId));
+    setError("");
+    setMessage("콘텐츠 블록을 삭제했습니다. 필요하면 저장 버튼을 눌러 나머지 블록 순서를 반영하세요.");
   }
 
   function moveBlock(blockId: string, direction: "up" | "down") {
@@ -1302,6 +1350,34 @@ export function ProjectArticleEditorForm({
         </div>
 
         <div className="mt-5 space-y-4">
+          {blocks.length === 0 ? (
+            <div className="rounded-lg border-2 border-dashed border-sky-200 bg-[#f7fbff] px-5 py-8 text-center">
+              <p className="text-base font-black text-[#092046]">콘텐츠 블록이 없습니다.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                삭제 후에도 새 문단, 이미지, URL 버튼, 영상 블록을 다시 추가할 수 있습니다.
+              </p>
+              <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+                {editableBlockTypes.map((item) => {
+                  const theme = blockTypeThemes[item.type];
+
+                  return (
+                    <button
+                      key={`empty-${item.type}`}
+                      type="button"
+                      onClick={() => addBlock(item.type)}
+                      className={`group rounded-xl border px-3 py-3 text-left shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-md ${theme.button}`}
+                    >
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${theme.marker}`}>
+                        + {item.label}
+                      </span>
+                      <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600">{item.help}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
           {blocks.map((block, index) => (
             <div key={block.id} className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1335,11 +1411,12 @@ export function ProjectArticleEditorForm({
                   </button>
                   <button
                     type="button"
-                    onClick={() => removeBlock(block.id)}
-                    disabled={blocks.length === 1}
-                    className="rounded-md border border-rose-200 bg-white px-3 py-2 text-xs font-black text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                    onClick={() => {
+                      void removeBlock(block.id);
+                    }}
+                    className="rounded-md border border-rose-200 bg-white px-3 py-2 text-xs font-black text-rose-600 transition hover:bg-rose-50"
                   >
-                    삭제
+                    블록 삭제
                   </button>
                 </div>
               </div>
@@ -1447,6 +1524,48 @@ export function ProjectArticleEditorForm({
                     </div>
                   </div>
                   <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">업로드 후 이미지 주소가 자동 입력됩니다.</p>
+                  {block.body.trim() ? (
+                    <div className="mt-4 rounded-lg border border-sky-100 bg-white p-3">
+                      <div className="overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={block.body}
+                          alt={block.title || "기사 이미지 미리보기"}
+                          className="max-h-56 w-full object-contain"
+                        />
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <label className="dd-btn dd-btn-secondary dd-btn-sm cursor-pointer">
+                          이미지 교체
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            disabled={uploadingImageBlockId === block.id}
+                            onChange={(event) => {
+                              void uploadImageFileToBlock(block.id, event.currentTarget.files?.[0]);
+                              event.currentTarget.value = "";
+                            }}
+                          />
+                        </label>
+                        <ProjectFileDownloadLink
+                          className="dd-btn dd-btn-secondary dd-btn-sm"
+                          fileName={block.title || "article-image"}
+                          path={getMobileAssetPathFromPreviewHref(block.body)}
+                          projectSlug={projectSlug}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void removeBlock(block.id);
+                          }}
+                          className="dd-btn dd-btn-danger dd-btn-sm"
+                        >
+                          블록 삭제
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
 
