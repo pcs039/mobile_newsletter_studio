@@ -638,6 +638,9 @@ type NewsletterArticleRow = {
   summary: string | null;
   body: string | null;
   text_alignment: string | null;
+  title_alignment: string | null;
+  summary_alignment: string | null;
+  body_alignment: string | null;
   contact_name: string | null;
   contact_phone: string | null;
   motion_preset: string | null;
@@ -668,6 +671,7 @@ type NewsletterContentBlockRow = {
   block_type: ContentBlockType;
   title: string | null;
   body: string | null;
+  text_alignment: string | null;
   asset_id: string | null;
   link_action_id: string | null;
   sort_order: number;
@@ -906,6 +910,7 @@ export type ProjectContentBlock = {
   type: ContentBlockType;
   title: string;
   body: string;
+  textAlignment: ArticleTextAlignment;
   assetId: string | null;
   linkActionId: string | null;
   sortOrder: number;
@@ -933,6 +938,9 @@ export type ProjectContentArticle = {
   summary: string;
   body: string;
   textAlignment: ArticleTextAlignment;
+  titleAlignment: ArticleTextAlignment;
+  summaryAlignment: ArticleTextAlignment;
+  bodyAlignment: ArticleTextAlignment;
   contactName: string;
   contactPhone: string;
   motionPreset: ArticleMotionPreset;
@@ -1000,15 +1008,20 @@ export type UpsertProjectArticleInput = {
   summary?: string;
   body?: string;
   textAlignment?: string;
+  titleAlignment?: string;
+  summaryAlignment?: string;
+  bodyAlignment?: string;
   contentSections?: Array<{
     title?: string;
     body?: string;
+    textAlignment?: string;
     sortOrder?: number;
   }>;
   contentBlocks?: Array<{
     type: Extract<ContentBlockType, "paragraph" | "image" | "video_link" | "map_link" | "button_group" | "audio">;
     title?: string;
     body?: string;
+    textAlignment?: string;
     sortOrder?: number;
     assetId?: string | null;
   }>;
@@ -1952,6 +1965,7 @@ function mapContentBlockRowToProjectBlock(block: NewsletterContentBlockRow): Pro
     type: block.block_type,
     title: block.title || "",
     body: block.body || "",
+    textAlignment: normalizeArticleTextAlignment(block.text_alignment),
     assetId: block.asset_id,
     linkActionId: block.link_action_id,
     sortOrder: block.sort_order,
@@ -1992,6 +2006,9 @@ function mapArticleRowToProjectContentArticle(
     summary: article.summary || "",
     body: article.body || "",
     textAlignment: normalizeArticleTextAlignment(article.text_alignment),
+    titleAlignment: normalizeArticleTextAlignment(article.title_alignment),
+    summaryAlignment: normalizeArticleTextAlignment(article.summary_alignment ?? article.text_alignment),
+    bodyAlignment: normalizeArticleTextAlignment(article.body_alignment ?? article.text_alignment),
     contactName: article.contact_name || "",
     contactPhone: article.contact_phone || "",
     motionPreset: normalizeArticleMotionPreset(article.motion_preset),
@@ -2098,6 +2115,7 @@ function normalizeContentSections(sections: UpsertProjectArticleInput["contentSe
     .map((section, index) => ({
       title: nullableText(section.title),
       body: nullableText(section.body),
+      textAlignment: normalizeArticleTextAlignment(section.textAlignment),
       sortOrder: normalizeArticleSortOrder(section.sortOrder) || (index + 1) * 10,
     }))
     .filter((section) => section.title || section.body);
@@ -2109,6 +2127,7 @@ function normalizeContentBlocks(blocks: UpsertProjectArticleInput["contentBlocks
       type: block.type,
       title: nullableText(block.title),
       body: nullableText(block.body),
+      textAlignment: normalizeArticleTextAlignment(block.textAlignment),
       sortOrder: normalizeArticleSortOrder(block.sortOrder) || (index + 1) * 10,
       assetId: block.assetId || null,
     }))
@@ -4402,7 +4421,7 @@ async function fetchArticleBlocks(articleIds: string[], headers: Record<string, 
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_content_blocks?select=id,project_id,article_id,block_type,title,body,asset_id,link_action_id,sort_order,metadata,is_visible,updated_at&article_id=${makeArticleIdFilter(
+    `/rest/v1/newsletter_content_blocks?select=id,project_id,article_id,block_type,title,body,text_alignment,asset_id,link_action_id,sort_order,metadata,is_visible,updated_at&article_id=${makeArticleIdFilter(
       articleIds,
     )}&order=sort_order.asc`,
   );
@@ -4508,7 +4527,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -4656,6 +4675,7 @@ async function replaceArticleBlocks(
     block_type: ContentBlockType;
     title: string | null;
     body: string | null;
+    text_alignment?: ArticleTextAlignment;
     asset_id?: string | null;
     link_action_id?: string | null;
     sort_order: number;
@@ -4720,6 +4740,7 @@ async function replaceArticleBlocks(
         block_type: block.type,
         title: block.title,
         body: block.body,
+        text_alignment: block.textAlignment,
         asset_id: block.assetId,
         link_action_id: linkActionId,
         sort_order: block.sortOrder,
@@ -4734,6 +4755,7 @@ async function replaceArticleBlocks(
           block_type: "paragraph",
           title: section.title,
           body: section.body,
+          text_alignment: normalizeArticleTextAlignment(section.textAlignment ?? input.bodyAlignment ?? input.textAlignment),
           sort_order: section.sortOrder || (index + 1) * 10,
         });
       });
@@ -4742,6 +4764,7 @@ async function replaceArticleBlocks(
         block_type: "paragraph",
         title: null,
         body: cleanText(input.body),
+        text_alignment: normalizeArticleTextAlignment(input.bodyAlignment ?? input.textAlignment),
         sort_order: 10,
       });
     }
@@ -4864,6 +4887,7 @@ async function replaceArticleBlocks(
         block_type: block.block_type,
         title: block.title,
         body: block.body,
+        text_alignment: block.text_alignment ?? null,
         asset_id: block.asset_id ?? null,
         link_action_id: block.link_action_id ?? null,
         sort_order: block.sort_order,
@@ -4929,6 +4953,9 @@ export async function upsertProjectArticle(
       summary: nullableText(input.summary),
       body: nullableText(input.body),
       text_alignment: normalizeArticleTextAlignment(input.textAlignment),
+      title_alignment: normalizeArticleTextAlignment(input.titleAlignment),
+      summary_alignment: normalizeArticleTextAlignment(input.summaryAlignment ?? input.textAlignment),
+      body_alignment: normalizeArticleTextAlignment(input.bodyAlignment ?? input.textAlignment),
       contact_name: nullableText(input.contactName),
       contact_phone: nullableText(input.contactPhone),
       motion_preset: normalizeArticleMotionPreset(input.motionPreset),
