@@ -637,6 +637,7 @@ type NewsletterArticleRow = {
   display_title: string | null;
   summary: string | null;
   body: string | null;
+  text_alignment: string | null;
   contact_name: string | null;
   contact_phone: string | null;
   motion_preset: string | null;
@@ -931,6 +932,7 @@ export type ProjectContentArticle = {
   displayTitle: string;
   summary: string;
   body: string;
+  textAlignment: ArticleTextAlignment;
   contactName: string;
   contactPhone: string;
   motionPreset: ArticleMotionPreset;
@@ -985,6 +987,7 @@ export type UpdateProjectAudioArticleLinkResult =
 
 export type AudioTranscriptType = "article_original" | "summary_script" | "custom_script";
 export type AudioTranscriptReviewStatus = "pending" | "approved" | "needs_revision";
+export type ArticleTextAlignment = "left" | "center" | "right" | "justify";
 
 export type UpsertProjectArticleInput = {
   projectSlug: string;
@@ -996,6 +999,7 @@ export type UpsertProjectArticleInput = {
   displayTitle?: string;
   summary?: string;
   body?: string;
+  textAlignment?: string;
   contentSections?: Array<{
     title?: string;
     body?: string;
@@ -1227,6 +1231,10 @@ function normalizeAudioTranscriptType(value: string | null | undefined): AudioTr
 
 function normalizeAudioTranscriptReviewStatus(value: string | null | undefined): AudioTranscriptReviewStatus {
   return value === "approved" || value === "needs_revision" ? value : "pending";
+}
+
+function normalizeArticleTextAlignment(value: string | null | undefined): ArticleTextAlignment {
+  return value === "center" || value === "right" || value === "justify" ? value : "left";
 }
 
 export function getAudioTranscriptTypeLabel(value: AudioTranscriptType) {
@@ -1983,6 +1991,7 @@ function mapArticleRowToProjectContentArticle(
     displayTitle: article.display_title || "",
     summary: article.summary || "",
     body: article.body || "",
+    textAlignment: normalizeArticleTextAlignment(article.text_alignment),
     contactName: article.contact_name || "",
     contactPhone: article.contact_phone || "",
     motionPreset: normalizeArticleMotionPreset(article.motion_preset),
@@ -4499,7 +4508,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -4919,6 +4928,7 @@ export async function upsertProjectArticle(
       display_title: nullableText(input.displayTitle),
       summary: nullableText(input.summary),
       body: nullableText(input.body),
+      text_alignment: normalizeArticleTextAlignment(input.textAlignment),
       contact_name: nullableText(input.contactName),
       contact_phone: nullableText(input.contactPhone),
       motion_preset: normalizeArticleMotionPreset(input.motionPreset),
