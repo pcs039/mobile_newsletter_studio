@@ -73,12 +73,21 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
     );
   }
 
-  const pages = pageImageData.pages;
+  const pages = pageImageData.pages.filter((page) => page.previewHref);
   const requestedPageNumber = Number(pageParam) || pages[0]?.pageNumber || 1;
   const mobileReadingHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : project.publicUrl ?? `/newsletters/${slug}`;
   const desktopEbookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : `/newsletters/${slug}/ebook`;
   const publicAudioFile = audioData.files[0] ?? null;
   const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
+
+  if (pages.length === 0) {
+    return (
+      <PublicUnavailablePage
+        title="등록된 e-book 페이지가 없습니다."
+        message="페이지 이미지가 등록되면 모바일 e-book 보기를 사용할 수 있습니다."
+      />
+    );
+  }
 
   return (
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
