@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { getSelectableFontAssets } from "@/lib/font-css";
 import type { FontAsset, NewsletterCoverFit, NewsletterCoverLayout } from "@/lib/newsletter-repository";
 
@@ -147,6 +148,7 @@ export function ProjectCreateForm({
   mode?: ProjectFormMode;
 }) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const isEditMode = mode === "edit";
   const [primaryColor, setPrimaryColor] = useState(initialValues.primaryColor || "#092046");
   const [coverEnabled, setCoverEnabled] = useState(initialValues.coverEnabled === true);
@@ -164,6 +166,93 @@ export function ProjectCreateForm({
   });
 
   const coverPreviewSrc = coverImageUrl || (coverImagePath ? makePublicCoverPreviewHref(coverImagePath) : "");
+
+  function setFormTextValue(name: string, value: string) {
+    const field = formRef.current?.elements.namedItem(name);
+
+    if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+      field.value = value;
+    }
+  }
+
+  async function removeCover() {
+    const confirmed = window.confirm(
+      "현재 프로젝트에서 표지를 제거하시겠습니까?\n업로드된 원본 이미지 파일은 Storage에 남아 있습니다.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const shouldClearText = window.confirm("표지 제목, 부제, 호수 / 발행 정보도 초기화할까요?");
+
+    setCoverEnabled(false);
+    setCoverImageUrl("");
+    setCoverImagePath("");
+
+    if (shouldClearText) {
+      setFormTextValue("coverTitle", "");
+      setFormTextValue("coverSubtitle", "");
+      setFormTextValue("coverIssueText", "");
+    }
+
+    if (isEditMode && formRef.current) {
+      const formData = new FormData(formRef.current);
+
+      setCoverUploadState({ status: "uploading", message: "표지 연결을 제거하는 중입니다." });
+
+      const response = await fetch("/api/projects", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId: initialValues.projectId ?? initialValues.slug,
+          title: getFormText(formData, "title"),
+          issueLabel: getFormText(formData, "issueLabel"),
+          organizationName: getFormText(formData, "organizationName"),
+          assigneeName: getFormText(formData, "assigneeName"),
+          publishedDate: getFormText(formData, "publishedDate"),
+          slug: getFormText(formData, "slug"),
+          description: getFormText(formData, "description"),
+          primaryColor: getFormText(formData, "primaryColor"),
+          status: getFormText(formData, "status"),
+          packageTier: getFormText(formData, "packageTier"),
+          productionMode: getFormText(formData, "productionMode"),
+          estimatedHours: getFormText(formData, "estimatedHours"),
+          designerHoursCap: getFormText(formData, "designerHoursCap"),
+          titleFontAssetId: getFormText(formData, "titleFontAssetId"),
+          bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
+          coverEnabled: false,
+          coverLayout,
+          coverImageUrl: "",
+          coverImagePath: "",
+          coverTitle: shouldClearText ? "" : getFormText(formData, "coverTitle"),
+          coverSubtitle: shouldClearText ? "" : getFormText(formData, "coverSubtitle"),
+          coverIssueText: shouldClearText ? "" : getFormText(formData, "coverIssueText"),
+          coverFit,
+          projectPassword: "",
+          clearProjectPassword: false,
+        }),
+      });
+      const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+
+      if (!response.ok || result?.ok !== true) {
+        setCoverUploadState({
+          status: "error",
+          message: result?.message ?? "표지 제거를 저장하지 못했습니다.",
+        });
+        return;
+      }
+
+      router.refresh();
+    }
+
+    setCoverUploadState({
+      status: "success",
+      message: "표지가 제거되었습니다.",
+    });
+  }
 
   async function uploadCoverImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -378,7 +467,7 @@ export function ProjectCreateForm({
   const selectableFonts = getSelectableFontAssets(fonts);
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
+    <form ref={formRef} onSubmit={handleSubmit} className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">작업 입력 영역</p>
@@ -711,6 +800,34 @@ export function ProjectCreateForm({
                       </p>
                     </div>
                   )}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <label className="dd-btn dd-btn-secondary dd-btn-sm cursor-pointer">
+                    이미지 교체
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      disabled={!isEditMode || coverUploadState.status === "uploading"}
+                      onChange={uploadCoverImage}
+                    />
+                  </label>
+                  <ProjectFileDownloadLink
+                    className="dd-btn dd-btn-secondary dd-btn-sm"
+                    fileName={coverImagePath.split("/").pop() || "newsletter-cover"}
+                    path={coverImagePath}
+                    projectSlug={initialValues.slug ?? ""}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void removeCover();
+                    }}
+                    disabled={!coverImagePath && !coverImageUrl}
+                    className="dd-btn dd-btn-danger dd-btn-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    표지 삭제
+                  </button>
                 </div>
               </div>
             </div>
