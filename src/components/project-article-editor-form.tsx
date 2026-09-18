@@ -45,6 +45,7 @@ type EditorBlock = {
   type: EditorBlockType;
   title: string;
   body: string;
+  textAlignment: ArticleTextAlignment;
 };
 
 type ImportedWordResponse =
@@ -199,24 +200,28 @@ const standardArticleTemplate: EditorBlock[] = [
     type: "paragraph",
     title: "핵심 내용",
     body: "모바일 독자가 먼저 알아야 할 핵심 내용을 2~4문장으로 입력합니다.",
+    textAlignment: "left",
   },
   {
     id: "template-image-1",
     type: "image",
     title: "관련 사진 설명",
     body: "https://... 이미지 공개 URL",
+    textAlignment: "left",
   },
   {
     id: "template-paragraph-2",
     type: "paragraph",
     title: "상세 안내",
     body: "사진 아래에 이어질 설명 문단을 입력합니다. 날짜, 장소, 대상, 신청 방법처럼 구체 정보를 넣습니다.",
+    textAlignment: "left",
   },
   {
     id: "template-button-1",
     type: "button_group",
     title: "자세히 보기",
     body: "https://... 연결할 페이지 URL",
+    textAlignment: "left",
   },
 ];
 
@@ -280,6 +285,7 @@ function makeInitialBlocks(article: ProjectContentArticle | null): EditorBlock[]
           type: block.type as EditorBlockType,
           title: block.type === "paragraph" && block.title === "본문" ? "" : block.title || link?.label || "",
           body: block.body || link?.targetValue || "",
+          textAlignment: block.textAlignment,
         };
       }) ?? [];
 
@@ -290,7 +296,7 @@ function makeInitialBlocks(article: ProjectContentArticle | null): EditorBlock[]
   const fallbackBlocks: EditorBlock[] = [];
 
   if (article?.body) {
-    fallbackBlocks.push({ id: "paragraph-1", type: "paragraph", title: "", body: article.body });
+    fallbackBlocks.push({ id: "paragraph-1", type: "paragraph", title: "", body: article.body, textAlignment: article.bodyAlignment });
   }
 
   const videoLink = article?.links.find((link) => link.actionType === "video");
@@ -298,24 +304,24 @@ function makeInitialBlocks(article: ProjectContentArticle | null): EditorBlock[]
   const buttonLink = article?.links.find((link) => link.displayStyle === "button");
 
   if (videoLink) {
-    fallbackBlocks.push({ id: "video-1", type: "video_link", title: videoLink.label, body: videoLink.targetValue });
+    fallbackBlocks.push({ id: "video-1", type: "video_link", title: videoLink.label, body: videoLink.targetValue, textAlignment: "left" });
   }
 
   if (mapLink) {
-    fallbackBlocks.push({ id: "map-1", type: "map_link", title: mapLink.label, body: mapLink.targetValue });
+    fallbackBlocks.push({ id: "map-1", type: "map_link", title: mapLink.label, body: mapLink.targetValue, textAlignment: "left" });
   }
 
   if (buttonLink) {
-    fallbackBlocks.push({ id: "button-1", type: "button_group", title: buttonLink.label, body: buttonLink.targetValue });
+    fallbackBlocks.push({ id: "button-1", type: "button_group", title: buttonLink.label, body: buttonLink.targetValue, textAlignment: "left" });
   }
 
   const audioScript = article?.blocks.find((block) => block.type === "audio")?.body;
 
   if (audioScript) {
-    fallbackBlocks.push({ id: "audio-1", type: "audio", title: "음성 대본", body: audioScript });
+    fallbackBlocks.push({ id: "audio-1", type: "audio", title: "음성 대본", body: audioScript, textAlignment: "left" });
   }
 
-  return fallbackBlocks.length > 0 ? fallbackBlocks : [{ id: "paragraph-1", type: "paragraph", title: "", body: "" }];
+  return fallbackBlocks.length > 0 ? fallbackBlocks : [{ id: "paragraph-1", type: "paragraph", title: "", body: "", textAlignment: "left" }];
 }
 
 function getBlockTitleLabel(type: EditorBlockType) {
@@ -618,6 +624,12 @@ export function ProjectArticleEditorForm({
     );
   }
 
+  function updateBlockTextAlignment(blockId: string, value: ArticleTextAlignment) {
+    setBlocks((currentBlocks) =>
+      currentBlocks.map((block) => (block.id === blockId ? { ...block, textAlignment: value } : block)),
+    );
+  }
+
   function addBlock(type: EditorBlockType) {
     setBlocks((currentBlocks) => [
       ...currentBlocks,
@@ -626,6 +638,7 @@ export function ProjectArticleEditorForm({
         type,
         title: type === "audio" ? "음성 대본" : "",
         body: "",
+        textAlignment: "left",
       },
     ]);
   }
@@ -868,6 +881,7 @@ export function ProjectArticleEditorForm({
         type: block.type,
         title: block.title,
         body: block.body,
+        textAlignment: article?.bodyAlignment ?? article?.textAlignment ?? "left",
       })),
     );
     setWordImportMessage("Word 원고를 모바일 기사 블록으로 가져왔습니다. 이미지와 추가 링크는 필요한 위치에 블록으로 보완하세요.");
@@ -908,6 +922,7 @@ export function ProjectArticleEditorForm({
         type: block.type,
         title: block.title.trim(),
         body: block.body.trim(),
+        textAlignment: block.textAlignment,
         sortOrder: (index + 1) * 10,
       }))
       .filter((block) => block.title || block.body);
@@ -915,6 +930,7 @@ export function ProjectArticleEditorForm({
       .filter((block) => block.type === "paragraph")
       .map((block) => [block.title, block.body].filter(Boolean).join("\n"))
       .join("\n\n");
+    const bodyAlignment = getValue(formData, "bodyAlignment");
     const payload = {
       projectSlug,
       articleId: article?.id ?? "",
@@ -925,7 +941,10 @@ export function ProjectArticleEditorForm({
       displayTitle: getValue(formData, "displayTitle"),
       summary: getValue(formData, "summary"),
       body,
-      textAlignment: getValue(formData, "textAlignment"),
+      textAlignment: getValue(formData, "textAlignment") || bodyAlignment,
+      titleAlignment: getValue(formData, "titleAlignment"),
+      summaryAlignment: getValue(formData, "summaryAlignment"),
+      bodyAlignment,
       contentBlocks,
       contactName: getValue(formData, "contactName"),
       contactPhone: getValue(formData, "contactPhone"),
@@ -1008,7 +1027,7 @@ export function ProjectArticleEditorForm({
           </div>
         ) : null}
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_280px]">
           <div>
             <FieldLabel required>기사 제목</FieldLabel>
             <input
@@ -1018,6 +1037,20 @@ export function ProjectArticleEditorForm({
               placeholder="예: 군정 주요 소식"
               className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
             />
+          </div>
+          <div>
+            <FieldLabel>제목 정렬 방식</FieldLabel>
+            <select
+              name="titleAlignment"
+              defaultValue={article?.titleAlignment ?? "left"}
+              className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+            >
+              {articleTextAlignmentOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
           <FontSelect
             name="titleFontAssetId"
@@ -1070,7 +1103,7 @@ export function ProjectArticleEditorForm({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_280px]">
           <div>
             <FieldLabel>요약 문장</FieldLabel>
             <textarea
@@ -1080,6 +1113,20 @@ export function ProjectArticleEditorForm({
               placeholder="목록 카드와 모바일 첫 화면에 표시할 핵심 요약을 입력합니다."
               className="min-h-24 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
             />
+          </div>
+          <div>
+            <FieldLabel>요약문 정렬 방식</FieldLabel>
+            <select
+              name="summaryAlignment"
+              defaultValue={article?.summaryAlignment ?? article?.textAlignment ?? "left"}
+              className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+            >
+              {articleTextAlignmentOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
           <FontSelect
             name="bodyFontAssetId"
@@ -1094,10 +1141,10 @@ export function ProjectArticleEditorForm({
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
           <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
             <div>
-              <FieldLabel>문장 정렬 방식</FieldLabel>
+              <FieldLabel>본문 정렬 방식</FieldLabel>
               <select
-                name="textAlignment"
-                defaultValue={article?.textAlignment ?? "left"}
+                name="bodyAlignment"
+                defaultValue={article?.bodyAlignment ?? article?.textAlignment ?? "left"}
                 className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
               >
                 {articleTextAlignmentOptions.map((option) => (
@@ -1108,9 +1155,10 @@ export function ProjectArticleEditorForm({
               </select>
             </div>
             <p className="self-end text-xs font-semibold leading-5 text-slate-500">
-              모바일 기사 본문과 요약의 정렬 방식을 선택합니다. 단, 독자가 글자를 크게 또는 최대로 보는 경우에는 가독성을 위해 왼쪽 정렬로 표시됩니다.
+              제목, 요약문, 본문 문단별로 정렬 방식을 선택할 수 있습니다. 단, 독자가 글자를 크게 또는 최대로 보는 경우에는 가독성을 위해 왼쪽 정렬로 표시됩니다.
             </p>
           </div>
+          <input type="hidden" name="textAlignment" defaultValue={article?.textAlignment ?? "left"} />
         </div>
 
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
@@ -1327,6 +1375,23 @@ export function ProjectArticleEditorForm({
                   )}
                 </div>
               </div>
+
+              {block.type === "paragraph" ? (
+                <div className="mt-4 max-w-xs">
+                  <FieldLabel>이 문단 정렬 방식</FieldLabel>
+                  <select
+                    value={block.textAlignment}
+                    onChange={(event) => updateBlockTextAlignment(block.id, event.currentTarget.value as ArticleTextAlignment)}
+                    className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                  >
+                    {articleTextAlignmentOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
 
               {block.type === "image" && (
                 <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3">

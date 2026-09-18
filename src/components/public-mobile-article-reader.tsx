@@ -23,6 +23,7 @@ import type {
   ArticleElementMotionSpeed,
   ArticleMotionPreset,
   ArticleMotionSpeed,
+  ArticleTextAlignment,
   FontAsset,
   ProjectContentArticle,
   ProjectContentBlock,
@@ -137,11 +138,20 @@ function getPreviewBody(article: ProjectContentArticle) {
   return body;
 }
 
-function renderArticleBody(value: string, className: string, audioSegmentBaseId?: string) {
+function renderArticleBody(
+  value: string,
+  className: string,
+  audioSegmentBaseId?: string,
+  textAlignment: ArticleTextAlignment = "left",
+) {
   const paragraphs = getArticleBodyParagraphs(value);
 
   return (
-    <div data-public-text-scale-target="article-body" className={`public-article-body text-base leading-8 text-slate-700 ${className}`}>
+    <div
+      data-public-text-scale-target="article-body"
+      data-text-alignment={textAlignment}
+      className={`public-article-body text-base leading-8 text-slate-700 ${className}`}
+    >
       {paragraphs.map((paragraph, paragraphIndex) => (
         <div key={paragraphIndex} className="public-article-paragraph">
           {paragraph.map((sentence, sentenceIndex) => {
@@ -316,8 +326,22 @@ function renderContentBlock(
   if (block.type === "paragraph") {
     return (
       <section key={block.id}>
-        {block.title ? <h3 className="text-base font-black leading-7 text-[#092046]">{block.title}</h3> : null}
-        {block.body ? renderArticleBody(block.body, "mt-3", `article-${article.id}-block-${block.id}`) : null}
+        {block.title ? (
+          <h3
+            data-text-alignment={block.textAlignment || article.bodyAlignment || article.textAlignment}
+            className="text-base font-black leading-7 text-[#092046]"
+          >
+            {block.title}
+          </h3>
+        ) : null}
+        {block.body
+          ? renderArticleBody(
+              block.body,
+              "mt-3",
+              `article-${article.id}-block-${block.id}`,
+              block.textAlignment || article.bodyAlignment || article.textAlignment,
+            )
+          : null}
       </section>
     );
   }
@@ -556,6 +580,7 @@ function ArticleCard({
           aria-label={articleTitle}
           data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
           data-public-text-scale-target="article-title"
+          data-text-alignment={article.titleAlignment || "left"}
           title={articleTitle}
           className="public-article-title public-audio-sync-segment text-2xl font-black leading-tight text-[#092046]"
         >
@@ -595,6 +620,7 @@ function ArticleCard({
           <p
             data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
             data-public-text-scale-target="article-summary"
+            data-text-alignment={article.summaryAlignment || article.textAlignment || "left"}
             className={`article-motion-summary ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} public-audio-sync-segment mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]`}
             data-motion-effect={motionSettings.textBox.effect}
             data-motion-speed={motionSettings.textBox.speed}
@@ -632,7 +658,12 @@ function ArticleCard({
           {visibleBlocks.map((block) => renderContentBlock(article, block, motionSettings, onOpenArticleImage))}
         </div>
       ) : (
-        renderArticleBody(getPreviewBody(article), "mt-6", `article-${article.id}-body`)
+        renderArticleBody(
+          getPreviewBody(article),
+          "mt-6",
+          `article-${article.id}-body`,
+          article.bodyAlignment || article.textAlignment,
+        )
       )}
       {article.contactName || article.contactPhone ? (
         <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">

@@ -30,6 +30,7 @@ function asContentSections(value: unknown) {
       const sectionRecord = section as Record<string, unknown>;
       const title = asText(sectionRecord.title);
       const body = asText(sectionRecord.body);
+      const textAlignment = asText(sectionRecord.textAlignment);
 
       if (!title && !body) {
         return null;
@@ -38,10 +39,11 @@ function asContentSections(value: unknown) {
       return {
         title,
         body,
+        textAlignment,
         sortOrder: asOptionalNumber(sectionRecord.sortOrder) || (index + 1) * 10,
       };
     })
-    .filter((section): section is { title: string; body: string; sortOrder: number } => section !== null);
+    .filter((section): section is { title: string; body: string; textAlignment: string; sortOrder: number } => section !== null);
 }
 
 function asContentBlocks(value: unknown): NonNullable<UpsertProjectArticleInput["contentBlocks"]> {
@@ -69,6 +71,7 @@ function asContentBlocks(value: unknown): NonNullable<UpsertProjectArticleInput[
       type: type as NonNullable<UpsertProjectArticleInput["contentBlocks"]>[number]["type"],
       title,
       body,
+      textAlignment: asText(blockRecord.textAlignment),
       sortOrder: asOptionalNumber(blockRecord.sortOrder) || (index + 1) * 10,
     });
   });
@@ -103,6 +106,9 @@ export async function POST(request: Request) {
     summary: asText(payload.summary),
     body: asText(payload.body),
     textAlignment: asText(payload.textAlignment),
+    titleAlignment: asText(payload.titleAlignment),
+    summaryAlignment: asText(payload.summaryAlignment),
+    bodyAlignment: asText(payload.bodyAlignment),
     contentSections: asContentSections(payload.contentSections),
     contentBlocks: asContentBlocks(payload.contentBlocks),
     contactName: asText(payload.contactName),

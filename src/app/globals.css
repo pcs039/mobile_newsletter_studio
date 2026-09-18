@@ -885,15 +885,51 @@ select {
   word-break: break-all;
 }
 
+.public-newsletter-screen [data-text-alignment="left"] {
+  line-break: strict;
+  overflow-wrap: anywhere;
+  text-align: left;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
+.public-newsletter-screen [data-text-alignment="center"] {
+  line-break: strict;
+  overflow-wrap: anywhere;
+  text-align: center;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
+.public-newsletter-screen [data-text-alignment="right"] {
+  line-break: strict;
+  overflow-wrap: anywhere;
+  text-align: right;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
+.public-newsletter-screen [data-text-alignment="justify"] {
+  line-break: strict;
+  overflow-wrap: break-word;
+  text-align: justify;
+  text-justify: inter-character;
+  word-break: break-all;
+}
+
 [data-public-text-scale="large"] .public-newsletter-screen .public-article-card :where(
+  [data-public-text-scale-target="article-title"],
   [data-public-text-scale-target="article-summary"],
   [data-public-text-scale-target="article-body"],
+  [data-text-alignment],
   .article-motion-content-block,
   .public-article-content > section > h3
 ),
 [data-public-text-scale="xlarge"] .public-newsletter-screen .public-article-card :where(
+  [data-public-text-scale-target="article-title"],
   [data-public-text-scale-target="article-summary"],
   [data-public-text-scale-target="article-body"],
+  [data-text-alignment],
   .article-motion-content-block,
   .public-article-content > section > h3
 ) {
