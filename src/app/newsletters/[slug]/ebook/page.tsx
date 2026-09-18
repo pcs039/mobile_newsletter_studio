@@ -1,5 +1,6 @@
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicDesktopEbookViewer } from "@/components/public-desktop-ebook-viewer";
+import { getUsableEbookPages } from "@/lib/ebook-pages";
 import {
   getProjectAudioFiles,
   getProjectPageImages,
@@ -73,7 +74,7 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
     );
   }
 
-  const pages = pageImageData.pages.filter((page) => page.previewHref);
+  const pages = getUsableEbookPages(pageImageData.pages);
   const initialPageNumber = Number(pageParam) || pages[0]?.pageNumber || 1;
   const mobileHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : project?.publicUrl ?? `/newsletters/${slug}`;
   const publicAudioFile = audioData.files[0] ?? null;

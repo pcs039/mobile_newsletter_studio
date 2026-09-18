@@ -4,6 +4,7 @@ import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-p
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
+import { getUsableEbookPages, hasUsableEbookPages } from "@/lib/ebook-pages";
 import {
   getProjectAudioFiles,
   getProjectContent,
@@ -111,8 +112,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     slug,
     visibleArticleCount: articles.length,
   });
-  const pageImages = pageImageData.pages.filter((page) => page.previewHref);
-  const hasEbook = pageImages.length > 0;
+  const pageImages = getUsableEbookPages(pageImageData.pages);
+  const hasEbook = hasUsableEbookPages(pageImageData.pages);
   const hotspotLinks = hotspotData.links;
   const isImagePageMode = project?.productionMode === "이미지 페이지형";
   const ebookDesktopHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
