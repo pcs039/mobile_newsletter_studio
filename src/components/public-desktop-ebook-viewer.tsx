@@ -507,7 +507,7 @@ export function PublicDesktopEbookViewer({
         </div>
       ) : null}
 
-      <section className="relative min-h-0 flex-1 bg-[radial-gradient(circle_at_top,#315c88_0%,#102b52_42%,#071f46_100%)]">
+      <section className="relative flex min-h-0 flex-1 flex-col bg-[radial-gradient(circle_at_top,#315c88_0%,#102b52_42%,#071f46_100%)]">
         {zoom >= 300 ? (
           <div className="absolute left-1/2 top-4 z-20 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 rounded-xl border border-amber-200/40 bg-amber-50/95 px-4 py-3 text-sm font-bold text-amber-950 shadow-xl shadow-blue-950/20 backdrop-blur">
             <p>고배율 확대 중입니다. 이미지가 흐릿하게 보일 수 있습니다.</p>
@@ -538,14 +538,20 @@ export function PublicDesktopEbookViewer({
           다음
         </button>
 
-        <div ref={viewportRef} className="h-full overflow-auto px-5 pb-24 pt-6 lg:px-24">
+        <div
+          ref={viewportRef}
+          className="public-desktop-ebook-scroll-container min-h-0 flex-1 overflow-auto overscroll-contain px-5 pb-8 pt-6 lg:px-24"
+        >
           {visiblePages.length > 0 ? (
             <div
               key={`${currentIndex}-${viewMode}`}
               className={`public-desktop-ebook-spread mx-auto flex min-h-full items-center justify-center gap-5 ${
                 viewMode === "double" ? "flex-row" : "flex-col"
               }`}
-              style={{ width: `${zoom}%` }}
+              style={{
+                minWidth: zoom > 100 ? `${zoom}%` : undefined,
+                width: `${zoom}%`,
+              }}
             >
               {visiblePages.map((page) => (
                 <article
@@ -582,7 +588,7 @@ export function PublicDesktopEbookViewer({
           )}
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[#071f46]/95 px-4 py-3 text-white shadow-2xl shadow-blue-950/40 backdrop-blur">
+        <div className="z-30 shrink-0 border-t border-white/10 bg-[#071f46]/95 px-4 py-3 text-white shadow-2xl shadow-blue-950/40 backdrop-blur">
           <div className="mx-auto flex max-w-[1400px] flex-col gap-2 lg:flex-row lg:items-center">
             <div className="min-w-0 lg:w-72">
               <p className="truncate text-xs font-black">{currentPage ? `${currentPage.pageNumber}쪽 / ${pages.length}쪽` : `0쪽 / ${pages.length}쪽`}</p>

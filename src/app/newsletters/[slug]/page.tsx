@@ -112,6 +112,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     visibleArticleCount: articles.length,
   });
   const pageImages = pageImageData.pages.filter((page) => page.previewHref);
+  const hasEbook = pageImages.length > 0;
   const hotspotLinks = hotspotData.links;
   const isImagePageMode = project?.productionMode === "이미지 페이지형";
   const ebookDesktopHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
@@ -161,7 +162,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
             <p className="mt-4 text-sm leading-6 text-slate-200">{project?.description ?? workspace.message}</p>
             <div className="mt-5 flex gap-2">
-              {!isEmbeddedAdminPreview ? (
+              {!isEmbeddedAdminPreview && hasEbook ? (
                 <>
                   <Link href={ebookMobileHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:hidden">
                     e-book 보기

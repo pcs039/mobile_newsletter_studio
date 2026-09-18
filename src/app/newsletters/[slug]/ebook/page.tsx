@@ -73,11 +73,20 @@ export default async function PublicEbookPage({ params, searchParams }: PublicEb
     );
   }
 
-  const pages = pageImageData.pages;
+  const pages = pageImageData.pages.filter((page) => page.previewHref);
   const initialPageNumber = Number(pageParam) || pages[0]?.pageNumber || 1;
   const mobileHref = isAdminPreview ? `/newsletters/${slug}?preview=admin` : project?.publicUrl ?? `/newsletters/${slug}`;
   const publicAudioFile = audioData.files[0] ?? null;
   const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
+
+  if (pages.length === 0) {
+    return (
+      <PublicUnavailablePage
+        title="등록된 e-book 페이지가 없습니다."
+        message="페이지 이미지가 등록되면 PC와 태블릿에서 e-book 보기를 사용할 수 있습니다."
+      />
+    );
+  }
 
   return (
     <>
