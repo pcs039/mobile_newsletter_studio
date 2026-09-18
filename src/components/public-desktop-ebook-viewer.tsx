@@ -9,6 +9,7 @@ import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
 type EbookPage = {
   id: string;
   pageNumber: number;
+  publicHref: string | null;
   previewHref: string | null;
   status: string;
   title: string | null;
@@ -16,6 +17,7 @@ type EbookPage = {
 
 type PublicDesktopEbookViewerProps = {
   initialPageNumber: number;
+  isAdminPreview: boolean;
   isEmbeddedAdminPreview: boolean;
   mobileReadingHref: string;
   pageCount: number;
@@ -135,6 +137,7 @@ function getInitialFollowPagesEnabled() {
 
 export function PublicDesktopEbookViewer({
   initialPageNumber,
+  isAdminPreview,
   isEmbeddedAdminPreview,
   mobileReadingHref,
   pageCount,
@@ -161,6 +164,9 @@ export function PublicDesktopEbookViewer({
   const currentPage = pages[currentIndex] ?? null;
   const coverPage = pages.find((page) => page.previewHref) ?? pages[0] ?? null;
   const currentPageCustomTitle = currentPage ? getCustomPageTitle(currentPage.title, currentPage.pageNumber) : "";
+  const getPageImageHref = useCallback((page: EbookPage) => {
+    return isAdminPreview ? page.previewHref : page.publicHref ?? page.previewHref;
+  }, [isAdminPreview]);
   const visiblePages = useMemo(() => {
     if (!currentPage) {
       return [];
@@ -458,10 +464,10 @@ export function PublicDesktopEbookViewer({
                   닫기
                 </button>
               </div>
-              {coverPage?.previewHref ? (
+              {coverPage && getPageImageHref(coverPage) ? (
                 <div className="mt-4 overflow-hidden rounded-xl border border-white/20 bg-white/10 p-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={coverPage.previewHref} alt="소식지 표지 미리보기" className="mx-auto max-h-48 rounded-lg object-contain" />
+                  <img src={getPageImageHref(coverPage) ?? ""} alt="소식지 표지 미리보기" className="mx-auto max-h-48 rounded-lg object-contain" />
                 </div>
               ) : null}
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-semibold text-slate-300">
@@ -563,16 +569,16 @@ export function PublicDesktopEbookViewer({
                     <h2 className="text-sm font-black text-[#092046]">{formatPageLabel(page.pageNumber, page.title)}</h2>
                     <span className="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-bold text-[#184a88]">{page.status}</span>
                   </div>
-                  {page.previewHref ? (
+                  {getPageImageHref(page) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={page.previewHref}
+                      src={getPageImageHref(page) ?? ""}
                       alt={formatPageLabel(page.pageNumber, page.title)}
                       className="mx-auto h-auto w-full rounded-lg border border-slate-200 bg-white object-contain shadow-lg shadow-slate-950/10"
                     />
                   ) : (
                     <div className="grid h-[60vh] min-w-80 place-items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 text-center">
-                      <p className="text-sm font-black text-[#092046]">이미지 파일 경로가 없습니다.</p>
+                      <p className="text-sm font-black text-[#092046]">페이지 이미지를 불러오지 못했습니다.</p>
                     </div>
                   )}
                 </article>
