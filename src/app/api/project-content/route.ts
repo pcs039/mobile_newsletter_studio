@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { upsertProjectArticle, type UpsertProjectArticleInput } from "@/lib/newsletter-repository";
+import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,91 @@ function asOptionalNumber(value: unknown) {
   const numberValue = typeof value === "string" || typeof value === "number" ? Number(value) : 0;
 
   return Number.isInteger(numberValue) && numberValue >= 0 ? numberValue : 0;
+}
+
+function getServiceHeaders() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!key) {
+    return null;
+  }
+
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function findProjectId(projectSlug: string, headers: Record<string, string>) {
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_projects?select=id&slug=eq.${encodeURIComponent(projectSlug)}&deleted_at=is.null&limit=1`,
+  );
+
+  if (!endpoint) {
+    return null;
+  }
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json().catch(() => [])) as Array<{ id: string }>;
+
+  return rows[0]?.id ?? null;
+}
+
+async function normalizeArticleSortOrder(projectId: string, headers: Record<string, string>) {
+  const listEndpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_articles?select=id,sort_order,created_at&project_id=eq.${encodeURIComponent(
+      projectId,
+    )}&order=sort_order.asc,created_at.asc`,
+  );
+
+  if (!listEndpoint) {
+    return false;
+  }
+
+  const listResponse = await fetch(listEndpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!listResponse.ok) {
+    return false;
+  }
+
+  const rows = (await listResponse.json().catch(() => [])) as Array<{
+    id: string;
+    sort_order: number | null;
+  }>;
+
+  await Promise.all(
+    rows.map((article, index) => {
+      const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_articles?id=eq.${encodeURIComponent(article.id)}`);
+
+      if (!endpoint) {
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+
+      return fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          ...headers,
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ sort_order: (index + 1) * 10 }),
+        cache: "no-store",
+      });
+    }),
+  );
+
+  return true;
 }
 
 function asContentSections(value: unknown) {
@@ -153,4 +239,129 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(result, { status: input.articleId ? 200 : 201 });
+}
+
+export async function DELETE(request: Request) {
+  const user = await requireApiUser();
+
+  if (!user) {
+    return unauthorizedJsonResponse();
+  }
+
+  const { searchParams } = new URL(request.url);
+  const projectSlug = asText(searchParams.get("projectSlug"));
+  const articleId = asText(searchParams.get("articleId"));
+  const headers = getServiceHeaders();
+
+  if (!projectSlug || !articleId) {
+    return NextResponse.json({ ok: false, message: "삭제할 기사 정보를 확인하세요." }, { status: 400 });
+  }
+
+  if (!headers) {
+    return NextResponse.json(
+      { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 기사 삭제를 사용할 수 있습니다." },
+      { status: 503 },
+    );
+  }
+
+  const projectId = await findProjectId(projectSlug, headers);
+
+  if (!projectId) {
+    return NextResponse.json({ ok: false, message: "프로젝트를 찾지 못했습니다." }, { status: 404 });
+  }
+
+  const encodedProjectId = encodeURIComponent(projectId);
+  const encodedArticleId = encodeURIComponent(articleId);
+  const articleEndpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_articles?id=eq.${encodedArticleId}&project_id=eq.${encodedProjectId}&select=id,title,audio_id`,
+  );
+
+  if (!articleEndpoint) {
+    return NextResponse.json({ ok: false, message: "Supabase URL 설정을 확인하세요." }, { status: 503 });
+  }
+
+  const articleResponse = await fetch(articleEndpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!articleResponse.ok) {
+    return NextResponse.json({ ok: false, message: "삭제할 기사 정보를 확인하지 못했습니다." }, { status: 500 });
+  }
+
+  const articleRows = (await articleResponse.json().catch(() => [])) as Array<{
+    id: string;
+    title: string | null;
+    audio_id: string | null;
+  }>;
+  const article = articleRows[0] ?? null;
+
+  if (!article) {
+    return NextResponse.json({ ok: false, message: "삭제할 기사를 찾지 못했습니다." }, { status: 404 });
+  }
+
+  const writeHeaders = {
+    ...headers,
+    Prefer: "return=minimal",
+  };
+  const blocksEndpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_content_blocks?article_id=eq.${encodedArticleId}&project_id=eq.${encodedProjectId}`,
+  );
+  const linksEndpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_link_actions?article_id=eq.${encodedArticleId}&project_id=eq.${encodedProjectId}`,
+  );
+  const audioEndpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_audio_files?article_id=eq.${encodedArticleId}&project_id=eq.${encodedProjectId}`,
+  );
+  const deleteArticleEndpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_articles?id=eq.${encodedArticleId}&project_id=eq.${encodedProjectId}`,
+  );
+
+  if (!blocksEndpoint || !linksEndpoint || !audioEndpoint || !deleteArticleEndpoint) {
+    return NextResponse.json({ ok: false, message: "Supabase URL 설정을 확인하세요." }, { status: 503 });
+  }
+
+  const [blocksResponse, linksResponse, audioResponse] = await Promise.all([
+    fetch(blocksEndpoint, {
+      method: "DELETE",
+      headers: writeHeaders,
+      cache: "no-store",
+    }),
+    fetch(linksEndpoint, {
+      method: "DELETE",
+      headers: writeHeaders,
+      cache: "no-store",
+    }),
+    fetch(audioEndpoint, {
+      method: "PATCH",
+      headers: writeHeaders,
+      body: JSON.stringify({ article_id: null }),
+      cache: "no-store",
+    }),
+  ]);
+
+  if (!blocksResponse.ok || !linksResponse.ok || !audioResponse.ok) {
+    return NextResponse.json({ ok: false, message: "기사 연결 데이터를 정리하지 못했습니다." }, { status: 500 });
+  }
+
+  const deleteArticleResponse = await fetch(deleteArticleEndpoint, {
+    method: "DELETE",
+    headers: writeHeaders,
+    cache: "no-store",
+  });
+
+  if (!deleteArticleResponse.ok) {
+    return NextResponse.json({ ok: false, message: "기사를 삭제하지 못했습니다." }, { status: 500 });
+  }
+
+  await normalizeArticleSortOrder(projectId, headers);
+
+  return NextResponse.json({
+    ok: true,
+    message: "기사를 삭제했습니다.",
+    article: {
+      id: article.id,
+      title: article.title ?? "",
+    },
+  });
 }

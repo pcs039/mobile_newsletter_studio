@@ -586,6 +586,7 @@ export function ProjectArticleEditorForm({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeletingArticle, setIsDeletingArticle] = useState(false);
   const [isImportingWord, setIsImportingWord] = useState(false);
   const [uploadingImageBlockId, setUploadingImageBlockId] = useState("");
   const [wordImportMessage, setWordImportMessage] = useState("");
@@ -1040,6 +1041,44 @@ export function ProjectArticleEditorForm({
 
     setMessage("기사와 콘텐츠 블록을 Supabase에 저장했습니다.");
     router.push(`/projects/${projectSlug}/reading?articleId=${result.article.id}`);
+    router.refresh();
+  }
+
+  async function deleteArticle() {
+    if (!article?.id) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `이 기사를 삭제하시겠습니까?\n\n기사 제목:\n${article.title}\n\n기사에 포함된 콘텐츠 블록도 함께 삭제됩니다.\nSupabase Storage의 원본 이미지 파일은 삭제하지 않습니다.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setIsDeletingArticle(true);
+
+    const params = new URLSearchParams({
+      articleId: article.id,
+      projectSlug,
+    });
+    const response = await fetch(`/api/project-content?${params.toString()}`, {
+      method: "DELETE",
+    });
+    const result = (await response.json().catch(() => null)) as { message?: string } | null;
+
+    if (!response.ok) {
+      setIsDeletingArticle(false);
+      setError(result?.message ?? "기사 삭제에 실패했습니다.");
+      return;
+    }
+
+    setIsDeletingArticle(false);
+    setMessage("기사를 삭제했습니다.");
+    router.push(`/projects/${projectSlug}/reading`);
     router.refresh();
   }
 
@@ -1838,6 +1877,30 @@ export function ProjectArticleEditorForm({
       {message ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
           {message}
+        </div>
+      ) : null}
+
+      {article ? (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-rose-700">위험 작업</p>
+              <h3 className="mt-1 text-base font-black text-rose-900">기사 전체 삭제</h3>
+              <p className="mt-1 text-xs font-semibold leading-5 text-rose-700">
+                기사와 콘텐츠 블록만 삭제합니다. Storage 원본 이미지와 프로젝트 표지는 유지됩니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void deleteArticle();
+              }}
+              disabled={isDeletingArticle || isSaving}
+              className="dd-btn dd-btn-danger shrink-0 px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeletingArticle ? "삭제 중" : "기사 삭제"}
+            </button>
+          </div>
         </div>
       ) : null}
 
