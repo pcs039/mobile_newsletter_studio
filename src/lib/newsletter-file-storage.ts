@@ -535,7 +535,8 @@ async function insertAudioFile(
       project_id: project.id,
       title: file.name,
       file_path: storagePath,
-      script_status: "unchecked",
+      script_status: "pending",
+      transcript_type: "custom_script",
     }),
     cache: "no-store",
   });

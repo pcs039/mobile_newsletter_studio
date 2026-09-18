@@ -12,6 +12,8 @@ const statusTones: Record<string, string> = {
   "이미지 등록": "bg-emerald-100 text-emerald-800",
   "작성됨": "bg-emerald-100 text-emerald-800",
   "연결됨": "bg-emerald-100 text-emerald-800",
+  "연결 완료": "bg-emerald-100 text-emerald-800",
+  "대본 있음": "bg-emerald-100 text-emerald-800",
   "준비됨": "bg-emerald-100 text-emerald-800",
   "검수 중": "bg-sky-100 text-sky-800",
   "검수 대기": "bg-sky-100 text-sky-800",
@@ -31,10 +33,13 @@ const statusTones: Record<string, string> = {
   "교체 필요": "bg-amber-100 text-amber-800",
   "행사명 발음 확인": "bg-amber-100 text-amber-800",
   "대본 수정 필요": "bg-amber-100 text-amber-800",
+  "수정 필요": "bg-amber-100 text-amber-800",
   "실제 업로드 연동 전": "bg-amber-100 text-amber-800",
   "저화질 주의": "bg-rose-100 text-rose-800",
   "교체 권장": "bg-rose-100 text-rose-800",
   "미등록": "bg-rose-100 text-rose-800",
+  "미연결": "bg-rose-100 text-rose-800",
+  "대본 없음": "bg-rose-100 text-rose-800",
 };
 
 export function StatusPill({ value }: { value: string }) {

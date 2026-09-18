@@ -33,8 +33,12 @@ export default async function AudioManagementPage({ params }: { params: Promise<
   const audioFiles = audioData.files;
   const firstAudioFile = audioFiles[0];
   const articleOptions: ProjectAudioLinkArticleOption[] = contentData.articles.map((article, index) => ({
+    body: [article.body, ...article.blocks.filter((block) => block.isVisible).map((block) => block.body)]
+      .filter(Boolean)
+      .join("\n\n"),
     id: article.id,
     label: getDisplayArticleTitle(article, `제목 없음 기사 ${index + 1}`),
+    summary: article.summary,
   }));
   const articleTitleById = new Map(articleOptions.map((article) => [article.id, article.label]));
 
@@ -171,8 +175,12 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                               <BrowserAudioControl title={item.title} src={item.previewHref} />
                             </td>
                             <td className="px-4 py-4">
-                              <StatusPill value={item.scriptStatus} />
-                              <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{item.note}</p>
+                              <div className="flex flex-wrap gap-2">
+                                <StatusPill value={item.transcriptText ? "대본 있음" : "대본 없음"} />
+                                <StatusPill value={item.scriptStatus} />
+                              </div>
+                              <p className="mt-2 text-xs font-black text-[#184a88]">{item.transcriptTypeLabel}</p>
+                              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{item.note}</p>
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex flex-wrap gap-2">
@@ -181,6 +189,10 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                                   audioId={item.id}
                                   currentArticleId={item.articleId}
                                   projectSlug={projectId}
+                                  transcriptReviewNote={item.note === "검수 메모 없음" ? "" : item.note}
+                                  transcriptReviewStatus={item.transcriptReviewStatus}
+                                  transcriptText={item.transcriptText}
+                                  transcriptType={item.transcriptType}
                                 />
                                 <ProjectFileDeleteButton
                                   fileLabel={item.title}

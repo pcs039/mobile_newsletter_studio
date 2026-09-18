@@ -989,6 +989,9 @@ export function ProjectArticleEditorForm({
             <div>
               <p className="text-xs font-black text-emerald-800">연결된 음성</p>
               <p className="mt-1 text-sm font-bold text-emerald-900">{article.audioFile.title}</p>
+              <p className="mt-1 text-xs font-bold text-emerald-800">
+                {article.audioFile.transcriptTypeLabel} · {article.audioFile.transcriptReviewStatusLabel}
+              </p>
             </div>
             <Link href={`/projects/${projectSlug}/audio`} className="dd-btn dd-btn-secondary dd-btn-sm self-start sm:self-auto">
               음성 파일 관리로 이동

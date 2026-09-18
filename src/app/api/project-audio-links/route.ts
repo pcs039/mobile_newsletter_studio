@@ -8,6 +8,10 @@ function asText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function asBoolean(value: unknown) {
+  return value === true;
+}
+
 function getErrorStatus(status: string, httpStatus?: number) {
   return status === "not_configured"
     ? 503
@@ -29,6 +33,11 @@ export async function POST(request: Request) {
   const articleId = asText(payload?.articleId) || null;
   const audioId = asText(payload?.audioId);
   const projectSlug = asText(payload?.projectSlug);
+  const transcriptReviewNote = asText(payload?.transcriptReviewNote);
+  const transcriptReviewStatus = asText(payload?.transcriptReviewStatus);
+  const transcriptText = asText(payload?.transcriptText);
+  const transcriptType = asText(payload?.transcriptType);
+  const unlink = asBoolean(payload?.unlink);
 
   if (!audioId || !projectSlug) {
     return NextResponse.json(
@@ -41,6 +50,11 @@ export async function POST(request: Request) {
     articleId,
     audioId,
     projectSlug,
+    unlink,
+    transcriptReviewNote,
+    transcriptReviewStatus,
+    transcriptText,
+    transcriptType,
   });
 
   if (!result.ok) {
