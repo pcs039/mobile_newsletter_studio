@@ -1,5 +1,5 @@
 type ProjectFileDownloadLinkProps = {
-  bucket?: "mobile-assets";
+  bucket?: "mobile-assets" | "page-images";
   className?: string;
   fileName?: string;
   path?: string | null;
