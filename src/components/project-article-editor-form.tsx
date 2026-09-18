@@ -360,7 +360,7 @@ function getBlockBodyPlaceholder(type: EditorBlockType) {
     case "button_group":
       return "https://... 또는 061-000-0000";
     case "audio":
-      return "MP3 제작 또는 검수에 사용할 대본을 입력합니다.";
+      return "음성 파일 제작 또는 검수에 사용할 대본을 입력합니다.";
     default:
       return "";
   }

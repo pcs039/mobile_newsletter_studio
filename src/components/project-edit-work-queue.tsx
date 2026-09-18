@@ -11,7 +11,7 @@ const editSteps = [
   { label: "기사 작성/편집", path: "reading", detail: "문단, 이미지, URL 버튼" },
   { label: "이미지 페이지 편집", path: "pages", detail: "페이지 이미지와 클릭 영역" },
   { label: "사진·이미지 관리", path: "assets", detail: "이미지, URL, 유튜브 소재" },
-  { label: "음성 소식지 검수", path: "audio", detail: "MP3와 기사 대본 확인" },
+  { label: "음성 소식지 검수", path: "audio", detail: "음성 파일과 기사 대본 확인" },
 ];
 
 const statusFilters = ["전체", "제작 중", "검수 중", "비공개"];

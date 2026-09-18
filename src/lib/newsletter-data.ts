@@ -508,7 +508,7 @@ export const audioTracks: AudioTrack[] = [
 export const audioWorkflow: LabelStatus[] = [
   { label: "대본 정리", status: "읽기 보기 기준" },
   { label: "외부 TTS 생성", status: "관리자 수동 작업" },
-  { label: "MP3 업로드", status: "기사별 연결" },
+  { label: "음성 파일 업로드", status: "기사별 연결" },
   { label: "재생 검수", status: "브라우저 플레이어 확인" },
 ];
 
@@ -525,7 +525,7 @@ export const publishReadinessItems: LabelStatusDetail[] = [
   { label: "PDF·이미지", status: "완료", detail: "등록 페이지 확인" },
   { label: "읽기 보기", status: "검수 중", detail: "4개 기사 편집 진행" },
   { label: "이미지 자산", status: "검수 중", detail: "권리·화질 확인 필요" },
-  { label: "음성 MP3", status: "보완 필요", detail: "2개 기사 미등록" },
+  { label: "음성 파일", status: "보완 필요", detail: "2개 기사 미등록" },
 ];
 
 export const publishChecks = [

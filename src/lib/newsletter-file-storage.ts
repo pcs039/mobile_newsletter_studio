@@ -74,8 +74,10 @@ const uploadSettings: Record<
     bucket: string;
     maxSizeBytes: number;
     allowed: Array<string>;
+    allowedExtensions?: Array<string>;
     defaultMimeType: string;
     fallbackExtension: string;
+    mimeTypesByExtension?: Record<string, string>;
   }
 > = {
   pdf_original: {
@@ -101,10 +103,27 @@ const uploadSettings: Record<
   },
   audio_mp3: {
     bucket: "audio-files",
-    maxSizeBytes: 40 * 1024 * 1024,
-    allowed: ["audio/mpeg", "audio/mp3", "audio/x-mpeg", "audio/"],
+    maxSizeBytes: 50 * 1024 * 1024,
+    allowed: [
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/x-mpeg",
+      "audio/wav",
+      "audio/x-wav",
+      "audio/wave",
+      "audio/mp4",
+      "audio/x-m4a",
+      "audio/m4a",
+      "audio/aac",
+    ],
+    allowedExtensions: ["mp3", "wav", "m4a"],
     defaultMimeType: "audio/mpeg",
     fallbackExtension: "mp3",
+    mimeTypesByExtension: {
+      m4a: "audio/mp4",
+      mp3: "audio/mpeg",
+      wav: "audio/wav",
+    },
   },
 };
 
@@ -128,13 +147,22 @@ function getServiceHeaders(contentType = "application/json") {
   };
 }
 
+function getResolvedMimeType(kind: ProjectFileUploadKind, file: Pick<ProjectFileMetadata, "name" | "type">) {
+  const settings = uploadSettings[kind];
+  const extension = getExtension(file.name, settings.fallbackExtension);
+
+  return file.type || settings.mimeTypesByExtension?.[extension] || settings.defaultMimeType;
+}
+
 function isAllowedFile(kind: ProjectFileUploadKind, file: ProjectFileMetadata) {
   const settings = uploadSettings[kind];
-  const mimeType = file.type || settings.defaultMimeType;
-
-  return settings.allowed.some((allowedType) =>
+  const mimeType = getResolvedMimeType(kind, file);
+  const extension = getExtension(file.name, settings.fallbackExtension);
+  const mimeTypeAllowed = settings.allowed.some((allowedType) =>
     allowedType.endsWith("/") ? mimeType.startsWith(allowedType) : mimeType === allowedType,
   );
+
+  return mimeTypeAllowed || Boolean(settings.allowedExtensions?.includes(extension));
 }
 
 function getExtension(fileName: string, fallbackExtension: string) {
@@ -557,6 +585,7 @@ async function updateProjectFileRecord({
   }
 
   const settings = uploadSettings[kind];
+  const resolvedMimeType = getResolvedMimeType(kind, file);
 
   if (bucket !== settings.bucket || !isAllowedFile(kind, file)) {
     return {
@@ -608,7 +637,7 @@ async function updateProjectFileRecord({
     bucket,
     path,
     fileName: file.name,
-    mimeType: file.type || settings.defaultMimeType,
+    mimeType: resolvedMimeType,
     size: file.size,
   };
 }
@@ -641,9 +670,10 @@ export async function prepareSignedProjectFileUpload({
   const settings = uploadSettings[kind];
   const file = {
     name: fileName,
-    type: mimeType || settings.defaultMimeType,
+    type: mimeType,
     size,
   };
+  const resolvedMimeType = getResolvedMimeType(kind, file);
 
   if (!file.name || !file.size || file.size > settings.maxSizeBytes || !isAllowedFile(kind, file)) {
     return {
@@ -712,7 +742,7 @@ export async function prepareSignedProjectFileUpload({
     path: storagePath,
     uploadUrl,
     fileName: file.name,
-    mimeType: file.type,
+    mimeType: resolvedMimeType,
     size: file.size,
     pageNumber: kind === "page_image" ? pageNumber && pageNumber > 0 ? pageNumber : 1 : undefined,
   };
@@ -737,13 +767,11 @@ export async function completeSignedProjectFileUpload({
   projectSlug: string;
   size: number;
 }): Promise<ProjectFileUploadResult> {
-  const settings = uploadSettings[kind];
-
   return updateProjectFileRecord({
     bucket,
     file: {
       name: fileName,
-      type: mimeType || settings.defaultMimeType,
+      type: mimeType,
       size,
     },
     kind,
@@ -884,7 +912,7 @@ export async function uploadProjectFile({
   }
 
   const storagePath = makeStoragePath(project.slug, file.name, settings.fallbackExtension);
-  const storageHeaders = getServiceHeaders(file.type || settings.defaultMimeType);
+  const storageHeaders = getServiceHeaders(getResolvedMimeType(kind, file));
   const storageEndpoint = getSupabaseStorageEndpoint(
     `/object/${settings.bucket}/${encodeStoragePath(storagePath)}`,
   );

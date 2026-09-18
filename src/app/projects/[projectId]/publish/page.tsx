@@ -115,7 +115,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
         audioData.files.length > 0 || articles.some((article) => article.blocks.some((block) => block.type === "audio")),
         "준비됨",
       ),
-      detail: `MP3 ${audioData.files.length}개 · 기사 대본 ${
+      detail: `음성 파일 ${audioData.files.length}개 · 기사 대본 ${
         articles.filter((article) => article.blocks.some((block) => block.type === "audio")).length
       }개`,
     },
@@ -263,8 +263,8 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       section: "음성",
       status: hasAudioContent ? "완료" : "주의",
       detail: hasAudioContent
-        ? `MP3 ${audioData.files.length}개 · 기사 대본 ${articles.filter((article) => article.blocks.some((block) => block.type === "audio")).length}개`
-        : "음성 파일은 선택 항목입니다. 필요 시 검수 화면에서 MP3와 대본을 확인하세요.",
+        ? `음성 파일 ${audioData.files.length}개 · 기사 대본 ${articles.filter((article) => article.blocks.some((block) => block.type === "audio")).length}개`
+        : "음성 파일은 선택 항목입니다. 필요 시 검수 화면에서 음성 파일과 대본을 확인하세요.",
       href: `/projects/${projectId}/audio`,
       actionLabel: "음성 소식지 검수",
     },
