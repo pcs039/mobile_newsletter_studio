@@ -9,6 +9,7 @@ import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
 type MobileEbookPage = {
   id: string;
   pageNumber: number;
+  publicHref: string | null;
   previewHref: string | null;
   status: string;
   title: string | null;
@@ -94,6 +95,9 @@ export function PublicMobileEbookViewer({
   const [followPagesMessage, setFollowPagesMessage] = useState("");
   const currentPage = pages[currentIndex] ?? null;
   const currentPageCustomTitle = currentPage ? getCustomPageTitle(currentPage.title, currentPage.pageNumber) : "";
+  const getPageImageHref = useCallback((page: MobileEbookPage) => {
+    return isAdminPreview ? page.previewHref : page.publicHref ?? page.previewHref;
+  }, [isAdminPreview]);
   const pageStep = viewMode === "double" ? 2 : 1;
   const visiblePages = useMemo(() => {
     if (!currentPage) {
@@ -382,16 +386,16 @@ export function PublicMobileEbookViewer({
                     <h2 className="truncate text-xs font-black text-[#092046]">{formatPageLabel(page.pageNumber, page.title)}</h2>
                     <span className="shrink-0 rounded-full bg-[#eef6ff] px-2 py-1 text-[11px] font-bold text-[#184a88]">{page.status}</span>
                   </div>
-                  {page.previewHref ? (
+                  {getPageImageHref(page) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={page.previewHref}
+                      src={getPageImageHref(page) ?? ""}
                       alt={formatPageLabel(page.pageNumber, page.title)}
                       className="mx-auto h-auto w-full rounded-xl border border-slate-200 bg-white object-contain"
                     />
                   ) : (
                     <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 py-16 text-center">
-                      <p className="text-sm font-black text-[#092046]">이미지 파일 경로가 없습니다.</p>
+                      <p className="text-sm font-black text-[#092046]">페이지 이미지를 불러오지 못했습니다.</p>
                     </div>
                   )}
                 </article>

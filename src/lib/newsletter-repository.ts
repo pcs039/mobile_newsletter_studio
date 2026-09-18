@@ -823,6 +823,7 @@ export type ProjectPageImage = {
   title: string;
   imagePath: string | null;
   previewHref: string | null;
+  publicHref: string | null;
   status: string;
   updated: string;
 };
@@ -1408,6 +1409,14 @@ function makeStoragePreviewHref(bucket: string, path: string | null) {
   return `/api/project-files/preview?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}`;
 }
 
+function makePublicEbookPageImageHref(projectSlug: string, pageId: string, imagePath: string | null) {
+  if (!imagePath) {
+    return null;
+  }
+
+  return `/api/public/newsletters/${encodeURIComponent(projectSlug)}/ebook/pages/${encodeURIComponent(pageId)}`;
+}
+
 export function makePublicStoragePreviewHref(bucket: string, path: string | null) {
   if (!path) {
     return null;
@@ -1857,13 +1866,14 @@ export async function getFontAssets({
   }
 }
 
-function mapPageRowToProjectPageImage(page: NewsletterPageRow): ProjectPageImage {
+function mapPageRowToProjectPageImage(page: NewsletterPageRow, projectSlug: string): ProjectPageImage {
   return {
     id: page.id,
     pageNumber: page.page_number,
     title: page.title || `${page.page_number}쪽`,
     imagePath: page.image_path,
     previewHref: makeStoragePreviewHref("page-images", page.image_path),
+    publicHref: makePublicEbookPageImageHref(projectSlug, page.id, page.image_path),
     status: pageImageStatusLabels[page.image_status] ?? page.image_status,
     updated: formatCompactDateTime(page.updated_at),
   };
@@ -3974,7 +3984,7 @@ export async function getProjectPageImages(projectSlug: string): Promise<Project
     const rows = (await response.json()) as NewsletterPageRow[];
 
     return {
-      pages: rows.map(mapPageRowToProjectPageImage),
+      pages: rows.map((row) => mapPageRowToProjectPageImage(row, workspace.project.slug)),
       source: "supabase",
       message: rows.length > 0 ? "등록된 페이지 이미지를 표시합니다." : "등록된 페이지 이미지가 아직 없습니다.",
     };
