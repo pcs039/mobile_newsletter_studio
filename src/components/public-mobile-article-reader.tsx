@@ -50,7 +50,7 @@ type SwipeStart = {
   y: number;
 } | null;
 
-type PageTurnDirection = "next" | "previous" | null;
+type PageSlideDirection = "next" | "previous" | null;
 
 type ArticleMotionTarget = "title" | "textBox" | "image" | "link";
 
@@ -67,7 +67,8 @@ type ResolvedArticleMotionSettings = {
 };
 
 const mobileReaderQuery = "(max-width: 767px)";
-const swipeThreshold = 50;
+const openMobileArticleTocEventName = "datadiction:open-mobile-article-toc";
+const swipeThreshold = 70;
 const articleMotionPresetClassNames: Record<ArticleMotionPreset, string> = {
   none: "article-motion-preset-none",
   calm: "article-motion-preset-calm",
@@ -140,7 +141,27 @@ function prefersReducedMotion() {
 }
 
 function isInteractiveTouchTarget(target: EventTarget | null) {
-  return target instanceof Element && Boolean(target.closest("a, button, input, select, textarea, audio, details, summary"));
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("a, button, input, select, textarea, audio, video, details, summary, [data-swipe-navigation-ignore]"))
+  );
+}
+
+export function PublicMobileArticleTocButton() {
+  function openArticleToc() {
+    window.dispatchEvent(new Event(openMobileArticleTocEventName));
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={openArticleToc}
+      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-3 text-xl font-black leading-none text-white shadow-sm shadow-blue-950/10 backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+      aria-label="기사 목차 열기"
+    >
+      ☰
+    </button>
+  );
 }
 
 function getPreviewBody(article: ProjectContentArticle) {
@@ -720,13 +741,11 @@ export function PublicMobileArticleReader({
   const isMobileReader = useSyncExternalStore(subscribeToMobileReader, readMobileReaderSnapshot, () => false);
   const [currentIndex, setCurrentIndex] = useState(() => getInitialArticleIndex(articles, initialArticleId));
   const [isIndexOpen, setIsIndexOpen] = useState(false);
-  const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<PublicArticleLightboxImage | null>(null);
-  const [pageTurnDirection, setPageTurnDirection] = useState<PageTurnDirection>(null);
+  const [pageSlideDirection, setPageSlideDirection] = useState<PageSlideDirection>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDraggingPage, setIsDraggingPage] = useState(false);
   const articleTopRef = useRef<HTMLDivElement>(null);
-  const navigationTimerRef = useRef<number | null>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
   const safeCurrentIndex = Math.min(currentIndex, Math.max(articles.length - 1, 0));
   const currentArticle = articles[safeCurrentIndex] ?? null;
@@ -749,30 +768,20 @@ export function PublicMobileArticleReader({
   }, [isMobileReader, safeCurrentIndex]);
 
   useEffect(() => {
-    if (!isNavigationExpanded) {
-      return;
+    function openArticleToc() {
+      setIsIndexOpen(true);
     }
 
-    if (navigationTimerRef.current) {
-      window.clearTimeout(navigationTimerRef.current);
-    }
+    window.addEventListener(openMobileArticleTocEventName, openArticleToc);
 
-    navigationTimerRef.current = window.setTimeout(() => {
-      setIsNavigationExpanded(false);
-    }, 3600);
-
-    return () => {
-      if (navigationTimerRef.current) {
-        window.clearTimeout(navigationTimerRef.current);
-      }
-    };
-  }, [isNavigationExpanded, safeCurrentIndex]);
+    return () => window.removeEventListener(openMobileArticleTocEventName, openArticleToc);
+  }, []);
 
   function goToArticle(nextIndex: number) {
     setCurrentIndex(Math.min(Math.max(nextIndex, 0), articles.length - 1));
   }
 
-  function goToArticleWithPageTurn(nextIndex: number, direction: Exclude<PageTurnDirection, null>) {
+  function goToArticleWithSlide(nextIndex: number, direction: Exclude<PageSlideDirection, null>) {
     const clampedIndex = Math.min(Math.max(nextIndex, 0), articles.length - 1);
 
     if (clampedIndex === safeCurrentIndex) {
@@ -784,18 +793,14 @@ export function PublicMobileArticleReader({
       return;
     }
 
-    setPageTurnDirection(direction);
+    setPageSlideDirection(direction);
     window.setTimeout(() => {
       goToArticle(clampedIndex);
       setDragOffset(0);
-    }, 170);
+    }, 150);
     window.setTimeout(() => {
-      setPageTurnDirection(null);
-    }, 360);
-  }
-
-  function expandNavigation() {
-    setIsNavigationExpanded(true);
+      setPageSlideDirection(null);
+    }, 280);
   }
 
   function handleTouchStart(event: TouchEvent<HTMLElement>) {
@@ -854,16 +859,19 @@ export function PublicMobileArticleReader({
     const deltaX = touch.clientX - start.x;
     const deltaY = touch.clientY - start.y;
 
-    if (Math.abs(deltaX) < swipeThreshold || Math.abs(deltaX) < Math.abs(deltaY) * 1.35) {
+    const adaptiveThreshold =
+      typeof window === "undefined" ? swipeThreshold : Math.min(90, Math.max(64, window.innerWidth * 0.16));
+
+    if (Math.abs(deltaX) < adaptiveThreshold || Math.abs(deltaX) < Math.abs(deltaY) * 1.35) {
       return;
     }
 
     if (deltaX < 0 && canGoNext) {
-      goToArticleWithPageTurn(safeCurrentIndex + 1, "next");
+      goToArticleWithSlide(safeCurrentIndex + 1, "next");
     }
 
     if (deltaX > 0 && canGoPrevious) {
-      goToArticleWithPageTurn(safeCurrentIndex - 1, "previous");
+      goToArticleWithSlide(safeCurrentIndex - 1, "previous");
     }
   }
 
@@ -871,11 +879,10 @@ export function PublicMobileArticleReader({
     return null;
   }
 
-  const pageTurnClass = pageTurnDirection ? `public-article-page-turn-${pageTurnDirection}` : "";
+  const pageSlideClass = pageSlideDirection ? `public-article-page-slide-${pageSlideDirection}` : "";
   const pageDragStyle = isDraggingPage
     ? ({
-        "--public-article-page-drag-rotate": `${Math.max(-12, Math.min(12, dragOffset / 8))}deg`,
-        "--public-article-page-drag-x": `${dragOffset * 0.32}px`,
+        "--public-article-page-drag-x": `${dragOffset}px`,
       } as CSSProperties)
     : undefined;
 
@@ -889,25 +896,17 @@ export function PublicMobileArticleReader({
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onTouchCancel={() => {
+            swipeStartRef.current = null;
+            setIsDraggingPage(false);
+            setDragOffset(0);
+          }}
         >
           <div ref={articleTopRef} aria-hidden="true" />
 
-          <button
-            type="button"
-            onClick={() => setIsIndexOpen(true)}
-            className="fixed z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-white/70 text-lg font-black leading-none text-[#092046] shadow-lg shadow-blue-950/15 backdrop-blur-md transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7]"
-            style={{
-              left: "calc(0.75rem + env(safe-area-inset-left))",
-              top: "calc(0.75rem + env(safe-area-inset-top))",
-            }}
-            aria-label="기사 목차 열기"
-          >
-            ☰
-          </button>
-
           {currentArticle ? (
             <div
-              className={`public-mobile-article-page ${pageTurnClass} ${isDraggingPage ? "public-mobile-article-page-dragging" : ""}`}
+              className={`public-mobile-article-page ${pageSlideClass} ${isDraggingPage ? "public-mobile-article-page-dragging" : ""}`}
               style={pageDragStyle}
             >
               <ArticleCard
@@ -931,52 +930,38 @@ export function PublicMobileArticleReader({
             }}
             aria-label="기사 이동"
           >
-            <div
-              className={`grid items-center gap-1 transition-[grid-template-columns,width] duration-200 ${
-                isNavigationExpanded ? "w-44 grid-cols-[40px_minmax(0,1fr)_40px]" : "w-20 grid-cols-1"
-              }`}
-            >
-              {isNavigationExpanded ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    expandNavigation();
-                    goToArticleWithPageTurn(safeCurrentIndex - 1, "previous");
-                  }}
-                  disabled={!canGoPrevious}
-                  className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none"
-                  aria-label="이전 기사"
-                >
-                  ‹
-                </button>
-              ) : null}
+            <div className="grid w-44 grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-1">
               <button
                 type="button"
-                onClick={expandNavigation}
-                className="h-9 rounded-full bg-[#092046]/88 px-3 text-xs font-black text-white shadow-sm transition hover:bg-[#092046]"
-                aria-label={`기사 이동 컨트롤 열기, 현재 ${safeCurrentIndex + 1} / ${articles.length}`}
+                onClick={() => goToArticleWithSlide(safeCurrentIndex - 1, "previous")}
+                disabled={!canGoPrevious}
+                className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none disabled:pointer-events-none disabled:opacity-35"
+                aria-label="이전 기사"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsIndexOpen(true)}
+                className="h-9 rounded-full bg-[#092046]/82 px-3 text-xs font-black text-white shadow-sm transition hover:bg-[#092046]"
+                aria-label={`기사 목차 열기, 현재 ${safeCurrentIndex + 1} / ${articles.length}`}
               >
                 {safeCurrentIndex + 1} / {articles.length}
               </button>
-              {isNavigationExpanded ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    expandNavigation();
-                    goToArticleWithPageTurn(safeCurrentIndex + 1, "next");
-                  }}
-                  disabled={!canGoNext}
-                  className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none"
-                  aria-label="다음 기사"
-                >
-                  ›
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => goToArticleWithSlide(safeCurrentIndex + 1, "next")}
+                disabled={!canGoNext}
+                className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none disabled:pointer-events-none disabled:opacity-35"
+                aria-label="다음 기사"
+              >
+                ›
+              </button>
             </div>
           </nav>
 
           {isIndexOpen ? (
-            <div className="fixed inset-0 z-[70] flex justify-center bg-slate-950/55 px-4 py-6">
+            <div data-swipe-navigation-ignore className="fixed inset-0 z-[70] flex justify-center bg-slate-950/55 px-4 py-6">
               <section className="flex max-h-full w-full max-w-[520px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl shadow-blue-950/30">
                 <div className="border-b border-slate-200 bg-[#092046] px-5 py-4 text-white">
                   <div className="flex items-start justify-between gap-3">
