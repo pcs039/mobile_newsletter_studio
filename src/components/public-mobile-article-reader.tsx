@@ -59,6 +59,8 @@ type PublicMobileArticleReaderProps = {
   headerColor?: string | null;
   projectBodyFontAssetId?: string | null;
   projectTitleFontAssetId?: string | null;
+  ebookDesktopHref?: string;
+  ebookMobileHref?: string;
   publicAudio?: {
     src: string;
     title?: string;
@@ -333,12 +335,16 @@ function PublicNewsletterCoverView({
 }
 
 function PublicCompactPublicationHeader({
+  ebookDesktopHref,
+  ebookMobileHref,
   headerColor,
   issue,
   onOpenToc,
   publicationTitle,
   showToc,
 }: {
+  ebookDesktopHref?: string;
+  ebookMobileHref?: string;
   headerColor?: string | null;
   issue?: string | null;
   onOpenToc: () => void;
@@ -358,6 +364,22 @@ function PublicCompactPublicationHeader({
           {issue ? <p className="mt-1 text-sm font-bold text-sky-100 [overflow-wrap:anywhere]">{issue}</p> : null}
         </div>
         <div className="flex shrink-0 items-center gap-2 pr-[env(safe-area-inset-right)]">
+          {ebookMobileHref ? (
+            <Link
+              href={ebookMobileHref}
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/30 bg-white px-3 text-xs font-black text-[#092046] shadow-sm backdrop-blur transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:hidden"
+            >
+              e-book 보기
+            </Link>
+          ) : null}
+          {ebookDesktopHref ? (
+            <Link
+              href={ebookDesktopHref}
+              className="hidden min-h-10 items-center justify-center rounded-xl border border-white/30 bg-white px-3 text-xs font-black text-[#092046] shadow-sm backdrop-blur transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:inline-flex"
+            >
+              e-book 보기
+            </Link>
+          ) : null}
           <PublicPageTurnSoundToggle className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2.5 text-[11px] font-black text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80" />
           {showToc ? (
             <button
@@ -979,6 +1001,8 @@ export function PublicMobileArticleReader({
   publicationTitle,
   projectBodyFontAssetId,
   projectTitleFontAssetId,
+  ebookDesktopHref,
+  ebookMobileHref,
   publicAudio,
   showAdminPreviewControls,
   slug,
@@ -1349,6 +1373,8 @@ export function PublicMobileArticleReader({
           {isCoverView && cover ? (
             <>
               <PublicCompactPublicationHeader
+                ebookDesktopHref={ebookDesktopHref}
+                ebookMobileHref={ebookMobileHref}
                 headerColor={headerColor}
                 issue={issue}
                 onOpenToc={() => setIsIndexOpen(true)}
@@ -1498,6 +1524,8 @@ export function PublicMobileArticleReader({
       ) : (
         <section className={`space-y-5 ${publicAudio ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
           <PublicCompactPublicationHeader
+            ebookDesktopHref={cover ? ebookDesktopHref : undefined}
+            ebookMobileHref={cover ? ebookMobileHref : undefined}
             headerColor={headerColor}
             issue={issue}
             onOpenToc={() => setIsIndexOpen(true)}

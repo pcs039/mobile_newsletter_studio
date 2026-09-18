@@ -4,7 +4,7 @@ import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-p
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
-import { getUsableEbookPages, hasUsableEbookPages } from "@/lib/ebook-pages";
+import { getUsableEbookPages } from "@/lib/ebook-pages";
 import {
   getProjectAudioFiles,
   getProjectContent,
@@ -113,7 +113,6 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     visibleArticleCount: articles.length,
   });
   const pageImages = getUsableEbookPages(pageImageData.pages);
-  const hasEbook = hasUsableEbookPages(pageImageData.pages);
   const hotspotLinks = hotspotData.links;
   const isImagePageMode = project?.productionMode === "이미지 페이지형";
   const ebookDesktopHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
@@ -163,7 +162,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
             <p className="mt-4 text-sm leading-6 text-slate-200">{project?.description ?? workspace.message}</p>
             <div className="mt-5 flex gap-2">
-              {!isEmbeddedAdminPreview && hasEbook ? (
+              {!isEmbeddedAdminPreview ? (
                 <>
                   <Link href={ebookMobileHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:hidden">
                     e-book 보기
@@ -260,6 +259,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               publicationTitle={project?.title ?? slug}
               projectBodyFontAssetId={project?.bodyFontAssetId}
               projectTitleFontAssetId={project?.titleFontAssetId}
+              ebookDesktopHref={!isEmbeddedAdminPreview ? ebookDesktopHref : undefined}
+              ebookMobileHref={!isEmbeddedAdminPreview ? ebookMobileHref : undefined}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
             />
