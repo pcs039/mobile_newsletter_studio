@@ -102,6 +102,7 @@ export async function POST(request: Request) {
     displayTitle: asText(payload.displayTitle),
     summary: asText(payload.summary),
     body: asText(payload.body),
+    textAlignment: asText(payload.textAlignment),
     contentSections: asContentSections(payload.contentSections),
     contentBlocks: asContentBlocks(payload.contentBlocks),
     contactName: asText(payload.contactName),

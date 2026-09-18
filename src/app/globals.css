@@ -833,6 +833,76 @@ select {
   word-break: keep-all;
 }
 
+.public-newsletter-screen .public-article-card[data-article-text-alignment="left"] :where(
+  [data-public-text-scale-target="article-summary"],
+  [data-public-text-scale-target="article-body"],
+  .article-motion-content-block,
+  .public-article-content > section > h3
+) {
+  line-break: strict;
+  overflow-wrap: anywhere;
+  text-align: left;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
+.public-newsletter-screen .public-article-card[data-article-text-alignment="center"] :where(
+  [data-public-text-scale-target="article-summary"],
+  [data-public-text-scale-target="article-body"],
+  .article-motion-content-block,
+  .public-article-content > section > h3
+) {
+  line-break: strict;
+  overflow-wrap: anywhere;
+  text-align: center;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
+.public-newsletter-screen .public-article-card[data-article-text-alignment="right"] :where(
+  [data-public-text-scale-target="article-summary"],
+  [data-public-text-scale-target="article-body"],
+  .article-motion-content-block,
+  .public-article-content > section > h3
+) {
+  line-break: strict;
+  overflow-wrap: anywhere;
+  text-align: right;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
+.public-newsletter-screen .public-article-card[data-article-text-alignment="justify"] :where(
+  [data-public-text-scale-target="article-summary"],
+  [data-public-text-scale-target="article-body"],
+  .article-motion-content-block,
+  .public-article-content > section > h3
+) {
+  line-break: strict;
+  overflow-wrap: break-word;
+  text-align: justify;
+  text-justify: inter-character;
+  word-break: break-all;
+}
+
+[data-public-text-scale="large"] .public-newsletter-screen .public-article-card :where(
+  [data-public-text-scale-target="article-summary"],
+  [data-public-text-scale-target="article-body"],
+  .article-motion-content-block,
+  .public-article-content > section > h3
+),
+[data-public-text-scale="xlarge"] .public-newsletter-screen .public-article-card :where(
+  [data-public-text-scale-target="article-summary"],
+  [data-public-text-scale-target="article-body"],
+  .article-motion-content-block,
+  .public-article-content > section > h3
+) {
+  overflow-wrap: anywhere;
+  text-align: left;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
 .public-newsletter-screen .public-article-content {
   margin-top: 1.5rem;
 }

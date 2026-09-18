@@ -17,6 +17,7 @@ import type {
   ArticleMotionPreset,
   ArticleMotionSpeed,
   FontAsset,
+  ArticleTextAlignment,
   ProjectAssetFile,
   ProjectContentArticle,
   ProjectContentBlock,
@@ -101,6 +102,13 @@ const articleMotionSpeedOptions: Array<{ value: ArticleMotionSpeed; label: strin
   { value: "slow", label: "느리게", description: "차분한 보고형 소식지에 적합합니다." },
   { value: "normal", label: "기본", description: "일반 모바일 소식지에 적합합니다." },
   { value: "fast", label: "빠르게", description: "홍보·행사 안내형 콘텐츠에 적합합니다." },
+];
+
+const articleTextAlignmentOptions: Array<{ value: ArticleTextAlignment; label: string }> = [
+  { value: "left", label: "왼쪽 정렬" },
+  { value: "center", label: "가운데 정렬" },
+  { value: "right", label: "오른쪽 정렬" },
+  { value: "justify", label: "양쪽 정렬" },
 ];
 
 const titleMotionEffectOptions: Array<{ value: ArticleElementMotionEffect; label: string }> = [
@@ -917,6 +925,7 @@ export function ProjectArticleEditorForm({
       displayTitle: getValue(formData, "displayTitle"),
       summary: getValue(formData, "summary"),
       body,
+      textAlignment: getValue(formData, "textAlignment"),
       contentBlocks,
       contactName: getValue(formData, "contactName"),
       contactPhone: getValue(formData, "contactPhone"),
@@ -1080,6 +1089,28 @@ export function ProjectArticleEditorForm({
             inheritLabel={projectBodyFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
             help="요약과 기사 본문 문단에 적용됩니다."
           />
+        </div>
+
+        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
+          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <div>
+              <FieldLabel>문장 정렬 방식</FieldLabel>
+              <select
+                name="textAlignment"
+                defaultValue={article?.textAlignment ?? "left"}
+                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              >
+                {articleTextAlignmentOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="self-end text-xs font-semibold leading-5 text-slate-500">
+              모바일 기사 본문과 요약의 정렬 방식을 선택합니다. 단, 독자가 글자를 크게 또는 최대로 보는 경우에는 가독성을 위해 왼쪽 정렬로 표시됩니다.
+            </p>
+          </div>
         </div>
 
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">

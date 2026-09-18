@@ -531,6 +531,7 @@ function ArticleCard({
   return (
     <article
       className={`public-card public-article-card ${articleMotionPresetClassNames[motionPreset]} ${articleMotionSpeedClassNames[motionSpeed]} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}
+      data-article-text-alignment={article.textAlignment || "left"}
       data-motion-preset={motionPreset}
       data-motion-speed={motionSpeed}
       style={fontStyle}
