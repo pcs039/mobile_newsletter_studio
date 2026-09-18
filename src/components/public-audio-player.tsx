@@ -16,8 +16,9 @@ type PublicAudioPlayerProps = {
 };
 
 const volumeStorageKey = "datadiction_audio_volume";
-const speedStorageKey = "datadiction_audio_speed";
-const speedOptions = [0.75, 1, 1.25, 1.5, 2] as const;
+const speedStorageKey = "datadiction_audio_playback_rate";
+const legacySpeedStorageKey = "datadiction_audio_speed";
+const speedOptions = [0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -35,7 +36,7 @@ function formatTime(value: number) {
 }
 
 function formatSpeedLabel(value: number) {
-  return Number.isInteger(value) ? `${value.toFixed(1)}x` : `${value}x`;
+  return `${value.toFixed(value === 1 ? 1 : 2).replace(/0$/, "")}×`;
 }
 
 function readStoredNumber(key: string, fallbackValue: number, min: number, max: number) {
@@ -49,6 +50,21 @@ function readStoredNumber(key: string, fallbackValue: number, min: number, max: 
     return Number.isFinite(value) ? clamp(value, min, max) : fallbackValue;
   } catch {
     return fallbackValue;
+  }
+}
+
+function readStoredSpeed() {
+  if (typeof window === "undefined") {
+    return 1;
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(speedStorageKey) ?? window.localStorage.getItem(legacySpeedStorageKey);
+    const speed = Number(storedValue);
+
+    return speedOptions.includes(speed as (typeof speedOptions)[number]) ? speed : 1;
+  } catch {
+    return 1;
   }
 }
 
@@ -68,7 +84,7 @@ export function PublicAudioPlayer({
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(() => readStoredNumber(volumeStorageKey, 0.8, 0, 1));
-  const [speed, setSpeed] = useState(() => readStoredNumber(speedStorageKey, 1, 0.75, 2));
+  const [speed, setSpeed] = useState(readStoredSpeed);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -151,8 +167,15 @@ export function PublicAudioPlayer({
         onDurationChange={(event) => {
           const nextDuration = event.currentTarget.duration;
 
+          event.currentTarget.playbackRate = speed;
           setDuration(Number.isFinite(nextDuration) ? nextDuration : 0);
           onDurationChange?.(Number.isFinite(nextDuration) ? nextDuration : 0);
+        }}
+        onCanPlay={(event) => {
+          event.currentTarget.playbackRate = speed;
+        }}
+        onLoadedMetadata={(event) => {
+          event.currentTarget.playbackRate = speed;
         }}
         onEnded={() => {
           setIsPlaying(false);
