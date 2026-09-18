@@ -539,6 +539,31 @@ select {
   word-break: keep-all;
 }
 
+.public-mobile-article-reader {
+  perspective: 1100px;
+}
+
+.public-mobile-article-reader .public-mobile-article-page {
+  transform-style: preserve-3d;
+  will-change: transform, opacity, filter;
+}
+
+.public-mobile-article-reader .public-mobile-article-page-dragging {
+  filter: drop-shadow(0 18px 24px rgba(15, 23, 42, 0.14));
+  transform: translateX(var(--public-article-page-drag-x, 0)) rotateY(var(--public-article-page-drag-rotate, 0deg));
+  transition: none;
+}
+
+.public-mobile-article-reader .public-article-page-turn-next {
+  animation: public-mobile-page-turn-next 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: left center;
+}
+
+.public-mobile-article-reader .public-article-page-turn-previous {
+  animation: public-mobile-page-turn-previous 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: right center;
+}
+
 .public-mobile-article-reader .article-title-motion {
   margin-top: 1rem;
   max-width: 100%;
@@ -827,6 +852,46 @@ select {
   }
 }
 
+@keyframes public-mobile-page-turn-next {
+  0% {
+    filter: drop-shadow(0 12px 18px rgba(15, 23, 42, 0.08));
+    opacity: 1;
+    transform: translateX(0) rotateY(0deg) scale(1);
+  }
+
+  48% {
+    filter: drop-shadow(-18px 18px 24px rgba(15, 23, 42, 0.16));
+    opacity: 0.72;
+    transform: translateX(-12%) rotateY(-28deg) scale(0.985);
+  }
+
+  100% {
+    filter: none;
+    opacity: 1;
+    transform: translateX(0) rotateY(0deg) scale(1);
+  }
+}
+
+@keyframes public-mobile-page-turn-previous {
+  0% {
+    filter: drop-shadow(0 12px 18px rgba(15, 23, 42, 0.08));
+    opacity: 1;
+    transform: translateX(0) rotateY(0deg) scale(1);
+  }
+
+  48% {
+    filter: drop-shadow(18px 18px 24px rgba(15, 23, 42, 0.16));
+    opacity: 0.72;
+    transform: translateX(12%) rotateY(28deg) scale(0.985);
+  }
+
+  100% {
+    filter: none;
+    opacity: 1;
+    transform: translateX(0) rotateY(0deg) scale(1);
+  }
+}
+
 .public-newsletter-screen [data-public-text-scale-target="article-summary"] {
   text-align: left;
   word-break: keep-all;
@@ -1072,6 +1137,7 @@ select {
   .public-mobile-article-reader .article-title-motion,
   .public-mobile-article-reader .article-title-motion-char,
   .public-mobile-article-reader .article-title-motion::after,
+  .public-mobile-article-reader .public-mobile-article-page,
   .public-mobile-article-reader .article-motion-summary,
   .public-mobile-article-reader .article-motion-image,
   .public-mobile-article-reader .article-motion-caption,
