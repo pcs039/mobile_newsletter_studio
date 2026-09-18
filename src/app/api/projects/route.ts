@@ -14,6 +14,8 @@ export const dynamic = "force-dynamic";
 const projectStatuses = ["draft", "in_review", "published", "private", "archived"] as const;
 const packageTiers = ["basic", "standard", "advanced", "premium", "retainer"] as const;
 const productionModes = ["template", "hybrid", "full_image", "external_ebook", "ocr_assist"] as const;
+const coverLayouts = ["image", "image_info", "image_overlay"] as const;
+const coverFits = ["contain", "cover"] as const;
 
 function isOneOf<T extends readonly string[]>(value: unknown, values: T): value is T[number] {
   return typeof value === "string" && values.includes(value);
@@ -55,6 +57,8 @@ export async function POST(request: Request) {
   const slug = normalizeSlug(asOptionalText(payload.slug));
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
   const projectPassword = asOptionalText(payload.projectPassword);
+  const coverLayout = isOneOf(payload.coverLayout, coverLayouts) ? payload.coverLayout : "image";
+  const coverFit = isOneOf(payload.coverFit, coverFits) ? payload.coverFit : "contain";
 
   if (!title || !organizationName || !assigneeName || !publishedDate || !slug) {
     return NextResponse.json(
@@ -104,6 +108,14 @@ export async function POST(request: Request) {
     designerHoursCap: asOptionalText(payload.designerHoursCap),
     titleFontAssetId: asOptionalText(payload.titleFontAssetId),
     bodyFontAssetId: asOptionalText(payload.bodyFontAssetId),
+    coverEnabled: payload.coverEnabled === true,
+    coverLayout,
+    coverImageUrl: asOptionalText(payload.coverImageUrl),
+    coverImagePath: asOptionalText(payload.coverImagePath),
+    coverTitle: asOptionalText(payload.coverTitle),
+    coverSubtitle: asOptionalText(payload.coverSubtitle),
+    coverIssueText: asOptionalText(payload.coverIssueText),
+    coverFit,
     projectPassword,
   };
 
@@ -177,6 +189,8 @@ export async function PATCH(request: Request) {
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
   const projectPassword = asOptionalText(payload.projectPassword);
   const clearProjectPassword = payload.clearProjectPassword === true;
+  const coverLayout = isOneOf(payload.coverLayout, coverLayouts) ? payload.coverLayout : "image";
+  const coverFit = isOneOf(payload.coverFit, coverFits) ? payload.coverFit : "contain";
 
   if (!projectId) {
     return NextResponse.json(
@@ -227,6 +241,14 @@ export async function PATCH(request: Request) {
     designerHoursCap: asOptionalText(payload.designerHoursCap),
     titleFontAssetId: asOptionalText(payload.titleFontAssetId),
     bodyFontAssetId: asOptionalText(payload.bodyFontAssetId),
+    coverEnabled: payload.coverEnabled === true,
+    coverLayout,
+    coverImageUrl: asOptionalText(payload.coverImageUrl),
+    coverImagePath: asOptionalText(payload.coverImagePath),
+    coverTitle: asOptionalText(payload.coverTitle),
+    coverSubtitle: asOptionalText(payload.coverSubtitle),
+    coverIssueText: asOptionalText(payload.coverIssueText),
+    coverFit,
     projectPassword,
     clearProjectPassword,
   };

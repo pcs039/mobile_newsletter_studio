@@ -5,6 +5,8 @@ import type { DashboardProject } from "@/types/newsletter";
 export type ProjectStatus = "draft" | "in_review" | "published" | "private" | "archived";
 type PackageTier = "basic" | "standard" | "advanced" | "premium" | "retainer";
 type ProductionMode = "template" | "hybrid" | "full_image" | "external_ebook" | "ocr_assist";
+export type NewsletterCoverLayout = "image" | "image_info" | "image_overlay";
+export type NewsletterCoverFit = "contain" | "cover";
 
 type NewsletterProjectRow = {
   id: string;
@@ -29,6 +31,14 @@ type NewsletterProjectRow = {
   project_password_updated_at: string | null;
   title_font_asset_id: string | null;
   body_font_asset_id: string | null;
+  cover_enabled: boolean | null;
+  cover_layout: NewsletterCoverLayout | null;
+  cover_image_url: string | null;
+  cover_image_path: string | null;
+  cover_title: string | null;
+  cover_subtitle: string | null;
+  cover_issue_text: string | null;
+  cover_fit: NewsletterCoverFit | null;
   page_count: number;
   created_at: string;
   updated_at: string;
@@ -87,6 +97,14 @@ export type CreateNewsletterProjectInput = {
   clearProjectPassword?: boolean;
   titleFontAssetId?: string;
   bodyFontAssetId?: string;
+  coverEnabled?: boolean;
+  coverLayout?: NewsletterCoverLayout;
+  coverImageUrl?: string;
+  coverImagePath?: string;
+  coverTitle?: string;
+  coverSubtitle?: string;
+  coverIssueText?: string;
+  coverFit?: NewsletterCoverFit;
 };
 
 export type UpdateNewsletterProjectInput = CreateNewsletterProjectInput & {
@@ -402,6 +420,14 @@ export type ProjectWorkspaceInfo = {
   projectPasswordUpdatedAt: string;
   titleFontAssetId: string | null;
   bodyFontAssetId: string | null;
+  coverEnabled: boolean;
+  coverLayout: NewsletterCoverLayout;
+  coverImageUrl: string;
+  coverImagePath: string;
+  coverTitle: string;
+  coverSubtitle: string;
+  coverIssueText: string;
+  coverFit: NewsletterCoverFit;
 };
 
 export type ProjectWorkspaceResult =
@@ -438,6 +464,14 @@ export type ProjectBasicInfo = {
   projectPasswordUpdatedAt: string;
   titleFontAssetId: string;
   bodyFontAssetId: string;
+  coverEnabled: boolean;
+  coverLayout: NewsletterCoverLayout;
+  coverImageUrl: string;
+  coverImagePath: string;
+  coverTitle: string;
+  coverSubtitle: string;
+  coverIssueText: string;
+  coverFit: NewsletterCoverFit;
 };
 
 export type FontAsset = {
@@ -1106,6 +1140,14 @@ const projectSelectColumns = [
   "project_password_updated_at",
   "title_font_asset_id",
   "body_font_asset_id",
+  "cover_enabled",
+  "cover_layout",
+  "cover_image_url",
+  "cover_image_path",
+  "cover_title",
+  "cover_subtitle",
+  "cover_issue_text",
+  "cover_fit",
   "page_count",
   "created_at",
   "updated_at",
@@ -1295,6 +1337,14 @@ function formatCompactDateTime(value: string | null) {
 
 function makeIssueLabel(input: CreateNewsletterProjectInput) {
   return input.issueLabel?.trim() || null;
+}
+
+function normalizeCoverLayout(value: string | null | undefined): NewsletterCoverLayout {
+  return value === "image_info" || value === "image_overlay" ? value : "image";
+}
+
+function normalizeCoverFit(value: string | null | undefined): NewsletterCoverFit {
+  return value === "cover" ? "cover" : "contain";
 }
 
 function normalizePublishedDate(date: string) {
@@ -1673,6 +1723,14 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     projectPasswordUpdatedAt: project.project_password_updated_at ? formatCompactDateTime(project.project_password_updated_at) : "",
     titleFontAssetId: project.title_font_asset_id,
     bodyFontAssetId: project.body_font_asset_id,
+    coverEnabled: Boolean(project.cover_enabled),
+    coverLayout: normalizeCoverLayout(project.cover_layout),
+    coverImageUrl: project.cover_image_url || "",
+    coverImagePath: project.cover_image_path || "",
+    coverTitle: project.cover_title || "",
+    coverSubtitle: project.cover_subtitle || "",
+    coverIssueText: project.cover_issue_text || "",
+    coverFit: normalizeCoverFit(project.cover_fit),
   };
 }
 
@@ -1696,6 +1754,14 @@ function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicIn
     projectPasswordUpdatedAt: project.project_password_updated_at ? formatCompactDateTime(project.project_password_updated_at) : "",
     titleFontAssetId: project.title_font_asset_id || "",
     bodyFontAssetId: project.body_font_asset_id || "",
+    coverEnabled: Boolean(project.cover_enabled),
+    coverLayout: normalizeCoverLayout(project.cover_layout),
+    coverImageUrl: project.cover_image_url || "",
+    coverImagePath: project.cover_image_path || "",
+    coverTitle: project.cover_title || "",
+    coverSubtitle: project.cover_subtitle || "",
+    coverIssueText: project.cover_issue_text || "",
+    coverFit: normalizeCoverFit(project.cover_fit),
   };
 }
 
@@ -5077,6 +5143,14 @@ export async function createNewsletterProject(
     designer_hours_cap: input.designerHoursCap || null,
     title_font_asset_id: nullableText(input.titleFontAssetId),
     body_font_asset_id: nullableText(input.bodyFontAssetId),
+    cover_enabled: input.coverEnabled === true,
+    cover_layout: normalizeCoverLayout(input.coverLayout),
+    cover_image_url: nullableText(input.coverImageUrl),
+    cover_image_path: nullableText(input.coverImagePath),
+    cover_title: nullableText(input.coverTitle),
+    cover_subtitle: nullableText(input.coverSubtitle),
+    cover_issue_text: nullableText(input.coverIssueText),
+    cover_fit: normalizeCoverFit(input.coverFit),
     project_password_hash: input.projectPassword ? hashProjectPassword(input.projectPassword) : null,
     project_password_updated_at: input.projectPassword ? new Date().toISOString() : null,
   };
@@ -5161,6 +5235,14 @@ export async function updateNewsletterProject(
     designer_hours_cap: input.designerHoursCap || null,
     title_font_asset_id: nullableText(input.titleFontAssetId),
     body_font_asset_id: nullableText(input.bodyFontAssetId),
+    cover_enabled: input.coverEnabled === true,
+    cover_layout: normalizeCoverLayout(input.coverLayout),
+    cover_image_url: nullableText(input.coverImageUrl),
+    cover_image_path: nullableText(input.coverImagePath),
+    cover_title: nullableText(input.coverTitle),
+    cover_subtitle: nullableText(input.coverSubtitle),
+    cover_issue_text: nullableText(input.coverIssueText),
+    cover_fit: normalizeCoverFit(input.coverFit),
     updated_at: new Date().toISOString(),
   };
 
