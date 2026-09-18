@@ -2,12 +2,7 @@ import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
-import {
-  PublicMobileArticleReader,
-  PublicMobileArticleTocButton,
-  PublicMobileFirstArticleLink,
-  PublicPageTurnSoundToggle,
-} from "@/components/public-mobile-article-reader";
+import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import {
   getProjectAudioFiles,
@@ -63,81 +58,6 @@ function PublicUnavailablePage({
         <p className="mt-3 text-sm leading-6 text-slate-600 [word-break:keep-all]">{message}</p>
       </section>
     </main>
-  );
-}
-
-function PublicNewsletterCoverSection({
-  coverFit,
-  coverImageSrc,
-  coverIssueText,
-  coverLayout,
-  coverSubtitle,
-  coverTitle,
-}: {
-  coverFit: "contain" | "cover";
-  coverImageSrc: string;
-  coverIssueText: string;
-  coverLayout: "image" | "image_info" | "image_overlay";
-  coverSubtitle: string;
-  coverTitle: string;
-}) {
-  const hasInfo = Boolean(coverTitle || coverSubtitle || coverIssueText);
-  const imageFitClass = coverFit === "cover" || coverLayout === "image_overlay" ? "object-cover" : "object-contain";
-
-  return (
-    <section id="newsletter-cover" className="border-b border-slate-200 bg-[#f4f8ff] px-3 py-5">
-      <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-lg shadow-blue-950/10">
-        {coverLayout === "image_overlay" ? (
-          <div className="relative min-h-[76vh] bg-slate-950">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={coverImageSrc}
-              alt={coverTitle || "모바일 소식지 표지"}
-              className={`absolute inset-0 h-full w-full ${imageFitClass}`}
-            />
-            {hasInfo ? (
-              <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent p-6 text-white">
-                {coverIssueText ? <p className="text-sm font-black text-sky-100">{coverIssueText}</p> : null}
-                {coverTitle ? <h2 className="mt-2 text-4xl font-black leading-tight [word-break:keep-all]">{coverTitle}</h2> : null}
-                {coverSubtitle ? <p className="mt-3 text-base font-bold leading-7 text-white/90 [word-break:keep-all]">{coverSubtitle}</p> : null}
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <>
-            <div className="bg-white px-1 py-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={coverImageSrc}
-                alt={coverTitle || "모바일 소식지 표지"}
-                className={`mx-auto max-h-[82vh] w-full rounded-[1.1rem] ${imageFitClass}`}
-              />
-            </div>
-            {coverLayout === "image_info" && hasInfo ? (
-              <div className="border-t border-slate-100 px-5 py-5">
-                {coverTitle ? <h2 className="text-2xl font-black leading-tight text-[#092046] [word-break:keep-all]">{coverTitle}</h2> : null}
-                {coverSubtitle ? <p className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">{coverSubtitle}</p> : null}
-                {coverIssueText ? <p className="mt-3 text-xs font-black text-[#184a88]">{coverIssueText}</p> : null}
-              </div>
-            ) : null}
-          </>
-        )}
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <PublicMobileFirstArticleLink
-          href="#newsletter-articles"
-          className="dd-btn dd-btn-primary min-h-11 justify-center rounded-full px-4 text-sm"
-        >
-          첫 기사 읽기
-        </PublicMobileFirstArticleLink>
-        <PublicMobileArticleTocButton
-          ariaLabel="기사 목차 보기"
-          className="dd-btn dd-btn-secondary min-h-11 justify-center rounded-full px-4 text-sm"
-        >
-          목차 보기
-        </PublicMobileArticleTocButton>
-      </div>
-    </section>
   );
 }
 
@@ -203,6 +123,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) ?? ""
     : project?.coverImageUrl || "";
   const showCoverSection = Boolean(project?.coverEnabled && coverImageSrc && !isImagePageMode);
+  const useArticleReaderShell = !isImagePageMode && (articles.length > 0 || showCoverSection);
 
   return (
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
@@ -233,49 +154,38 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
         data-public-mobile-swipe-shell
         className="public-newsletter-swipe-shell mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10"
       >
-        <header className="px-5 pb-7 pt-[calc(1.75rem+env(safe-area-inset-top))] text-white" style={{ backgroundColor: headerColor }}>
-          <div className="flex items-start justify-between gap-4">
-            <p className="min-w-0 pt-1 text-sm font-semibold text-sky-200">{project?.organization ?? "프로젝트 정보 확인 필요"}</p>
-            {!isImagePageMode && articles.length > 0 ? (
-              <div className="flex shrink-0 items-center gap-2 pr-[env(safe-area-inset-right)] md:hidden">
-                <PublicPageTurnSoundToggle />
-                <PublicMobileArticleTocButton />
-              </div>
-            ) : null}
-          </div>
-          <h1 className="mt-3 text-3xl font-black leading-tight">{project?.title ?? slug}</h1>
-          <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
-          <p className="mt-4 text-sm leading-6 text-slate-200">{project?.description ?? workspace.message}</p>
-          <div className="mt-5 flex gap-2">
-            {!isEmbeddedAdminPreview ? (
-              <>
-                <Link href={ebookMobileHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:hidden">
-                  e-book 보기
-                </Link>
-                <Link href={ebookDesktopHref} className="hidden rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:inline-flex">
-                  e-book 보기
-                </Link>
-              </>
-            ) : null}
-            <span className="rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-slate-200">
-              {isImagePageMode ? "이미지형 모바일 보기" : "모바일 읽기 보기"}
-            </span>
-          </div>
-        </header>
-
-        {showCoverSection ? (
-          <PublicNewsletterCoverSection
-            coverFit={project.coverFit}
-            coverImageSrc={coverImageSrc}
-            coverIssueText={project.coverIssueText || project.issue}
-            coverLayout={project.coverLayout}
-            coverSubtitle={project.coverSubtitle}
-            coverTitle={project.coverTitle || project.title}
-          />
+        {!useArticleReaderShell ? (
+          <header className="px-5 pb-7 pt-[calc(1.75rem+env(safe-area-inset-top))] text-white" style={{ backgroundColor: headerColor }}>
+            <p className="text-sm font-semibold text-sky-200">{project?.organization ?? "프로젝트 정보 확인 필요"}</p>
+            <h1 className="mt-3 text-3xl font-black leading-tight">{project?.title ?? slug}</h1>
+            <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
+            <p className="mt-4 text-sm leading-6 text-slate-200">{project?.description ?? workspace.message}</p>
+            <div className="mt-5 flex gap-2">
+              {!isEmbeddedAdminPreview ? (
+                <>
+                  <Link href={ebookMobileHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:hidden">
+                    e-book 보기
+                  </Link>
+                  <Link href={ebookDesktopHref} className="hidden rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:inline-flex">
+                    e-book 보기
+                  </Link>
+                </>
+              ) : null}
+              <span className="rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-slate-200">
+                {isImagePageMode ? "이미지형 모바일 보기" : "모바일 읽기 보기"}
+              </span>
+            </div>
+          </header>
         ) : null}
 
         <div id="newsletter-articles" />
-        <section className={`space-y-5 px-5 py-5 ${isImagePageMode && publicAudioSrc ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
+        <section
+          className={
+            useArticleReaderShell
+              ? ""
+              : `space-y-5 px-5 py-5 ${isImagePageMode && publicAudioSrc ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`
+          }
+        >
           {isImagePageMode && pageImages.length > 0 ? (
             <section className="public-image-page-list space-y-4">
               {pageImages.map((page) => (
@@ -325,12 +235,27 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                 </article>
               ))}
             </section>
-          ) : articles.length > 0 ? (
+          ) : useArticleReaderShell ? (
             <PublicMobileArticleReader
               articles={articles}
+              cover={
+                showCoverSection
+                  ? {
+                      coverFit: project.coverFit,
+                      coverImageSrc,
+                      coverIssueText: project.coverIssueText || project.issue,
+                      coverLayout: project.coverLayout,
+                      coverSubtitle: project.coverSubtitle,
+                      coverTitle: project.coverTitle || project.title,
+                    }
+                  : null
+              }
               fontAssets={fontData.fonts}
               hasCoverPage={showCoverSection}
+              headerColor={headerColor}
               initialArticleId={previewArticleId}
+              issue={project?.issue}
+              publicationTitle={project?.title ?? slug}
               projectBodyFontAssetId={project?.bodyFontAssetId}
               projectTitleFontAssetId={project?.titleFontAssetId}
               showAdminPreviewControls={showAdminPreviewControls}
@@ -357,7 +282,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             </div>
           )}
           {surveyData.surveys.length > 0 ? (
-            <section className="public-card rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-5">
+            <section className={`public-card rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-5 ${useArticleReaderShell ? "mx-5 my-5" : ""}`}>
               <p className="text-xs font-black text-[#184a88]">참여하기</p>
               <h2 className="mt-2 text-xl font-black leading-tight text-[#092046]">설문·이벤트</h2>
               <p className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">
