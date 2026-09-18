@@ -10,7 +10,6 @@ import {
   useSyncExternalStore,
   type CSSProperties,
   type ReactNode,
-  type TouchEvent,
 } from "react";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
@@ -56,6 +55,7 @@ type PublicMobileArticleReaderProps = {
 };
 
 type SwipeStart = {
+  lockedAxis?: "horizontal" | "vertical";
   x: number;
   y: number;
 } | null;
@@ -821,13 +821,11 @@ export function PublicMobileArticleReader({
     }, 280);
   }
 
-  function handleTouchStart(event: TouchEvent<HTMLElement>) {
-    if (isInteractiveTouchTarget(event.target)) {
+  function startSwipeGesture(target: EventTarget | null, touch: Touch | undefined) {
+    if (isInteractiveTouchTarget(target)) {
       swipeStartRef.current = null;
       return;
     }
-
-    const touch = event.touches[0];
 
     if (!touch) {
       return;
@@ -838,9 +836,8 @@ export function PublicMobileArticleReader({
     setDragOffset(0);
   }
 
-  function handleTouchMove(event: TouchEvent<HTMLElement>) {
+  function moveSwipeGesture(touch: Touch | undefined) {
     const start = swipeStartRef.current;
-    const touch = event.touches[0];
 
     if (!start || !touch || prefersReducedMotion()) {
       return;
@@ -848,9 +845,26 @@ export function PublicMobileArticleReader({
 
     const deltaX = touch.clientX - start.x;
     const deltaY = touch.clientY - start.y;
+    const absoluteDeltaX = Math.abs(deltaX);
+    const absoluteDeltaY = Math.abs(deltaY);
 
-    if (Math.abs(deltaX) < 10 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) {
+    if (start.lockedAxis === "vertical") {
       return;
+    }
+
+    if (!start.lockedAxis) {
+      if (absoluteDeltaY > 10 && absoluteDeltaY > absoluteDeltaX) {
+        swipeStartRef.current = { ...start, lockedAxis: "vertical" };
+        setIsDraggingPage(false);
+        setDragOffset(0);
+        return;
+      }
+
+      if (absoluteDeltaX > 10 && absoluteDeltaX > absoluteDeltaY * 1.15) {
+        swipeStartRef.current = { ...start, lockedAxis: "horizontal" };
+      } else {
+        return;
+      }
     }
 
     if ((deltaX < 0 && !canGoNext) || (deltaX > 0 && !canGoPrevious)) {
@@ -862,15 +876,14 @@ export function PublicMobileArticleReader({
     setDragOffset(Math.max(-120, Math.min(120, deltaX)));
   }
 
-  function handleTouchEnd(event: TouchEvent<HTMLElement>) {
+  function endSwipeGesture(touch: Touch | undefined) {
     const start = swipeStartRef.current;
-    const touch = event.changedTouches[0];
 
     swipeStartRef.current = null;
     setIsDraggingPage(false);
     setDragOffset(0);
 
-    if (!start || !touch) {
+    if (!start || !touch || start.lockedAxis === "vertical") {
       return;
     }
 
@@ -893,6 +906,48 @@ export function PublicMobileArticleReader({
     }
   }
 
+  function cancelSwipeGesture() {
+    swipeStartRef.current = null;
+    setIsDraggingPage(false);
+    setDragOffset(0);
+  }
+
+  useEffect(() => {
+    if (!isMobileReader || articles.length === 0) {
+      return;
+    }
+
+    const shell = articleTopRef.current?.closest("[data-public-mobile-swipe-shell]");
+
+    if (!(shell instanceof HTMLElement)) {
+      return;
+    }
+
+    function onTouchStart(event: globalThis.TouchEvent) {
+      startSwipeGesture(event.target, event.touches[0]);
+    }
+
+    function onTouchMove(event: globalThis.TouchEvent) {
+      moveSwipeGesture(event.touches[0]);
+    }
+
+    function onTouchEnd(event: globalThis.TouchEvent) {
+      endSwipeGesture(event.changedTouches[0]);
+    }
+
+    shell.addEventListener("touchstart", onTouchStart, { passive: true });
+    shell.addEventListener("touchmove", onTouchMove, { passive: true });
+    shell.addEventListener("touchend", onTouchEnd, { passive: true });
+    shell.addEventListener("touchcancel", cancelSwipeGesture, { passive: true });
+
+    return () => {
+      shell.removeEventListener("touchstart", onTouchStart);
+      shell.removeEventListener("touchmove", onTouchMove);
+      shell.removeEventListener("touchend", onTouchEnd);
+      shell.removeEventListener("touchcancel", cancelSwipeGesture);
+    };
+  });
+
   if (articles.length === 0) {
     return null;
   }
@@ -911,14 +966,6 @@ export function PublicMobileArticleReader({
           className={`public-mobile-article-reader -mx-1 pb-[calc(3.75rem+env(safe-area-inset-bottom))] ${
             publicAudio ? "pb-[calc(8.5rem+env(safe-area-inset-bottom))]" : ""
           }`}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={() => {
-            swipeStartRef.current = null;
-            setIsDraggingPage(false);
-            setDragOffset(0);
-          }}
         >
           <div ref={articleTopRef} aria-hidden="true" />
 

@@ -224,7 +224,10 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           </div>
         </div>
       )}
-      <section className="mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10">
+      <section
+        data-public-mobile-swipe-shell
+        className="public-newsletter-swipe-shell mx-auto min-h-screen max-w-[520px] bg-white shadow-xl shadow-blue-950/10"
+      >
         <header className="px-5 pb-7 pt-[calc(1.75rem+env(safe-area-inset-top))] text-white" style={{ backgroundColor: headerColor }}>
           <div className="flex items-start justify-between gap-4">
             <p className="min-w-0 pt-1 text-sm font-semibold text-sky-200">{project?.organization ?? "프로젝트 정보 확인 필요"}</p>
