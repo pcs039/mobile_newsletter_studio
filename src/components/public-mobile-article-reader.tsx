@@ -43,9 +43,20 @@ import { getArticleLinkButtonLabel, getValidArticleUrl } from "@/lib/public-arti
 
 type PublicMobileArticleReaderProps = {
   articles: ProjectContentArticle[];
+  cover?: {
+    coverFit: "contain" | "cover";
+    coverImageSrc: string;
+    coverIssueText: string;
+    coverLayout: "image" | "image_info" | "image_overlay";
+    coverSubtitle: string;
+    coverTitle: string;
+  } | null;
   fontAssets?: FontAsset[];
   hasCoverPage?: boolean;
   initialArticleId?: string | null;
+  issue?: string | null;
+  publicationTitle: string;
+  headerColor?: string | null;
   projectBodyFontAssetId?: string | null;
   projectTitleFontAssetId?: string | null;
   publicAudio?: {
@@ -233,6 +244,134 @@ export function PublicMobileFirstArticleLink({
     >
       {children}
     </a>
+  );
+}
+
+function PublicNewsletterCoverView({
+  coverFit,
+  coverImageSrc,
+  coverIssueText,
+  coverLayout,
+  coverSubtitle,
+  coverTitle,
+  hasArticles,
+  onOpenToc,
+  onStartReading,
+}: {
+  coverFit: "contain" | "cover";
+  coverImageSrc: string;
+  coverIssueText: string;
+  coverLayout: "image" | "image_info" | "image_overlay";
+  coverSubtitle: string;
+  coverTitle: string;
+  hasArticles: boolean;
+  onOpenToc: () => void;
+  onStartReading: () => void;
+}) {
+  const hasInfo = Boolean(coverTitle || coverSubtitle || coverIssueText);
+  const imageFitClass = coverFit === "cover" || coverLayout === "image_overlay" ? "object-cover" : "object-contain";
+
+  return (
+    <section className="border-b border-slate-200 bg-[#f4f8ff] px-3 py-5">
+      <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-lg shadow-blue-950/10">
+        {coverLayout === "image_overlay" ? (
+          <div className="relative min-h-[76vh] bg-slate-950">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={coverImageSrc}
+              alt={coverTitle || "모바일 소식지 표지"}
+              className={`absolute inset-0 h-full w-full ${imageFitClass}`}
+            />
+            {hasInfo ? (
+              <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent p-6 text-white">
+                {coverIssueText ? <p className="text-sm font-black text-sky-100">{coverIssueText}</p> : null}
+                {coverTitle ? <h2 className="mt-2 text-4xl font-black leading-tight [word-break:keep-all]">{coverTitle}</h2> : null}
+                {coverSubtitle ? <p className="mt-3 text-base font-bold leading-7 text-white/90 [word-break:keep-all]">{coverSubtitle}</p> : null}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className="bg-white px-1 py-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverImageSrc}
+                alt={coverTitle || "모바일 소식지 표지"}
+                className={`mx-auto max-h-[82vh] w-full rounded-[1.1rem] ${imageFitClass}`}
+              />
+            </div>
+            {coverLayout === "image_info" && hasInfo ? (
+              <div className="border-t border-slate-100 px-5 py-5">
+                {coverTitle ? <h2 className="text-2xl font-black leading-tight text-[#092046] [word-break:keep-all]">{coverTitle}</h2> : null}
+                {coverSubtitle ? <p className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">{coverSubtitle}</p> : null}
+                {coverIssueText ? <p className="mt-3 text-xs font-black text-[#184a88]">{coverIssueText}</p> : null}
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={onStartReading}
+          disabled={!hasArticles}
+          className="dd-btn dd-btn-primary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45"
+        >
+          첫 기사 읽기
+        </button>
+        <button
+          type="button"
+          onClick={onOpenToc}
+          disabled={!hasArticles}
+          className="dd-btn dd-btn-secondary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45"
+        >
+          목차 보기
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function PublicCompactPublicationHeader({
+  headerColor,
+  issue,
+  onOpenToc,
+  publicationTitle,
+  showToc,
+}: {
+  headerColor?: string | null;
+  issue?: string | null;
+  onOpenToc: () => void;
+  publicationTitle: string;
+  showToc: boolean;
+}) {
+  return (
+    <header
+      className="px-4 pb-4 pt-[calc(0.9rem+env(safe-area-inset-top))] text-white"
+      style={{ backgroundColor: headerColor || "#071f46" }}
+    >
+      <div className="flex min-h-16 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="line-clamp-2 text-lg font-black leading-6 [overflow-wrap:anywhere] [word-break:keep-all]">
+            {publicationTitle}
+          </h1>
+          {issue ? <p className="mt-1 text-sm font-bold text-sky-100 [overflow-wrap:anywhere]">{issue}</p> : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2 pr-[env(safe-area-inset-right)]">
+          <PublicPageTurnSoundToggle className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2.5 text-[11px] font-black text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80" />
+          {showToc ? (
+            <button
+              type="button"
+              onClick={onOpenToc}
+              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2.5 text-xl font-black leading-none text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+              aria-label="기사 목차 열기"
+            >
+              ☰
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -831,9 +970,13 @@ function ArticleCard({
 
 export function PublicMobileArticleReader({
   articles,
+  cover,
   fontAssets = [],
   hasCoverPage = false,
+  headerColor,
   initialArticleId,
+  issue,
+  publicationTitle,
   projectBodyFontAssetId,
   projectTitleFontAssetId,
   publicAudio,
@@ -842,21 +985,21 @@ export function PublicMobileArticleReader({
 }: PublicMobileArticleReaderProps) {
   const isMobileReader = useSyncExternalStore(subscribeToMobileReader, readMobileReaderSnapshot, () => false);
   const [currentIndex, setCurrentIndex] = useState(() => getInitialArticleIndex(articles, initialArticleId));
+  const [isCoverView, setIsCoverView] = useState(() => Boolean(hasCoverPage && !initialArticleId));
   const [isIndexOpen, setIsIndexOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<PublicArticleLightboxImage | null>(null);
   const [pageSlideDirection, setPageSlideDirection] = useState<PageSlideDirection>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDraggingPage, setIsDraggingPage] = useState(false);
-  const [isCoverActive, setIsCoverActive] = useState(false);
   const [pageTurnSoundEnabled, setPageTurnSoundEnabled] = useState(readStoredPageTurnSoundPreference);
   const articleTopRef = useRef<HTMLDivElement>(null);
   const pageTurnAudioContextRef = useRef<AudioContext | null>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
   const safeCurrentIndex = Math.min(currentIndex, Math.max(articles.length - 1, 0));
   const currentArticle = articles[safeCurrentIndex] ?? null;
-  const canGoPrevious = safeCurrentIndex > 0 || (hasCoverPage && !isCoverActive);
-  const canGoNext = safeCurrentIndex < articles.length - 1;
-  const canNavigateNext = canGoNext || isCoverActive;
+  const hasArticles = articles.length > 0;
+  const canGoPrevious = !isCoverView && (safeCurrentIndex > 0 || hasCoverPage);
+  const canGoNext = isCoverView ? hasArticles : safeCurrentIndex < articles.length - 1;
   const activeAudioSegments = useMemo(() => {
     if (!isMobileReader || !currentArticle) {
       return buildAudioTextSegmentCandidates(articles);
@@ -895,30 +1038,7 @@ export function PublicMobileArticleReader({
     }
 
     articleTopRef.current?.scrollIntoView({ block: "start" });
-  }, [isMobileReader, safeCurrentIndex]);
-
-  useEffect(() => {
-    if (!isMobileReader || !hasCoverPage) {
-      return;
-    }
-
-    function updateCoverActive() {
-      const readerTop = articleTopRef.current?.getBoundingClientRect().top ?? 0;
-
-      setIsCoverActive(readerTop > window.innerHeight * 0.22);
-    }
-
-    const frame = window.requestAnimationFrame(updateCoverActive);
-
-    window.addEventListener("scroll", updateCoverActive, { passive: true });
-    window.addEventListener("resize", updateCoverActive);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", updateCoverActive);
-      window.removeEventListener("resize", updateCoverActive);
-    };
-  }, [hasCoverPage, isMobileReader]);
+  }, [isCoverView, isMobileReader, safeCurrentIndex]);
 
   useEffect(() => {
     function openArticleToc() {
@@ -987,53 +1107,48 @@ export function PublicMobileArticleReader({
     }).catch(() => undefined);
   }
 
-  function scrollToCover() {
-    document.getElementById("newsletter-cover")?.scrollIntoView({
+  function scrollToReaderTop() {
+    articleTopRef.current?.scrollIntoView({
       behavior: prefersReducedMotion() ? "auto" : "smooth",
       block: "start",
     });
   }
 
-  function isCoverBeforeReaderVisible() {
-    if (!hasCoverPage || typeof window === "undefined") {
-      return false;
-    }
-
-    const readerTop = articleTopRef.current?.getBoundingClientRect().top ?? 0;
-
-    return readerTop > window.innerHeight * 0.22;
-  }
-
   function goToCoverFromFirstArticle() {
-    if (!hasCoverPage || safeCurrentIndex !== 0) {
+    if (!hasCoverPage || safeCurrentIndex !== 0 || isCoverView) {
       return false;
     }
 
-    if (isCoverBeforeReaderVisible()) {
-      return false;
-    }
-
-    scrollToCover();
+    setIsCoverView(true);
+    scrollToReaderTop();
     playPageTurnSound();
     return true;
   }
 
   function goToFirstArticleFromCover() {
-    articleTopRef.current?.scrollIntoView({
-      behavior: prefersReducedMotion() ? "auto" : "smooth",
-      block: "start",
-    });
+    if (!hasArticles || !isCoverView) {
+      return;
+    }
+
+    setCurrentIndex(0);
+    setIsCoverView(false);
+    scrollToReaderTop();
     playPageTurnSound();
   }
 
   function goToArticle(nextIndex: number, options: { playSound?: boolean } = {}) {
+    if (articles.length === 0) {
+      return false;
+    }
+
     const clampedIndex = Math.min(Math.max(nextIndex, 0), articles.length - 1);
 
-    if (clampedIndex === safeCurrentIndex) {
+    if (clampedIndex === safeCurrentIndex && !isCoverView) {
       return false;
     }
 
     setCurrentIndex(clampedIndex);
+    setIsCoverView(false);
 
     if (options.playSound) {
       playPageTurnSound();
@@ -1052,7 +1167,7 @@ export function PublicMobileArticleReader({
   }
 
   function navigateNext() {
-    if (isCoverBeforeReaderVisible()) {
+    if (isCoverView) {
       goToFirstArticleFromCover();
       return;
     }
@@ -1076,6 +1191,7 @@ export function PublicMobileArticleReader({
     window.setTimeout(() => {
       goToArticle(clampedIndex, { playSound: true });
       setDragOffset(0);
+      scrollToReaderTop();
     }, 150);
     window.setTimeout(() => {
       setPageSlideDirection(null);
@@ -1128,7 +1244,7 @@ export function PublicMobileArticleReader({
       }
     }
 
-    if ((deltaX < 0 && !canNavigateNext && !isCoverBeforeReaderVisible()) || (deltaX > 0 && !canGoPrevious)) {
+    if ((deltaX < 0 && !canGoNext) || (deltaX > 0 && !canGoPrevious)) {
       setDragOffset(deltaX * 0.18);
       return;
     }
@@ -1209,7 +1325,7 @@ export function PublicMobileArticleReader({
     };
   });
 
-  if (articles.length === 0) {
+  if (articles.length === 0 && !cover) {
     return null;
   }
 
@@ -1224,30 +1340,62 @@ export function PublicMobileArticleReader({
     <>
       {isMobileReader ? (
         <section
-          className={`public-mobile-article-reader -mx-1 pb-[calc(3.75rem+env(safe-area-inset-bottom))] ${
+          className={`public-mobile-article-reader pb-[calc(3.75rem+env(safe-area-inset-bottom))] ${
             publicAudio ? "pb-[calc(8.5rem+env(safe-area-inset-bottom))]" : ""
           }`}
         >
           <div ref={articleTopRef} aria-hidden="true" />
 
-          {currentArticle ? (
-            <div
-              className={`public-mobile-article-page ${pageSlideClass} ${isDraggingPage ? "public-mobile-article-page-dragging" : ""}`}
-              style={pageDragStyle}
-            >
-              <ArticleCard
-                article={currentArticle}
-                fontAssets={fontAssets}
-                index={safeCurrentIndex}
-                onOpenArticleImage={setLightboxImage}
-                projectBodyFontAssetId={projectBodyFontAssetId}
-                projectTitleFontAssetId={projectTitleFontAssetId}
-                showAdminPreviewControls={showAdminPreviewControls}
-                showTextSizeControl
-                slug={slug}
+          {isCoverView && cover ? (
+            <>
+              <PublicCompactPublicationHeader
+                headerColor={headerColor}
+                issue={issue}
+                onOpenToc={() => setIsIndexOpen(true)}
+                publicationTitle={publicationTitle}
+                showToc={hasArticles}
               />
-            </div>
-          ) : null}
+              <PublicNewsletterCoverView
+                {...cover}
+                hasArticles={hasArticles}
+                onOpenToc={() => setIsIndexOpen(true)}
+                onStartReading={goToFirstArticleFromCover}
+              />
+            </>
+          ) : (
+            <>
+              <PublicCompactPublicationHeader
+                headerColor={headerColor}
+                issue={issue}
+                onOpenToc={() => setIsIndexOpen(true)}
+                publicationTitle={publicationTitle}
+                showToc={hasArticles}
+              />
+              {currentArticle ? (
+                <div
+                  className={`public-mobile-article-page ${pageSlideClass} ${isDraggingPage ? "public-mobile-article-page-dragging" : ""}`}
+                  style={pageDragStyle}
+                >
+                  <ArticleCard
+                    article={currentArticle}
+                    className="mx-5 my-5"
+                    fontAssets={fontAssets}
+                    index={safeCurrentIndex}
+                    onOpenArticleImage={setLightboxImage}
+                    projectBodyFontAssetId={projectBodyFontAssetId}
+                    projectTitleFontAssetId={projectTitleFontAssetId}
+                    showAdminPreviewControls={showAdminPreviewControls}
+                    showTextSizeControl
+                    slug={slug}
+                  />
+                </div>
+              ) : (
+                <div className="mx-5 my-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
+                  <p className="text-sm font-black text-[#092046]">등록된 기사가 없습니다.</p>
+                </div>
+              )}
+            </>
+          )}
 
           <nav
             className="fixed left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/60 bg-white/72 p-1 shadow-lg shadow-blue-950/15 backdrop-blur-md"
@@ -1269,24 +1417,25 @@ export function PublicMobileArticleReader({
               <button
                 type="button"
                 onClick={() => setIsIndexOpen(true)}
+                disabled={!hasArticles}
                 className="h-9 rounded-full bg-[#092046]/82 px-3 text-xs font-black text-white shadow-sm transition hover:bg-[#092046]"
-                aria-label={`기사 목차 열기, 현재 ${safeCurrentIndex + 1} / ${articles.length}`}
+                aria-label={isCoverView ? "표지" : `기사 목차 열기, 현재 ${safeCurrentIndex + 1} / ${articles.length}`}
               >
-                {safeCurrentIndex + 1} / {articles.length}
+                {isCoverView ? "표지" : `${safeCurrentIndex + 1} / ${articles.length}`}
               </button>
               <button
                 type="button"
                 onClick={navigateNext}
-                disabled={!canNavigateNext}
+                disabled={!canGoNext}
                 className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none disabled:pointer-events-none disabled:opacity-35"
-                aria-label="다음 기사"
+                aria-label={isCoverView ? "첫 기사로 이동" : "다음 기사"}
               >
                 ›
               </button>
             </div>
           </nav>
 
-          {isIndexOpen ? (
+          {isIndexOpen && hasArticles ? (
             <div data-swipe-navigation-ignore className="fixed inset-0 z-[70] flex justify-center bg-slate-950/55 px-4 py-6">
               <section className="flex max-h-full w-full max-w-[520px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl shadow-blue-950/30">
                 <div className="border-b border-slate-200 bg-[#092046] px-5 py-4 text-white">
@@ -1294,7 +1443,7 @@ export function PublicMobileArticleReader({
                     <div>
                       <p className="text-xs font-black text-sky-200">기사 목차</p>
                       <h2 className="mt-1 text-xl font-black">
-                        {safeCurrentIndex + 1} / {articles.length}
+                        {isCoverView ? "표지" : `${safeCurrentIndex + 1} / ${articles.length}`}
                       </h2>
                     </div>
                     <button
@@ -1348,6 +1497,21 @@ export function PublicMobileArticleReader({
         </section>
       ) : (
         <section className={`space-y-5 ${publicAudio ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
+          <PublicCompactPublicationHeader
+            headerColor={headerColor}
+            issue={issue}
+            onOpenToc={() => setIsIndexOpen(true)}
+            publicationTitle={publicationTitle}
+            showToc={hasArticles}
+          />
+          {cover ? (
+            <PublicNewsletterCoverView
+              {...cover}
+              hasArticles={hasArticles}
+              onOpenToc={() => setIsIndexOpen(true)}
+              onStartReading={() => goToArticle(0, { playSound: true })}
+            />
+          ) : null}
           {articles.map((article, index) => (
             <ArticleCard
               key={article.id}
