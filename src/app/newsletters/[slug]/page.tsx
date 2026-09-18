@@ -2,7 +2,12 @@ import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
-import { PublicMobileArticleReader, PublicMobileArticleTocButton } from "@/components/public-mobile-article-reader";
+import {
+  PublicMobileArticleReader,
+  PublicMobileArticleTocButton,
+  PublicMobileFirstArticleLink,
+  PublicPageTurnSoundToggle,
+} from "@/components/public-mobile-article-reader";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import {
   getProjectAudioFiles,
@@ -80,7 +85,7 @@ function PublicNewsletterCoverSection({
   const imageFitClass = coverFit === "cover" || coverLayout === "image_overlay" ? "object-cover" : "object-contain";
 
   return (
-    <section className="border-b border-slate-200 bg-[#f4f8ff] px-3 py-5">
+    <section id="newsletter-cover" className="border-b border-slate-200 bg-[#f4f8ff] px-3 py-5">
       <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-lg shadow-blue-950/10">
         {coverLayout === "image_overlay" ? (
           <div className="relative min-h-[76vh] bg-slate-950">
@@ -119,12 +124,12 @@ function PublicNewsletterCoverSection({
         )}
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <a
+        <PublicMobileFirstArticleLink
           href="#newsletter-articles"
           className="dd-btn dd-btn-primary min-h-11 justify-center rounded-full px-4 text-sm"
         >
           첫 기사 읽기
-        </a>
+        </PublicMobileFirstArticleLink>
         <PublicMobileArticleTocButton
           ariaLabel="기사 목차 보기"
           className="dd-btn dd-btn-secondary min-h-11 justify-center rounded-full px-4 text-sm"
@@ -232,7 +237,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           <div className="flex items-start justify-between gap-4">
             <p className="min-w-0 pt-1 text-sm font-semibold text-sky-200">{project?.organization ?? "프로젝트 정보 확인 필요"}</p>
             {!isImagePageMode && articles.length > 0 ? (
-              <div className="shrink-0 pr-[env(safe-area-inset-right)] md:hidden">
+              <div className="flex shrink-0 items-center gap-2 pr-[env(safe-area-inset-right)] md:hidden">
+                <PublicPageTurnSoundToggle />
                 <PublicMobileArticleTocButton />
               </div>
             ) : null}
@@ -323,6 +329,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             <PublicMobileArticleReader
               articles={articles}
               fontAssets={fontData.fonts}
+              hasCoverPage={showCoverSection}
               initialArticleId={previewArticleId}
               projectBodyFontAssetId={project?.bodyFontAssetId}
               projectTitleFontAssetId={project?.titleFontAssetId}

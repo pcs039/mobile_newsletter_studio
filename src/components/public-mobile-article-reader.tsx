@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
+import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import { ScrollMotionReveal } from "@/components/scroll-motion-reveal";
@@ -43,6 +44,7 @@ import { getArticleLinkButtonLabel, getValidArticleUrl } from "@/lib/public-arti
 type PublicMobileArticleReaderProps = {
   articles: ProjectContentArticle[];
   fontAssets?: FontAsset[];
+  hasCoverPage?: boolean;
   initialArticleId?: string | null;
   projectBodyFontAssetId?: string | null;
   projectTitleFontAssetId?: string | null;
@@ -78,6 +80,9 @@ type ResolvedArticleMotionSettings = {
 
 const mobileReaderQuery = "(max-width: 767px)";
 const openMobileArticleTocEventName = "datadiction:open-mobile-article-toc";
+const playPageTurnSoundEventName = "datadiction:play-page-turn-sound";
+const pageTurnSoundPreferenceEventName = "datadiction:page-turn-sound-preference";
+const pageTurnSoundStorageKey = "datadiction_page_turn_sound";
 const swipeThreshold = 70;
 const articleMotionPresetClassNames: Record<ArticleMotionPreset, string> = {
   none: "article-motion-preset-none",
@@ -150,6 +155,33 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+function readStoredPageTurnSoundPreference() {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  try {
+    return window.localStorage.getItem(pageTurnSoundStorageKey) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function savePageTurnSoundPreference(enabled: boolean) {
+  try {
+    window.localStorage.setItem(pageTurnSoundStorageKey, enabled ? "on" : "off");
+  } catch {
+    // Page turn sound preference is optional.
+  }
+}
+
+function createPageTurnAudioContext() {
+  const AudioContextConstructor =
+    window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+  return AudioContextConstructor ? new AudioContextConstructor() : null;
+}
+
 function isInteractiveTouchTarget(target: EventTarget | null) {
   return (
     target instanceof Element &&
@@ -178,6 +210,59 @@ export function PublicMobileArticleTocButton({
       aria-label={ariaLabel}
     >
       {children}
+    </button>
+  );
+}
+
+export function PublicMobileFirstArticleLink({
+  children = "첫 기사 읽기",
+  className,
+  href = "#newsletter-articles",
+}: {
+  children?: ReactNode;
+  className?: string;
+  href?: string;
+}) {
+  return (
+    <a
+      href={href}
+      className={className}
+      onClick={() => {
+        window.dispatchEvent(new Event(playPageTurnSoundEventName));
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
+export function PublicPageTurnSoundToggle({
+  className = "inline-flex min-h-11 items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-3 text-xs font-black text-white shadow-sm shadow-blue-950/10 backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
+}: {
+  className?: string;
+}) {
+  const [enabled, setEnabled] = useState(readStoredPageTurnSoundPreference);
+
+  function toggleSound() {
+    setEnabled((currentValue) => {
+      const nextValue = !currentValue;
+
+      savePageTurnSoundPreference(nextValue);
+      window.dispatchEvent(new CustomEvent(pageTurnSoundPreferenceEventName, { detail: { enabled: nextValue } }));
+
+      return nextValue;
+    });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggleSound}
+      className={className}
+      aria-label="페이지 전환 효과음"
+      aria-pressed={enabled}
+    >
+      효과음 {enabled ? "켜짐" : "꺼짐"}
     </button>
   );
 }
@@ -698,11 +783,9 @@ function ArticleCard({
       {article.audioFile?.previewHref ? (
         <section className="mt-4 rounded-xl border border-[#b8d7ff] bg-[#f4f8ff] px-3 py-2.5">
           <p className="text-sm font-black text-[#092046]">음성으로 듣기</p>
-          <audio
-            aria-label={`${articleTitle} 음성으로 듣기`}
-            className="mt-2 h-9 w-full rounded-md"
-            controls
-            preload="metadata"
+          <PublicArticleAudioPlayer
+            ariaLabel={`${articleTitle} 음성으로 듣기`}
+            className="mt-2"
             src={article.audioFile.previewHref}
           />
           {article.audioFile.transcriptText ? (
@@ -749,6 +832,7 @@ function ArticleCard({
 export function PublicMobileArticleReader({
   articles,
   fontAssets = [],
+  hasCoverPage = false,
   initialArticleId,
   projectBodyFontAssetId,
   projectTitleFontAssetId,
@@ -763,12 +847,16 @@ export function PublicMobileArticleReader({
   const [pageSlideDirection, setPageSlideDirection] = useState<PageSlideDirection>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDraggingPage, setIsDraggingPage] = useState(false);
+  const [isCoverActive, setIsCoverActive] = useState(false);
+  const [pageTurnSoundEnabled, setPageTurnSoundEnabled] = useState(readStoredPageTurnSoundPreference);
   const articleTopRef = useRef<HTMLDivElement>(null);
+  const pageTurnAudioContextRef = useRef<AudioContext | null>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
   const safeCurrentIndex = Math.min(currentIndex, Math.max(articles.length - 1, 0));
   const currentArticle = articles[safeCurrentIndex] ?? null;
-  const canGoPrevious = safeCurrentIndex > 0;
+  const canGoPrevious = safeCurrentIndex > 0 || (hasCoverPage && !isCoverActive);
   const canGoNext = safeCurrentIndex < articles.length - 1;
+  const canNavigateNext = canGoNext || isCoverActive;
   const activeAudioSegments = useMemo(() => {
     if (!isMobileReader || !currentArticle) {
       return buildAudioTextSegmentCandidates(articles);
@@ -778,12 +866,59 @@ export function PublicMobileArticleReader({
   }, [articles, currentArticle, isMobileReader]);
 
   useEffect(() => {
+    function syncPageTurnSoundPreference(event: Event) {
+      const customEvent = event as CustomEvent<{ enabled?: boolean }>;
+
+      setPageTurnSoundEnabled(
+        typeof customEvent.detail?.enabled === "boolean"
+          ? customEvent.detail.enabled
+          : readStoredPageTurnSoundPreference(),
+      );
+    }
+
+    function playRequestedPageTurnSound() {
+      playPageTurnSound();
+    }
+
+    window.addEventListener(pageTurnSoundPreferenceEventName, syncPageTurnSoundPreference);
+    window.addEventListener(playPageTurnSoundEventName, playRequestedPageTurnSound);
+
+    return () => {
+      window.removeEventListener(pageTurnSoundPreferenceEventName, syncPageTurnSoundPreference);
+      window.removeEventListener(playPageTurnSoundEventName, playRequestedPageTurnSound);
+    };
+  });
+
+  useEffect(() => {
     if (!isMobileReader) {
       return;
     }
 
     articleTopRef.current?.scrollIntoView({ block: "start" });
   }, [isMobileReader, safeCurrentIndex]);
+
+  useEffect(() => {
+    if (!isMobileReader || !hasCoverPage) {
+      return;
+    }
+
+    function updateCoverActive() {
+      const readerTop = articleTopRef.current?.getBoundingClientRect().top ?? 0;
+
+      setIsCoverActive(readerTop > window.innerHeight * 0.22);
+    }
+
+    const frame = window.requestAnimationFrame(updateCoverActive);
+
+    window.addEventListener("scroll", updateCoverActive, { passive: true });
+    window.addEventListener("resize", updateCoverActive);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", updateCoverActive);
+      window.removeEventListener("resize", updateCoverActive);
+    };
+  }, [hasCoverPage, isMobileReader]);
 
   useEffect(() => {
     function openArticleToc() {
@@ -795,8 +930,134 @@ export function PublicMobileArticleReader({
     return () => window.removeEventListener(openMobileArticleTocEventName, openArticleToc);
   }, []);
 
-  function goToArticle(nextIndex: number) {
-    setCurrentIndex(Math.min(Math.max(nextIndex, 0), articles.length - 1));
+  function playPageTurnSound() {
+    if (!pageTurnSoundEnabled || typeof window === "undefined") {
+      return;
+    }
+
+    const audioContext = pageTurnAudioContextRef.current ?? createPageTurnAudioContext();
+
+    if (!audioContext) {
+      return;
+    }
+
+    pageTurnAudioContextRef.current = audioContext;
+    void audioContext.resume().then(() => {
+      const now = audioContext.currentTime;
+      const masterGain = audioContext.createGain();
+      const tickOscillator = audioContext.createOscillator();
+      const tickGain = audioContext.createGain();
+      const noiseBuffer = audioContext.createBuffer(1, Math.max(1, Math.floor(audioContext.sampleRate * 0.11)), audioContext.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+      const noiseSource = audioContext.createBufferSource();
+      const noiseFilter = audioContext.createBiquadFilter();
+      const noiseGain = audioContext.createGain();
+
+      for (let index = 0; index < noiseData.length; index += 1) {
+        noiseData[index] = (Math.random() * 2 - 1) * (1 - index / noiseData.length);
+      }
+
+      masterGain.gain.setValueAtTime(0.0001, now);
+      masterGain.gain.exponentialRampToValueAtTime(0.045, now + 0.012);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.13);
+      masterGain.connect(audioContext.destination);
+
+      tickOscillator.type = "triangle";
+      tickOscillator.frequency.setValueAtTime(920, now);
+      tickOscillator.frequency.exponentialRampToValueAtTime(460, now + 0.055);
+      tickGain.gain.setValueAtTime(0.028, now);
+      tickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.075);
+      tickOscillator.connect(tickGain);
+      tickGain.connect(masterGain);
+
+      noiseSource.buffer = noiseBuffer;
+      noiseFilter.type = "bandpass";
+      noiseFilter.frequency.setValueAtTime(1800, now);
+      noiseFilter.Q.setValueAtTime(0.7, now);
+      noiseGain.gain.setValueAtTime(0.022, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+      noiseSource.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(masterGain);
+
+      tickOscillator.start(now);
+      tickOscillator.stop(now + 0.08);
+      noiseSource.start(now);
+      noiseSource.stop(now + 0.12);
+    }).catch(() => undefined);
+  }
+
+  function scrollToCover() {
+    document.getElementById("newsletter-cover")?.scrollIntoView({
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+      block: "start",
+    });
+  }
+
+  function isCoverBeforeReaderVisible() {
+    if (!hasCoverPage || typeof window === "undefined") {
+      return false;
+    }
+
+    const readerTop = articleTopRef.current?.getBoundingClientRect().top ?? 0;
+
+    return readerTop > window.innerHeight * 0.22;
+  }
+
+  function goToCoverFromFirstArticle() {
+    if (!hasCoverPage || safeCurrentIndex !== 0) {
+      return false;
+    }
+
+    if (isCoverBeforeReaderVisible()) {
+      return false;
+    }
+
+    scrollToCover();
+    playPageTurnSound();
+    return true;
+  }
+
+  function goToFirstArticleFromCover() {
+    articleTopRef.current?.scrollIntoView({
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+      block: "start",
+    });
+    playPageTurnSound();
+  }
+
+  function goToArticle(nextIndex: number, options: { playSound?: boolean } = {}) {
+    const clampedIndex = Math.min(Math.max(nextIndex, 0), articles.length - 1);
+
+    if (clampedIndex === safeCurrentIndex) {
+      return false;
+    }
+
+    setCurrentIndex(clampedIndex);
+
+    if (options.playSound) {
+      playPageTurnSound();
+    }
+
+    return true;
+  }
+
+  function navigatePrevious() {
+    if (safeCurrentIndex === 0 && hasCoverPage) {
+      goToCoverFromFirstArticle();
+      return;
+    }
+
+    goToArticleWithSlide(safeCurrentIndex - 1, "previous");
+  }
+
+  function navigateNext() {
+    if (isCoverBeforeReaderVisible()) {
+      goToFirstArticleFromCover();
+      return;
+    }
+
+    goToArticleWithSlide(safeCurrentIndex + 1, "next");
   }
 
   function goToArticleWithSlide(nextIndex: number, direction: Exclude<PageSlideDirection, null>) {
@@ -807,13 +1068,13 @@ export function PublicMobileArticleReader({
     }
 
     if (prefersReducedMotion()) {
-      goToArticle(clampedIndex);
+      goToArticle(clampedIndex, { playSound: true });
       return;
     }
 
     setPageSlideDirection(direction);
     window.setTimeout(() => {
-      goToArticle(clampedIndex);
+      goToArticle(clampedIndex, { playSound: true });
       setDragOffset(0);
     }, 150);
     window.setTimeout(() => {
@@ -867,7 +1128,7 @@ export function PublicMobileArticleReader({
       }
     }
 
-    if ((deltaX < 0 && !canGoNext) || (deltaX > 0 && !canGoPrevious)) {
+    if ((deltaX < 0 && !canNavigateNext && !isCoverBeforeReaderVisible()) || (deltaX > 0 && !canGoPrevious)) {
       setDragOffset(deltaX * 0.18);
       return;
     }
@@ -897,12 +1158,12 @@ export function PublicMobileArticleReader({
       return;
     }
 
-    if (deltaX < 0 && canGoNext) {
-      goToArticleWithSlide(safeCurrentIndex + 1, "next");
+    if (deltaX < 0) {
+      navigateNext();
     }
 
     if (deltaX > 0 && canGoPrevious) {
-      goToArticleWithSlide(safeCurrentIndex - 1, "previous");
+      navigatePrevious();
     }
   }
 
@@ -998,10 +1259,10 @@ export function PublicMobileArticleReader({
             <div className="grid w-44 grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-1">
               <button
                 type="button"
-                onClick={() => goToArticleWithSlide(safeCurrentIndex - 1, "previous")}
+                onClick={navigatePrevious}
                 disabled={!canGoPrevious}
                 className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none disabled:pointer-events-none disabled:opacity-35"
-                aria-label="이전 기사"
+                aria-label={safeCurrentIndex === 0 && hasCoverPage ? "표지로 이동" : "이전 기사"}
               >
                 ‹
               </button>
@@ -1015,8 +1276,8 @@ export function PublicMobileArticleReader({
               </button>
               <button
                 type="button"
-                onClick={() => goToArticleWithSlide(safeCurrentIndex + 1, "next")}
-                disabled={!canGoNext}
+                onClick={navigateNext}
+                disabled={!canNavigateNext}
                 className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none disabled:pointer-events-none disabled:opacity-35"
                 aria-label="다음 기사"
               >
@@ -1061,7 +1322,7 @@ export function PublicMobileArticleReader({
                           aria-label={`${index + 1}번 기사: ${titleDescription}`}
                           title={titleDescription}
                           onClick={() => {
-                            goToArticle(index);
+                            goToArticle(index, { playSound: true });
                             setIsIndexOpen(false);
                           }}
                           className={`block min-w-0 w-full max-w-full overflow-hidden rounded-2xl border px-4 py-3 text-left transition ${
