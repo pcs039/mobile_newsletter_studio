@@ -98,7 +98,7 @@ export function PublicTextSizeToggle({ compact = false }: PublicTextSizeTogglePr
 
   if (compact) {
     return (
-      <div className="public-text-size-toggle w-full rounded-xl border border-[#2f73b7] bg-white p-1.5 shadow-sm shadow-blue-950/10">
+      <div className="public-text-size-toggle w-full rounded-xl border border-[#b8d7ff] bg-white/95 p-1.5 shadow-sm shadow-blue-950/5">
         <div className="flex items-center gap-2">
           <p className="shrink-0 px-1 text-xs font-black text-[#184a88]">글자</p>
           <div className="grid min-w-0 flex-1 grid-cols-3 gap-1" role="group" aria-label="글자 크기">
@@ -123,16 +123,12 @@ export function PublicTextSizeToggle({ compact = false }: PublicTextSizeTogglePr
             })}
           </div>
         </div>
-        <p className="px-1 pt-1.5 text-[11px] font-bold leading-4 text-slate-500">
-          크게 보기와 최대 보기는 본문 읽기 영역에만 적용되며, 가독성을 위해 본문은 왼쪽 정렬로 표시됩니다.
-        </p>
       </div>
     );
   }
 
   return (
-    <div className="public-text-size-toggle w-full max-w-[360px] rounded-2xl border border-[#2f73b7] bg-white p-2 shadow-sm shadow-blue-950/10">
-      <p className="px-1 pb-2 text-xs font-black text-[#184a88]">글자 크기</p>
+    <div className="public-text-size-toggle w-full max-w-[360px] rounded-xl border border-[#b8d7ff] bg-white/95 p-1.5 shadow-sm shadow-blue-950/5">
       <div className="grid grid-cols-3 gap-1" role="group" aria-label="글자 크기">
         {textScaleOptions.map((option) => {
           const isSelected = option.value === textScale;
@@ -154,9 +150,6 @@ export function PublicTextSizeToggle({ compact = false }: PublicTextSizeTogglePr
           );
         })}
       </div>
-      <p className="px-1 pt-2 text-xs font-bold leading-5 text-slate-500">
-        크게 보기와 최대 보기는 본문 읽기 영역에만 적용되며, 가독성을 위해 본문은 왼쪽 정렬로 표시됩니다.
-      </p>
     </div>
   );
 }

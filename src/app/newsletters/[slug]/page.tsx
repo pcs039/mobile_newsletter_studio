@@ -3,7 +3,6 @@ import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
-import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import {
   getProjectAudioFiles,
@@ -54,9 +53,6 @@ function PublicUnavailablePage({
   return (
     <main className="public-newsletter-screen grid min-h-screen place-items-center bg-[#edf4fb] px-5 text-slate-950">
       <section className="w-full max-w-[520px] rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-blue-950/10">
-        <div className="mb-5 flex justify-center">
-          <PublicTextSizeToggle />
-        </div>
         <p className="text-sm font-black text-[#184a88]">DataDiction Newsletter</p>
         <h1 className="mt-3 text-2xl font-black leading-tight text-[#092046]">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600 [word-break:keep-all]">{message}</p>
@@ -223,20 +219,15 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               ))}
             </section>
           ) : articles.length > 0 ? (
-            <>
-              <div className="sticky top-2 z-20 rounded-2xl border border-[#b8d7ff] bg-white/95 p-2 shadow-lg shadow-blue-950/10 backdrop-blur">
-                <PublicTextSizeToggle compact />
-              </div>
-              <PublicMobileArticleReader
-                articles={articles}
-                fontAssets={fontData.fonts}
-                initialArticleId={previewArticleId}
-                projectBodyFontAssetId={project?.bodyFontAssetId}
-                projectTitleFontAssetId={project?.titleFontAssetId}
-                showAdminPreviewControls={showAdminPreviewControls}
-                slug={slug}
-              />
-            </>
+            <PublicMobileArticleReader
+              articles={articles}
+              fontAssets={fontData.fonts}
+              initialArticleId={previewArticleId}
+              projectBodyFontAssetId={project?.bodyFontAssetId}
+              projectTitleFontAssetId={project?.titleFontAssetId}
+              showAdminPreviewControls={showAdminPreviewControls}
+              slug={slug}
+            />
           ) : (
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
               <p className="text-sm font-black text-[#092046]">

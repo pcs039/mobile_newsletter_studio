@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type TouchEvent } from "react";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
+import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import { ScrollMotionReveal } from "@/components/scroll-motion-reveal";
 import {
   buildAudioTextSegmentCandidates,
@@ -48,6 +49,8 @@ type SwipeStart = {
   x: number;
   y: number;
 } | null;
+
+type PageTurnDirection = "next" | "previous" | null;
 
 type ArticleMotionTarget = "title" | "textBox" | "image" | "link";
 
@@ -128,6 +131,18 @@ function readMobileReaderSnapshot() {
   return window.matchMedia(mobileReaderQuery).matches;
 }
 
+function prefersReducedMotion() {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function isInteractiveTouchTarget(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest("a, button, input, select, textarea, audio, details, summary"));
+}
+
 function getPreviewBody(article: ProjectContentArticle) {
   const body = article.body.trim();
 
@@ -145,6 +160,7 @@ function renderArticleBody(
   textAlignment: ArticleTextAlignment = "left",
 ) {
   const paragraphs = getArticleBodyParagraphs(value);
+  const shouldUseInlineSentenceFlow = textAlignment === "justify";
 
   return (
     <div
@@ -153,20 +169,25 @@ function renderArticleBody(
       className={`public-article-body text-base leading-8 text-slate-700 ${className}`}
     >
       {paragraphs.map((paragraph, paragraphIndex) => (
-        <div key={paragraphIndex} className="public-article-paragraph">
+        <div
+          key={paragraphIndex}
+          className={`public-article-paragraph ${shouldUseInlineSentenceFlow ? "public-article-paragraph-inline-flow" : ""}`}
+        >
           {paragraph.map((sentence, sentenceIndex) => {
             const segmentId = audioSegmentBaseId
               ? makeArticleBodySegmentId(audioSegmentBaseId, paragraphIndex, sentenceIndex)
               : undefined;
 
             return (
-              <span
-                key={`${paragraphIndex}-${sentenceIndex}`}
-                data-audio-segment-id={segmentId}
-                className="public-article-sentence public-audio-sync-segment"
-              >
-                {sentence}
-              </span>
+              <Fragment key={`${paragraphIndex}-${sentenceIndex}`}>
+                <span
+                  data-audio-segment-id={segmentId}
+                  className="public-article-sentence public-audio-sync-segment"
+                >
+                  {sentence}
+                </span>
+                {shouldUseInlineSentenceFlow && sentenceIndex < paragraph.length - 1 ? " " : null}
+              </Fragment>
             );
           })}
         </div>
@@ -521,6 +542,7 @@ function ArticleCard({
   onOpenArticleImage,
   projectBodyFontAssetId,
   projectTitleFontAssetId,
+  showTextSizeControl = false,
   showAdminPreviewControls,
   slug,
 }: {
@@ -531,6 +553,7 @@ function ArticleCard({
   onOpenArticleImage: (image: PublicArticleLightboxImage) => void;
   projectBodyFontAssetId?: string | null;
   projectTitleFontAssetId?: string | null;
+  showTextSizeControl?: boolean;
   showAdminPreviewControls: boolean;
   slug: string;
 }) {
@@ -611,6 +634,11 @@ function ArticleCard({
             : renderKoreanTitleWithBreaks(articleTitle)}
         </h2>
       </div>
+      {showTextSizeControl ? (
+        <div className="mt-3">
+          <PublicTextSizeToggle compact />
+        </div>
+      ) : null}
       {article.summary ? (
         <ScrollMotionReveal
           motionEffect={motionSettings.textBox.effect}
@@ -629,12 +657,11 @@ function ArticleCard({
         </ScrollMotionReveal>
       ) : null}
       {article.audioFile?.previewHref ? (
-        <section className="mt-5 rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-4">
+        <section className="mt-4 rounded-xl border border-[#b8d7ff] bg-[#f4f8ff] px-3 py-2.5">
           <p className="text-sm font-black text-[#092046]">음성으로 듣기</p>
-          <p className="mt-1 text-xs font-bold leading-5 text-slate-600">이 기사를 음성으로 들을 수 있습니다.</p>
           <audio
             aria-label={`${articleTitle} 음성으로 듣기`}
-            className="mt-3 h-10 w-full rounded-md"
+            className="mt-2 h-9 w-full rounded-md"
             controls
             preload="metadata"
             src={article.audioFile.previewHref}
@@ -693,8 +720,13 @@ export function PublicMobileArticleReader({
   const isMobileReader = useSyncExternalStore(subscribeToMobileReader, readMobileReaderSnapshot, () => false);
   const [currentIndex, setCurrentIndex] = useState(() => getInitialArticleIndex(articles, initialArticleId));
   const [isIndexOpen, setIsIndexOpen] = useState(false);
+  const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<PublicArticleLightboxImage | null>(null);
+  const [pageTurnDirection, setPageTurnDirection] = useState<PageTurnDirection>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDraggingPage, setIsDraggingPage] = useState(false);
   const articleTopRef = useRef<HTMLDivElement>(null);
+  const navigationTimerRef = useRef<number | null>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
   const safeCurrentIndex = Math.min(currentIndex, Math.max(articles.length - 1, 0));
   const currentArticle = articles[safeCurrentIndex] ?? null;
@@ -716,11 +748,62 @@ export function PublicMobileArticleReader({
     articleTopRef.current?.scrollIntoView({ block: "start" });
   }, [isMobileReader, safeCurrentIndex]);
 
+  useEffect(() => {
+    if (!isNavigationExpanded) {
+      return;
+    }
+
+    if (navigationTimerRef.current) {
+      window.clearTimeout(navigationTimerRef.current);
+    }
+
+    navigationTimerRef.current = window.setTimeout(() => {
+      setIsNavigationExpanded(false);
+    }, 3600);
+
+    return () => {
+      if (navigationTimerRef.current) {
+        window.clearTimeout(navigationTimerRef.current);
+      }
+    };
+  }, [isNavigationExpanded, safeCurrentIndex]);
+
   function goToArticle(nextIndex: number) {
     setCurrentIndex(Math.min(Math.max(nextIndex, 0), articles.length - 1));
   }
 
+  function goToArticleWithPageTurn(nextIndex: number, direction: Exclude<PageTurnDirection, null>) {
+    const clampedIndex = Math.min(Math.max(nextIndex, 0), articles.length - 1);
+
+    if (clampedIndex === safeCurrentIndex) {
+      return;
+    }
+
+    if (prefersReducedMotion()) {
+      goToArticle(clampedIndex);
+      return;
+    }
+
+    setPageTurnDirection(direction);
+    window.setTimeout(() => {
+      goToArticle(clampedIndex);
+      setDragOffset(0);
+    }, 170);
+    window.setTimeout(() => {
+      setPageTurnDirection(null);
+    }, 360);
+  }
+
+  function expandNavigation() {
+    setIsNavigationExpanded(true);
+  }
+
   function handleTouchStart(event: TouchEvent<HTMLElement>) {
+    if (isInteractiveTouchTarget(event.target)) {
+      swipeStartRef.current = null;
+      return;
+    }
+
     const touch = event.touches[0];
 
     if (!touch) {
@@ -728,6 +811,32 @@ export function PublicMobileArticleReader({
     }
 
     swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+    setIsDraggingPage(false);
+    setDragOffset(0);
+  }
+
+  function handleTouchMove(event: TouchEvent<HTMLElement>) {
+    const start = swipeStartRef.current;
+    const touch = event.touches[0];
+
+    if (!start || !touch || prefersReducedMotion()) {
+      return;
+    }
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+
+    if (Math.abs(deltaX) < 10 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) {
+      return;
+    }
+
+    if ((deltaX < 0 && !canGoNext) || (deltaX > 0 && !canGoPrevious)) {
+      setDragOffset(deltaX * 0.18);
+      return;
+    }
+
+    setIsDraggingPage(true);
+    setDragOffset(Math.max(-120, Math.min(120, deltaX)));
   }
 
   function handleTouchEnd(event: TouchEvent<HTMLElement>) {
@@ -735,6 +844,8 @@ export function PublicMobileArticleReader({
     const touch = event.changedTouches[0];
 
     swipeStartRef.current = null;
+    setIsDraggingPage(false);
+    setDragOffset(0);
 
     if (!start || !touch) {
       return;
@@ -748,11 +859,11 @@ export function PublicMobileArticleReader({
     }
 
     if (deltaX < 0 && canGoNext) {
-      goToArticle(safeCurrentIndex + 1);
+      goToArticleWithPageTurn(safeCurrentIndex + 1, "next");
     }
 
     if (deltaX > 0 && canGoPrevious) {
-      goToArticle(safeCurrentIndex - 1);
+      goToArticleWithPageTurn(safeCurrentIndex - 1, "previous");
     }
   }
 
@@ -760,75 +871,107 @@ export function PublicMobileArticleReader({
     return null;
   }
 
+  const pageTurnClass = pageTurnDirection ? `public-article-page-turn-${pageTurnDirection}` : "";
+  const pageDragStyle = isDraggingPage
+    ? ({
+        "--public-article-page-drag-rotate": `${Math.max(-12, Math.min(12, dragOffset / 8))}deg`,
+        "--public-article-page-drag-x": `${dragOffset * 0.32}px`,
+      } as CSSProperties)
+    : undefined;
+
   return (
     <>
       {isMobileReader ? (
         <section
-          className={`public-mobile-article-reader -mx-1 ${publicAudio ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(4rem+env(safe-area-inset-bottom))]"}`}
+          className={`public-mobile-article-reader -mx-1 pb-[calc(3.75rem+env(safe-area-inset-bottom))] ${
+            publicAudio ? "pb-[calc(8.5rem+env(safe-area-inset-bottom))]" : ""
+          }`}
           onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div ref={articleTopRef} className="mb-3 rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-3.5 py-2.5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-black text-[#184a88]">기사 보기</p>
-                <p className="mt-0.5 text-sm font-black text-[#092046]">좌우로 넘겨 읽을 수 있습니다.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsIndexOpen(true)}
-                className="dd-btn dd-btn-secondary dd-btn-sm rounded-full text-xs"
-              >
-                목차
-              </button>
-            </div>
-          </div>
+          <div ref={articleTopRef} aria-hidden="true" />
+
+          <button
+            type="button"
+            onClick={() => setIsIndexOpen(true)}
+            className="fixed z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-white/70 text-lg font-black leading-none text-[#092046] shadow-lg shadow-blue-950/15 backdrop-blur-md transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7]"
+            style={{
+              left: "calc(0.75rem + env(safe-area-inset-left))",
+              top: "calc(0.75rem + env(safe-area-inset-top))",
+            }}
+            aria-label="기사 목차 열기"
+          >
+            ☰
+          </button>
 
           {currentArticle ? (
-            <ArticleCard
-              article={currentArticle}
-              fontAssets={fontAssets}
-              index={safeCurrentIndex}
-              onOpenArticleImage={setLightboxImage}
-              projectBodyFontAssetId={projectBodyFontAssetId}
-              projectTitleFontAssetId={projectTitleFontAssetId}
-              showAdminPreviewControls={showAdminPreviewControls}
-              slug={slug}
-            />
+            <div
+              className={`public-mobile-article-page ${pageTurnClass} ${isDraggingPage ? "public-mobile-article-page-dragging" : ""}`}
+              style={pageDragStyle}
+            >
+              <ArticleCard
+                article={currentArticle}
+                fontAssets={fontAssets}
+                index={safeCurrentIndex}
+                onOpenArticleImage={setLightboxImage}
+                projectBodyFontAssetId={projectBodyFontAssetId}
+                projectTitleFontAssetId={projectTitleFontAssetId}
+                showAdminPreviewControls={showAdminPreviewControls}
+                showTextSizeControl
+                slug={slug}
+              />
+            </div>
           ) : null}
 
           <nav
-            className={`sticky z-30 mt-3 rounded-full border border-slate-200 bg-white/95 p-1.5 shadow-lg shadow-blue-950/10 backdrop-blur ${
-              publicAudio ? "bottom-[calc(7.5rem+env(safe-area-inset-bottom))]" : "bottom-[calc(0.75rem+env(safe-area-inset-bottom))]"
-            }`}
+            className="fixed left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/60 bg-white/72 p-1 shadow-lg shadow-blue-950/15 backdrop-blur-md"
+            style={{
+              bottom: publicAudio ? "calc(5.75rem + env(safe-area-inset-bottom))" : "calc(0.75rem + env(safe-area-inset-bottom))",
+            }}
             aria-label="기사 이동"
           >
-            <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] gap-1.5">
+            <div
+              className={`grid items-center gap-1 transition-[grid-template-columns,width] duration-200 ${
+                isNavigationExpanded ? "w-44 grid-cols-[40px_minmax(0,1fr)_40px]" : "w-20 grid-cols-1"
+              }`}
+            >
+              {isNavigationExpanded ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    expandNavigation();
+                    goToArticleWithPageTurn(safeCurrentIndex - 1, "previous");
+                  }}
+                  disabled={!canGoPrevious}
+                  className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none"
+                  aria-label="이전 기사"
+                >
+                  ‹
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={() => goToArticle(safeCurrentIndex - 1)}
-                disabled={!canGoPrevious}
-                className="dd-btn dd-btn-secondary h-10 rounded-full px-0 text-lg leading-none"
-                aria-label="이전 기사"
+                onClick={expandNavigation}
+                className="h-9 rounded-full bg-[#092046]/88 px-3 text-xs font-black text-white shadow-sm transition hover:bg-[#092046]"
+                aria-label={`기사 이동 컨트롤 열기, 현재 ${safeCurrentIndex + 1} / ${articles.length}`}
               >
-                ‹
+                {safeCurrentIndex + 1} / {articles.length}
               </button>
-              <button
-                type="button"
-                onClick={() => setIsIndexOpen(true)}
-                className="dd-btn dd-btn-primary h-10 rounded-full px-3 text-sm"
-              >
-                목차 · {safeCurrentIndex + 1} / {articles.length}
-              </button>
-              <button
-                type="button"
-                onClick={() => goToArticle(safeCurrentIndex + 1)}
-                disabled={!canGoNext}
-                className="dd-btn dd-btn-secondary h-10 rounded-full px-0 text-lg leading-none"
-                aria-label="다음 기사"
-              >
-                ›
-              </button>
+              {isNavigationExpanded ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    expandNavigation();
+                    goToArticleWithPageTurn(safeCurrentIndex + 1, "next");
+                  }}
+                  disabled={!canGoNext}
+                  className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none"
+                  aria-label="다음 기사"
+                >
+                  ›
+                </button>
+              ) : null}
             </div>
           </nav>
 
