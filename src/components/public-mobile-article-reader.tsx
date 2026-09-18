@@ -602,6 +602,19 @@ function ArticleCard({
           </p>
         </ScrollMotionReveal>
       ) : null}
+      {article.audioFile?.previewHref ? (
+        <section className="mt-5 rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-4">
+          <p className="text-sm font-black text-[#092046]">음성으로 듣기</p>
+          <p className="mt-1 text-xs font-bold leading-5 text-slate-600">이 기사를 음성으로 들을 수 있습니다.</p>
+          <audio
+            aria-label={`${articleTitle} 음성으로 듣기`}
+            className="mt-3 h-10 w-full rounded-md"
+            controls
+            preload="metadata"
+            src={article.audioFile.previewHref}
+          />
+        </section>
+      ) : null}
       {visibleBlocks.length > 0 ? (
         <div className="public-article-content mt-6 space-y-6">
           {visibleBlocks.map((block) => renderContentBlock(article, block, motionSettings, onOpenArticleImage))}
