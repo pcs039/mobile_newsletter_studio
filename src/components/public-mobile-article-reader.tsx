@@ -579,7 +579,6 @@ function ArticleCard({
         <h2
           aria-label={articleTitle}
           data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
-          data-public-text-scale-target="article-title"
           data-text-alignment={article.titleAlignment || "left"}
           title={articleTitle}
           className="public-article-title public-audio-sync-segment text-2xl font-black leading-tight text-[#092046]"
@@ -646,7 +645,11 @@ function ArticleCard({
               <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
                 음성 파일 제작에 사용된 낭독문입니다.
               </p>
-              <p className="mt-3 whitespace-pre-wrap break-words text-sm font-semibold leading-7 text-slate-800">
+              <p
+                data-public-text-scale-target="article-body"
+                data-text-alignment={article.bodyAlignment || article.textAlignment || "left"}
+                className="mt-3 whitespace-pre-wrap break-words text-sm font-semibold leading-7 text-slate-800"
+              >
                 {article.audioFile.transcriptText}
               </p>
             </details>

@@ -124,7 +124,7 @@ export function PublicTextSizeToggle({ compact = false }: PublicTextSizeTogglePr
           </div>
         </div>
         <p className="px-1 pt-1.5 text-[11px] font-bold leading-4 text-slate-500">
-          크게 보기와 최대 보기는 가독성을 위해 왼쪽 정렬로 표시됩니다.
+          크게 보기와 최대 보기는 본문 읽기 영역에만 적용되며, 가독성을 위해 본문은 왼쪽 정렬로 표시됩니다.
         </p>
       </div>
     );
@@ -155,7 +155,7 @@ export function PublicTextSizeToggle({ compact = false }: PublicTextSizeTogglePr
         })}
       </div>
       <p className="px-1 pt-2 text-xs font-bold leading-5 text-slate-500">
-        크게 보기와 최대 보기는 가독성을 위해 왼쪽 정렬로 표시됩니다.
+        크게 보기와 최대 보기는 본문 읽기 영역에만 적용되며, 가독성을 위해 본문은 왼쪽 정렬로 표시됩니다.
       </p>
     </div>
   );
