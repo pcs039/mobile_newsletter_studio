@@ -131,7 +131,7 @@ export function ProjectPublishCompletionPanel({
     setPublishedAt(result.publishedAt);
     setCurrentPublicUrl(result.publicUrl);
     setCurrentPublicUrlAbsolute(result.publicUrlAbsolute);
-    setCurrentEbookUrl(result.ebookUrl);
+    setCurrentEbookUrl(ebookUrl || result.ebookUrl);
     setState({ status: "success", message: "발행 완료. 공개 URL과 QR코드가 활성화되었습니다." });
   }
 
