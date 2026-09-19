@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { EbookSearchPanel } from "@/components/ebook-search-panel";
 import { PublicAudioPlayer } from "@/components/public-audio-player";
 import { getAudioSyncedPageNumber } from "@/lib/audio-page-sync";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
@@ -30,6 +31,8 @@ type PublicDesktopEbookViewerProps = {
   projectIssue: string;
   projectOrganization: string;
   projectTitle: string;
+  searchEnabled: boolean;
+  slug: string;
 };
 
 type PageViewMode = "single" | "double";
@@ -148,6 +151,8 @@ export function PublicDesktopEbookViewer({
   projectIssue,
   projectOrganization,
   projectTitle,
+  searchEnabled,
+  slug,
 }: PublicDesktopEbookViewerProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const thumbnailRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -161,6 +166,7 @@ export function PublicDesktopEbookViewer({
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isThumbnailPanelOpen, setIsThumbnailPanelOpen] = useState(true);
   const [pageInputValue, setPageInputValue] = useState(String(initialPageNumber));
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [utilityMessage, setUtilityMessage] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
@@ -230,6 +236,16 @@ export function PublicDesktopEbookViewer({
 
     return targetIndex % 2 === 0 ? targetIndex : Math.max(0, targetIndex - 1);
   }, [pages, viewMode]);
+
+  const goToPageNumber = useCallback((pageNumber: number, withSound: boolean) => {
+    const targetIndex = pages.findIndex((page) => page.pageNumber === pageNumber);
+
+    if (targetIndex < 0) {
+      return;
+    }
+
+    goToIndex(viewMode === "double" && targetIndex % 2 === 1 ? Math.max(0, targetIndex - 1) : targetIndex, withSound);
+  }, [goToIndex, pages, viewMode]);
 
   const syncPageToAudioTime = useCallback((nextTime: number) => {
     const syncedPageNumber = getAudioSyncedPageNumber(nextTime, audioDuration, pages.length);
@@ -589,6 +605,14 @@ export function PublicDesktopEbookViewer({
             >
               {isFullscreen ? "전체화면 종료" : "전체화면"}
             </button>
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
+              aria-label="문서 검색 열기"
+            >
+              검색
+            </button>
           </div>
 
           <div className="flex flex-wrap items-center justify-start gap-2 xl:justify-end">
@@ -714,6 +738,18 @@ export function PublicDesktopEbookViewer({
           </aside>
         </div>
       ) : null}
+
+      <EbookSearchPanel
+        hasSearchText={searchEnabled}
+        onClose={() => setIsSearchOpen(false)}
+        onSelectPage={(pageNumber) => {
+          disableFollowPagesForManualNavigation();
+          goToPageNumber(pageNumber, true);
+        }}
+        open={isSearchOpen}
+        placement="desktop"
+        slug={slug}
+      />
 
       <div className="flex min-h-0 flex-1 bg-[radial-gradient(circle_at_top,#315c88_0%,#102b52_42%,#071f46_100%)]">
         {thumbnailPanel}

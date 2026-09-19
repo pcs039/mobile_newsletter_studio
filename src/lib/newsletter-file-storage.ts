@@ -419,7 +419,44 @@ async function patchProjectPdf(
     cache: "no-store",
   });
 
-  return response.ok;
+  if (!response.ok) {
+    return false;
+  }
+
+  await clearProjectPageSearchText(projectSlug, headers);
+
+  return true;
+}
+
+async function clearProjectPageSearchText(projectSlug: string, headers: Record<string, string>) {
+  const project = await findProjectBySlug(projectSlug, headers);
+
+  if (!project) {
+    return false;
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_pages?project_id=eq.${encodeURIComponent(project.id)}`,
+  );
+
+  if (!endpoint) {
+    return false;
+  }
+
+  const response = await fetch(endpoint, {
+    method: "PATCH",
+    headers: {
+      ...headers,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      search_text: null,
+      search_text_updated_at: null,
+    }),
+    cache: "no-store",
+  }).catch(() => null);
+
+  return Boolean(response?.ok);
 }
 
 async function upsertPageImage(
