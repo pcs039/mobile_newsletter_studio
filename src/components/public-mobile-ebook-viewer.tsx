@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PublicAudioPlayer } from "@/components/public-audio-player";
 import { getAudioSyncedPageNumber } from "@/lib/audio-page-sync";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
@@ -22,6 +22,7 @@ type PublicMobileEbookViewerProps = {
   isEmbeddedAdminPreview: boolean;
   mobileReadingHref: string;
   pages: MobileEbookPage[];
+  pdfDownloadHref?: string | null;
   projectIssue: string;
   projectTitle: string;
   publicAudio?: {
@@ -75,6 +76,7 @@ export function PublicMobileEbookViewer({
   isEmbeddedAdminPreview,
   mobileReadingHref,
   pages,
+  pdfDownloadHref,
   projectIssue,
   projectTitle,
   publicAudio,
@@ -89,6 +91,10 @@ export function PublicMobileEbookViewer({
   const [viewMode, setViewMode] = useState<MobileEbookViewMode>("single");
   const [zoom, setZoom] = useState(100);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isPageListOpen, setIsPageListOpen] = useState(false);
+  const [pageInputValue, setPageInputValue] = useState(String(initialPageNumber));
+  const [utilityMessage, setUtilityMessage] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [followPages, setFollowPages] = useState(getInitialFollowPagesEnabled);
@@ -119,9 +125,13 @@ export function PublicMobileEbookViewer({
       return;
     }
 
-    setCurrentIndex(Math.min(Math.max(nextIndex, 0), pages.length - 1));
+    const clampedIndex = Math.min(Math.max(nextIndex, 0), pages.length - 1);
+    const nextPage = pages[clampedIndex];
+
+    setCurrentIndex(clampedIndex);
+    setPageInputValue(String(nextPage?.pageNumber ?? clampedIndex + 1));
     viewportRef.current?.scrollTo({ left: 0, top: 0 });
-  }, [pages.length]);
+  }, [pages]);
 
   const disableFollowPagesForManualNavigation = useCallback(() => {
     if (!followPages) {
@@ -190,6 +200,17 @@ export function PublicMobileEbookViewer({
     window.history.replaceState(null, "", currentHref);
   }, [currentHref]);
 
+  useEffect(() => {
+    function handleFullscreenChange() {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    handleFullscreenChange();
+
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
   const handleAudioDurationChange = useCallback((nextDuration: number) => {
     setAudioDuration(nextDuration);
   }, []);
@@ -214,6 +235,51 @@ export function PublicMobileEbookViewer({
   function updateZoom(nextZoom: number) {
     setZoom(clamp(nextZoom, mobileMinZoom, mobileMaxZoom));
     viewportRef.current?.scrollTo({ left: 0, top: 0 });
+  }
+
+  function submitPageInput(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (pages.length === 0) {
+      return;
+    }
+
+    const requestedPageNumber = Number.parseInt(pageInputValue, 10);
+    const clampedPageNumber = clamp(Number.isNaN(requestedPageNumber) ? currentPage?.pageNumber ?? 1 : requestedPageNumber, 1, pages.length);
+
+    goToPageNumber(clampedPageNumber, true);
+  }
+
+  async function shareViewer() {
+    const shareUrl = window.location.href;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${projectTitle} ${projectIssue}`.trim(),
+          url: shareUrl,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(shareUrl);
+      setUtilityMessage("링크를 복사했습니다.");
+    } catch {
+      setUtilityMessage("공유를 완료하지 못했습니다.");
+    }
+  }
+
+  function requestFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        void document.exitFullscreen();
+        return;
+      }
+
+      void document.documentElement.requestFullscreen();
+    } catch {
+      setUtilityMessage("전체화면을 사용할 수 없습니다.");
+    }
   }
 
   function fitToScreen() {
@@ -291,6 +357,63 @@ export function PublicMobileEbookViewer({
 
           {isToolsOpen ? (
             <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-2">
+              <div className="grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPageListOpen(true)}
+                  className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs"
+                  aria-label="페이지 목록 열기"
+                >
+                  페이지 목록
+                </button>
+                <form onSubmit={submitPageInput} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                  <label className="sr-only" htmlFor="mobile-ebook-page-input">
+                    이동할 페이지 번호
+                  </label>
+                  <div className="flex min-h-11 items-center rounded-xl border border-slate-300 bg-white px-3">
+                    <input
+                      id="mobile-ebook-page-input"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={pageInputValue}
+                      onChange={(event) => setPageInputValue(event.target.value.replace(/\D/g, ""))}
+                      className="min-w-0 flex-1 bg-transparent text-center text-sm font-black text-[#092046] outline-none"
+                    />
+                    <span className="text-xs font-black text-slate-500">/ {pages.length}</span>
+                  </div>
+                  <button type="submit" className="dd-btn dd-btn-primary dd-btn-sm min-h-11 justify-center rounded-xl text-xs">
+                    이동
+                  </button>
+                </form>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => void shareViewer()}
+                  className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs"
+                  aria-label="e-book 공유"
+                >
+                  공유
+                </button>
+                <button
+                  type="button"
+                  onClick={requestFullscreen}
+                  className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs"
+                  aria-label={isFullscreen ? "전체화면 종료" : "전체화면"}
+                >
+                  {isFullscreen ? "전체화면 종료" : "전체화면"}
+                </button>
+                {pdfDownloadHref ? (
+                  <a
+                    href={pdfDownloadHref}
+                    className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs"
+                    aria-label="원본 PDF 다운로드"
+                  >
+                    PDF 다운로드
+                  </a>
+                ) : null}
+              </div>
+              {utilityMessage ? <p className="mt-2 text-center text-[11px] font-bold text-slate-500">{utilityMessage}</p> : null}
               <div className="grid grid-cols-4 gap-2">
                 <button
                   type="button"
@@ -409,34 +532,68 @@ export function PublicMobileEbookViewer({
               </p>
             </div>
           )}
-
-          {pages.length > 0 ? (
-            <details data-swipe-navigation-ignore className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-              <summary className="cursor-pointer text-sm font-black text-[#092046]">목차</summary>
-              <div className="mt-3 max-h-72 space-y-2 overflow-y-auto text-left">
+        </section>
+      </section>
+      {isPageListOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-end bg-slate-950/55 px-3 pb-3 pt-[calc(3rem+env(safe-area-inset-top))]">
+          <button
+            type="button"
+            className="absolute inset-0"
+            aria-label="페이지 목록 닫기"
+            onClick={() => setIsPageListOpen(false)}
+          />
+          <section className="relative z-10 mx-auto flex max-h-[78dvh] w-full max-w-[520px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl shadow-blue-950/30">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-[#092046] px-5 py-4 text-white">
+              <div>
+                <p className="text-xs font-black text-sky-200">페이지 목록</p>
+                <h2 className="mt-1 text-lg font-black">{currentPage ? `${currentPage.pageNumber} / ${pages.length}` : `0 / ${pages.length}`}</h2>
+              </div>
+              <button type="button" onClick={() => setIsPageListOpen(false)} className="dd-btn dd-btn-ghost dd-btn-sm text-xs">
+                닫기
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <div className="grid grid-cols-2 gap-3">
                 {pages.map((page, index) => {
+                  const href = getPageImageHref(page);
                   const isActive = index === currentIndex || (viewMode === "double" && index === currentIndex + 1);
 
                   return (
                     <button
                       key={page.id}
                       type="button"
-                      onClick={() => goToPageNumber(page.pageNumber, true)}
-                      className={`block w-full rounded-lg border px-3 py-2 text-left text-sm font-bold ${
-                        isActive
-                          ? "border-[#092046] bg-[#092046] text-white"
-                          : "border-slate-200 bg-[#f8fbff] text-[#092046]"
+                      onClick={() => {
+                        goToPageNumber(page.pageNumber, true);
+                        setIsPageListOpen(false);
+                      }}
+                      className={`rounded-2xl border p-2 text-left transition ${
+                        isActive ? "border-[#092046] bg-[#eef6ff] shadow-md" : "border-slate-200 bg-white hover:border-[#2f73b7]"
                       }`}
+                      aria-label={`${page.pageNumber}쪽으로 이동`}
                     >
-                      {formatPageLabel(page.pageNumber, page.title)}
+                      <span className="mb-2 block text-xs font-black text-[#092046]">{page.pageNumber}쪽</span>
+                      <span className="block overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                        {href ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={href}
+                            alt={`${page.pageNumber}쪽 썸네일`}
+                            loading="lazy"
+                            decoding="async"
+                            className="aspect-[3/4] w-full object-contain"
+                          />
+                        ) : (
+                          <span className="grid aspect-[3/4] place-items-center text-[11px] font-bold text-slate-500">이미지 없음</span>
+                        )}
+                      </span>
                     </button>
                   );
                 })}
               </div>
-            </details>
-          ) : null}
-        </section>
-      </section>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {publicAudio ? (
         <PublicAudioPlayer
           src={publicAudio.src}

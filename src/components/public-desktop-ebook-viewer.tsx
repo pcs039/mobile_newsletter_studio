@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { PublicAudioPlayer } from "@/components/public-audio-player";
 import { getAudioSyncedPageNumber } from "@/lib/audio-page-sync";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
@@ -22,6 +22,7 @@ type PublicDesktopEbookViewerProps = {
   mobileReadingHref: string;
   pageCount: number;
   pages: EbookPage[];
+  pdfDownloadHref?: string | null;
   publicAudio?: {
     src: string;
     title?: string;
@@ -142,12 +143,14 @@ export function PublicDesktopEbookViewer({
   mobileReadingHref,
   pageCount,
   pages,
+  pdfDownloadHref,
   publicAudio,
   projectIssue,
   projectOrganization,
   projectTitle,
 }: PublicDesktopEbookViewerProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const thumbnailRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const initialIndex = Math.max(
     0,
     pages.findIndex((page) => page.pageNumber === initialPageNumber),
@@ -156,6 +159,10 @@ export function PublicDesktopEbookViewer({
   const [viewMode, setViewMode] = useState<PageViewMode>("single");
   const [zoom, setZoom] = useState(100);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isThumbnailPanelOpen, setIsThumbnailPanelOpen] = useState(true);
+  const [pageInputValue, setPageInputValue] = useState(String(initialPageNumber));
+  const [utilityMessage, setUtilityMessage] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [followPages, setFollowPages] = useState(getInitialFollowPagesEnabled);
@@ -179,6 +186,12 @@ export function PublicDesktopEbookViewer({
   const pageStep = viewMode === "double" ? 2 : 1;
   const canFollowPages = Boolean(publicAudio) && pages.length > 0 && audioDuration > 0;
 
+  useEffect(() => {
+    const button = currentPage ? thumbnailRefs.current[currentPage.id] : null;
+
+    button?.scrollIntoView({ block: "nearest" });
+  }, [currentPage]);
+
   const syncPageToUrl = useCallback((pageNumber: number) => {
     const url = new URL(window.location.href);
 
@@ -195,6 +208,7 @@ export function PublicDesktopEbookViewer({
     const nextPage = pages[clampedIndex];
 
     setCurrentIndex(clampedIndex);
+    setPageInputValue(String(nextPage.pageNumber));
     syncPageToUrl(nextPage.pageNumber);
     viewportRef.current?.scrollTo({ left: 0, top: 0 });
 
@@ -290,6 +304,56 @@ export function PublicDesktopEbookViewer({
     }
   }, [followPages]);
 
+  useEffect(() => {
+    function handleFullscreenChange() {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    handleFullscreenChange();
+
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  function submitPageInput(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (pages.length === 0) {
+      return;
+    }
+
+    const requestedPageNumber = Number.parseInt(pageInputValue, 10);
+    const clampedPageNumber = clamp(Number.isNaN(requestedPageNumber) ? currentPage?.pageNumber ?? 1 : requestedPageNumber, 1, pages.length);
+    const targetIndex = pages.findIndex((page) => page.pageNumber === clampedPageNumber);
+
+    if (targetIndex < 0) {
+      setPageInputValue(String(currentPage?.pageNumber ?? 1));
+      return;
+    }
+
+    disableFollowPagesForManualNavigation();
+    goToIndex(viewMode === "double" && targetIndex % 2 === 1 ? Math.max(0, targetIndex - 1) : targetIndex, true);
+  }
+
+  async function shareViewer() {
+    const shareUrl = window.location.href;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${projectTitle} ${projectIssue}`.trim(),
+          url: shareUrl,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(shareUrl);
+      setUtilityMessage("링크를 복사했습니다.");
+    } catch {
+      setUtilityMessage("공유를 완료하지 못했습니다.");
+    }
+  }
+
   function updateFollowPages(nextValue: boolean) {
     setFollowPages(nextValue);
     setFollowPagesMessage(nextValue ? "" : "자동 넘김을 껐습니다.");
@@ -323,6 +387,82 @@ export function PublicDesktopEbookViewer({
     }
   }
 
+  const thumbnailPanel = (
+    <aside
+      className={`hidden min-h-0 border-r border-white/10 bg-[#082041]/95 text-white shadow-2xl shadow-blue-950/30 transition-[width] duration-200 lg:flex ${
+        isThumbnailPanelOpen ? "w-[220px] xl:w-[260px]" : "w-12"
+      }`}
+      aria-label="페이지 썸네일"
+    >
+      {isThumbnailPanelOpen ? (
+        <div className="flex min-h-0 w-full flex-col">
+          <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-3">
+            <p className="text-xs font-black uppercase tracking-wide text-sky-200">페이지 목록</p>
+            <button
+              type="button"
+              onClick={() => setIsThumbnailPanelOpen(false)}
+              className="dd-btn dd-btn-ghost dd-btn-sm min-h-9 rounded-lg px-2 text-xs"
+              aria-label="썸네일 패널 접기"
+            >
+              ◀
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4">
+            {pages.map((page, index) => {
+              const href = getPageImageHref(page);
+              const isActive = index === currentIndex || (viewMode === "double" && index === currentIndex + 1);
+
+              return (
+                <button
+                  key={page.id}
+                  ref={(element) => {
+                    thumbnailRefs.current[page.id] = element;
+                  }}
+                  type="button"
+                  onClick={() => {
+                    disableFollowPagesForManualNavigation();
+                    goToIndex(viewMode === "double" && index % 2 === 1 ? Math.max(0, index - 1) : index, true);
+                  }}
+                  className={`w-full rounded-xl border p-2 text-left transition ${
+                    isActive
+                      ? "border-white bg-white text-[#092046] shadow-lg"
+                      : "border-white/10 bg-white/8 text-slate-200 hover:border-white/30 hover:bg-white/15"
+                  }`}
+                  aria-label={`${page.pageNumber}쪽으로 이동`}
+                >
+                  <span className="mb-2 block text-xs font-black">{page.pageNumber}쪽</span>
+                  <span className="block overflow-hidden rounded-lg border border-black/10 bg-white">
+                    {href ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={href}
+                        alt={`${page.pageNumber}쪽 썸네일`}
+                        loading="lazy"
+                        decoding="async"
+                        className="aspect-[3/4] w-full object-contain"
+                      />
+                    ) : (
+                      <span className="grid aspect-[3/4] place-items-center text-[11px] font-bold text-slate-500">이미지 없음</span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsThumbnailPanelOpen(true)}
+          className="grid h-full w-full place-items-start px-2 py-3 text-xs font-black text-white"
+          aria-label="썸네일 패널 펼치기"
+        >
+          ▶
+        </button>
+      )}
+    </aside>
+  );
+
   function fitToScreen() {
     setZoom(75);
     viewportRef.current?.scrollTo({ left: 0, top: 0 });
@@ -345,11 +485,18 @@ export function PublicDesktopEbookViewer({
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsDrawerOpen(true)}
+              onClick={() => {
+                if (window.innerWidth >= 1024) {
+                  setIsThumbnailPanelOpen((value) => !value);
+                } else {
+                  setIsDrawerOpen(true);
+                }
+              }}
               className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
-              aria-expanded={isDrawerOpen}
+              aria-expanded={isThumbnailPanelOpen || isDrawerOpen}
+              aria-label="페이지 썸네일 열기"
             >
-              목차
+              썸네일
             </button>
             <div className="min-w-0">
               <h1 className="truncate text-sm font-black leading-tight">
@@ -360,6 +507,46 @@ export function PublicDesktopEbookViewer({
           </div>
 
           <div className="flex flex-wrap items-center justify-start gap-2 xl:justify-center">
+            <div className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/10 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  disableFollowPagesForManualNavigation();
+                  goToIndex(currentIndex - pageStep, true);
+                }}
+                disabled={!canGoPrevious}
+                className="dd-btn dd-btn-ghost dd-btn-sm rounded-md px-2 text-xs text-slate-100 disabled:opacity-40"
+                aria-label="이전 페이지"
+              >
+                ‹
+              </button>
+              <form onSubmit={submitPageInput} className="flex items-center gap-1">
+                <input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={pageInputValue}
+                  onChange={(event) => setPageInputValue(event.target.value.replace(/\D/g, ""))}
+                  className="h-8 w-14 rounded-md border border-white/25 bg-white px-2 text-center text-xs font-black text-[#092046] outline-none focus:ring-2 focus:ring-white/70"
+                  aria-label="이동할 페이지 번호"
+                />
+                <span className="text-xs font-black text-white">/ {pages.length}</span>
+                <button type="submit" className="dd-btn dd-btn-ghost dd-btn-sm rounded-md px-2 text-xs text-slate-100">
+                  이동
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={() => {
+                  disableFollowPagesForManualNavigation();
+                  goToIndex(currentIndex + pageStep, true);
+                }}
+                disabled={!canGoNext}
+                className="dd-btn dd-btn-ghost dd-btn-sm rounded-md px-2 text-xs text-slate-100 disabled:opacity-40"
+                aria-label="다음 페이지"
+              >
+                ›
+              </button>
+            </div>
             <div className="flex rounded-lg border border-white/15 bg-white/10 p-1">
               <button
                 type="button"
@@ -398,8 +585,9 @@ export function PublicDesktopEbookViewer({
               type="button"
               onClick={requestFullscreen}
               className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
+              aria-label={isFullscreen ? "전체화면 종료" : "전체화면"}
             >
-              전체화면
+              {isFullscreen ? "전체화면 종료" : "전체화면"}
             </button>
           </div>
 
@@ -428,6 +616,19 @@ export function PublicDesktopEbookViewer({
             >
               효과음 {soundEnabled ? "켜짐" : "꺼짐"}
             </button>
+            <button
+              type="button"
+              onClick={() => void shareViewer()}
+              className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
+              aria-label="e-book 공유"
+            >
+              공유
+            </button>
+            {pdfDownloadHref ? (
+              <a href={pdfDownloadHref} className="dd-btn dd-btn-ghost dd-btn-sm text-xs" aria-label="원본 PDF 다운로드">
+                PDF
+              </a>
+            ) : null}
             {!isEmbeddedAdminPreview ? (
               <Link
                 href={mobileReadingHref}
@@ -438,6 +639,7 @@ export function PublicDesktopEbookViewer({
             ) : null}
           </div>
         </div>
+        {utilityMessage ? <p className="mt-2 text-center text-[11px] font-bold text-sky-100">{utilityMessage}</p> : null}
       </header>
 
       {isDrawerOpen ? (
@@ -513,13 +715,15 @@ export function PublicDesktopEbookViewer({
         </div>
       ) : null}
 
-      <section className="relative flex min-h-0 flex-1 flex-col bg-[radial-gradient(circle_at_top,#315c88_0%,#102b52_42%,#071f46_100%)]">
-        {zoom >= 300 ? (
-          <div className="absolute left-1/2 top-4 z-20 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 rounded-xl border border-amber-200/40 bg-amber-50/95 px-4 py-3 text-sm font-bold text-amber-950 shadow-xl shadow-blue-950/20 backdrop-blur">
-            <p>고배율 확대 중입니다. 이미지가 흐릿하게 보일 수 있습니다.</p>
-            {viewMode === "double" ? <p className="mt-1">고배율 확인은 1페이지 보기를 권장합니다.</p> : null}
-          </div>
-        ) : null}
+      <div className="flex min-h-0 flex-1 bg-[radial-gradient(circle_at_top,#315c88_0%,#102b52_42%,#071f46_100%)]">
+        {thumbnailPanel}
+        <section className="relative flex min-h-0 flex-1 flex-col">
+          {zoom >= 300 ? (
+            <div className="absolute left-1/2 top-4 z-20 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 rounded-xl border border-amber-200/40 bg-amber-50/95 px-4 py-3 text-sm font-bold text-amber-950 shadow-xl shadow-blue-950/20 backdrop-blur">
+              <p>고배율 확대 중입니다. 이미지가 흐릿하게 보일 수 있습니다.</p>
+              {viewMode === "double" ? <p className="mt-1">고배율 확인은 1페이지 보기를 권장합니다.</p> : null}
+            </div>
+          ) : null}
 
         <button
           type="button"
@@ -629,7 +833,8 @@ export function PublicDesktopEbookViewer({
             </div>
           </div>
         </div>
-      </section>
+        </section>
+      </div>
       {publicAudio ? (
         <PublicAudioPlayer
           src={publicAudio.src}
