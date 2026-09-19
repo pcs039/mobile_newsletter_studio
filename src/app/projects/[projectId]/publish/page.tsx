@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectPublishCompletionPanel } from "@/components/project-publish-completion-panel";
 import { StatusPill } from "@/components/status-pill";
+import { getValidExternalEbookUrl } from "@/lib/ebook-source";
 import {
   getProjectAudioFiles,
   getProjectContent,
@@ -16,7 +17,7 @@ function getReadinessStatus(done: boolean, label = "완료") {
   return done ? label : "보완 필요";
 }
 
-type PublishChecklistStatus = "완료" | "주의" | "미완료";
+type PublishChecklistStatus = "완료" | "주의" | "미완료" | "해당없음";
 
 type PublishChecklistItem = {
   title: string;
@@ -25,6 +26,8 @@ type PublishChecklistItem = {
   detail: string;
   href: string;
   actionLabel: string;
+  rel?: string;
+  target?: "_blank";
 };
 
 function getChecklistStatusTone(status: PublishChecklistStatus) {
@@ -34,6 +37,10 @@ function getChecklistStatusTone(status: PublishChecklistStatus) {
 
   if (status === "주의") {
     return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+
+  if (status === "해당없음") {
+    return "border-slate-200 bg-slate-100 text-slate-700";
   }
 
   return "border-rose-200 bg-rose-50 text-rose-800";
@@ -48,6 +55,10 @@ function getChecklistItemBorder(status: PublishChecklistStatus) {
     return "border-amber-200 bg-amber-50/60";
   }
 
+  if (status === "해당없음") {
+    return "border-slate-200 bg-slate-50";
+  }
+
   return "border-rose-200 bg-rose-50/60";
 }
 
@@ -60,6 +71,14 @@ function hasArticleBody(article: { body: string; blocks: Array<{ type: string; b
     article.body.trim().length > 0 ||
     article.blocks.some((block) => block.isVisible && block.type === "paragraph" && block.body.trim().length > 0)
   );
+}
+
+function getUrlHost(value: string) {
+  try {
+    return new URL(value).host;
+  } catch {
+    return "";
+  }
 }
 
 export default async function PublishPage({ params }: { params: Promise<{ projectId: string }> }) {
@@ -78,9 +97,22 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
   const firstPages = pageImageData.pages.slice(0, 2);
   const publicPreviewHref = `/newsletters/${projectId}?preview=admin`;
   const ebookPreviewHref = `/newsletters/${projectId}/ebook?preview=admin`;
+  const externalEbookUrl = getValidExternalEbookUrl(project?.externalEbookUrl);
+  const usesExternalEbook = project?.ebookSource === "external";
+  const hasValidExternalEbook = usesExternalEbook && Boolean(externalEbookUrl);
+  const projectPageCount = project?.pageCount ?? 0;
+  const registeredPageCount = pageImageData.pages.length;
+  const internalEbookReady = registeredPageCount > 0;
+  const ebookReady = usesExternalEbook ? hasValidExternalEbook : internalEbookReady;
+  const ebookActionHref = usesExternalEbook
+    ? externalEbookUrl ?? `/projects/${projectId}/settings`
+    : ebookPreviewHref;
+  const ebookActionTarget = usesExternalEbook && externalEbookUrl ? "_blank" : undefined;
+  const ebookActionRel = usesExternalEbook && externalEbookUrl ? "noopener noreferrer" : undefined;
+  const externalEbookHost = externalEbookUrl ? getUrlHost(externalEbookUrl) : "";
   const readyCount = [
     Boolean(originalPdfData.pdf),
-    pageImageData.pages.length > 0,
+    ebookReady,
     articles.length > 0,
     articles.some((article) => article.links.length > 0),
     audioData.files.length > 0 || articles.some((article) => article.blocks.some((block) => block.type === "audio")),
@@ -93,10 +125,17 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     },
     {
       label: "e-book",
-      status: getReadinessStatus(pageImageData.pages.length > 0, "이미지 등록"),
-      detail:
-        pageImageData.pages.length > 0
-          ? `페이지 이미지 ${pageImageData.pages.length}개 등록`
+      status: usesExternalEbook
+        ? hasValidExternalEbook
+          ? "연결됨"
+          : "보완 필요"
+        : getReadinessStatus(internalEbookReady, "이미지 등록"),
+      detail: usesExternalEbook
+        ? hasValidExternalEbook
+          ? `외부 e-book 연결 완료${externalEbookHost ? ` · ${externalEbookHost}` : ""}`
+          : "외부 e-book 주소를 확인하세요."
+        : internalEbookReady
+          ? `페이지 이미지 ${registeredPageCount}개 등록`
           : "e-book용 페이지 이미지를 등록하세요.",
     },
     {
@@ -120,27 +159,31 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       }개`,
     },
   ];
-  const distributionItems = [
-    { label: "공개 URL", value: project?.publicUrl ?? `/newsletters/${projectId}` },
-    { label: "e-book URL", value: project?.ebookUrl ?? `/newsletters/${projectId}/ebook` },
-    { label: "공개 상태", value: project?.status ?? "프로젝트 확인 필요" },
-    { label: "최종 수정", value: project?.updated ?? "-" },
-  ];
   const publicUrl = project?.publicUrl ?? `/newsletters/${projectId}`;
   const publicUrlAbsolute = getAbsoluteSiteUrl(publicUrl, requestOrigin);
   const ebookUrl = project?.ebookUrl ?? `/newsletters/${projectId}/ebook`;
+  const ebookDisplayUrl = usesExternalEbook && externalEbookUrl ? externalEbookUrl : ebookUrl;
   const publicQrTarget = publicUrlAbsolute;
   const publicQrHref = `/api/qr?value=${encodeURIComponent(publicQrTarget)}`;
-  const projectPageCount = project?.pageCount ?? 0;
-  const registeredPageCount = pageImageData.pages.length;
+  const distributionItems = [
+    { label: "공개 URL", value: project?.publicUrl ?? `/newsletters/${projectId}` },
+    { label: "e-book URL", value: ebookDisplayUrl },
+    { label: "공개 상태", value: project?.status ?? "프로젝트 확인 필요" },
+    { label: "최종 수정", value: project?.updated ?? "-" },
+  ];
   const hasAnyArticle = articles.length > 0;
   const articleTitleMissingCount = articles.filter((article) => !article.title.trim()).length;
   const articleSummaryMissingCount = articles.filter((article) => !article.summary.trim()).length;
   const articleBodyMissingCount = articles.filter((article) => !hasArticleBody(article)).length;
   const hasAudioContent =
     audioData.files.length > 0 || articles.some((article) => article.blocks.some((block) => block.type === "audio" && block.body.trim()));
-  const pageImageCountStatus: PublishChecklistStatus =
-    registeredPageCount === 0 ? "미완료" : projectPageCount > 0 && registeredPageCount < projectPageCount ? "주의" : "완료";
+  const pageImageCountStatus: PublishChecklistStatus = usesExternalEbook
+    ? "해당없음"
+    : registeredPageCount === 0
+      ? "미완료"
+      : projectPageCount > 0 && registeredPageCount < projectPageCount
+        ? "주의"
+        : "완료";
   const publishChecklistItems: PublishChecklistItem[] = [
     {
       title: "프로젝트명 또는 소식지 제목",
@@ -218,21 +261,26 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     {
       title: "등록된 페이지 이미지",
       section: "페이지 이미지",
-      status: registeredPageCount > 0 ? "완료" : "미완료",
-      detail: registeredPageCount > 0 ? `페이지 이미지 ${registeredPageCount}개 등록` : "e-book용 페이지 이미지가 없습니다.",
-      href: `/projects/${projectId}/pages`,
-      actionLabel: "이미지 페이지 관리",
+      status: usesExternalEbook ? "해당없음" : registeredPageCount > 0 ? "완료" : "미완료",
+      detail: usesExternalEbook
+        ? "외부 e-book을 사용하므로 내부 페이지 이미지가 필요하지 않습니다."
+        : registeredPageCount > 0
+          ? `페이지 이미지 ${registeredPageCount}개 등록`
+          : "e-book용 페이지 이미지가 없습니다.",
+      href: usesExternalEbook ? `/projects/${projectId}/settings` : `/projects/${projectId}/pages`,
+      actionLabel: usesExternalEbook ? "기본 정보 확인" : "이미지 페이지 관리",
     },
     {
       title: "기준 페이지 수와 이미지 수",
       section: "페이지 이미지",
       status: pageImageCountStatus,
-      detail:
-        projectPageCount > 0
+      detail: usesExternalEbook
+        ? "외부 e-book 연결 프로젝트에는 적용되지 않습니다."
+        : projectPageCount > 0
           ? `기준 ${projectPageCount}쪽 · 등록 ${registeredPageCount}쪽`
           : `기준 페이지 수 미입력 · 등록 ${registeredPageCount}쪽`,
-      href: `/projects/${projectId}/pages`,
-      actionLabel: "이미지 페이지 관리",
+      href: usesExternalEbook ? `/projects/${projectId}/settings` : `/projects/${projectId}/pages`,
+      actionLabel: usesExternalEbook ? "기본 정보 확인" : "이미지 페이지 관리",
     },
     {
       title: "모바일 읽기 보기",
@@ -245,10 +293,18 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     {
       title: "e-book 보기",
       section: "공개 화면",
-      status: registeredPageCount > 0 ? "완료" : "미완료",
-      detail: registeredPageCount > 0 ? `/newsletters/${projectId}/ebook 연결 가능` : "페이지 이미지가 없어 e-book 검수가 어렵습니다.",
-      href: ebookPreviewHref,
-      actionLabel: "e-book 보기",
+      status: usesExternalEbook ? (hasValidExternalEbook ? "완료" : "미완료") : registeredPageCount > 0 ? "완료" : "미완료",
+      detail: usesExternalEbook
+        ? hasValidExternalEbook
+          ? `외부 e-book 연결이 설정되어 있습니다.${externalEbookHost ? ` (${externalEbookHost})` : ""}`
+          : "외부 e-book 주소를 확인하세요."
+        : registeredPageCount > 0
+          ? `/newsletters/${projectId}/ebook 연결 가능`
+          : "페이지 이미지가 없어 e-book 검수가 어렵습니다.",
+      href: ebookActionHref,
+      actionLabel: usesExternalEbook && !hasValidExternalEbook ? "기본 정보 수정" : "e-book 보기",
+      rel: ebookActionRel,
+      target: ebookActionTarget,
     },
     {
       title: "공개 URL / QR",
@@ -272,6 +328,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
   const completedChecklistCount = countChecklistItems(publishChecklistItems, "완료");
   const warningChecklistCount = countChecklistItems(publishChecklistItems, "주의");
   const incompleteChecklistCount = countChecklistItems(publishChecklistItems, "미완료");
+  const notApplicableChecklistCount = countChecklistItems(publishChecklistItems, "해당없음");
   const hasBlockingChecklistIssues = incompleteChecklistCount > 0;
 
   return (
@@ -289,7 +346,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       }
       sidebarDescription="화면, URL, QR 상태를 확인합니다."
       sidebarNoteTitle="공개 기준"
-      sidebarNote="모바일은 기사, e-book은 페이지 이미지 기준입니다."
+      sidebarNote="모바일은 기사, e-book은 프로젝트 제공 방식 기준입니다."
       actions={
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
@@ -362,7 +419,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
 
           <ProjectPublishCompletionPanel
             currentStatus={project?.status ?? "작성 중"}
-            ebookUrl={ebookUrl}
+            ebookUrl={ebookDisplayUrl}
             hasChecklistIssues={hasBlockingChecklistIssues}
             initialPublishedAt={project?.publishedAt ?? ""}
             isPublished={project?.statusCode === "published"}
@@ -382,6 +439,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
                 <p className="text-xs font-black text-[#184a88]">전체 요약</p>
                 <p className="mt-1 text-sm font-black text-[#092046]">
                   완료 {completedChecklistCount}개 · 주의 {warningChecklistCount}개 · 미완료 {incompleteChecklistCount}개
+                  {notApplicableChecklistCount > 0 ? ` · 해당없음 ${notApplicableChecklistCount}개` : ""}
                 </p>
                 <p className={`mt-2 text-xs font-black ${hasBlockingChecklistIssues ? "text-rose-700" : "text-emerald-700"}`}>
                   {hasBlockingChecklistIssues ? "발행 전 확인 필요" : "발행 가능 상태"}
@@ -408,6 +466,8 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
                   <p className="mt-3 text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">{item.detail}</p>
                   <Link
                     href={item.href}
+                    target={item.target}
+                    rel={item.rel}
                     className="mt-4 inline-flex rounded-lg border border-[#2f73b7] bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
                   >
                     {item.actionLabel}
@@ -506,21 +566,38 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-bold text-[#092046]">e-book 보기</h3>
-                  <p className="mt-1 text-sm text-slate-500">등록 페이지 이미지 기준 PC·태블릿 화면</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {usesExternalEbook ? "외부 e-book 연결 기준" : "등록 페이지 이미지 기준 PC·태블릿 화면"}
+                  </p>
                 </div>
-                <StatusPill value={pageImageData.pages.length > 0 ? "이미지 있음" : "이미지 없음"} />
+                <StatusPill
+                  value={usesExternalEbook ? (hasValidExternalEbook ? "연결됨" : "보완 필요") : pageImageData.pages.length > 0 ? "이미지 있음" : "이미지 없음"}
+                />
               </div>
               <Link
-                href={ebookPreviewHref}
+                href={ebookActionHref}
+                target={ebookActionTarget}
+                rel={ebookActionRel}
                 className="mb-4 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
               >
-                e-book 열기
+                {usesExternalEbook && !hasValidExternalEbook ? "기본 정보 수정" : "e-book 열기"}
               </Link>
               <div className="rounded-lg border border-slate-200 bg-slate-100 p-4">
                 <div className="rounded-t-lg bg-[#092046] px-4 py-3 text-sm font-bold text-white">
                   e-book 미리보기
                 </div>
-                {firstPages.length > 0 ? (
+                {usesExternalEbook ? (
+                  <div className="rounded-b-lg border border-dashed border-slate-300 bg-white px-4 py-12 text-center">
+                    <p className="text-sm font-black text-[#092046]">
+                      {hasValidExternalEbook ? "외부 e-book이 연결되어 있습니다." : "외부 e-book 주소를 확인하세요."}
+                    </p>
+                    <p className="mt-2 text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
+                      {hasValidExternalEbook
+                        ? "내부 페이지 이미지 미리보기 대신 등록된 외부 뷰어를 새 탭에서 확인합니다."
+                        : "기본 정보 화면에서 외부 e-book URL을 입력하세요."}
+                    </p>
+                  </div>
+                ) : firstPages.length > 0 ? (
                   <div className="grid gap-4 rounded-b-lg bg-white p-4 md:grid-cols-2">
                     {firstPages.map((page) => (
                       <div key={page.id} className="aspect-[3/4] overflow-hidden rounded-md border border-slate-200 bg-white">
