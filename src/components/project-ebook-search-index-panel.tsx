@@ -11,7 +11,9 @@ type ProjectEbookSearchIndexPanelProps = {
 
 type RebuildResult = {
   emptyPages?: number;
+  error?: string;
   extractedPages?: number;
+  failedPages?: number;
   message?: string;
   ok?: boolean;
   textPages?: number;
@@ -35,11 +37,15 @@ export function ProjectEbookSearchIndexPanel({ projectSlug, status }: ProjectEbo
       const result = (await response.json().catch(() => null)) as RebuildResult | null;
 
       if (!response.ok || !result?.ok) {
-        setMessage(result?.message ?? "검색 텍스트를 생성하지 못했습니다.");
+        const errorLabel = result?.error ? ` (${result.error})` : "";
+
+        setMessage(`${result?.message ?? "검색 텍스트를 생성하지 못했습니다."}${errorLabel}`);
         return;
       }
 
-      setMessage(result.message ?? "검색 텍스트를 생성했습니다.");
+      const failedNotice = result.failedPages ? ` 실패/미연결 ${result.failedPages}쪽` : "";
+
+      setMessage(`${result.message ?? "검색 텍스트를 생성했습니다."}${failedNotice}`);
       router.refresh();
     } catch {
       setMessage("검색 텍스트를 생성하지 못했습니다.");
@@ -97,4 +103,3 @@ export function ProjectEbookSearchIndexPanel({ projectSlug, status }: ProjectEbo
     </div>
   );
 }
-

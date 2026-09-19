@@ -3,6 +3,7 @@ import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { rebuildProjectEbookSearchIndex } from "@/lib/ebook-page-search";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 type EbookSearchIndexRouteProps = {
   params: Promise<{
@@ -30,4 +31,3 @@ export async function POST(_request: Request, { params }: EbookSearchIndexRouteP
 
   return NextResponse.json(result);
 }
-
