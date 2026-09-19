@@ -1,6 +1,7 @@
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicMobileEbookViewer } from "@/components/public-mobile-ebook-viewer";
 import { getUsableEbookPages } from "@/lib/ebook-pages";
+import { getProjectEbookSearchStatus } from "@/lib/ebook-page-search";
 import {
   getProjectAudioFiles,
   getProjectOriginalPdf,
@@ -48,11 +49,12 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
   const pageParam = getSearchParamValue(resolvedSearchParams?.page);
   const isAdminPreview = hasSearchParamValue(previewMode, "admin");
   const isEmbeddedAdminPreview = hasSearchParamValue(embeddedMode, "adminPreview");
-  const [workspace, pageImageData, audioData, originalPdfData] = await Promise.all([
+  const [workspace, pageImageData, audioData, originalPdfData, ebookSearchStatus] = await Promise.all([
     getProjectWorkspace(slug),
     getProjectPageImages(slug),
     getProjectAudioFiles(slug),
     getProjectOriginalPdf(slug),
+    getProjectEbookSearchStatus(slug),
   ]);
   const project = workspace.project;
   const isPublished = project?.status === "발행 완료";
@@ -107,6 +109,7 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
         projectIssue={project.issue}
         projectTitle={project.title}
         publicAudio={publicAudioSrc ? { src: publicAudioSrc, title: publicAudioFile?.title } : undefined}
+        searchEnabled={ebookSearchStatus.hasSearchText && isPublished}
         slug={slug}
       />
     </main>

@@ -25,6 +25,11 @@ type PageConversionResult = {
   status: "완료" | "실패";
 };
 
+type SearchIndexRebuildResult = {
+  message?: string;
+  ok?: boolean;
+};
+
 const pdfWorkerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
 const pdfCMapUrl = "/pdfjs/cmaps/";
 const pdfStandardFontDataUrl = "/pdfjs/standard_fonts/";
@@ -160,6 +165,19 @@ async function uploadProjectFile({
   }
 
   return completeResult.message ?? "업로드가 완료됐습니다.";
+}
+
+async function rebuildEbookSearchIndex(projectSlug: string) {
+  const response = await fetch(`/api/projects/${projectSlug}/ebook/search-index`, {
+    method: "POST",
+  });
+  const result = (await response.json().catch(() => null)) as SearchIndexRebuildResult | null;
+
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.message ?? "검색 텍스트 생성에 실패했습니다.");
+  }
+
+  return result.message ?? "검색 텍스트를 생성했습니다.";
 }
 
 export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }) {
@@ -309,12 +327,26 @@ export function PdfToPageImageConverter({ projectSlug }: { projectSlug: string }
       }
 
       const failureCount = nextResults.filter((result) => result.status === "실패").length;
+      let searchIndexMessage = "";
+
+      if (failureCount === 0) {
+        setMessage("페이지 이미지 저장을 마쳤습니다. 문서 검색 텍스트를 생성하는 중입니다.");
+
+        try {
+          searchIndexMessage = await rebuildEbookSearchIndex(projectSlug);
+        } catch (error) {
+          searchIndexMessage =
+            error instanceof Error
+              ? `문서 검색 데이터는 자동 생성하지 못했습니다. ${error.message}`
+              : "문서 검색 데이터는 자동 생성하지 못했습니다. 필요하면 아래 버튼으로 다시 생성하세요.";
+        }
+      }
 
       setStatus(failureCount > 0 ? "error" : "success");
       setMessage(
         failureCount > 0
           ? `변환을 마쳤지만 ${failureCount}개 페이지는 실패했습니다. 실패 항목을 확인하세요. ${pdfReviewNotice}`
-          : `PDF ${pdf.numPages}쪽을 모두 페이지 이미지로 저장했습니다. ${pdfReviewNotice}`,
+          : `PDF ${pdf.numPages}쪽을 모두 페이지 이미지로 저장했습니다. ${searchIndexMessage} ${pdfReviewNotice}`,
       );
       router.refresh();
     } catch (error) {

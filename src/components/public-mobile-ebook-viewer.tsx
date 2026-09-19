@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { EbookSearchPanel } from "@/components/ebook-search-panel";
 import { PublicAudioPlayer } from "@/components/public-audio-player";
 import { getAudioSyncedPageNumber } from "@/lib/audio-page-sync";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
@@ -29,6 +30,7 @@ type PublicMobileEbookViewerProps = {
     src: string;
     title?: string;
   };
+  searchEnabled: boolean;
   slug: string;
 };
 
@@ -80,6 +82,7 @@ export function PublicMobileEbookViewer({
   projectIssue,
   projectTitle,
   publicAudio,
+  searchEnabled,
   slug,
 }: PublicMobileEbookViewerProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -92,6 +95,7 @@ export function PublicMobileEbookViewer({
   const [zoom, setZoom] = useState(100);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isPageListOpen, setIsPageListOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [pageInputValue, setPageInputValue] = useState(String(initialPageNumber));
   const [utilityMessage, setUtilityMessage] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -366,6 +370,14 @@ export function PublicMobileEbookViewer({
                 >
                   페이지 목록
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSearchOpen(true)}
+                  className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs"
+                  aria-label="문서 검색 열기"
+                >
+                  문서 검색
+                </button>
                 <form onSubmit={submitPageInput} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                   <label className="sr-only" htmlFor="mobile-ebook-page-input">
                     이동할 페이지 번호
@@ -594,6 +606,18 @@ export function PublicMobileEbookViewer({
           </section>
         </div>
       ) : null}
+      <EbookSearchPanel
+        hasSearchText={searchEnabled}
+        onClose={() => setIsSearchOpen(false)}
+        onSelectPage={(pageNumber) => {
+          goToPageNumber(pageNumber, true);
+          setIsSearchOpen(false);
+          setIsToolsOpen(false);
+        }}
+        open={isSearchOpen}
+        placement="mobile"
+        slug={slug}
+      />
       {publicAudio ? (
         <PublicAudioPlayer
           src={publicAudio.src}
