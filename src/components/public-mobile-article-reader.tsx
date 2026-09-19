@@ -60,6 +60,8 @@ type PublicMobileArticleReaderProps = {
   projectBodyFontAssetId?: string | null;
   projectTitleFontAssetId?: string | null;
   ebookDesktopHref?: string;
+  ebookLinkRel?: string;
+  ebookLinkTarget?: "_blank";
   ebookMobileHref?: string;
   publicAudio?: {
     src: string;
@@ -336,6 +338,8 @@ function PublicNewsletterCoverView({
 
 function PublicCompactPublicationHeader({
   ebookDesktopHref,
+  ebookLinkRel,
+  ebookLinkTarget,
   ebookMobileHref,
   headerColor,
   issue,
@@ -344,6 +348,8 @@ function PublicCompactPublicationHeader({
   showToc,
 }: {
   ebookDesktopHref?: string;
+  ebookLinkRel?: string;
+  ebookLinkTarget?: "_blank";
   ebookMobileHref?: string;
   headerColor?: string | null;
   issue?: string | null;
@@ -390,6 +396,8 @@ function PublicCompactPublicationHeader({
           {ebookMobileHref ? (
             <Link
               href={ebookMobileHref}
+              target={ebookLinkTarget}
+              rel={ebookLinkRel}
               className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border border-white/30 bg-white px-4 text-[15px] font-bold text-[#092046] shadow-sm backdrop-blur transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:hidden"
             >
               e-book 보기
@@ -398,6 +406,8 @@ function PublicCompactPublicationHeader({
           {ebookDesktopHref ? (
             <Link
               href={ebookDesktopHref}
+              target={ebookLinkTarget}
+              rel={ebookLinkRel}
               className="hidden min-h-10 flex-1 items-center justify-center rounded-xl border border-white/30 bg-white px-4 text-[15px] font-bold text-[#092046] shadow-sm backdrop-blur transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:inline-flex"
             >
               e-book 보기
@@ -1015,6 +1025,8 @@ export function PublicMobileArticleReader({
   projectBodyFontAssetId,
   projectTitleFontAssetId,
   ebookDesktopHref,
+  ebookLinkRel,
+  ebookLinkTarget,
   ebookMobileHref,
   publicAudio,
   showAdminPreviewControls,
@@ -1387,6 +1399,8 @@ export function PublicMobileArticleReader({
             <>
               <PublicCompactPublicationHeader
                 ebookDesktopHref={ebookDesktopHref}
+                ebookLinkRel={ebookLinkRel}
+                ebookLinkTarget={ebookLinkTarget}
                 ebookMobileHref={ebookMobileHref}
                 headerColor={headerColor}
                 issue={issue}
@@ -1538,6 +1552,8 @@ export function PublicMobileArticleReader({
         <section className={`space-y-5 ${publicAudio ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
           <PublicCompactPublicationHeader
             ebookDesktopHref={cover ? ebookDesktopHref : undefined}
+            ebookLinkRel={cover ? ebookLinkRel : undefined}
+            ebookLinkTarget={cover ? ebookLinkTarget : undefined}
             ebookMobileHref={cover ? ebookMobileHref : undefined}
             headerColor={headerColor}
             issue={issue}

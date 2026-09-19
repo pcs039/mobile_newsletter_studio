@@ -3,6 +3,7 @@ import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
+import { getValidExternalEbookUrl } from "@/lib/ebook-source";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import { getUsableEbookPages } from "@/lib/ebook-pages";
 import {
@@ -115,8 +116,16 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const pageImages = getUsableEbookPages(pageImageData.pages);
   const hotspotLinks = hotspotData.links;
   const isImagePageMode = project?.productionMode === "이미지 페이지형";
-  const ebookDesktopHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
-  const ebookMobileHref = isAdminPreview ? `/newsletters/${slug}/ebook/mobile?preview=admin` : `/newsletters/${slug}/ebook/mobile`;
+  const externalEbookUrl = getValidExternalEbookUrl(project?.externalEbookUrl);
+  const useExternalEbook = project?.ebookSource === "external" && Boolean(externalEbookUrl);
+  const internalEbookDesktopHref = isAdminPreview
+    ? `/newsletters/${slug}/ebook?preview=admin`
+    : project?.ebookUrl ?? `/newsletters/${slug}/ebook`;
+  const internalEbookMobileHref = isAdminPreview ? `/newsletters/${slug}/ebook/mobile?preview=admin` : `/newsletters/${slug}/ebook/mobile`;
+  const ebookDesktopHref = useExternalEbook ? externalEbookUrl ?? internalEbookDesktopHref : internalEbookDesktopHref;
+  const ebookMobileHref = useExternalEbook ? externalEbookUrl ?? internalEbookMobileHref : internalEbookMobileHref;
+  const ebookLinkTarget = useExternalEbook ? "_blank" : undefined;
+  const ebookLinkRel = useExternalEbook ? "noopener noreferrer" : undefined;
   const headerColor = project?.primaryColor ?? "#071f46";
   const publicAudioFile = audioData.files[0] ?? null;
   const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
@@ -164,10 +173,20 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             <div className="mt-5 flex gap-2">
               {!isEmbeddedAdminPreview ? (
                 <>
-                  <Link href={ebookMobileHref} className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:hidden">
+                  <Link
+                    href={ebookMobileHref}
+                    target={ebookLinkTarget}
+                    rel={ebookLinkRel}
+                    className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:hidden"
+                  >
                     e-book 보기
                   </Link>
-                  <Link href={ebookDesktopHref} className="hidden rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:inline-flex">
+                  <Link
+                    href={ebookDesktopHref}
+                    target={ebookLinkTarget}
+                    rel={ebookLinkRel}
+                    className="hidden rounded-full bg-white px-4 py-2 text-xs font-black text-[#092046] md:inline-flex"
+                  >
                     e-book 보기
                   </Link>
                 </>
@@ -260,6 +279,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               projectBodyFontAssetId={project?.bodyFontAssetId}
               projectTitleFontAssetId={project?.titleFontAssetId}
               ebookDesktopHref={!isEmbeddedAdminPreview ? ebookDesktopHref : undefined}
+              ebookLinkRel={ebookLinkRel}
+              ebookLinkTarget={ebookLinkTarget}
               ebookMobileHref={!isEmbeddedAdminPreview ? ebookMobileHref : undefined}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}

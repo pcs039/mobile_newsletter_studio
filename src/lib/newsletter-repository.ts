@@ -1,4 +1,5 @@
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
+import { normalizeEbookSource, type EbookSource } from "@/lib/ebook-source";
 import { hashProjectPassword, verifyProjectPasswordHash } from "@/lib/project-password";
 import type { DashboardProject } from "@/types/newsletter";
 
@@ -21,6 +22,8 @@ type NewsletterProjectRow = {
   status: ProjectStatus;
   package_tier: PackageTier;
   production_mode: ProductionMode;
+  ebook_source: EbookSource | null;
+  external_ebook_url: string | null;
   estimated_hours: string | null;
   designer_hours_cap: string | null;
   pdf_original_path: string | null;
@@ -91,6 +94,8 @@ export type CreateNewsletterProjectInput = {
   status: ProjectStatus;
   packageTier: PackageTier;
   productionMode: ProductionMode;
+  ebookSource?: EbookSource;
+  externalEbookUrl?: string;
   estimatedHours?: string;
   designerHoursCap?: string;
   projectPassword?: string;
@@ -412,6 +417,8 @@ export type ProjectWorkspaceInfo = {
   publishedAt: string;
   packageTier: string;
   productionMode: string;
+  ebookSource: EbookSource;
+  externalEbookUrl: string;
   publicUrl: string;
   ebookUrl: string;
   pageCount: number;
@@ -458,6 +465,8 @@ export type ProjectBasicInfo = {
   status: ProjectStatus;
   packageTier: PackageTier;
   productionMode: ProductionMode;
+  ebookSource: EbookSource;
+  externalEbookUrl: string;
   estimatedHours: string;
   designerHoursCap: string;
   hasProjectPassword: boolean;
@@ -1131,6 +1140,8 @@ const projectSelectColumns = [
   "status",
   "package_tier",
   "production_mode",
+  "ebook_source",
+  "external_ebook_url",
   "estimated_hours",
   "designer_hours_cap",
   "pdf_original_path",
@@ -1724,6 +1735,8 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     publishedAt: project.published_at ? formatCompactDateTime(project.published_at) : "",
     packageTier: packageTierLabels[project.package_tier],
     productionMode: productionModeLabels[project.production_mode],
+    ebookSource: normalizeEbookSource(project.ebook_source),
+    externalEbookUrl: project.external_ebook_url || "",
     publicUrl: `/newsletters/${project.slug}`,
     ebookUrl: `/newsletters/${project.slug}/ebook`,
     pageCount: project.page_count,
@@ -1757,6 +1770,8 @@ function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicIn
     status: project.status,
     packageTier: project.package_tier,
     productionMode: project.production_mode,
+    ebookSource: normalizeEbookSource(project.ebook_source),
+    externalEbookUrl: project.external_ebook_url || "",
     estimatedHours: project.estimated_hours || "",
     designerHoursCap: project.designer_hours_cap || "",
     hasProjectPassword: Boolean(project.project_password_hash),
@@ -5149,6 +5164,8 @@ export async function createNewsletterProject(
     status: input.status,
     package_tier: input.packageTier,
     production_mode: input.productionMode,
+    ebook_source: normalizeEbookSource(input.ebookSource),
+    external_ebook_url: nullableText(input.externalEbookUrl),
     estimated_hours: input.estimatedHours || null,
     designer_hours_cap: input.designerHoursCap || null,
     title_font_asset_id: nullableText(input.titleFontAssetId),
@@ -5241,6 +5258,8 @@ export async function updateNewsletterProject(
     status: input.status,
     package_tier: input.packageTier,
     production_mode: input.productionMode,
+    ebook_source: normalizeEbookSource(input.ebookSource),
+    external_ebook_url: nullableText(input.externalEbookUrl),
     estimated_hours: input.estimatedHours || null,
     designer_hours_cap: input.designerHoursCap || null,
     title_font_asset_id: nullableText(input.titleFontAssetId),

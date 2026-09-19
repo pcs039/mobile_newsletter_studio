@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
+import { getValidExternalEbookUrl, normalizeEbookSource, type EbookSource } from "@/lib/ebook-source";
 import { getSelectableFontAssets } from "@/lib/font-css";
 import type { FontAsset, NewsletterCoverFit, NewsletterCoverLayout } from "@/lib/newsletter-repository";
 
@@ -28,6 +29,8 @@ export type ProjectFormInitialValues = {
   status?: string;
   packageTier?: string;
   productionMode?: string;
+  ebookSource?: EbookSource;
+  externalEbookUrl?: string;
   estimatedHours?: string;
   designerHoursCap?: string;
   hasProjectPassword?: boolean;
@@ -152,6 +155,8 @@ export function ProjectCreateForm({
   const isEditMode = mode === "edit";
   const [primaryColor, setPrimaryColor] = useState(initialValues.primaryColor || "#092046");
   const [coverEnabled, setCoverEnabled] = useState(initialValues.coverEnabled === true);
+  const [ebookSource, setEbookSource] = useState<EbookSource>(normalizeEbookSource(initialValues.ebookSource));
+  const [externalEbookUrl, setExternalEbookUrl] = useState(initialValues.externalEbookUrl ?? "");
   const [coverLayout, setCoverLayout] = useState<NewsletterCoverLayout>(initialValues.coverLayout ?? "image");
   const [coverFit, setCoverFit] = useState<NewsletterCoverFit>(initialValues.coverFit ?? "contain");
   const [coverImageUrl, setCoverImageUrl] = useState(initialValues.coverImageUrl ?? "");
@@ -166,6 +171,8 @@ export function ProjectCreateForm({
   });
 
   const coverPreviewSrc = coverImageUrl || (coverImagePath ? makePublicCoverPreviewHref(coverImagePath) : "");
+  const validExternalEbookUrl = getValidExternalEbookUrl(externalEbookUrl);
+  const canTestExternalEbookUrl = Boolean(validExternalEbookUrl);
 
   function setFormTextValue(name: string, value: string) {
     const field = formRef.current?.elements.namedItem(name);
@@ -219,6 +226,8 @@ export function ProjectCreateForm({
           status: getFormText(formData, "status"),
           packageTier: getFormText(formData, "packageTier"),
           productionMode: getFormText(formData, "productionMode"),
+          ebookSource,
+          externalEbookUrl,
           estimatedHours: getFormText(formData, "estimatedHours"),
           designerHoursCap: getFormText(formData, "designerHoursCap"),
           titleFontAssetId: getFormText(formData, "titleFontAssetId"),
@@ -385,6 +394,14 @@ export function ProjectCreateForm({
         : "프로젝트 정보를 Supabase에 저장하는 중입니다.",
     });
 
+    if (ebookSource === "external" && !validExternalEbookUrl) {
+      setSubmitState({
+        status: "error",
+        message: "외부 e-book 연결을 선택한 경우 http:// 또는 https://로 시작하는 유효한 URL을 입력하세요.",
+      });
+      return;
+    }
+
     const response = await fetch("/api/projects", {
       method: isEditMode ? "PATCH" : "POST",
       headers: {
@@ -403,6 +420,8 @@ export function ProjectCreateForm({
         status: getFormText(formData, "status"),
         packageTier: getFormText(formData, "packageTier"),
         productionMode: getFormText(formData, "productionMode"),
+        ebookSource,
+        externalEbookUrl,
         estimatedHours: getFormText(formData, "estimatedHours"),
         designerHoursCap: getFormText(formData, "designerHoursCap"),
         titleFontAssetId: getFormText(formData, "titleFontAssetId"),
@@ -831,6 +850,107 @@ export function ProjectCreateForm({
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <div className="rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">e-book 설정</p>
+                <h4 className="mt-1 text-base font-black text-[#092046]">e-book 제공 방식</h4>
+              </div>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-500">
+                {ebookSource === "external" ? "외부 연결" : "우리 앱"}
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <label
+                className={`cursor-pointer rounded-xl border bg-white p-4 transition ${
+                  ebookSource === "internal"
+                    ? "border-[#092046] shadow-sm ring-2 ring-[#2f73b7]/15"
+                    : "border-slate-200 hover:border-[#2f73b7]"
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-black text-[#092046]">
+                  <input
+                    type="radio"
+                    name="ebookSource"
+                    value="internal"
+                    checked={ebookSource === "internal"}
+                    onChange={() => setEbookSource("internal")}
+                    className="h-4 w-4 accent-[#092046]"
+                  />
+                  우리 앱 e-book 사용
+                </span>
+                <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600 [word-break:keep-all]">
+                  모바일에서는 모바일용 e-book viewer, PC에서는 PC용 e-book viewer가 열립니다.
+                </span>
+              </label>
+
+              <label
+                className={`cursor-pointer rounded-xl border bg-white p-4 transition ${
+                  ebookSource === "external"
+                    ? "border-[#092046] shadow-sm ring-2 ring-[#2f73b7]/15"
+                    : "border-slate-200 hover:border-[#2f73b7]"
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-black text-[#092046]">
+                  <input
+                    type="radio"
+                    name="ebookSource"
+                    value="external"
+                    checked={ebookSource === "external"}
+                    onChange={() => setEbookSource("external")}
+                    className="h-4 w-4 accent-[#092046]"
+                  />
+                  외부 e-book 연결
+                </span>
+                <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600 [word-break:keep-all]">
+                  모바일과 PC 모두 등록한 외부 e-book viewer 주소가 새 탭에서 열립니다.
+                </span>
+              </label>
+            </div>
+
+            {ebookSource === "external" ? (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                <FieldLabel>외부 e-book URL</FieldLabel>
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <input
+                    name="externalEbookUrl"
+                    type="url"
+                    value={externalEbookUrl}
+                    onChange={(event) => setExternalEbookUrl(event.target.value)}
+                    placeholder="https://viewer.example.go.kr/..."
+                    className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                  />
+                  <button
+                    type="button"
+                    disabled={!canTestExternalEbookUrl}
+                    onClick={() => {
+                      if (validExternalEbookUrl) {
+                        window.open(validExternalEbookUrl, "_blank", "noopener,noreferrer");
+                      }
+                    }}
+                    className="dd-btn dd-btn-secondary min-h-12 justify-center rounded-lg px-4 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    연결 테스트
+                  </button>
+                </div>
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
+                  기관 홈페이지에서 이미 운영 중인 e-book 뷰어가 있는 경우 해당 주소를 연결할 수 있습니다.
+                  공개 소식지의 e-book 보기 버튼을 누르면 등록된 외부 뷰어가 새 창에서 열립니다.
+                </p>
+                {externalEbookUrl && !validExternalEbookUrl ? (
+                  <p className="mt-2 text-xs font-black text-rose-600">
+                    http:// 또는 https://로 시작하는 URL만 사용할 수 있습니다.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <input name="externalEbookUrl" type="hidden" value={externalEbookUrl} />
+            )}
           </div>
         </div>
 
