@@ -16,6 +16,7 @@ export type EbookPageSearchRebuildResult =
   | {
       ok: true;
       emptyPages: number;
+      failedPages: number;
       extractedPages: number;
       message: string;
       textPages: number;
@@ -23,6 +24,14 @@ export type EbookPageSearchRebuildResult =
     }
   | {
       ok: false;
+      error:
+        | "NOT_CONFIGURED"
+        | "PROJECT_NOT_FOUND"
+        | "PDF_NOT_FOUND"
+        | "PDF_DOWNLOAD_FAILED"
+        | "PDF_PARSE_FAILED"
+        | "PAGE_MAPPING_FAILED"
+        | "SEARCH_TEXT_UPDATE_FAILED";
       message: string;
       status: "not_configured" | "not_found" | "missing_pdf" | "request_failed";
       httpStatus?: number;
@@ -46,6 +55,25 @@ type PageSearchRow = {
   page_number: number;
   search_text: string | null;
   search_text_updated_at: string | null;
+};
+
+type PdfDownloadResult =
+  | {
+      ok: true;
+      data: ArrayBuffer;
+      size: number;
+    }
+  | {
+      ok: false;
+      error: "PDF_NOT_FOUND" | "PDF_DOWNLOAD_FAILED";
+      httpStatus?: number;
+      message: string;
+    };
+
+type PdfTextExtractionResult = {
+  failedPages: number[];
+  pageTexts: string[];
+  totalPages: number;
 };
 
 function getServiceHeaders(contentType = "application/json") {
@@ -137,6 +165,10 @@ async function findProjectBySlug(projectSlug: string, headers: Record<string, st
   });
 
   if (!response.ok) {
+    console.error("[ebook-search-index] project lookup failed", {
+      projectSlug,
+      status: response.status,
+    });
     return null;
   }
 
@@ -162,21 +194,37 @@ async function getProjectPageSearchRows(projectId: string, headers: Record<strin
   });
 
   if (!response.ok) {
+    const responseText = await response.text().catch(() => "");
+
+    console.error("[ebook-search-index] page mapping lookup failed", {
+      projectId,
+      status: response.status,
+      responseText: responseText.slice(0, 300),
+    });
     return null;
   }
 
   return (await response.json().catch(() => [])) as PageSearchRow[];
 }
 
-async function downloadProjectPdf(pdfPath: string, headers: Record<string, string>) {
+async function downloadProjectPdf(pdfPath: string, headers: Record<string, string>): Promise<PdfDownloadResult> {
   if (!isSafeStoragePath(pdfPath)) {
-    return null;
+    console.error("[ebook-search-index] unsafe pdf storage path");
+    return {
+      ok: false,
+      error: "PDF_NOT_FOUND",
+      message: "PDF Storage 경로를 확인하세요.",
+    };
   }
 
   const endpoint = getSupabaseStorageEndpoint(`/object/pdf-originals/${encodeStoragePath(pdfPath)}`);
 
   if (!endpoint) {
-    return null;
+    return {
+      ok: false,
+      error: "PDF_DOWNLOAD_FAILED",
+      message: "Supabase Storage URL 설정을 확인하세요.",
+    };
   }
 
   const response = await fetch(endpoint, {
@@ -185,38 +233,116 @@ async function downloadProjectPdf(pdfPath: string, headers: Record<string, strin
   });
 
   if (!response.ok) {
-    return null;
+    const responseText = await response.text().catch(() => "");
+
+    console.error("[ebook-search-index] pdf download failed", {
+      status: response.status,
+      responseText: responseText.slice(0, 300),
+    });
+
+    return {
+      ok: false,
+      error: response.status === 404 ? "PDF_NOT_FOUND" : "PDF_DOWNLOAD_FAILED",
+      httpStatus: response.status,
+      message: response.status === 404 ? "PDF 파일을 찾지 못했습니다." : "PDF 파일을 읽지 못했습니다.",
+    };
   }
 
-  return response.arrayBuffer();
+  const data = await response.arrayBuffer();
+
+  if (data.byteLength < 8) {
+    console.error("[ebook-search-index] pdf download returned empty file", {
+      byteLength: data.byteLength,
+    });
+
+    return {
+      ok: false,
+      error: "PDF_DOWNLOAD_FAILED",
+      message: "PDF 파일이 비어 있거나 손상됐습니다.",
+    };
+  }
+
+  const header = Buffer.from(data.slice(0, 5)).toString("utf8");
+
+  if (header !== "%PDF-") {
+    console.error("[ebook-search-index] downloaded file is not a pdf", {
+      byteLength: data.byteLength,
+      header,
+    });
+
+    return {
+      ok: false,
+      error: "PDF_DOWNLOAD_FAILED",
+      message: "PDF 파일 형식을 확인하지 못했습니다.",
+    };
+  }
+
+  return {
+    ok: true,
+    data,
+    size: data.byteLength,
+  };
 }
 
-export async function extractPdfPageTexts(data: ArrayBuffer) {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+export async function extractPdfPageTexts(data: ArrayBuffer): Promise<PdfTextExtractionResult> {
+  let pdfjs: typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+
+  try {
+    pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  } catch (error) {
+    console.error("[ebook-search-index] pdfjs import failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+    throw new Error("PDFJS_IMPORT_FAILED");
+  }
+
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(data),
     disableFontFace: true,
+    isOffscreenCanvasSupported: false,
+    stopAtErrors: false,
     useSystemFonts: true,
+    useWasm: false,
+    useWorkerFetch: false,
   });
-  const pdf = await loadingTask.promise;
+  const pdf = await loadingTask.promise.catch((error: unknown) => {
+    console.error("[ebook-search-index] pdf parse failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+    throw new Error("PDF_PARSE_FAILED");
+  });
   const pageTexts: string[] = [];
+  const failedPages: number[] = [];
 
   try {
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber);
-      const textContent = await page.getTextContent();
-      const text = textContent.items
-        .map((item) => ("str" in item ? item.str : ""))
-        .filter(Boolean)
-        .join(" ");
+      try {
+        const page = await pdf.getPage(pageNumber);
+        const textContent = await page.getTextContent();
+        const text = textContent.items
+          .map((item) => ("str" in item ? item.str : ""))
+          .filter(Boolean)
+          .join(" ");
 
-      pageTexts.push(normalizeExtractedText(text));
+        pageTexts.push(normalizeExtractedText(text));
+      } catch (error) {
+        console.error("[ebook-search-index] page text extraction failed", {
+          message: error instanceof Error ? error.message : String(error),
+          pageNumber,
+        });
+        failedPages.push(pageNumber);
+        pageTexts.push("");
+      }
     }
   } finally {
     await loadingTask.destroy();
   }
 
-  return pageTexts;
+  return {
+    failedPages,
+    pageTexts,
+    totalPages: pdf.numPages,
+  };
 }
 
 export async function getProjectEbookSearchStatus(projectSlug: string): Promise<EbookPageSearchStatus> {
@@ -300,6 +426,7 @@ export async function rebuildProjectEbookSearchIndex(projectSlug: string): Promi
   if (!headers) {
     return {
       ok: false,
+      error: "NOT_CONFIGURED",
       status: "not_configured",
       message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 검색 텍스트를 생성할 수 있습니다.",
     };
@@ -310,6 +437,7 @@ export async function rebuildProjectEbookSearchIndex(projectSlug: string): Promi
   if (!project) {
     return {
       ok: false,
+      error: "PROJECT_NOT_FOUND",
       status: "not_found",
       message: "프로젝트를 찾지 못했습니다.",
       httpStatus: 404,
@@ -321,38 +449,82 @@ export async function rebuildProjectEbookSearchIndex(projectSlug: string): Promi
   if (!pdfPath) {
     return {
       ok: false,
+      error: "PDF_NOT_FOUND",
       status: "missing_pdf",
       message: "원본 PDF가 없어 문서 검색 데이터를 생성할 수 없습니다.",
       httpStatus: 400,
     };
   }
 
-  const [pdfData, pages] = await Promise.all([
+  const [pdfDownload, pages] = await Promise.all([
     downloadProjectPdf(pdfPath, headers),
     getProjectPageSearchRows(project.id, headers),
   ]);
 
-  if (!pdfData || !pages) {
+  if (!pdfDownload.ok) {
     return {
       ok: false,
+      error: pdfDownload.error,
       status: "request_failed",
-      message: "PDF 또는 페이지 목록을 불러오지 못했습니다.",
+      message: pdfDownload.message,
+      httpStatus: pdfDownload.httpStatus ?? 500,
+    };
+  }
+
+  if (!pages) {
+    return {
+      ok: false,
+      error: "PAGE_MAPPING_FAILED",
+      status: "request_failed",
+      message: "페이지 연결 정보를 불러오지 못했습니다. search_text migration 적용 여부를 확인하세요.",
       httpStatus: 500,
     };
   }
 
-  const pageTexts = await extractPdfPageTexts(pdfData);
+  if (pages.length === 0) {
+    return {
+      ok: false,
+      error: "PAGE_MAPPING_FAILED",
+      status: "request_failed",
+      message: "검색 텍스트를 연결할 e-book 페이지가 없습니다.",
+      httpStatus: 400,
+    };
+  }
+
+  let extraction: PdfTextExtractionResult;
+
+  try {
+    extraction = await extractPdfPageTexts(pdfDownload.data);
+  } catch (error) {
+    console.error("[ebook-search-index] pdf text extraction failed", {
+      message: error instanceof Error ? error.message : String(error),
+      pdfSize: pdfDownload.size,
+      projectId: project.id,
+    });
+
+    return {
+      ok: false,
+      error: "PDF_PARSE_FAILED",
+      status: "request_failed",
+      message: "PDF 텍스트 추출에 실패했습니다.",
+      httpStatus: 500,
+    };
+  }
+
   const now = new Date().toISOString();
+  const failedPageNumbers = new Set(extraction.failedPages);
   let textPages = 0;
   let extractedPages = 0;
+  let updateFailures = 0;
 
   for (const page of pages) {
-    const text = pageTexts[page.page_number - 1]?.trim() ?? "";
+    const text = extraction.pageTexts[page.page_number - 1]?.trim() ?? "";
     const endpoint = getSupabaseRestEndpoint(
       `/rest/v1/newsletter_pages?id=eq.${encodeURIComponent(page.id)}&project_id=eq.${encodeURIComponent(project.id)}`,
     );
 
     if (!endpoint) {
+      updateFailures += 1;
       continue;
     }
 
@@ -375,12 +547,36 @@ export async function rebuildProjectEbookSearchIndex(projectSlug: string): Promi
       if (text) {
         textPages += 1;
       }
+    } else {
+      const responseText = await response.text().catch(() => "");
+
+      console.error("[ebook-search-index] search_text update failed", {
+        pageNumber: page.page_number,
+        responseText: responseText.slice(0, 300),
+        status: response.status,
+      });
+      updateFailures += 1;
     }
   }
+
+  if (extractedPages === 0 && updateFailures > 0) {
+    return {
+      ok: false,
+      error: "SEARCH_TEXT_UPDATE_FAILED",
+      status: "request_failed",
+      message: "검색 텍스트를 저장하지 못했습니다. search_text migration 적용 여부를 확인하세요.",
+      httpStatus: 500,
+    };
+  }
+
+  const mappedPdfPages = pages.filter((page) => page.page_number <= extraction.totalPages).length;
+  const unmappedPages = Math.max(0, pages.length - mappedPdfPages);
+  const failedPages = failedPageNumbers.size + updateFailures + unmappedPages;
 
   return {
     ok: true,
     emptyPages: Math.max(0, extractedPages - textPages),
+    failedPages,
     extractedPages,
     message:
       textPages > 0
