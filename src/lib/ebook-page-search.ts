@@ -29,9 +29,11 @@ export type EbookPageSearchRebuildResult =
         | "PROJECT_NOT_FOUND"
         | "PDF_NOT_FOUND"
         | "PDF_DOWNLOAD_FAILED"
+        | "PDF_PASSWORD_REQUIRED"
         | "PDF_PARSE_FAILED"
         | "PAGE_MAPPING_FAILED"
         | "SEARCH_TEXT_UPDATE_FAILED";
+      detail?: string;
       message: string;
       status: "not_configured" | "not_found" | "missing_pdf" | "request_failed";
       httpStatus?: number;
@@ -75,6 +77,34 @@ type PdfTextExtractionResult = {
   pageTexts: string[];
   totalPages: number;
 };
+
+type PdfTextExtractionContext = {
+  byteLength: number;
+  eofHint: boolean;
+  pdfName: string;
+  projectId: string;
+};
+
+type PromiseWithResolversCapability<T> = {
+  promise: Promise<T>;
+  reject: (reason?: unknown) => void;
+  resolve: (value: T | PromiseLike<T>) => void;
+};
+
+type PromiseConstructorWithResolvers = PromiseConstructor & {
+  withResolvers?: <T>() => PromiseWithResolversCapability<T>;
+};
+
+class PdfTextExtractionError extends Error {
+  code: "PDF_PASSWORD_REQUIRED" | "PDF_PARSE_FAILED";
+  detail: string;
+
+  constructor(code: "PDF_PASSWORD_REQUIRED" | "PDF_PARSE_FAILED", message: string, detail: string) {
+    super(message);
+    this.code = code;
+    this.detail = detail;
+  }
+}
 
 function getServiceHeaders(contentType = "application/json") {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -123,6 +153,57 @@ function formatSearchUpdatedAt(value: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function ensurePdfJsRuntimePolyfills() {
+  const promiseConstructor = Promise as PromiseConstructorWithResolvers;
+
+  promiseConstructor.withResolvers ??= function withResolvers<T>() {
+    let resolveCapability: (value: T | PromiseLike<T>) => void = () => undefined;
+    let rejectCapability: (reason?: unknown) => void = () => undefined;
+    const promise = new Promise<T>((resolve, reject) => {
+      resolveCapability = resolve;
+      rejectCapability = reject;
+    });
+
+    return {
+      promise,
+      reject: rejectCapability,
+      resolve: resolveCapability,
+    };
+  };
+}
+
+function getSafeBasename(path: string) {
+  return path.split("/").pop()?.replace(/[^\p{L}\p{N}._ -]/gu, "") || "original.pdf";
+}
+
+function hasPdfEofMarker(data: ArrayBuffer) {
+  const tailLength = Math.min(data.byteLength, 4096);
+  const tail = Buffer.from(data.slice(data.byteLength - tailLength)).toString("latin1");
+
+  return tail.includes("%%EOF");
+}
+
+function describePdfError(error: unknown) {
+  if (error instanceof Error) {
+    const name = error.name || "Error";
+    const message = error.message || "Unknown error";
+
+    return {
+      detail: `${name}: ${message}`.slice(0, 240),
+      message,
+      name,
+    };
+  }
+
+  const message = String(error);
+
+  return {
+    detail: message.slice(0, 240),
+    message,
+    name: "UnknownError",
+  };
 }
 
 export function makeSearchSnippet(text: string, query: string) {
@@ -284,32 +365,51 @@ async function downloadProjectPdf(pdfPath: string, headers: Record<string, strin
   };
 }
 
-export async function extractPdfPageTexts(data: ArrayBuffer): Promise<PdfTextExtractionResult> {
+export async function extractPdfPageTexts(data: ArrayBuffer, context: PdfTextExtractionContext): Promise<PdfTextExtractionResult> {
   let pdfjs: typeof import("pdfjs-dist/legacy/build/pdf.mjs");
 
   try {
+    ensurePdfJsRuntimePolyfills();
     pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   } catch (error) {
+    const parsedError = describePdfError(error);
+
     console.error("[ebook-search-index] pdfjs import failed", {
-      message: error instanceof Error ? error.message : String(error),
+      byteLength: context.byteLength,
+      errorMessage: parsedError.message,
+      errorName: parsedError.name,
+      eofHint: context.eofHint,
+      pdfName: context.pdfName,
+      projectId: context.projectId,
     });
-    throw new Error("PDFJS_IMPORT_FAILED");
+    throw new PdfTextExtractionError("PDF_PARSE_FAILED", "PDF 텍스트 추출 라이브러리를 불러오지 못했습니다.", parsedError.detail);
   }
 
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(data),
-    disableFontFace: true,
-    isOffscreenCanvasSupported: false,
-    stopAtErrors: false,
     useSystemFonts: true,
-    useWasm: false,
-    useWorkerFetch: false,
   });
   const pdf = await loadingTask.promise.catch((error: unknown) => {
+    const parsedError = describePdfError(error);
+
     console.error("[ebook-search-index] pdf parse failed", {
-      message: error instanceof Error ? error.message : String(error),
+      byteLength: context.byteLength,
+      errorMessage: parsedError.message,
+      errorName: parsedError.name,
+      eofHint: context.eofHint,
+      pdfName: context.pdfName,
+      projectId: context.projectId,
     });
-    throw new Error("PDF_PARSE_FAILED");
+
+    if (parsedError.name === "PasswordException" || /password/i.test(parsedError.message)) {
+      throw new PdfTextExtractionError(
+        "PDF_PASSWORD_REQUIRED",
+        "암호가 설정된 PDF는 검색 텍스트를 생성할 수 없습니다.",
+        parsedError.detail,
+      );
+    }
+
+    throw new PdfTextExtractionError("PDF_PARSE_FAILED", "PDF 텍스트 추출에 실패했습니다.", parsedError.detail);
   });
   const pageTexts: string[] = [];
   const failedPages: number[] = [];
@@ -494,19 +594,34 @@ export async function rebuildProjectEbookSearchIndex(projectSlug: string): Promi
   let extraction: PdfTextExtractionResult;
 
   try {
-    extraction = await extractPdfPageTexts(pdfDownload.data);
+    extraction = await extractPdfPageTexts(pdfDownload.data, {
+      byteLength: pdfDownload.size,
+      eofHint: hasPdfEofMarker(pdfDownload.data),
+      pdfName: getSafeBasename(pdfPath),
+      projectId: project.id,
+    });
   } catch (error) {
+    const extractionError =
+      error instanceof PdfTextExtractionError
+        ? error
+        : new PdfTextExtractionError("PDF_PARSE_FAILED", "PDF 텍스트 추출에 실패했습니다.", describePdfError(error).detail);
+
     console.error("[ebook-search-index] pdf text extraction failed", {
-      message: error instanceof Error ? error.message : String(error),
+      byteLength: pdfDownload.size,
+      detail: extractionError.detail,
+      eofHint: hasPdfEofMarker(pdfDownload.data),
+      message: extractionError.message,
+      pdfName: getSafeBasename(pdfPath),
       pdfSize: pdfDownload.size,
       projectId: project.id,
     });
 
     return {
       ok: false,
-      error: "PDF_PARSE_FAILED",
+      error: extractionError.code,
+      detail: extractionError.detail,
       status: "request_failed",
-      message: "PDF 텍스트 추출에 실패했습니다.",
+      message: extractionError.message,
       httpStatus: 500,
     };
   }

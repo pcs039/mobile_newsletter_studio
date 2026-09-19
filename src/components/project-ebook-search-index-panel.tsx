@@ -10,6 +10,7 @@ type ProjectEbookSearchIndexPanelProps = {
 };
 
 type RebuildResult = {
+  detail?: string;
   emptyPages?: number;
   error?: string;
   extractedPages?: number;
@@ -38,8 +39,9 @@ export function ProjectEbookSearchIndexPanel({ projectSlug, status }: ProjectEbo
 
       if (!response.ok || !result?.ok) {
         const errorLabel = result?.error ? ` (${result.error})` : "";
+        const detailLabel = result?.detail ? ` 세부: ${result.detail}` : "";
 
-        setMessage(`${result?.message ?? "검색 텍스트를 생성하지 못했습니다."}${errorLabel}`);
+        setMessage(`${result?.message ?? "검색 텍스트를 생성하지 못했습니다."}${errorLabel}${detailLabel}`);
         return;
       }
 
