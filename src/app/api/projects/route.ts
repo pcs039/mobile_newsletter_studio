@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
+import { getValidExternalEbookUrl, normalizeEbookSource } from "@/lib/ebook-source";
 import {
   archiveNewsletterProject,
   createNewsletterProject,
@@ -14,6 +15,7 @@ export const dynamic = "force-dynamic";
 const projectStatuses = ["draft", "in_review", "published", "private", "archived"] as const;
 const packageTiers = ["basic", "standard", "advanced", "premium", "retainer"] as const;
 const productionModes = ["template", "hybrid", "full_image", "external_ebook", "ocr_assist"] as const;
+const ebookSources = ["internal", "external"] as const;
 const coverLayouts = ["image", "image_info", "image_overlay"] as const;
 const coverFits = ["contain", "cover"] as const;
 
@@ -32,6 +34,27 @@ function normalizeSlug(value: string) {
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/-{2,}/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function resolveEbookSourceInput(payload: Record<string, unknown>) {
+  const ebookSource = isOneOf(payload.ebookSource, ebookSources)
+    ? payload.ebookSource
+    : normalizeEbookSource(payload.ebookSource);
+  const rawExternalEbookUrl = asOptionalText(payload.externalEbookUrl);
+  const validExternalEbookUrl = getValidExternalEbookUrl(rawExternalEbookUrl);
+
+  if (ebookSource === "external" && !validExternalEbookUrl) {
+    return {
+      ok: false as const,
+      message: "외부 e-book 연결을 선택한 경우 http:// 또는 https://로 시작하는 유효한 URL을 입력하세요.",
+    };
+  }
+
+  return {
+    ok: true as const,
+    ebookSource,
+    externalEbookUrl: ebookSource === "external" ? validExternalEbookUrl ?? "" : rawExternalEbookUrl,
+  };
 }
 
 export async function POST(request: Request) {
@@ -57,8 +80,13 @@ export async function POST(request: Request) {
   const slug = normalizeSlug(asOptionalText(payload.slug));
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
   const projectPassword = asOptionalText(payload.projectPassword);
+  const ebookInput = resolveEbookSourceInput(payload);
   const coverLayout = isOneOf(payload.coverLayout, coverLayouts) ? payload.coverLayout : "image";
   const coverFit = isOneOf(payload.coverFit, coverFits) ? payload.coverFit : "contain";
+
+  if (!ebookInput.ok) {
+    return NextResponse.json({ ok: false, message: ebookInput.message }, { status: 400 });
+  }
 
   if (!title || !organizationName || !assigneeName || !publishedDate || !slug) {
     return NextResponse.json(
@@ -104,6 +132,8 @@ export async function POST(request: Request) {
     status: payload.status,
     packageTier: payload.packageTier,
     productionMode: payload.productionMode,
+    ebookSource: ebookInput.ebookSource,
+    externalEbookUrl: ebookInput.externalEbookUrl,
     estimatedHours: asOptionalText(payload.estimatedHours),
     designerHoursCap: asOptionalText(payload.designerHoursCap),
     titleFontAssetId: asOptionalText(payload.titleFontAssetId),
@@ -189,8 +219,13 @@ export async function PATCH(request: Request) {
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
   const projectPassword = asOptionalText(payload.projectPassword);
   const clearProjectPassword = payload.clearProjectPassword === true;
+  const ebookInput = resolveEbookSourceInput(payload);
   const coverLayout = isOneOf(payload.coverLayout, coverLayouts) ? payload.coverLayout : "image";
   const coverFit = isOneOf(payload.coverFit, coverFits) ? payload.coverFit : "contain";
+
+  if (!ebookInput.ok) {
+    return NextResponse.json({ ok: false, message: ebookInput.message }, { status: 400 });
+  }
 
   if (!projectId) {
     return NextResponse.json(
@@ -237,6 +272,8 @@ export async function PATCH(request: Request) {
     status: payload.status,
     packageTier: payload.packageTier,
     productionMode: payload.productionMode,
+    ebookSource: ebookInput.ebookSource,
+    externalEbookUrl: ebookInput.externalEbookUrl,
     estimatedHours: asOptionalText(payload.estimatedHours),
     designerHoursCap: asOptionalText(payload.designerHoursCap),
     titleFontAssetId: asOptionalText(payload.titleFontAssetId),
