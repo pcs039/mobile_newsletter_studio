@@ -3,6 +3,7 @@ import { PublicMobileEbookViewer } from "@/components/public-mobile-ebook-viewer
 import { getUsableEbookPages } from "@/lib/ebook-pages";
 import {
   getProjectAudioFiles,
+  getProjectOriginalPdf,
   getProjectPageImages,
   getProjectWorkspace,
   makePublicStoragePreviewHref,
@@ -47,10 +48,11 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
   const pageParam = getSearchParamValue(resolvedSearchParams?.page);
   const isAdminPreview = hasSearchParamValue(previewMode, "admin");
   const isEmbeddedAdminPreview = hasSearchParamValue(embeddedMode, "adminPreview");
-  const [workspace, pageImageData, audioData] = await Promise.all([
+  const [workspace, pageImageData, audioData, originalPdfData] = await Promise.all([
     getProjectWorkspace(slug),
     getProjectPageImages(slug),
     getProjectAudioFiles(slug),
+    getProjectOriginalPdf(slug),
   ]);
   const project = workspace.project;
   const isPublished = project?.status === "발행 완료";
@@ -80,6 +82,7 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
   const desktopEbookHref = isAdminPreview ? `/newsletters/${slug}/ebook?preview=admin` : `/newsletters/${slug}/ebook`;
   const publicAudioFile = audioData.files[0] ?? null;
   const publicAudioSrc = publicAudioFile ? makePublicStoragePreviewHref("audio-files", publicAudioFile.filePath) : null;
+  const pdfDownloadHref = isPublished && originalPdfData.pdf ? `/api/public/newsletters/${slug}/ebook/original-pdf` : null;
 
   if (pages.length === 0) {
     return (
@@ -100,6 +103,7 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
         isEmbeddedAdminPreview={isEmbeddedAdminPreview}
         mobileReadingHref={mobileReadingHref}
         pages={pages}
+        pdfDownloadHref={pdfDownloadHref}
         projectIssue={project.issue}
         projectTitle={project.title}
         publicAudio={publicAudioSrc ? { src: publicAudioSrc, title: publicAudioFile?.title } : undefined}
