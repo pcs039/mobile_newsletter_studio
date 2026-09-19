@@ -1,3 +1,7 @@
+import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
 export type EbookPageSearchStatus = {
@@ -95,6 +99,8 @@ type PromiseConstructorWithResolvers = PromiseConstructor & {
   withResolvers?: <T>() => PromiseWithResolversCapability<T>;
 };
 
+type PdfJsModule = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+
 class PdfTextExtractionError extends Error {
   code: "PDF_PASSWORD_REQUIRED" | "PDF_PARSE_FAILED";
   detail: string;
@@ -172,6 +178,41 @@ function ensurePdfJsRuntimePolyfills() {
       resolve: resolveCapability,
     };
   };
+}
+
+function resolvePdfJsWorkerPath() {
+  const require = createRequire(import.meta.url);
+  const packageJsonPath = require.resolve("pdfjs-dist/package.json");
+
+  return path.join(path.dirname(packageJsonPath), "legacy/build/pdf.worker.mjs");
+}
+
+function configurePdfJsWorker(pdfjs: PdfJsModule, context: PdfTextExtractionContext) {
+  try {
+    const workerPath = resolvePdfJsWorkerPath();
+    const exists = existsSync(workerPath);
+
+    if (!exists) {
+      console.error("[ebook-search-index] pdf worker not found", {
+        exists,
+        pdfName: context.pdfName,
+        projectId: context.projectId,
+        workerPath,
+      });
+      return;
+    }
+
+    pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
+  } catch (error) {
+    const parsedError = describePdfError(error);
+
+    console.error("[ebook-search-index] pdf worker resolve failed", {
+      errorMessage: parsedError.message,
+      errorName: parsedError.name,
+      pdfName: context.pdfName,
+      projectId: context.projectId,
+    });
+  }
 }
 
 function getSafeBasename(path: string) {
@@ -366,11 +407,12 @@ async function downloadProjectPdf(pdfPath: string, headers: Record<string, strin
 }
 
 export async function extractPdfPageTexts(data: ArrayBuffer, context: PdfTextExtractionContext): Promise<PdfTextExtractionResult> {
-  let pdfjs: typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+  let pdfjs: PdfJsModule;
 
   try {
     ensurePdfJsRuntimePolyfills();
     pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    configurePdfJsWorker(pdfjs, context);
   } catch (error) {
     const parsedError = describePdfError(error);
 
