@@ -23,6 +23,7 @@ type ArticleAudioManifest = {
 
 const playbackRateStorageKey = "datadiction_audio_playback_rate";
 const legacyPlaybackRateStorageKey = "datadiction_audio_speed";
+const stopArticleAudioEventName = "datadiction:stop-article-audio";
 const playbackRateOptions = [0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 
 function normalizePlaybackRate(value: number) {
@@ -63,6 +64,8 @@ export function PublicArticleAudioPlayer({
   const [loadState, setLoadState] = useState<"idle" | "loading" | "ready" | "error">(
     isAiGenerated ? "loading" : "ready",
   );
+  const shouldContinueSegmentRef = useRef(false);
+  const playerSourceKey = `${isAiGenerated ? "ai" : "uploaded"}:${manifestUrl || src}`;
 
   useEffect(() => {
     if (audioRef.current) {
@@ -76,44 +79,99 @@ export function PublicArticleAudioPlayer({
     }
   }, [playbackRate]);
 
-  useEffect(() => {
-    if (!isAiGenerated || !manifestUrl) {
-      return;
-    }
-
-    let isMounted = true;
-
-    fetch(manifestUrl, { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((manifest: ArticleAudioManifest | null) => {
-        if (!isMounted) {
-          return;
-        }
-
-        const nextSegments = manifest?.hasAudio ? manifest.segments : [];
-
-        setSegments(nextSegments);
-        setSegmentIndex(0);
-        setLoadState(nextSegments.length > 0 ? "ready" : "error");
-      })
-      .catch(() => {
-        if (isMounted) {
-          setLoadState("error");
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isAiGenerated, manifestUrl]);
-
   const applyPlaybackRate = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.playbackRate = playbackRate;
     }
   }, [playbackRate]);
 
-  async function toggleAiAudio() {
+  const stopAudio = useCallback((options: { clearSource?: boolean } = {}) => {
+    const audio = audioRef.current;
+
+    shouldContinueSegmentRef.current = false;
+
+    if (audio) {
+      audio.pause();
+
+      try {
+        audio.currentTime = 0;
+      } catch {
+        // Some mobile browsers can reject currentTime before metadata is ready.
+      }
+
+      if (options.clearSource) {
+        audio.removeAttribute("src");
+        audio.load();
+      }
+    }
+
+    setIsPlaying(false);
+    setSegmentIndex(0);
+  }, []);
+
+  useEffect(() => {
+    function stopRequestedArticleAudio() {
+      stopAudio();
+    }
+
+    window.addEventListener(stopArticleAudioEventName, stopRequestedArticleAudio);
+
+    return () => {
+      window.removeEventListener(stopArticleAudioEventName, stopRequestedArticleAudio);
+      stopAudio({ clearSource: true });
+    };
+  }, [stopAudio]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const resetTimer = window.setTimeout(() => {
+      if (!isMounted) {
+        return;
+      }
+
+      stopAudio();
+      setSegments([]);
+      setSegmentIndex(0);
+      setLoadState(isAiGenerated ? "loading" : src ? "ready" : "error");
+
+      if (!isAiGenerated) {
+        setSegments(src ? [{ index: 0, url: src }] : []);
+        return;
+      }
+
+      if (!manifestUrl) {
+        setLoadState("error");
+        return;
+      }
+
+      fetch(manifestUrl, { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((manifest: ArticleAudioManifest | null) => {
+          if (!isMounted) {
+            return;
+          }
+
+          const nextSegments = manifest?.hasAudio ? manifest.segments : [];
+
+          setSegments(nextSegments);
+          setSegmentIndex(0);
+          setLoadState(nextSegments.length > 0 ? "ready" : "error");
+        })
+        .catch(() => {
+          if (isMounted) {
+            setLoadState("error");
+          }
+        });
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(resetTimer);
+    };
+  }, [isAiGenerated, manifestUrl, playerSourceKey, src, stopAudio]);
+
+  async function toggleAudio() {
     const audio = audioRef.current;
 
     if (!audio || loadState !== "ready" || segments.length === 0) {
@@ -126,85 +184,72 @@ export function PublicArticleAudioPlayer({
       return;
     }
 
+    shouldContinueSegmentRef.current = false;
     applyPlaybackRate();
     await audio.play().catch(() => undefined);
     setIsPlaying(!audio.paused);
   }
 
-  function handleAiEnded() {
+  function handleEnded() {
     if (segmentIndex < segments.length - 1) {
+      shouldContinueSegmentRef.current = true;
       setSegmentIndex((current) => current + 1);
       return;
     }
 
+    shouldContinueSegmentRef.current = false;
     setIsPlaying(false);
     setSegmentIndex(0);
   }
 
   useEffect(() => {
-    if (!isAiGenerated || !isPlaying || !audioRef.current) {
+    if (!shouldContinueSegmentRef.current || !isPlaying || !audioRef.current) {
       return;
     }
 
+    shouldContinueSegmentRef.current = false;
     applyPlaybackRate();
     void audioRef.current.play().catch(() => setIsPlaying(false));
-  }, [applyPlaybackRate, isAiGenerated, isPlaying, segmentIndex]);
+  }, [applyPlaybackRate, isPlaying, segmentIndex]);
 
-  if (isAiGenerated) {
-    const currentSrc = segments[segmentIndex]?.url ?? "";
-
-    return (
-      <div className={`space-y-2 ${className}`}>
-        <audio
-          ref={audioRef}
-          aria-label={ariaLabel}
-          onCanPlay={applyPlaybackRate}
-          onEnded={handleAiEnded}
-          onLoadedMetadata={applyPlaybackRate}
-          onPause={() => setIsPlaying(false)}
-          onPlay={() => setIsPlaying(true)}
-          preload="metadata"
-          src={currentSrc}
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              void toggleAiAudio();
-            }}
-            disabled={loadState !== "ready" || segments.length === 0}
-            className="dd-btn dd-btn-primary dd-btn-sm min-w-20 justify-center disabled:pointer-events-none disabled:opacity-50"
-          >
-            {isPlaying ? "일시정지" : "재생"}
-          </button>
-          <span className="text-xs font-bold text-slate-600">
-            {loadState === "loading"
-              ? "AI 음성 준비 중"
-              : loadState === "error"
-                ? "AI 음성을 준비하지 못했습니다."
-                : segments.length > 1
-                  ? `${segmentIndex + 1} / ${segments.length}`
-                  : "AI 음성"}
-          </span>
-        </div>
-        <PlaybackRateSelect playbackRate={playbackRate} setPlaybackRate={setPlaybackRate} />
-      </div>
-    );
-  }
+  const currentSrc = segments[segmentIndex]?.url ?? "";
+  const isReady = loadState === "ready" && segments.length > 0;
 
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-1.5 ${className}`}>
       <audio
         ref={audioRef}
         aria-label={ariaLabel}
-        className="h-9 w-full rounded-md"
-        controls
         onCanPlay={applyPlaybackRate}
+        onEnded={handleEnded}
         onLoadedMetadata={applyPlaybackRate}
+        onPause={() => setIsPlaying(false)}
+        onPlay={() => setIsPlaying(true)}
         preload="metadata"
-        src={src}
+        src={currentSrc}
       />
-      <PlaybackRateSelect playbackRate={playbackRate} setPlaybackRate={setPlaybackRate} />
+      <div className="flex min-h-10 items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            void toggleAudio();
+          }}
+          disabled={!isReady}
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#b8d7ff] bg-white text-sm font-black text-[#092046] shadow-sm transition hover:bg-[#eef6ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] disabled:pointer-events-none disabled:opacity-45"
+          aria-label={isPlaying ? "기사 음성 일시정지" : "기사 음성 재생"}
+        >
+          {isPlaying ? "⏸" : "▶"}
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-black text-[#092046]">
+            {loadState === "loading" ? "음성 준비 중" : loadState === "error" ? "음성 준비 실패" : isPlaying ? "듣는 중" : "기사 듣기"}
+          </p>
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-200">
+            <div className={`h-full rounded-full bg-[#2f73b7] ${isPlaying ? "w-2/3" : "w-0"} transition-all duration-300`} />
+          </div>
+        </div>
+        <PlaybackRateSelect playbackRate={playbackRate} setPlaybackRate={setPlaybackRate} />
+      </div>
     </div>
   );
 }

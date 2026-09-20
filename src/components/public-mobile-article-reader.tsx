@@ -96,6 +96,7 @@ type ResolvedArticleMotionSettings = {
 const mobileReaderQuery = "(max-width: 767px)";
 const openMobileArticleTocEventName = "datadiction:open-mobile-article-toc";
 const playPageTurnSoundEventName = "datadiction:play-page-turn-sound";
+const stopArticleAudioEventName = "datadiction:stop-article-audio";
 const pageTurnSoundPreferenceEventName = "datadiction:page-turn-sound-preference";
 const pageTurnSoundStorageKey = "datadiction_page_turn_sound";
 const swipeThreshold = 70;
@@ -968,16 +969,15 @@ function ArticleCard({
         </ScrollMotionReveal>
       ) : null}
       {shouldShowArticleAudio && article.audioFile ? (
-        <section className="mt-4 rounded-xl border border-[#b8d7ff] bg-[#f4f8ff] px-3 py-2.5">
-          <p className="text-sm font-black text-[#092046]">음성으로 듣기</p>
+        <section className="mt-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
           {hasAiArticleAudio ? (
-            <p className="mt-1 text-xs font-bold leading-5 text-[#184a88]">
+            <p className="mb-1 text-[11px] font-bold leading-4 text-[#184a88]">
               AI가 생성한 음성입니다.
             </p>
           ) : null}
           <PublicArticleAudioPlayer
+            key={`${article.id}-${article.audioSource}-${article.audioFile.id}`}
             ariaLabel={`${articleTitle} 음성으로 듣기`}
-            className="mt-2"
             isAiGenerated={hasAiArticleAudio}
             manifestUrl={
               hasAiArticleAudio
@@ -987,8 +987,8 @@ function ArticleCard({
             src={article.audioFile.previewHref}
           />
           {article.audioFile.transcriptText ? (
-            <details className="mt-3 rounded-xl border border-[#d8e7fb] bg-white px-3 py-2">
-              <summary className="cursor-pointer text-sm font-black text-[#092046]">음성 대본 보기</summary>
+            <details className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <summary className="cursor-pointer text-xs font-black text-[#092046]">음성 대본 보기</summary>
               <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
                 음성 파일 제작에 사용된 낭독문입니다.
               </p>
@@ -1170,6 +1170,10 @@ export function PublicMobileArticleReader({
     }).catch(() => undefined);
   }
 
+  function stopCurrentArticleAudio() {
+    window.dispatchEvent(new Event(stopArticleAudioEventName));
+  }
+
   function scrollToReaderTop() {
     articleTopRef.current?.scrollIntoView({
       behavior: prefersReducedMotion() ? "auto" : "smooth",
@@ -1182,6 +1186,7 @@ export function PublicMobileArticleReader({
       return false;
     }
 
+    stopCurrentArticleAudio();
     setIsCoverView(true);
     scrollToReaderTop();
     playPageTurnSound();
@@ -1193,6 +1198,7 @@ export function PublicMobileArticleReader({
       return;
     }
 
+    stopCurrentArticleAudio();
     setCurrentIndex(0);
     setIsCoverView(false);
     scrollToReaderTop();
@@ -1210,6 +1216,7 @@ export function PublicMobileArticleReader({
       return false;
     }
 
+    stopCurrentArticleAudio();
     setCurrentIndex(clampedIndex);
     setIsCoverView(false);
 
@@ -1245,6 +1252,7 @@ export function PublicMobileArticleReader({
       return;
     }
 
+    stopCurrentArticleAudio();
     if (prefersReducedMotion()) {
       goToArticle(clampedIndex, { playSound: true });
       return;
