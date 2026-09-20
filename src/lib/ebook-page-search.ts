@@ -1,7 +1,4 @@
-import { existsSync } from "node:fs";
-import { createRequire } from "node:module";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { extractText, getDocumentProxy } from "unpdf";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
 export type EbookPageSearchStatus = {
@@ -89,17 +86,7 @@ type PdfTextExtractionContext = {
   projectId: string;
 };
 
-type PromiseWithResolversCapability<T> = {
-  promise: Promise<T>;
-  reject: (reason?: unknown) => void;
-  resolve: (value: T | PromiseLike<T>) => void;
-};
-
-type PromiseConstructorWithResolvers = PromiseConstructor & {
-  withResolvers?: <T>() => PromiseWithResolversCapability<T>;
-};
-
-type PdfJsModule = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+const maxSearchIndexPdfPages = 500;
 
 class PdfTextExtractionError extends Error {
   code: "PDF_PASSWORD_REQUIRED" | "PDF_PARSE_FAILED";
@@ -159,60 +146,6 @@ function formatSearchUpdatedAt(value: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
-}
-
-function ensurePdfJsRuntimePolyfills() {
-  const promiseConstructor = Promise as PromiseConstructorWithResolvers;
-
-  promiseConstructor.withResolvers ??= function withResolvers<T>() {
-    let resolveCapability: (value: T | PromiseLike<T>) => void = () => undefined;
-    let rejectCapability: (reason?: unknown) => void = () => undefined;
-    const promise = new Promise<T>((resolve, reject) => {
-      resolveCapability = resolve;
-      rejectCapability = reject;
-    });
-
-    return {
-      promise,
-      reject: rejectCapability,
-      resolve: resolveCapability,
-    };
-  };
-}
-
-function resolvePdfJsWorkerPath() {
-  const require = createRequire(import.meta.url);
-  const packageJsonPath = require.resolve("pdfjs-dist/package.json");
-
-  return path.join(path.dirname(packageJsonPath), "legacy/build/pdf.worker.mjs");
-}
-
-function configurePdfJsWorker(pdfjs: PdfJsModule, context: PdfTextExtractionContext) {
-  try {
-    const workerPath = resolvePdfJsWorkerPath();
-    const exists = existsSync(workerPath);
-
-    if (!exists) {
-      console.error("[ebook-search-index] pdf worker not found", {
-        exists,
-        pdfName: context.pdfName,
-        projectId: context.projectId,
-        workerPath,
-      });
-      return;
-    }
-
-    pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
-  } catch (error) {
-    const parsedError = describePdfError(error);
-
-    console.error("[ebook-search-index] pdf worker resolve failed", {
-      errorMessage: parsedError.message,
-      errorName: parsedError.name,
-      pdfName: context.pdfName,
-      projectId: context.projectId,
-    });
-  }
 }
 
 function getSafeBasename(path: string) {
@@ -407,31 +340,32 @@ async function downloadProjectPdf(pdfPath: string, headers: Record<string, strin
 }
 
 export async function extractPdfPageTexts(data: ArrayBuffer, context: PdfTextExtractionContext): Promise<PdfTextExtractionResult> {
-  let pdfjs: PdfJsModule;
+  let pdf: Awaited<ReturnType<typeof getDocumentProxy>> | null = null;
 
   try {
-    ensurePdfJsRuntimePolyfills();
-    pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    configurePdfJsWorker(pdfjs, context);
+    pdf = await getDocumentProxy(new Uint8Array(data));
+
+    if (pdf.numPages > maxSearchIndexPdfPages) {
+      throw new PdfTextExtractionError(
+        "PDF_PARSE_FAILED",
+        `PDF가 ${maxSearchIndexPdfPages}쪽을 초과해 검색 텍스트를 생성하지 않았습니다.`,
+        `PageLimitExceeded: ${pdf.numPages} pages`,
+      );
+    }
+
+    const result = await extractText(pdf, { mergePages: false });
+    const pageTexts = result.text.map((text) => normalizeExtractedText(text));
+
+    return {
+      failedPages: [],
+      pageTexts,
+      totalPages: result.totalPages,
+    };
   } catch (error) {
-    const parsedError = describePdfError(error);
+    if (error instanceof PdfTextExtractionError) {
+      throw error;
+    }
 
-    console.error("[ebook-search-index] pdfjs import failed", {
-      byteLength: context.byteLength,
-      errorMessage: parsedError.message,
-      errorName: parsedError.name,
-      eofHint: context.eofHint,
-      pdfName: context.pdfName,
-      projectId: context.projectId,
-    });
-    throw new PdfTextExtractionError("PDF_PARSE_FAILED", "PDF 텍스트 추출 라이브러리를 불러오지 못했습니다.", parsedError.detail);
-  }
-
-  const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(data),
-    useSystemFonts: true,
-  });
-  const pdf = await loadingTask.promise.catch((error: unknown) => {
     const parsedError = describePdfError(error);
 
     console.error("[ebook-search-index] pdf parse failed", {
@@ -452,39 +386,13 @@ export async function extractPdfPageTexts(data: ArrayBuffer, context: PdfTextExt
     }
 
     throw new PdfTextExtractionError("PDF_PARSE_FAILED", "PDF 텍스트 추출에 실패했습니다.", parsedError.detail);
-  });
-  const pageTexts: string[] = [];
-  const failedPages: number[] = [];
-
-  try {
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      try {
-        const page = await pdf.getPage(pageNumber);
-        const textContent = await page.getTextContent();
-        const text = textContent.items
-          .map((item) => ("str" in item ? item.str : ""))
-          .filter(Boolean)
-          .join(" ");
-
-        pageTexts.push(normalizeExtractedText(text));
-      } catch (error) {
-        console.error("[ebook-search-index] page text extraction failed", {
-          message: error instanceof Error ? error.message : String(error),
-          pageNumber,
-        });
-        failedPages.push(pageNumber);
-        pageTexts.push("");
-      }
-    }
   } finally {
-    await loadingTask.destroy();
-  }
+    const destroy = (pdf as { destroy?: () => Promise<void> | void } | null)?.destroy;
 
-  return {
-    failedPages,
-    pageTexts,
-    totalPages: pdf.numPages,
-  };
+    if (typeof destroy === "function") {
+      await destroy.call(pdf);
+    }
+  }
 }
 
 export async function getProjectEbookSearchStatus(projectSlug: string): Promise<EbookPageSearchStatus> {
