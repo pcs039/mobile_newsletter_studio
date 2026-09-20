@@ -71,6 +71,7 @@ const defaultVoice: ArticleTtsVoice = "marin";
 const targetChunkLength = 1200;
 const minimumSplitChunkLength = 400;
 const maxRawArticleTextLength = 80_000;
+export const ARTICLE_TTS_NORMALIZATION_VERSION = "ko-v1";
 
 export function normalizeArticleAudioSource(value: string | null | undefined, hasUploadedAudio: boolean): ArticleAudioSource {
   if (value === "uploaded" || value === "ai_tts" || value === "none") {
@@ -129,8 +130,144 @@ function normalizeNarrationText(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+const koreanWeekdayLabels: Record<string, string> = {
+  금: "금요일",
+  목: "목요일",
+  수: "수요일",
+  월: "월요일",
+  일: "일요일",
+  토: "토요일",
+  화: "화요일",
+};
+
+function parseDatePart(value: string) {
+  return Number.parseInt(value, 10);
+}
+
+function isValidYear(value: number) {
+  return Number.isInteger(value) && value >= 1900 && value <= 2199;
+}
+
+function isValidMonth(value: number) {
+  return Number.isInteger(value) && value >= 1 && value <= 12;
+}
+
+function isValidDay(value: number) {
+  return Number.isInteger(value) && value >= 1 && value <= 31;
+}
+
+function isValidFullDate(year: number, month: number, day: number) {
+  if (!isValidYear(year) || !isValidMonth(month) || !isValidDay(day)) {
+    return false;
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function formatYearMonthDay(year: number, month: number, day: number) {
+  return `${year}년 ${month}월 ${day}일`;
+}
+
+function formatYearMonth(year: number, month: number) {
+  return `${year}년 ${month}월`;
+}
+
+function formatMonthDay(month: number, day: number) {
+  return `${month}월 ${day}일`;
+}
+
+function isLikelyCompactMonthDay(month: number, day: number) {
+  return month >= 4 && day >= 13;
+}
+
+export function normalizeKoreanTtsText(text: string) {
+  let value = normalizeNarrationText(text);
+
+  value = value.replace(
+    /(^|[^\d./-])((?:19|20|21)\d{2})\s*([./-])\s*(\d{1,2})\s*\3\s*(\d{1,2})\s*\.?\s*\(([월화수목금토일])\)/g,
+    (match, prefix: string, yearValue: string, _separator: string, monthValue: string, dayValue: string, weekdayValue: string) => {
+      const year = parseDatePart(yearValue);
+      const month = parseDatePart(monthValue);
+      const day = parseDatePart(dayValue);
+
+      if (!isValidFullDate(year, month, day)) {
+        return match;
+      }
+
+      return `${prefix}${formatYearMonthDay(year, month, day)} ${koreanWeekdayLabels[weekdayValue]}`;
+    },
+  );
+
+  value = value.replace(
+    /(^|[^\d./-])((?:19|20|21)\d{2})\s*([./-])\s*(\d{1,2})\s*\3\s*(\d{1,2})\.?(?=$|[^\d./-])/g,
+    (match, prefix: string, yearValue: string, _separator: string, monthValue: string, dayValue: string) => {
+      const year = parseDatePart(yearValue);
+      const month = parseDatePart(monthValue);
+      const day = parseDatePart(dayValue);
+
+      if (!isValidFullDate(year, month, day)) {
+        return match;
+      }
+
+      return `${prefix}${formatYearMonthDay(year, month, day)}`;
+    },
+  );
+
+  value = value.replace(
+    /(^|[^\d./-])((?:19|20|21)\d{2})\s*([./-])\s*(\d{1,2})\.?(?=$|[^\d./-])/g,
+    (match, prefix: string, yearValue: string, _separator: string, monthValue: string) => {
+      const year = parseDatePart(yearValue);
+      const month = parseDatePart(monthValue);
+
+      if (!isValidYear(year) || !isValidMonth(month)) {
+        return match;
+      }
+
+      return `${prefix}${formatYearMonth(year, month)}`;
+    },
+  );
+
+  value = value.replace(
+    /(^|[^\d./-])(\d{1,2})(\s*)([./])(\s*)(\d{1,2})(\.?)(?=$|[^\d%배조점./-])/g,
+    (
+      match,
+      prefix: string,
+      monthValue: string,
+      spacingBeforeSeparator: string,
+      separator: string,
+      spacingAfterSeparator: string,
+      dayValue: string,
+      trailingDot: string,
+    ) => {
+      const month = parseDatePart(monthValue);
+      const day = parseDatePart(dayValue);
+
+      if (!isValidMonth(month) || !isValidDay(day)) {
+        return match;
+      }
+
+      const hasDateFormattingHint =
+        separator === "/" ||
+        Boolean(spacingBeforeSeparator || spacingAfterSeparator || trailingDot) ||
+        isLikelyCompactMonthDay(month, day);
+
+      if (!hasDateFormattingHint) {
+        return match;
+      }
+
+      return `${prefix}${formatMonthDay(month, day)}`;
+    },
+  );
+
+  return normalizeNarrationText(value);
+}
+
 function hashNarrationText(value: string) {
-  return createHash("sha256").update(normalizeNarrationText(value), "utf8").digest("hex");
+  return createHash("sha256")
+    .update(`${ARTICLE_TTS_NORMALIZATION_VERSION}\n${normalizeKoreanTtsText(value)}`, "utf8")
+    .digest("hex");
 }
 
 function getAudioPaths(value: unknown) {
@@ -142,7 +279,7 @@ function getAudioPaths(value: unknown) {
 }
 
 export function chunkArticleTtsText(text: string, maxLength = targetChunkLength) {
-  const normalized = normalizeNarrationText(text);
+  const normalized = normalizeKoreanTtsText(text);
 
   if (!normalized) {
     return [];
@@ -296,21 +433,14 @@ async function findAudioById(audioId: string | null, projectId: string, headers:
   return rows[0] ?? null;
 }
 
-export async function buildArticleNarrationText(article: ArticleRow, blocks: BlockRow[], audio: AudioRow | null) {
-  const script = audio?.script_text?.trim() ?? "";
+export async function buildArticleNarrationText(article: ArticleRow, blocks: BlockRow[], _audio: AudioRow | null) {
+  void _audio;
 
-  if (script) {
-    return script;
-  }
-
-  const parts = [
-    article.display_title?.trim() || article.title.trim(),
-    article.summary?.trim() ?? "",
-    article.body?.trim() ?? "",
-    ...blocks
-      .filter((block) => block.is_visible && ["paragraph", "audio"].includes(block.block_type))
-      .map((block) => [block.title, block.body].filter(Boolean).join("\n").trim()),
-  ].filter(Boolean);
+  const paragraphParts = blocks
+    .filter((block) => block.is_visible && block.block_type === "paragraph")
+    .map((block) => block.body?.trim() ?? "")
+    .filter(Boolean);
+  const parts = paragraphParts.length > 0 ? paragraphParts : [article.body?.trim() ?? ""].filter(Boolean);
 
   return normalizeNarrationText(parts.join("\n\n"));
 }
@@ -366,7 +496,7 @@ async function requestOpenAiSpeech(input: string, voice: ArticleTtsVoice, model:
     },
     body: JSON.stringify({
       input,
-      instructions: "한국어 공공기관 모바일 소식지 기사를 차분하고 또렷하며 자연스럽게 읽어주세요. 원문에 없는 내용을 추가하거나 요약하지 마세요.",
+      instructions: "한국어 공공기관 모바일 소식지 기사 본문을 차분하고 또렷하며 자연스럽게 읽어주세요. 원문에 없는 내용을 추가하거나 요약하지 마세요.",
       model,
       response_format: "mp3",
       voice,
