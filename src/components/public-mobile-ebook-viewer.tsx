@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { EbookTtsPanel } from "@/components/ebook-tts-panel";
 import { EbookSearchPanel } from "@/components/ebook-search-panel";
 import { PublicAudioPlayer } from "@/components/public-audio-player";
+import { useEbookTts } from "@/hooks/use-ebook-tts";
 import { getAudioSyncedPageNumber } from "@/lib/audio-page-sync";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
 
@@ -96,6 +98,7 @@ export function PublicMobileEbookViewer({
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isPageListOpen, setIsPageListOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isTtsOpen, setIsTtsOpen] = useState(false);
   const [pageInputValue, setPageInputValue] = useState(String(initialPageNumber));
   const [utilityMessage, setUtilityMessage] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -160,15 +163,26 @@ export function PublicMobileEbookViewer({
     goToIndex(nextIndex);
   }, [disableFollowPagesForManualNavigation, goToIndex, pages]);
 
+  const tts = useEbookTts({
+    currentIndex,
+    enabled: searchEnabled,
+    onNavigateToIndex: goToIndex,
+    pages,
+    slug,
+  });
+  const cancelTts = tts.cancel;
+
   const goToPreviousPage = useCallback(() => {
+    cancelTts();
     disableFollowPagesForManualNavigation();
     goToIndex(currentIndex - pageStep);
-  }, [currentIndex, disableFollowPagesForManualNavigation, goToIndex, pageStep]);
+  }, [cancelTts, currentIndex, disableFollowPagesForManualNavigation, goToIndex, pageStep]);
 
   const goToNextPage = useCallback(() => {
+    cancelTts();
     disableFollowPagesForManualNavigation();
     goToIndex(currentIndex + pageStep);
-  }, [currentIndex, disableFollowPagesForManualNavigation, goToIndex, pageStep]);
+  }, [cancelTts, currentIndex, disableFollowPagesForManualNavigation, goToIndex, pageStep]);
 
   const syncPageToAudioTime = useCallback((nextTime: number) => {
     const syncedPageNumber = getAudioSyncedPageNumber(nextTime, audioDuration, pages.length);
@@ -251,6 +265,7 @@ export function PublicMobileEbookViewer({
     const requestedPageNumber = Number.parseInt(pageInputValue, 10);
     const clampedPageNumber = clamp(Number.isNaN(requestedPageNumber) ? currentPage?.pageNumber ?? 1 : requestedPageNumber, 1, pages.length);
 
+    cancelTts();
     goToPageNumber(clampedPageNumber, true);
   }
 
@@ -364,7 +379,10 @@ export function PublicMobileEbookViewer({
               <div className="grid gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsPageListOpen(true)}
+                  onClick={() => {
+                    setIsTtsOpen(false);
+                    setIsPageListOpen(true);
+                  }}
                   className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs"
                   aria-label="페이지 목록 열기"
                 >
@@ -372,11 +390,28 @@ export function PublicMobileEbookViewer({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsSearchOpen(true)}
+                  onClick={() => {
+                    setIsTtsOpen(false);
+                    setIsSearchOpen(true);
+                  }}
                   className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs"
                   aria-label="문서 검색 열기"
                 >
                   문서 검색
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSearchOpen(false);
+                    setIsPageListOpen(false);
+                    setIsToolsOpen(false);
+                    setIsTtsOpen(true);
+                  }}
+                  disabled={!searchEnabled}
+                  className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs disabled:pointer-events-none disabled:opacity-40"
+                  aria-label="소리로 듣기 열기"
+                >
+                  소리로 듣기
                 </button>
                 <form onSubmit={submitPageInput} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                   <label className="sr-only" htmlFor="mobile-ebook-page-input">
@@ -575,6 +610,7 @@ export function PublicMobileEbookViewer({
                       key={page.id}
                       type="button"
                       onClick={() => {
+                        cancelTts();
                         goToPageNumber(page.pageNumber, true);
                         setIsPageListOpen(false);
                       }}
@@ -610,6 +646,7 @@ export function PublicMobileEbookViewer({
         hasSearchText={searchEnabled}
         onClose={() => setIsSearchOpen(false)}
         onSelectPage={(pageNumber) => {
+          cancelTts();
           goToPageNumber(pageNumber, true);
           setIsSearchOpen(false);
           setIsToolsOpen(false);
@@ -618,6 +655,17 @@ export function PublicMobileEbookViewer({
         placement="mobile"
         slug={slug}
       />
+      {isTtsOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-end bg-slate-950/55 px-3 pb-3 pt-[calc(3rem+env(safe-area-inset-top))]">
+          <button type="button" className="absolute inset-0" aria-label="소리로 듣기 닫기" onClick={() => setIsTtsOpen(false)} />
+          <EbookTtsPanel
+            onClose={() => setIsTtsOpen(false)}
+            title="소리로 듣기"
+            tts={tts}
+            variant="mobile"
+          />
+        </div>
+      ) : null}
       {publicAudio ? (
         <PublicAudioPlayer
           src={publicAudio.src}
