@@ -86,6 +86,47 @@ type ProjectFileUploadResponse =
 
 type ArticleAudioSourceInput = "uploaded" | "ai_tts" | "none";
 type ArticleTtsVoiceInput = "marin" | "cedar" | "onyx" | "coral";
+type ArticlePayload = {
+  articleId: string;
+  articleTtsVoice: string;
+  audioSource: string;
+  body: string;
+  bodyAlignment: string;
+  bodyFontAssetId: string;
+  buttonFontAssetId: string;
+  captionFontAssetId: string;
+  contactName: string;
+  contactPhone: string;
+  contentBlocks: Array<{
+    body: string;
+    sortOrder: number;
+    textAlignment: ArticleTextAlignment;
+    title: string;
+    type: EditorBlockType;
+  }>;
+  displayTitle: string;
+  imageMotionEffect: string;
+  imageMotionSpeed: string;
+  linkMotionEffect: string;
+  linkMotionSpeed: string;
+  motionPreset: string;
+  motionSpeed: string;
+  pageId: string;
+  projectSlug: string;
+  sortOrder: number;
+  sourcePageNumber: number;
+  status: string;
+  summary: string;
+  summaryAlignment: string;
+  textAlignment: string;
+  textBoxMotionEffect: string;
+  textBoxMotionSpeed: string;
+  title: string;
+  titleAlignment: string;
+  titleFontAssetId: string;
+  titleMotionEffect: string;
+  titleMotionSpeed: string;
+};
 
 const articleStatuses = [
   { value: "draft", label: "작성 중" },
@@ -997,13 +1038,7 @@ export function ProjectArticleEditorForm({
     });
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setMessage("");
-    setIsSaving(true);
-
-    const formData = new FormData(event.currentTarget);
+  function buildArticlePayload(formData: FormData, overrides: Partial<ArticlePayload> = {}): ArticlePayload {
     const contentBlocks = blocks
       .map((block, index) => ({
         type: block.type,
@@ -1018,7 +1053,8 @@ export function ProjectArticleEditorForm({
       .map((block) => [block.title, block.body].filter(Boolean).join("\n"))
       .join("\n\n");
     const bodyAlignment = getValue(formData, "bodyAlignment");
-    const payload = {
+
+    return {
       projectSlug,
       articleId: article?.id ?? "",
       pageId: getValue(formData, "pageId"),
@@ -1052,12 +1088,14 @@ export function ProjectArticleEditorForm({
       audioSource: getValue(formData, "audioSource"),
       articleTtsVoice: getValue(formData, "articleTtsVoice"),
       status: getValue(formData, "status"),
+      ...overrides,
     };
+  }
 
+  async function persistArticle(payload: ArticlePayload) {
     if (!payload.title) {
-      setIsSaving(false);
       setError("기사 제목은 반드시 입력해야 합니다.");
-      return;
+      return null;
     }
 
     const response = await fetch("/api/project-content", {
@@ -1072,15 +1110,31 @@ export function ProjectArticleEditorForm({
       | { ok: false; message?: string }
       | null;
 
-    setIsSaving(false);
-
     if (!response.ok || !result || result.ok !== true) {
       setError(result && result.ok === false ? result.message || "기사 저장에 실패했습니다." : "기사 저장에 실패했습니다.");
+      return null;
+    }
+
+    return result.article;
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    setIsSaving(true);
+
+    const formData = new FormData(event.currentTarget);
+    const savedArticle = await persistArticle(buildArticlePayload(formData));
+
+    setIsSaving(false);
+
+    if (!savedArticle) {
       return;
     }
 
     setMessage("기사와 콘텐츠 블록을 Supabase에 저장했습니다.");
-    router.push(`/projects/${projectSlug}/reading?articleId=${result.article.id}`);
+    router.push(`/projects/${projectSlug}/reading?articleId=${savedArticle.id}`);
     router.refresh();
   }
 
@@ -1123,22 +1177,40 @@ export function ProjectArticleEditorForm({
   }
 
   async function generateArticleTtsAudio() {
-    if (!article?.id) {
-      setError("AI 음성은 기사를 먼저 저장한 뒤 생성할 수 있습니다.");
-      return;
-    }
-
     if (selectedAudioSource !== "ai_tts") {
-      setError("음성 사용 방식을 'AI 음성 자동 생성'으로 저장한 뒤 생성하세요.");
+      setError("AI 음성 자동 생성을 선택하세요.");
       return;
     }
 
     setError("");
-    setArticleTtsMessage("AI 음성을 생성하는 중입니다. 기사 길이에 따라 시간이 걸릴 수 있습니다.");
+    setMessage("");
+    setArticleTtsMessage("기사 저장 중...");
     setIsGeneratingArticleTts(true);
+    const formData = formRef.current ? new FormData(formRef.current) : null;
+
+    if (!formData) {
+      setIsGeneratingArticleTts(false);
+      setError("기사 입력 폼을 확인하지 못했습니다.");
+      return;
+    }
+
+    const savedArticle = await persistArticle(
+      buildArticlePayload(formData, {
+        articleTtsVoice: selectedArticleTtsVoice,
+        audioSource: "ai_tts",
+      }),
+    );
+
+    if (!savedArticle) {
+      setIsGeneratingArticleTts(false);
+      setArticleTtsMessage("");
+      return;
+    }
+
+    setArticleTtsMessage("AI 음성 생성 중...");
 
     const response = await fetch(
-      `/api/projects/${encodeURIComponent(projectSlug)}/articles/${encodeURIComponent(article.id)}/tts/generate`,
+      `/api/projects/${encodeURIComponent(projectSlug)}/articles/${encodeURIComponent(savedArticle.id)}/tts/generate`,
       {
         method: "POST",
         headers: {
@@ -1165,6 +1237,10 @@ export function ProjectArticleEditorForm({
         ? `AI 음성을 생성했습니다. (${result.segments}개 구간)`
         : result.message ?? "AI 음성을 생성했습니다.",
     );
+    setMessage("현재 입력한 기사 내용을 저장한 뒤 AI 음성을 생성했습니다.");
+    if (!article?.id || article.id !== savedArticle.id) {
+      router.push(`/projects/${projectSlug}/reading?articleId=${savedArticle.id}`);
+    }
     router.refresh();
   }
 
@@ -1274,14 +1350,11 @@ export function ProjectArticleEditorForm({
                     onClick={() => {
                       void generateArticleTtsAudio();
                     }}
-                    disabled={!article?.id || article.audioSource !== "ai_tts" || isGeneratingArticleTts}
+                    disabled={isGeneratingArticleTts}
                     className="dd-btn dd-btn-primary dd-btn-sm disabled:pointer-events-none disabled:opacity-50"
                   >
                     {isGeneratingArticleTts ? "생성 중..." : article?.aiAudioId ? "AI 음성 다시 생성" : "AI 음성 생성"}
                   </button>
-                  {article?.audioSource !== "ai_tts" ? (
-                    <span className="text-xs font-bold text-slate-500">AI 음성 방식을 저장한 뒤 생성할 수 있습니다.</span>
-                  ) : null}
                 </div>
               </div>
               <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
