@@ -1258,7 +1258,7 @@ export function ProjectArticleEditorForm({
             <h3 className="mt-1 text-lg font-black text-[#092046]">
               {article ? "선택 기사 수정" : "새 기사 작성"}
             </h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">필수 입력 후 저장하세요.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">제목·요약, 노출 설정, 참여 연결, 본문 블록 순서로 정리합니다.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <SectionBadge tone="required">필수</SectionBadge>
@@ -1374,7 +1374,12 @@ export function ProjectArticleEditorForm({
           )}
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_280px]">
+        <div className="mt-5 rounded-2xl border border-[#d8e8ff] bg-white px-4 py-3">
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제목/요약</p>
+          <p className="mt-1 text-sm font-bold text-slate-600">모바일 기사 첫 화면에 보이는 기본 문구를 입력합니다.</p>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_280px]">
           <div>
             <FieldLabel required>기사 제목</FieldLabel>
             <input
@@ -1511,7 +1516,8 @@ export function ProjectArticleEditorForm({
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <SectionBadge tone="required">필수</SectionBadge>
-            <p className="text-sm font-black text-[#092046]">연결 기준과 노출 순서</p>
+            <p className="text-sm font-black text-[#092046]">노출 설정</p>
+            <p className="text-xs font-semibold text-slate-500">기사 순서와 원본 PDF 연결 기준을 정합니다.</p>
           </div>
           <div className="grid gap-5 lg:grid-cols-[140px_minmax(0,1fr)_180px]">
             <div>
@@ -1557,9 +1563,16 @@ export function ProjectArticleEditorForm({
               />
             </div>
           </div>
-          <div className="mt-5 grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-end">
+          <div className="mt-5 rounded-xl border border-[#d8e8ff] bg-[#f7fbff] p-4">
+            <div className="mb-3">
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참여 콘텐츠 연결</p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                설문·이벤트를 연결하면 공개 모바일 기사 하단에 참여 카드가 표시됩니다.
+              </p>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-end">
             <div>
-              <FieldLabel>참여 콘텐츠 연결</FieldLabel>
+              <FieldLabel>연결할 설문·이벤트</FieldLabel>
               <select
                 name="surveyId"
                 defaultValue={article?.surveyId ?? ""}
@@ -1574,9 +1587,10 @@ export function ProjectArticleEditorForm({
               </select>
             </div>
             <p className="text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
-              연결된 설문·이벤트는 공개 모바일 기사 하단에 compact 참여 버튼으로 표시됩니다.
+              진행 중이고 문항이 있는 참여 콘텐츠만 실제 공개 화면에 버튼으로 표시됩니다.
               {surveys.length === 0 ? " 먼저 참여 콘텐츠 화면에서 설문 또는 이벤트를 등록하세요." : ""}
             </p>
+            </div>
           </div>
         </div>
       </div>

@@ -30,6 +30,7 @@ export function AdminMobilePreviewFrame({
   const [previewVersion, setPreviewVersion] = useState(0);
   const [previewSize, setPreviewSize] = useState(previewSizePresets[1]);
   const [isPopupBlocked, setIsPopupBlocked] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(true);
   const iframeSrc = appendEmbeddedPreviewParams(previewHref, previewVersion);
   const frameWidth = Math.min(previewSize.width + 56, 480);
   const frameHeight = Math.min(previewSize.height + 70, 920);
@@ -47,7 +48,7 @@ export function AdminMobilePreviewFrame({
   }
 
   return (
-    <article className="admin-mobile-preview-panel rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="admin-mobile-preview-panel rounded-lg border border-slate-200 bg-white p-4 shadow-sm xl:max-h-[calc(100dvh-3rem)] xl:overflow-y-auto">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">저장본 기준</p>
@@ -55,6 +56,14 @@ export function AdminMobilePreviewFrame({
           <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{description}</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setIsPreviewExpanded((currentValue) => !currentValue)}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+            aria-expanded={isPreviewExpanded}
+          >
+            {isPreviewExpanded ? "접기" : "펼치기"}
+          </button>
           <button
             type="button"
             onClick={() => setPreviewVersion((version) => version + 1)}
@@ -78,57 +87,65 @@ export function AdminMobilePreviewFrame({
         </p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-black text-slate-500">프레임 크기</span>
-        {previewSizePresets.map((preset) => {
-          const isActive = previewSize.label === preset.label;
+      {isPreviewExpanded ? (
+        <>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-black text-slate-500">프레임 크기</span>
+            {previewSizePresets.map((preset) => {
+              const isActive = previewSize.label === preset.label;
 
-          return (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => setPreviewSize(preset)}
-              className={`rounded-full px-3 py-1.5 text-xs font-black transition ${
-                isActive
-                  ? "bg-[#092046] text-white"
-                  : "border border-slate-200 bg-white text-[#092046] hover:bg-[#eaf3ff]"
-              }`}
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => setPreviewSize(preset)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-black transition ${
+                    isActive
+                      ? "bg-[#092046] text-white"
+                      : "border border-slate-200 bg-white text-[#092046] hover:bg-[#eaf3ff]"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 flex justify-center overflow-x-auto pb-2">
+            <div
+              className="resize overflow-auto rounded-[34px] border border-slate-300 bg-slate-950 p-3 shadow-xl shadow-blue-950/20"
+              style={{
+                height: `min(${frameHeight}px, calc(100dvh - 260px))`,
+                maxHeight: 780,
+                maxWidth: "min(480px, 100%)",
+                minHeight: 520,
+                minWidth: 320,
+                width: frameWidth,
+              }}
             >
-              {preset.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-5 flex justify-center overflow-x-auto pb-2">
-        <div
-          className="resize overflow-auto rounded-[34px] border border-slate-300 bg-slate-950 p-3 shadow-xl shadow-blue-950/20"
-          style={{
-            height: frameHeight,
-            maxHeight: 920,
-            maxWidth: "min(480px, 100%)",
-            minHeight: 600,
-            minWidth: 320,
-            width: frameWidth,
-          }}
-        >
-          <div className="flex h-full min-h-0 flex-col rounded-[26px] bg-slate-900 px-4 pb-3 pt-2">
-            <div className="mx-auto mb-2 h-1.5 w-16 shrink-0 rounded-full bg-slate-700" />
-            <div className="mb-2 flex shrink-0 items-center justify-between text-[10px] font-bold text-slate-400">
-              <span>9:41</span>
-              <span>LTE · 100%</span>
-            </div>
-            <div className="min-h-0 flex-1 overflow-hidden rounded-[22px] border border-slate-800 bg-white">
-              <iframe
-                key={previewVersion}
-                title={iframeTitle}
-                src={iframeSrc}
-                className="h-full w-full border-0 bg-white"
-              />
+              <div className="flex h-full min-h-0 flex-col rounded-[26px] bg-slate-900 px-4 pb-3 pt-2">
+                <div className="mx-auto mb-2 h-1.5 w-16 shrink-0 rounded-full bg-slate-700" />
+                <div className="mb-2 flex shrink-0 items-center justify-between text-[10px] font-bold text-slate-400">
+                  <span>9:41</span>
+                  <span>LTE · 100%</span>
+                </div>
+                <div className="min-h-0 flex-1 overflow-hidden rounded-[22px] border border-slate-800 bg-white">
+                  <iframe
+                    key={previewVersion}
+                    title={iframeTitle}
+                    src={iframeSrc}
+                    className="h-full w-full border-0 bg-white"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      ) : (
+        <p className="mt-4 rounded-lg bg-[#f7fbff] px-3 py-2 text-xs font-bold leading-5 text-slate-600">
+          미리보기를 접었습니다. 필요할 때 펼치거나 큰 창으로 열어 확인하세요.
+        </p>
+      )}
     </article>
   );
 }
