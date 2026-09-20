@@ -8,6 +8,13 @@ import { PublicAudioPlayer } from "@/components/public-audio-player";
 import { useEbookTts } from "@/hooks/use-ebook-tts";
 import { getAudioSyncedPageNumber } from "@/lib/audio-page-sync";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
+import {
+  enablePageTurnSoundWithPreview,
+  playPageTurnSound,
+  readPageTurnSoundPreference,
+  savePageTurnSoundPreference,
+  subscribeToPageTurnSoundPreference,
+} from "@/lib/page-turn-sound";
 
 type EbookPage = {
   id: string;
@@ -39,94 +46,14 @@ type PublicDesktopEbookViewerProps = {
 
 type PageViewMode = "single" | "double";
 
-const soundPreferenceKey = "datadiction_desktop_ebook_sound";
-const soundPreferenceChangeEvent = "datadiction-desktop-ebook-sound-change";
 const zoomStep = 25;
 const minZoom = 25;
 const maxZoom = 600;
 const zoomPresets = [100, 150, 200, 300, 400, 600] as const;
 const followPagesStorageKey = "datadiction_audio_follow_pages";
 
-let sharedAudioContext: AudioContext | null = null;
-let lastSoundAt = 0;
-
-function getAudioContext() {
-  const audioWindow = window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
-  const AudioContextConstructor = window.AudioContext ?? audioWindow.webkitAudioContext;
-
-  if (!AudioContextConstructor) {
-    return null;
-  }
-
-  sharedAudioContext ??= new AudioContextConstructor();
-
-  return sharedAudioContext;
-}
-
-async function playPageFlipSound() {
-  try {
-    const now = Date.now();
-
-    if (now - lastSoundAt < 90) {
-      return;
-    }
-
-    lastSoundAt = now;
-
-    const audioContext = getAudioContext();
-
-    if (!audioContext) {
-      return;
-    }
-
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
-    }
-
-    const startTime = audioContext.currentTime;
-    const oscillator = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-
-    oscillator.type = "triangle";
-    oscillator.frequency.setValueAtTime(520, startTime);
-    oscillator.frequency.exponentialRampToValueAtTime(230, startTime + 0.075);
-    gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.exponentialRampToValueAtTime(0.035, startTime + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.08);
-
-    oscillator.connect(gain);
-    gain.connect(audioContext.destination);
-    oscillator.start(startTime);
-    oscillator.stop(startTime + 0.09);
-  } catch {
-    // Page sound is decorative and should never interrupt navigation.
-  }
-}
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
-}
-
-function getInitialSoundEnabled() {
-  if (typeof window === "undefined") {
-    return true;
-  }
-
-  try {
-    return window.localStorage.getItem(soundPreferenceKey) !== "false";
-  } catch {
-    return true;
-  }
-}
-
-function subscribeToSoundPreference(onStoreChange: () => void) {
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener(soundPreferenceChangeEvent, onStoreChange);
-
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener(soundPreferenceChangeEvent, onStoreChange);
-  };
 }
 
 function getInitialFollowPagesEnabled() {
@@ -176,7 +103,7 @@ export function PublicDesktopEbookViewer({
   const [audioDuration, setAudioDuration] = useState(0);
   const [followPages, setFollowPages] = useState(getInitialFollowPagesEnabled);
   const [followPagesMessage, setFollowPagesMessage] = useState("");
-  const soundEnabled = useSyncExternalStore(subscribeToSoundPreference, getInitialSoundEnabled, () => true);
+  const soundEnabled = useSyncExternalStore(subscribeToPageTurnSoundPreference, readPageTurnSoundPreference, () => true);
   const currentPage = pages[currentIndex] ?? null;
   const coverPage = pages.find((page) => page.previewHref) ?? pages[0] ?? null;
   const currentPageCustomTitle = currentPage ? getCustomPageTitle(currentPage.title, currentPage.pageNumber) : "";
@@ -222,7 +149,7 @@ export function PublicDesktopEbookViewer({
     viewportRef.current?.scrollTo({ left: 0, top: 0 });
 
     if (withSound && soundEnabled) {
-      void playPageFlipSound();
+      void playPageTurnSound();
     }
   }, [pages, soundEnabled, syncPageToUrl]);
 
@@ -253,7 +180,7 @@ export function PublicDesktopEbookViewer({
   const tts = useEbookTts({
     currentIndex,
     enabled: searchEnabled,
-    onNavigateToIndex: (index) => goToIndex(index, true),
+    onNavigateToIndex: (index) => goToIndex(index, false),
     pages,
     slug,
   });
@@ -395,12 +322,12 @@ export function PublicDesktopEbookViewer({
   }
 
   function updateSoundPreference(nextValue: boolean) {
-    try {
-      window.localStorage.setItem(soundPreferenceKey, String(nextValue));
-      window.dispatchEvent(new Event(soundPreferenceChangeEvent));
-    } catch {
-      // Sound preference is optional and should not interrupt the viewer.
+    if (nextValue) {
+      void enablePageTurnSoundWithPreview();
+      return;
     }
+
+    savePageTurnSoundPreference(false);
   }
 
   function requestFullscreen() {

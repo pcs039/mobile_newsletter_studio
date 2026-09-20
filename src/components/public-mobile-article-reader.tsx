@@ -29,6 +29,13 @@ import {
   tokenizeKoreanTitleForBreaks,
   renderKoreanTitleWithBreaks,
 } from "@/lib/korean-title-breaks";
+import {
+  enablePageTurnSoundWithPreview,
+  playPageTurnSound,
+  readPageTurnSoundPreference,
+  savePageTurnSoundPreference,
+  subscribeToPageTurnSoundPreference,
+} from "@/lib/page-turn-sound";
 import type {
   ArticleElementMotionEffect,
   ArticleElementMotionSpeed,
@@ -105,10 +112,7 @@ type ResolvedArticleMotionSettings = {
 
 const mobileReaderQuery = "(max-width: 767px)";
 const openMobileArticleTocEventName = "datadiction:open-mobile-article-toc";
-const playPageTurnSoundEventName = "datadiction:play-page-turn-sound";
 const stopArticleAudioEventName = "datadiction:stop-article-audio";
-const pageTurnSoundPreferenceEventName = "datadiction:page-turn-sound-preference";
-const pageTurnSoundStorageKey = "datadiction_page_turn_sound";
 const swipeThreshold = 70;
 const articleMotionPresetClassNames: Record<ArticleMotionPreset, string> = {
   none: "article-motion-preset-none",
@@ -181,33 +185,6 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function readStoredPageTurnSoundPreference() {
-  if (typeof window === "undefined") {
-    return true;
-  }
-
-  try {
-    return window.localStorage.getItem(pageTurnSoundStorageKey) !== "off";
-  } catch {
-    return true;
-  }
-}
-
-function savePageTurnSoundPreference(enabled: boolean) {
-  try {
-    window.localStorage.setItem(pageTurnSoundStorageKey, enabled ? "on" : "off");
-  } catch {
-    // Page turn sound preference is optional.
-  }
-}
-
-function createPageTurnAudioContext() {
-  const AudioContextConstructor =
-    window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-
-  return AudioContextConstructor ? new AudioContextConstructor() : null;
-}
-
 function isInteractiveTouchTarget(target: EventTarget | null) {
   return (
     target instanceof Element &&
@@ -254,7 +231,7 @@ export function PublicMobileFirstArticleLink({
       href={href}
       className={className}
       onClick={() => {
-        window.dispatchEvent(new Event(playPageTurnSoundEventName));
+        void playPageTurnSound();
       }}
     >
       {children}
@@ -508,17 +485,17 @@ export function PublicPageTurnSoundToggle({
   className?: string;
   compactLabel?: boolean;
 }) {
-  const [enabled, setEnabled] = useState(readStoredPageTurnSoundPreference);
+  const enabled = useSyncExternalStore(subscribeToPageTurnSoundPreference, readPageTurnSoundPreference, () => true);
 
   function toggleSound() {
-    setEnabled((currentValue) => {
-      const nextValue = !currentValue;
+    const nextValue = !enabled;
 
-      savePageTurnSoundPreference(nextValue);
-      window.dispatchEvent(new CustomEvent(pageTurnSoundPreferenceEventName, { detail: { enabled: nextValue } }));
+    if (nextValue) {
+      void enablePageTurnSoundWithPreview();
+      return;
+    }
 
-      return nextValue;
-    });
+    savePageTurnSoundPreference(false);
   }
 
   return (
@@ -1248,9 +1225,7 @@ export function PublicMobileArticleReader({
   const [pageSlideDirection, setPageSlideDirection] = useState<PageSlideDirection>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDraggingPage, setIsDraggingPage] = useState(false);
-  const [pageTurnSoundEnabled, setPageTurnSoundEnabled] = useState(readStoredPageTurnSoundPreference);
   const articleTopRef = useRef<HTMLDivElement>(null);
-  const pageTurnAudioContextRef = useRef<AudioContext | null>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
   const safeCurrentIndex = Math.min(currentIndex, Math.max(articles.length - 1, 0));
   const currentArticle = articles[safeCurrentIndex] ?? null;
@@ -1293,30 +1268,6 @@ export function PublicMobileArticleReader({
   }, [articles, currentArticle, isMobileReader]);
 
   useEffect(() => {
-    function syncPageTurnSoundPreference(event: Event) {
-      const customEvent = event as CustomEvent<{ enabled?: boolean }>;
-
-      setPageTurnSoundEnabled(
-        typeof customEvent.detail?.enabled === "boolean"
-          ? customEvent.detail.enabled
-          : readStoredPageTurnSoundPreference(),
-      );
-    }
-
-    function playRequestedPageTurnSound() {
-      playPageTurnSound();
-    }
-
-    window.addEventListener(pageTurnSoundPreferenceEventName, syncPageTurnSoundPreference);
-    window.addEventListener(playPageTurnSoundEventName, playRequestedPageTurnSound);
-
-    return () => {
-      window.removeEventListener(pageTurnSoundPreferenceEventName, syncPageTurnSoundPreference);
-      window.removeEventListener(playPageTurnSoundEventName, playRequestedPageTurnSound);
-    };
-  });
-
-  useEffect(() => {
     if (!isMobileReader) {
       return;
     }
@@ -1333,63 +1284,6 @@ export function PublicMobileArticleReader({
 
     return () => window.removeEventListener(openMobileArticleTocEventName, openArticleToc);
   }, []);
-
-  function playPageTurnSound() {
-    if (!pageTurnSoundEnabled || typeof window === "undefined") {
-      return;
-    }
-
-    const audioContext = pageTurnAudioContextRef.current ?? createPageTurnAudioContext();
-
-    if (!audioContext) {
-      return;
-    }
-
-    pageTurnAudioContextRef.current = audioContext;
-    void audioContext.resume().then(() => {
-      const now = audioContext.currentTime;
-      const masterGain = audioContext.createGain();
-      const tickOscillator = audioContext.createOscillator();
-      const tickGain = audioContext.createGain();
-      const noiseBuffer = audioContext.createBuffer(1, Math.max(1, Math.floor(audioContext.sampleRate * 0.11)), audioContext.sampleRate);
-      const noiseData = noiseBuffer.getChannelData(0);
-      const noiseSource = audioContext.createBufferSource();
-      const noiseFilter = audioContext.createBiquadFilter();
-      const noiseGain = audioContext.createGain();
-
-      for (let index = 0; index < noiseData.length; index += 1) {
-        noiseData[index] = (Math.random() * 2 - 1) * (1 - index / noiseData.length);
-      }
-
-      masterGain.gain.setValueAtTime(0.0001, now);
-      masterGain.gain.exponentialRampToValueAtTime(0.045, now + 0.012);
-      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.13);
-      masterGain.connect(audioContext.destination);
-
-      tickOscillator.type = "triangle";
-      tickOscillator.frequency.setValueAtTime(920, now);
-      tickOscillator.frequency.exponentialRampToValueAtTime(460, now + 0.055);
-      tickGain.gain.setValueAtTime(0.028, now);
-      tickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.075);
-      tickOscillator.connect(tickGain);
-      tickGain.connect(masterGain);
-
-      noiseSource.buffer = noiseBuffer;
-      noiseFilter.type = "bandpass";
-      noiseFilter.frequency.setValueAtTime(1800, now);
-      noiseFilter.Q.setValueAtTime(0.7, now);
-      noiseGain.gain.setValueAtTime(0.022, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
-      noiseSource.connect(noiseFilter);
-      noiseFilter.connect(noiseGain);
-      noiseGain.connect(masterGain);
-
-      tickOscillator.start(now);
-      tickOscillator.stop(now + 0.08);
-      noiseSource.start(now);
-      noiseSource.stop(now + 0.12);
-    }).catch(() => undefined);
-  }
 
   function stopCurrentArticleAudio() {
     window.dispatchEvent(new Event(stopArticleAudioEventName));
@@ -1410,7 +1304,7 @@ export function PublicMobileArticleReader({
     stopCurrentArticleAudio();
     setIsCoverView(true);
     scrollToReaderTop();
-    playPageTurnSound();
+    void playPageTurnSound();
     return true;
   }
 
@@ -1423,7 +1317,7 @@ export function PublicMobileArticleReader({
     setCurrentIndex(0);
     setIsCoverView(false);
     scrollToReaderTop();
-    playPageTurnSound();
+    void playPageTurnSound();
   }
 
   function goToArticle(nextIndex: number, options: { playSound?: boolean } = {}) {
@@ -1442,7 +1336,7 @@ export function PublicMobileArticleReader({
     setIsCoverView(false);
 
     if (options.playSound) {
-      playPageTurnSound();
+      void playPageTurnSound();
     }
 
     return true;
