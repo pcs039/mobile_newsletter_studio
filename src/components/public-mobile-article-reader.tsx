@@ -882,6 +882,9 @@ function ArticleCard({
     "--newsletter-caption-font": getFontFamilyValue(captionFont),
     "--newsletter-button-font": getFontFamilyValue(buttonFont),
   } as CSSProperties;
+  const hasUploadedArticleAudio = article.audioFile?.sourceType === "uploaded" && Boolean(article.audioFile.previewHref);
+  const hasAiArticleAudio = article.audioSource === "ai_tts" && article.audioFile?.sourceType === "ai_tts";
+  const shouldShowArticleAudio = hasUploadedArticleAudio || hasAiArticleAudio;
 
   return (
     <article
@@ -964,12 +967,23 @@ function ArticleCard({
           </p>
         </ScrollMotionReveal>
       ) : null}
-      {article.audioFile?.previewHref ? (
+      {shouldShowArticleAudio && article.audioFile ? (
         <section className="mt-4 rounded-xl border border-[#b8d7ff] bg-[#f4f8ff] px-3 py-2.5">
           <p className="text-sm font-black text-[#092046]">음성으로 듣기</p>
+          {hasAiArticleAudio ? (
+            <p className="mt-1 text-xs font-bold leading-5 text-[#184a88]">
+              AI가 생성한 음성입니다.
+            </p>
+          ) : null}
           <PublicArticleAudioPlayer
             ariaLabel={`${articleTitle} 음성으로 듣기`}
             className="mt-2"
+            isAiGenerated={hasAiArticleAudio}
+            manifestUrl={
+              hasAiArticleAudio
+                ? `/api/public/newsletters/${encodeURIComponent(slug)}/articles/${encodeURIComponent(article.id)}/audio`
+                : undefined
+            }
             src={article.audioFile.previewHref}
           />
           {article.audioFile.transcriptText ? (

@@ -18,6 +18,7 @@ const productionModes = ["template", "hybrid", "full_image", "external_ebook", "
 const ebookSources = ["internal", "external"] as const;
 const coverLayouts = ["image", "image_info", "image_overlay"] as const;
 const coverFits = ["contain", "cover"] as const;
+const articleTtsVoices = ["marin", "cedar", "onyx", "coral"] as const;
 
 function isOneOf<T extends readonly string[]>(value: unknown, values: T): value is T[number] {
   return typeof value === "string" && values.includes(value);
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
   const ebookInput = resolveEbookSourceInput(payload);
   const coverLayout = isOneOf(payload.coverLayout, coverLayouts) ? payload.coverLayout : "image";
   const coverFit = isOneOf(payload.coverFit, coverFits) ? payload.coverFit : "contain";
+  const articleTtsVoice = isOneOf(payload.articleTtsVoice, articleTtsVoices) ? payload.articleTtsVoice : "marin";
 
   if (!ebookInput.ok) {
     return NextResponse.json({ ok: false, message: ebookInput.message }, { status: 400 });
@@ -138,6 +140,7 @@ export async function POST(request: Request) {
     designerHoursCap: asOptionalText(payload.designerHoursCap),
     titleFontAssetId: asOptionalText(payload.titleFontAssetId),
     bodyFontAssetId: asOptionalText(payload.bodyFontAssetId),
+    articleTtsVoice,
     coverEnabled: payload.coverEnabled === true,
     coverLayout,
     coverImageUrl: asOptionalText(payload.coverImageUrl),
@@ -222,6 +225,7 @@ export async function PATCH(request: Request) {
   const ebookInput = resolveEbookSourceInput(payload);
   const coverLayout = isOneOf(payload.coverLayout, coverLayouts) ? payload.coverLayout : "image";
   const coverFit = isOneOf(payload.coverFit, coverFits) ? payload.coverFit : "contain";
+  const articleTtsVoice = isOneOf(payload.articleTtsVoice, articleTtsVoices) ? payload.articleTtsVoice : "marin";
 
   if (!ebookInput.ok) {
     return NextResponse.json({ ok: false, message: ebookInput.message }, { status: 400 });
@@ -278,6 +282,7 @@ export async function PATCH(request: Request) {
     designerHoursCap: asOptionalText(payload.designerHoursCap),
     titleFontAssetId: asOptionalText(payload.titleFontAssetId),
     bodyFontAssetId: asOptionalText(payload.bodyFontAssetId),
+    articleTtsVoice,
     coverEnabled: payload.coverEnabled === true,
     coverLayout,
     coverImageUrl: asOptionalText(payload.coverImageUrl),

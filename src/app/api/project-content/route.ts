@@ -184,6 +184,8 @@ export async function POST(request: Request) {
   const input: UpsertProjectArticleInput = {
     projectSlug: asText(payload.projectSlug),
     articleId: asText(payload.articleId) || undefined,
+    audioSource: asText(payload.audioSource),
+    articleTtsVoice: asText(payload.articleTtsVoice),
     pageId: asText(payload.pageId) || undefined,
     sourcePageNumber: asOptionalNumber(payload.sourcePageNumber),
     sortOrder: asOptionalNumber(payload.sortOrder),
