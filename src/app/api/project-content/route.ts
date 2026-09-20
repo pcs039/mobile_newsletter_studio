@@ -197,6 +197,7 @@ export async function POST(request: Request) {
     titleAlignment: asText(payload.titleAlignment),
     summaryAlignment: asText(payload.summaryAlignment),
     bodyAlignment: asText(payload.bodyAlignment),
+    surveyId: asText(payload.surveyId) || undefined,
     contentSections: asContentSections(payload.contentSections),
     contentBlocks: asContentBlocks(payload.contentBlocks),
     contactName: asText(payload.contactName),

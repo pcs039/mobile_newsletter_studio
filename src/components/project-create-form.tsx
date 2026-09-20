@@ -6,7 +6,7 @@ import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { getValidExternalEbookUrl, normalizeEbookSource, type EbookSource } from "@/lib/ebook-source";
 import { getSelectableFontAssets } from "@/lib/font-css";
-import type { FontAsset, NewsletterCoverFit, NewsletterCoverLayout } from "@/lib/newsletter-repository";
+import type { FontAsset, NewsletterCoverFit, NewsletterCoverLayout, ProjectType } from "@/lib/newsletter-repository";
 
 type SubmitState =
   | { status: "idle"; message: string }
@@ -29,6 +29,7 @@ export type ProjectFormInitialValues = {
   status?: string;
   packageTier?: string;
   productionMode?: string;
+  projectType?: ProjectType;
   ebookSource?: EbookSource;
   externalEbookUrl?: string;
   estimatedHours?: string;
@@ -70,6 +71,13 @@ const articleTtsVoiceOptions = [
   { value: "cedar", label: "Cedar · 차분하고 낮은 톤" },
   { value: "onyx", label: "Onyx · 묵직한 중저음 톤" },
   { value: "coral", label: "Coral · 밝고 명료한 톤" },
+];
+
+const projectTypeOptions: Array<{ value: ProjectType; title: string; description: string }> = [
+  { value: "newsletter", title: "모바일 소식지", description: "기사형 모바일 콘텐츠를 중심으로 제작합니다." },
+  { value: "ebook", title: "eBook", description: "PDF 기반 전자 간행물 제작과 배포에 집중합니다." },
+  { value: "engagement", title: "설문·이벤트", description: "설문, 이벤트, 신청 접수 같은 참여 페이지를 운영합니다." },
+  { value: "integrated", title: "통합 프로젝트", description: "모바일 소식지, eBook, 참여 콘텐츠를 함께 운영합니다." },
 ];
 
 function isHexColor(value: string) {
@@ -141,7 +149,15 @@ async function readUploadError(response: Response, fallbackMessage: string) {
   return text || fallbackMessage;
 }
 
-function getNextAuthoringPath(projectSlug: string, productionMode: string) {
+function getNextAuthoringPath(projectSlug: string, productionMode: string, projectType: ProjectType) {
+  if (projectType === "ebook") {
+    return `/projects/${projectSlug}/pages`;
+  }
+
+  if (projectType === "engagement") {
+    return `/projects/${projectSlug}/survey`;
+  }
+
   if (productionMode === "full_image" || productionMode === "external_ebook") {
     return `/projects/${projectSlug}/pages`;
   }
@@ -162,6 +178,7 @@ export function ProjectCreateForm({
   const formRef = useRef<HTMLFormElement>(null);
   const isEditMode = mode === "edit";
   const [primaryColor, setPrimaryColor] = useState(initialValues.primaryColor || "#092046");
+  const [projectType, setProjectType] = useState<ProjectType>(initialValues.projectType ?? "integrated");
   const [coverEnabled, setCoverEnabled] = useState(initialValues.coverEnabled === true);
   const [ebookSource, setEbookSource] = useState<EbookSource>(normalizeEbookSource(initialValues.ebookSource));
   const [externalEbookUrl, setExternalEbookUrl] = useState(initialValues.externalEbookUrl ?? "");
@@ -234,6 +251,7 @@ export function ProjectCreateForm({
           status: getFormText(formData, "status"),
           packageTier: getFormText(formData, "packageTier"),
           productionMode: getFormText(formData, "productionMode"),
+          projectType,
           ebookSource,
           externalEbookUrl,
           estimatedHours: getFormText(formData, "estimatedHours"),
@@ -429,6 +447,7 @@ export function ProjectCreateForm({
         status: getFormText(formData, "status"),
         packageTier: getFormText(formData, "packageTier"),
         productionMode: getFormText(formData, "productionMode"),
+        projectType,
         ebookSource,
         externalEbookUrl,
         estimatedHours: getFormText(formData, "estimatedHours"),
@@ -479,6 +498,7 @@ export function ProjectCreateForm({
     const nextAuthoringPath = getNextAuthoringPath(
       result.project.slug,
       getFormText(formData, "productionMode"),
+      projectType,
     );
 
     setSubmitState({
@@ -581,6 +601,40 @@ export function ProjectCreateForm({
             defaultValue={initialValues.description}
             className="min-h-28 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
           />
+        </div>
+
+        <div className="md:col-span-2">
+          <FieldLabel required>프로젝트 유형</FieldLabel>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {projectTypeOptions.map((option) => (
+              <label
+                key={option.value}
+                className={`cursor-pointer rounded-xl border bg-white p-4 transition ${
+                  projectType === option.value
+                    ? "border-[#092046] shadow-sm ring-2 ring-[#2f73b7]/15"
+                    : "border-slate-200 hover:border-[#2f73b7]"
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-black text-[#092046]">
+                  <input
+                    type="radio"
+                    name="projectType"
+                    value={option.value}
+                    checked={projectType === option.value}
+                    onChange={() => setProjectType(option.value)}
+                    className="h-4 w-4 accent-[#092046]"
+                  />
+                  {option.title}
+                </span>
+                <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600 [word-break:keep-all]">
+                  {option.description}
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
+            기존 프로젝트는 통합 프로젝트로 간주되어 모든 제작 메뉴가 계속 표시됩니다.
+          </p>
         </div>
 
         <div className="md:col-span-2">

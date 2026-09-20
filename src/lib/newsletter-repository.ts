@@ -6,6 +6,7 @@ import type { DashboardProject } from "@/types/newsletter";
 export type ProjectStatus = "draft" | "in_review" | "published" | "private" | "archived";
 type PackageTier = "basic" | "standard" | "advanced" | "premium" | "retainer";
 type ProductionMode = "template" | "hybrid" | "full_image" | "external_ebook" | "ocr_assist";
+export type ProjectType = "newsletter" | "ebook" | "engagement" | "integrated";
 export type NewsletterCoverLayout = "image" | "image_info" | "image_overlay";
 export type NewsletterCoverFit = "contain" | "cover";
 
@@ -22,6 +23,7 @@ type NewsletterProjectRow = {
   status: ProjectStatus;
   package_tier: PackageTier;
   production_mode: ProductionMode;
+  project_type: ProjectType | null;
   ebook_source: EbookSource | null;
   external_ebook_url: string | null;
   estimated_hours: string | null;
@@ -95,6 +97,7 @@ export type CreateNewsletterProjectInput = {
   status: ProjectStatus;
   packageTier: PackageTier;
   productionMode: ProductionMode;
+  projectType?: ProjectType;
   ebookSource?: EbookSource;
   externalEbookUrl?: string;
   estimatedHours?: string;
@@ -297,6 +300,7 @@ export type ProjectSurveyItem = {
   eventPrize: string;
   drawNote: string;
   responseCount: number;
+  linkedArticleTitles: string[];
   questionCount: number;
   updated: string;
   questions: ProjectSurveyQuestion[];
@@ -419,6 +423,9 @@ export type ProjectWorkspaceInfo = {
   publishedAt: string;
   packageTier: string;
   productionMode: string;
+  projectType: ProjectType;
+  projectTypeLabel: string;
+  capabilities: ProjectCapabilities;
   ebookSource: EbookSource;
   externalEbookUrl: string;
   publicUrl: string;
@@ -468,6 +475,7 @@ export type ProjectBasicInfo = {
   status: ProjectStatus;
   packageTier: PackageTier;
   productionMode: ProductionMode;
+  projectType: ProjectType;
   ebookSource: EbookSource;
   externalEbookUrl: string;
   estimatedHours: string;
@@ -694,6 +702,7 @@ type NewsletterArticleRow = {
   title_alignment: string | null;
   summary_alignment: string | null;
   body_alignment: string | null;
+  survey_id: string | null;
   contact_name: string | null;
   contact_phone: string | null;
   motion_preset: string | null;
@@ -1004,6 +1013,7 @@ export type ProjectContentArticle = {
   titleAlignment: ArticleTextAlignment;
   summaryAlignment: ArticleTextAlignment;
   bodyAlignment: ArticleTextAlignment;
+  surveyId: string | null;
   contactName: string;
   contactPhone: string;
   motionPreset: ArticleMotionPreset;
@@ -1078,6 +1088,7 @@ export type UpsertProjectArticleInput = {
   titleAlignment?: string;
   summaryAlignment?: string;
   bodyAlignment?: string;
+  surveyId?: string;
   contentSections?: Array<{
     title?: string;
     body?: string;
@@ -1163,6 +1174,7 @@ const projectSelectColumns = [
   "status",
   "package_tier",
   "production_mode",
+  "project_type",
   "ebook_source",
   "external_ebook_url",
   "estimated_hours",
@@ -1313,6 +1325,35 @@ const audioTranscriptTypeLabels: Record<AudioTranscriptType, string> = {
   summary_script: "요약 대본",
   custom_script: "별도 낭독문",
 };
+
+const projectTypeLabels: Record<ProjectType, string> = {
+  newsletter: "모바일 소식지",
+  ebook: "eBook",
+  engagement: "설문·이벤트",
+  integrated: "통합 프로젝트",
+};
+
+export type ProjectCapabilities = {
+  hasEbook: boolean;
+  hasEngagement: boolean;
+  hasNewsletter: boolean;
+};
+
+export function normalizeProjectType(value: string | null | undefined): ProjectType {
+  return value === "newsletter" || value === "ebook" || value === "engagement" || value === "integrated"
+    ? value
+    : "integrated";
+}
+
+export function getProjectCapabilities(projectType: string | null | undefined): ProjectCapabilities {
+  const normalized = normalizeProjectType(projectType);
+
+  return {
+    hasEbook: normalized === "ebook" || normalized === "integrated",
+    hasEngagement: normalized === "newsletter" || normalized === "engagement" || normalized === "integrated",
+    hasNewsletter: normalized === "newsletter" || normalized === "integrated",
+  };
+}
 
 function normalizeAudioTranscriptType(value: string | null | undefined): AudioTranscriptType {
   return value === "article_original" || value === "summary_script" || value === "custom_script"
@@ -1756,6 +1797,7 @@ async function incrementDailyStats(
 
 function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWorkspaceInfo {
   const issue = project.issue_label ?? formatDate(project.published_date);
+  const projectType = normalizeProjectType(project.project_type);
 
   return {
     id: project.id,
@@ -1771,6 +1813,9 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     publishedAt: project.published_at ? formatCompactDateTime(project.published_at) : "",
     packageTier: packageTierLabels[project.package_tier],
     productionMode: productionModeLabels[project.production_mode],
+    projectType,
+    projectTypeLabel: projectTypeLabels[projectType],
+    capabilities: getProjectCapabilities(projectType),
     ebookSource: normalizeEbookSource(project.ebook_source),
     externalEbookUrl: project.external_ebook_url || "",
     publicUrl: `/newsletters/${project.slug}`,
@@ -1794,6 +1839,8 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
 }
 
 function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicInfo {
+  const projectType = normalizeProjectType(project.project_type);
+
   return {
     projectId: project.slug,
     title: project.title,
@@ -1807,6 +1854,7 @@ function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicIn
     status: project.status,
     packageTier: project.package_tier,
     productionMode: project.production_mode,
+    projectType,
     ebookSource: normalizeEbookSource(project.ebook_source),
     externalEbookUrl: project.external_ebook_url || "",
     estimatedHours: project.estimated_hours || "",
@@ -2014,6 +2062,7 @@ function mapSurveyRow(
   row: NewsletterSurveyRow,
   questions: ProjectSurveyQuestion[],
   responseCount: number,
+  linkedArticleTitles: string[] = [],
 ): ProjectSurveyItem {
   return {
     id: row.id,
@@ -2029,6 +2078,7 @@ function mapSurveyRow(
     eventPrize: row.event_prize || "해당 없음",
     drawNote: row.draw_note || "추첨·발표 메모 없음",
     responseCount,
+    linkedArticleTitles,
     questionCount: questions.length,
     updated: formatCompactDateTime(row.updated_at),
     questions,
@@ -2152,6 +2202,7 @@ function mapArticleRowToProjectContentArticle(
     titleAlignment: normalizeArticleTextAlignment(article.title_alignment),
     summaryAlignment: normalizeArticleTextAlignment(article.summary_alignment ?? article.text_alignment),
     bodyAlignment: normalizeArticleTextAlignment(article.body_alignment ?? article.text_alignment),
+    surveyId: article.survey_id,
     contactName: article.contact_name || "",
     contactPhone: article.contact_phone || "",
     motionPreset: normalizeArticleMotionPreset(article.motion_preset),
@@ -3242,8 +3293,11 @@ export async function getProjectSurveys(projectSlug: string): Promise<ProjectSur
     const responseEndpoint = getSupabaseRestEndpoint(
       `/rest/v1/newsletter_survey_responses?select=survey_id&project_id=eq.${encodedProjectId}&limit=5000`,
     );
+    const linkedArticleEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_articles?select=survey_id,title,display_title,sort_order&project_id=eq.${encodedProjectId}&survey_id=not.is.null&order=sort_order.asc`,
+    );
 
-    if (!surveyEndpoint || !questionEndpoint || !responseEndpoint) {
+    if (!surveyEndpoint || !questionEndpoint || !responseEndpoint || !linkedArticleEndpoint) {
       return {
         surveys: [],
         source: "error",
@@ -3251,27 +3305,35 @@ export async function getProjectSurveys(projectSlug: string): Promise<ProjectSur
       };
     }
 
-    const [surveyResponse, questionResponse, responseCountResponse] = await Promise.all([
+    const [surveyResponse, questionResponse, responseCountResponse, linkedArticleResponse] = await Promise.all([
       fetch(surveyEndpoint, { headers, cache: "no-store" }),
       fetch(questionEndpoint, { headers, cache: "no-store" }),
       fetch(responseEndpoint, { headers, cache: "no-store" }),
+      fetch(linkedArticleEndpoint, { headers, cache: "no-store" }),
     ]);
 
-    if (!surveyResponse.ok || !questionResponse.ok || !responseCountResponse.ok) {
+    if (!surveyResponse.ok || !questionResponse.ok || !responseCountResponse.ok || !linkedArticleResponse.ok) {
       return {
         surveys: [],
         source: "error",
-        message: "설문·이벤트 테이블을 조회하지 못했습니다. Supabase SQL Editor에서 설문 관리 테이블을 먼저 생성하세요.",
+        message: "설문·이벤트 테이블을 조회하지 못했습니다. Supabase SQL Editor에서 참여 콘텐츠 테이블과 연결 컬럼을 먼저 생성하세요.",
       };
     }
 
-    const [surveyRows, questionRows, responseRows] = (await Promise.all([
+    const [surveyRows, questionRows, responseRows, linkedArticleRows] = (await Promise.all([
       surveyResponse.json(),
       questionResponse.json(),
       responseCountResponse.json(),
-    ])) as [NewsletterSurveyRow[], NewsletterSurveyQuestionRow[], NewsletterSurveyResponseCountRow[]];
+      linkedArticleResponse.json(),
+    ])) as [
+      NewsletterSurveyRow[],
+      NewsletterSurveyQuestionRow[],
+      NewsletterSurveyResponseCountRow[],
+      Array<{ survey_id: string | null; title: string | null; display_title: string | null; sort_order: number | null }>,
+    ];
     const questionsBySurveyId = new Map<string, ProjectSurveyQuestion[]>();
     const responseCountBySurveyId = new Map<string, number>();
+    const linkedArticleTitlesBySurveyId = new Map<string, string[]>();
 
     for (const question of questionRows) {
       const questions = questionsBySurveyId.get(question.survey_id) ?? [];
@@ -3283,12 +3345,28 @@ export async function getProjectSurveys(projectSlug: string): Promise<ProjectSur
       responseCountBySurveyId.set(response.survey_id, (responseCountBySurveyId.get(response.survey_id) ?? 0) + 1);
     }
 
+    for (const article of linkedArticleRows) {
+      if (!article.survey_id) {
+        continue;
+      }
+
+      const title = article.display_title?.trim() || article.title?.trim() || "제목 없음 기사";
+      const titles = linkedArticleTitlesBySurveyId.get(article.survey_id) ?? [];
+      titles.push(title);
+      linkedArticleTitlesBySurveyId.set(article.survey_id, titles);
+    }
+
     return {
       surveys: surveyRows.map((survey) =>
-        mapSurveyRow(survey, questionsBySurveyId.get(survey.id) ?? [], responseCountBySurveyId.get(survey.id) ?? 0),
+        mapSurveyRow(
+          survey,
+          questionsBySurveyId.get(survey.id) ?? [],
+          responseCountBySurveyId.get(survey.id) ?? 0,
+          linkedArticleTitlesBySurveyId.get(survey.id) ?? [],
+        ),
       ),
       source: "supabase",
-      message: "프로젝트별 설문·이벤트 운영 데이터를 표시합니다.",
+      message: "프로젝트별 참여 콘텐츠 운영 데이터를 표시합니다.",
     };
   } catch {
     return {
@@ -4670,7 +4748,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,survey_id,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -5099,6 +5177,7 @@ export async function upsertProjectArticle(
       title_alignment: normalizeArticleTextAlignment(input.titleAlignment),
       summary_alignment: normalizeArticleTextAlignment(input.summaryAlignment ?? input.textAlignment),
       body_alignment: normalizeArticleTextAlignment(input.bodyAlignment ?? input.textAlignment),
+      survey_id: nullableText(input.surveyId),
       audio_source: normalizeArticleAudioSource(input.audioSource, Boolean(input.articleId)),
       article_tts_voice: normalizeArticleTtsVoice(input.articleTtsVoice),
       contact_name: nullableText(input.contactName),
@@ -5218,6 +5297,7 @@ export async function createNewsletterProject(
     status: input.status,
     package_tier: input.packageTier,
     production_mode: input.productionMode,
+    project_type: normalizeProjectType(input.projectType),
     ebook_source: normalizeEbookSource(input.ebookSource),
     external_ebook_url: nullableText(input.externalEbookUrl),
     estimated_hours: input.estimatedHours || null,
@@ -5313,6 +5393,7 @@ export async function updateNewsletterProject(
     status: input.status,
     package_tier: input.packageTier,
     production_mode: input.productionMode,
+    project_type: normalizeProjectType(input.projectType),
     ebook_source: normalizeEbookSource(input.ebookSource),
     external_ebook_url: nullableText(input.externalEbookUrl),
     estimated_hours: input.estimatedHours || null,

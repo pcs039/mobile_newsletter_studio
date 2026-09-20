@@ -8,18 +8,19 @@ import { canAccessProject, hasProjectUnlock, requireAppUser } from "@/lib/app-au
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
 type ProjectSection = "settings" | "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey";
+type ProjectModule = "newsletter" | "ebook" | "engagement" | "common";
 
-const contentToolNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
-  { key: "reading", label: "기사 작성/편집", path: "reading", guide: "문단·이미지·URL 버튼" },
-  { key: "pages", label: "이미지 페이지 편집", path: "pages", guide: "이미지·클릭 영역" },
-  { key: "assets", label: "사진·이미지 관리", path: "assets", guide: "이미지·URL·유튜브 소재" },
-  { key: "audio", label: "음성 소식지 검수", path: "audio", guide: "음성 파일·대본 확인" },
+const contentToolNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
+  { key: "reading", label: "모바일 소식지", path: "reading", guide: "기사·문단·URL", module: "newsletter" },
+  { key: "pages", label: "eBook", path: "pages", guide: "페이지·클릭 영역", module: "ebook" },
+  { key: "assets", label: "자산 관리", path: "assets", guide: "이미지·유튜브 소재", module: "common" },
+  { key: "audio", label: "음성 관리", path: "audio", guide: "음성 파일·대본", module: "newsletter" },
 ];
 
-const operationNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string }> = [
-  { key: "publish", label: "검수·발행", path: "publish", guide: "최종 확인·공개 URL" },
-  { key: "distribution", label: "배포 관리", path: "distribution", guide: "배포 기록" },
-  { key: "survey", label: "설문·이벤트", path: "survey", guide: "참여·응답" },
+const operationNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
+  { key: "publish", label: "검수·발행", path: "publish", guide: "최종 확인·공개 URL", module: "common" },
+  { key: "distribution", label: "배포 관리", path: "distribution", guide: "배포 기록", module: "common" },
+  { key: "survey", label: "참여 콘텐츠", path: "survey", guide: "설문·이벤트", module: "engagement" },
 ];
 
 const workflowStages: Array<{
@@ -62,6 +63,22 @@ const nextSteps: Partial<Record<ProjectSection, { label: string; path: ProjectSe
   audio: { label: "검수·발행", path: "publish", detail: "음성 상태를 확인합니다." },
   publish: { label: "배포 관리", path: "distribution", detail: "배포 기록을 남깁니다." },
 };
+
+function isNavigationItemVisible(module: ProjectModule, capabilities: { hasNewsletter: boolean; hasEbook: boolean; hasEngagement: boolean }) {
+  if (module === "common") {
+    return true;
+  }
+
+  if (module === "newsletter") {
+    return capabilities.hasNewsletter;
+  }
+
+  if (module === "ebook") {
+    return capabilities.hasEbook;
+  }
+
+  return capabilities.hasEngagement;
+}
 
 function getWorkflowStageIndex(active: ProjectSection) {
   const activeIndex = workflowStages.findIndex((stage) => stage.sections.includes(active));
@@ -125,12 +142,24 @@ export async function ProjectAdminShell({
     : "프로젝트 정보 확인 필요";
   const projectTitle = project ? project.title : title;
   const projectMeta = project
-    ? `담당: ${project.assigneeName} · ${project.status} · ${project.pageCount}쪽`
+    ? `유형: ${project.projectTypeLabel} · 담당: ${project.assigneeName} · ${project.status} · ${project.pageCount}쪽`
     : workspace.message;
   const workflowStageActiveIndex = getWorkflowStageIndex(active);
-  const nextStep = nextSteps[active];
-  const isContentToolActive = contentToolNavigation.some((item) => item.key === active);
-  const isOperationToolActive = operationNavigation.some((item) => item.key === active);
+  const capabilities = project?.capabilities ?? { hasNewsletter: true, hasEbook: true, hasEngagement: true };
+  const nextStep =
+    active === "settings" && !capabilities.hasNewsletter && capabilities.hasEbook
+      ? { label: "eBook", path: "pages" as const, detail: "페이지 이미지 작업으로 이동합니다." }
+      : active === "settings" && !capabilities.hasNewsletter && capabilities.hasEngagement
+        ? { label: "참여 콘텐츠", path: "survey" as const, detail: "설문·이벤트 구성으로 이동합니다." }
+        : nextSteps[active];
+  const visibleContentToolNavigation = contentToolNavigation.filter(
+    (item) => isNavigationItemVisible(item.module, capabilities) || item.key === active,
+  );
+  const visibleOperationNavigation = operationNavigation.filter(
+    (item) => isNavigationItemVisible(item.module, capabilities) || item.key === active,
+  );
+  const isContentToolActive = visibleContentToolNavigation.some((item) => item.key === active);
+  const isOperationToolActive = visibleOperationNavigation.some((item) => item.key === active);
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
@@ -186,7 +215,9 @@ export async function ProjectAdminShell({
             <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제작 흐름</p>
-                <h3 className="mt-1 text-lg font-black text-[#092046]">기본정보 → 콘텐츠 제작 → 검수·발행 → 배포 관리</h3>
+                <h3 className="mt-1 text-lg font-black text-[#092046]">
+                  {project?.projectTypeLabel ?? "통합 프로젝트"} 제작 흐름
+                </h3>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Link
@@ -258,7 +289,7 @@ export async function ProjectAdminShell({
               <details open={active === "settings" || isContentToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
                 <summary className="cursor-pointer text-xs font-black text-slate-600">콘텐츠 제작 도구</summary>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {contentToolNavigation.map((item) => {
+                  {visibleContentToolNavigation.map((item) => {
                     const isActive = active === item.key;
 
                     return (
@@ -283,7 +314,7 @@ export async function ProjectAdminShell({
               <details open={isOperationToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
                 <summary className="cursor-pointer text-xs font-black text-slate-600">운영 도구</summary>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {operationNavigation.map((item) => {
+                  {visibleOperationNavigation.map((item) => {
                     const isActive = active === item.key;
 
                     return (

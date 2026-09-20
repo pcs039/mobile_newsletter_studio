@@ -282,6 +282,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               ebookLinkRel={ebookLinkRel}
               ebookLinkTarget={ebookLinkTarget}
               ebookMobileHref={!isEmbeddedAdminPreview ? ebookMobileHref : undefined}
+              surveys={surveyData.surveys}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
             />

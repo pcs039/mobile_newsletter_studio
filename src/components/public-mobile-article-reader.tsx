@@ -38,6 +38,7 @@ import type {
   FontAsset,
   ProjectContentArticle,
   ProjectContentBlock,
+  ProjectSurveyItem,
 } from "@/lib/newsletter-repository";
 import { getArticleLinkButtonLabel, getValidArticleUrl } from "@/lib/public-article-url";
 
@@ -67,6 +68,7 @@ type PublicMobileArticleReaderProps = {
     src: string;
     title?: string;
   };
+  surveys?: ProjectSurveyItem[];
   showAdminPreviewControls: boolean;
   slug: string;
 };
@@ -78,6 +80,12 @@ type SwipeStart = {
 } | null;
 
 type PageSlideDirection = "next" | "previous" | null;
+type MobileArticleSearchResult = {
+  article: ProjectContentArticle;
+  index: number;
+  snippet: string;
+  title: string;
+};
 
 type ArticleMotionTarget = "title" | "textBox" | "image" | "link";
 
@@ -344,8 +352,10 @@ function PublicCompactPublicationHeader({
   ebookMobileHref,
   headerColor,
   issue,
+  onOpenSearch,
   onOpenToc,
   publicationTitle,
+  showSearch,
   showToc,
 }: {
   ebookDesktopHref?: string;
@@ -354,8 +364,10 @@ function PublicCompactPublicationHeader({
   ebookMobileHref?: string;
   headerColor?: string | null;
   issue?: string | null;
+  onOpenSearch: () => void;
   onOpenToc: () => void;
   publicationTitle: string;
+  showSearch: boolean;
   showToc: boolean;
 }) {
   const hasEbookLinks = Boolean(ebookMobileHref || ebookDesktopHref);
@@ -379,6 +391,16 @@ function PublicCompactPublicationHeader({
         <div className="flex shrink-0 items-center gap-2 pr-[env(safe-area-inset-right)]">
           {!hasEbookLinks ? (
             <PublicPageTurnSoundToggle className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2.5 text-[11px] font-black text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80" />
+          ) : null}
+          {showSearch ? (
+            <button
+              type="button"
+              onClick={onOpenSearch}
+              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2.5 text-sm font-black leading-none text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+              aria-label="소식지 검색"
+            >
+              검색
+            </button>
           ) : null}
           {showToc ? (
             <button
@@ -557,6 +579,41 @@ function getYoutubeId(value: string) {
 
 function getArticleTitle(article: ProjectContentArticle, index: number) {
   return getDisplayArticleTitle(article, `기사 ${index + 1}`);
+}
+
+function getPlainArticleSearchText(article: ProjectContentArticle, index: number) {
+  const paragraphText = article.blocks
+    .filter((block) => block.isVisible && block.type === "paragraph")
+    .map((block) => block.body)
+    .filter(Boolean)
+    .join(" ");
+
+  return [
+    getArticleTitle(article, index),
+    article.title,
+    article.displayTitle,
+    article.summary,
+    paragraphText || article.body,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildArticleSearchSnippet(text: string, query: string) {
+  const normalizedText = text.replace(/\s+/g, " ").trim();
+  const normalizedQuery = query.trim().toLocaleLowerCase("ko-KR");
+  const matchedIndex = normalizedText.toLocaleLowerCase("ko-KR").indexOf(normalizedQuery);
+
+  if (matchedIndex < 0) {
+    return normalizedText.slice(0, 96);
+  }
+
+  const start = Math.max(0, matchedIndex - 36);
+  const end = Math.min(normalizedText.length, matchedIndex + query.length + 64);
+
+  return `${start > 0 ? "..." : ""}${normalizedText.slice(start, end)}${end < normalizedText.length ? "..." : ""}`;
 }
 
 function normalizeArticleMotionPreset(value: string | null | undefined): ArticleMotionPreset {
@@ -854,6 +911,7 @@ function ArticleCard({
   showTextSizeControl = false,
   showAdminPreviewControls,
   slug,
+  survey,
 }: {
   article: ProjectContentArticle;
   className?: string;
@@ -865,6 +923,7 @@ function ArticleCard({
   showTextSizeControl?: boolean;
   showAdminPreviewControls: boolean;
   slug: string;
+  survey?: ProjectSurveyItem | null;
 }) {
   const visibleBlocks = getVisibleBlocks(article);
   const articleTitle = getArticleTitle(article, index);
@@ -1023,6 +1082,21 @@ function ArticleCard({
           </p>
         </div>
       ) : null}
+      {survey ? (
+        <div className="mt-5 rounded-xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4">
+          <p className="text-xs font-black text-[#184a88]">참여 콘텐츠</p>
+          <h3 className="mt-1 text-base font-black leading-7 text-[#092046] [word-break:keep-all]">{survey.title}</h3>
+          {survey.description ? (
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">{survey.description}</p>
+          ) : null}
+          <Link
+            href={`/newsletters/${slug}/survey/${survey.id}`}
+            className="dd-btn dd-btn-primary dd-btn-sm mt-3 rounded-full px-4"
+          >
+            {survey.kindCode === "event" ? "이벤트 참여하기" : "설문 참여하기"}
+          </Link>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -1043,6 +1117,7 @@ export function PublicMobileArticleReader({
   ebookLinkTarget,
   ebookMobileHref,
   publicAudio,
+  surveys = [],
   showAdminPreviewControls,
   slug,
 }: PublicMobileArticleReaderProps) {
@@ -1050,6 +1125,8 @@ export function PublicMobileArticleReader({
   const [currentIndex, setCurrentIndex] = useState(() => getInitialArticleIndex(articles, initialArticleId));
   const [isCoverView, setIsCoverView] = useState(() => Boolean(hasCoverPage && !initialArticleId));
   const [isIndexOpen, setIsIndexOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [lightboxImage, setLightboxImage] = useState<PublicArticleLightboxImage | null>(null);
   const [pageSlideDirection, setPageSlideDirection] = useState<PageSlideDirection>(null);
   const [dragOffset, setDragOffset] = useState(0);
@@ -1061,6 +1138,33 @@ export function PublicMobileArticleReader({
   const safeCurrentIndex = Math.min(currentIndex, Math.max(articles.length - 1, 0));
   const currentArticle = articles[safeCurrentIndex] ?? null;
   const hasArticles = articles.length > 0;
+  const surveyById = useMemo(() => new Map(surveys.map((survey) => [survey.id, survey])), [surveys]);
+  const searchResults = useMemo<MobileArticleSearchResult[]>(() => {
+    const query = searchQuery.trim();
+
+    if (!query) {
+      return [];
+    }
+
+    const normalizedQuery = query.toLocaleLowerCase("ko-KR");
+
+    return articles.flatMap((article, index) => {
+      const text = getPlainArticleSearchText(article, index);
+
+      if (!text.toLocaleLowerCase("ko-KR").includes(normalizedQuery)) {
+        return [];
+      }
+
+      return [
+        {
+          article,
+          index,
+          snippet: buildArticleSearchSnippet(text, query),
+          title: getArticleTitle(article, index),
+        },
+      ];
+    });
+  }, [articles, searchQuery]);
   const canGoPrevious = !isCoverView && (safeCurrentIndex > 0 || hasCoverPage);
   const canGoNext = isCoverView ? hasArticles : safeCurrentIndex < articles.length - 1;
   const activeAudioSegments = useMemo(() => {
@@ -1427,7 +1531,9 @@ export function PublicMobileArticleReader({
                 headerColor={headerColor}
                 issue={issue}
                 onOpenToc={() => setIsIndexOpen(true)}
+                onOpenSearch={() => setIsSearchOpen(true)}
                 publicationTitle={publicationTitle}
+                showSearch={hasArticles}
                 showToc={hasArticles}
               />
               <PublicNewsletterCoverView
@@ -1442,8 +1548,10 @@ export function PublicMobileArticleReader({
               <PublicCompactPublicationHeader
                 headerColor={headerColor}
                 issue={issue}
+                onOpenSearch={() => setIsSearchOpen(true)}
                 onOpenToc={() => setIsIndexOpen(true)}
                 publicationTitle={publicationTitle}
+                showSearch={hasArticles}
                 showToc={hasArticles}
               />
               {currentArticle ? (
@@ -1462,6 +1570,7 @@ export function PublicMobileArticleReader({
                     showAdminPreviewControls={showAdminPreviewControls}
                     showTextSizeControl
                     slug={slug}
+                    survey={currentArticle.surveyId ? surveyById.get(currentArticle.surveyId) ?? null : null}
                   />
                 </div>
               ) : (
@@ -1579,8 +1688,10 @@ export function PublicMobileArticleReader({
             ebookMobileHref={cover ? ebookMobileHref : undefined}
             headerColor={headerColor}
             issue={issue}
+            onOpenSearch={() => setIsSearchOpen(true)}
             onOpenToc={() => setIsIndexOpen(true)}
             publicationTitle={publicationTitle}
+            showSearch={hasArticles}
             showToc={hasArticles}
           />
           {cover ? (
@@ -1602,10 +1713,76 @@ export function PublicMobileArticleReader({
               projectTitleFontAssetId={projectTitleFontAssetId}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
+              survey={article.surveyId ? surveyById.get(article.surveyId) ?? null : null}
             />
           ))}
         </section>
       )}
+
+      {isSearchOpen ? (
+        <div data-swipe-navigation-ignore className="fixed inset-0 z-[75] flex justify-center bg-slate-950/55 px-4 py-6">
+          <section className="flex max-h-full w-full max-w-[520px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl shadow-blue-950/30">
+            <div className="border-b border-slate-200 bg-[#092046] px-5 py-4 text-white">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black text-sky-200">소식지에서 검색</p>
+                  <h2 className="mt-1 text-xl font-black">모바일 기사 검색</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSearchOpen(false)}
+                  className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
+                  aria-label="검색 닫기"
+                >
+                  닫기
+                </button>
+              </div>
+              <input
+                autoFocus
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.currentTarget.value)}
+                placeholder="검색어 입력"
+                className="mt-4 h-11 w-full rounded-xl border border-white/30 bg-white px-4 text-sm font-bold text-[#092046] outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-white"
+              />
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {!searchQuery.trim() ? (
+                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm font-black text-slate-500">
+                  검색어를 입력하세요.
+                </p>
+              ) : searchResults.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm font-black text-slate-500">
+                  검색 결과가 없습니다.
+                </p>
+              ) : (
+                <div>
+                  <p className="mb-3 text-xs font-black text-[#184a88]">검색 결과 {searchResults.length}건</p>
+                  <div className="space-y-2">
+                    {searchResults.map((result) => (
+                      <button
+                        key={result.article.id}
+                        type="button"
+                        onClick={() => {
+                          goToArticle(result.index, { playSound: true });
+                          setIsSearchOpen(false);
+                          window.setTimeout(scrollToReaderTop, 0);
+                        }}
+                        className="block w-full rounded-2xl border border-slate-200 bg-[#f8fbff] px-4 py-3 text-left transition hover:border-[#2f73b7] hover:bg-white"
+                        aria-label={`${result.title} 검색 결과로 이동`}
+                      >
+                        <span className="text-xs font-black text-[#184a88]">{result.index + 1} / {articles.length}</span>
+                        <span className="mt-1 block text-sm font-black leading-6 text-[#092046] [word-break:keep-all]">{result.title}</span>
+                        <span className="mt-1 block text-xs font-semibold leading-5 text-slate-600 [overflow-wrap:anywhere]">{result.snippet}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {publicAudio ? (
         <PublicAudioTextSyncPlayer src={publicAudio.src} title={publicAudio.title} segments={activeAudioSegments} />

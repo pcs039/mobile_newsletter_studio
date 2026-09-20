@@ -28,7 +28,7 @@ export async function AdminMainNavigation({ active, projectId }: AdminMainNaviga
       href: projectId ? `/projects/${projectId}/publish` : "/projects/publish",
     },
     { key: "distribution", label: "배포 관리", detail: "배포 기록", href: "/projects/distribution" },
-    { key: "survey", label: "설문/이벤트", detail: "참여 운영", href: "/projects/survey" },
+    { key: "survey", label: "참여 콘텐츠", detail: "설문·이벤트", href: "/projects/survey" },
   ];
 
   return (

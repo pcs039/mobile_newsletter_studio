@@ -8,6 +8,7 @@ import {
   getProjectContent,
   getProjectOriginalPdf,
   getProjectPageImages,
+  getProjectSurveys,
   getProjectWorkspace,
   type ProjectContentArticle,
 } from "@/lib/newsletter-repository";
@@ -63,12 +64,13 @@ export default async function ReadingEditorPage({
 }) {
   const { projectId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const [workspace, originalPdfData, pageImageData, assetData, contentData] = await Promise.all([
+  const [workspace, originalPdfData, pageImageData, assetData, contentData, surveyData] = await Promise.all([
     getProjectWorkspace(projectId),
     getProjectOriginalPdf(projectId),
     getProjectPageImages(projectId),
     getProjectAssetFiles(projectId),
     getProjectContent(projectId),
+    getProjectSurveys(projectId),
   ]);
   const project = workspace.project;
   const articles = contentData.articles;
@@ -259,6 +261,7 @@ export default async function ReadingEditorPage({
             article={selectedArticle}
             assets={assetData.assets}
             pages={pageImageData.pages}
+            surveys={surveyData.surveys}
             projectPageCount={project?.pageCount ?? 0}
             projectSlug={projectId}
           />
