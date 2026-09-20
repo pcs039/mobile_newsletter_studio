@@ -29,6 +29,7 @@ import {
   tokenizeKoreanTitleForBreaks,
   renderKoreanTitleWithBreaks,
 } from "@/lib/korean-title-breaks";
+import { getAvailableInterestTags, getInterestOrderedArticles } from "@/lib/article-interest-order";
 import {
   enablePageTurnSoundWithPreview,
   playPageTurnSound,
@@ -131,6 +132,8 @@ const articleMotionSpeedSettings: Record<ArticleMotionSpeed, { characterDelayMs:
   normal: { characterDelayMs: 36, maxDelayMs: 1000 },
   fast: { characterDelayMs: 20, maxDelayMs: 650 },
 };
+const newsletterInterestStorageKeyPrefix = "datadiction_newsletter_interests:";
+const newsletterInterestPreferenceEventName = "datadiction:newsletter-interest-preference";
 
 const presetElementMotionEffects: Record<ArticleMotionPreset, Record<ArticleMotionTarget, ArticleElementMotionEffect>> = {
   none: {
@@ -183,6 +186,87 @@ function prefersReducedMotion() {
   }
 
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function getNewsletterInterestStorageKey(slug: string) {
+  return `${newsletterInterestStorageKeyPrefix}${slug}`;
+}
+
+function subscribeToNewsletterInterestPreference(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(newsletterInterestPreferenceEventName, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(newsletterInterestPreferenceEventName, onStoreChange);
+  };
+}
+
+function readNewsletterInterestSnapshot(slug: string) {
+  if (typeof window === "undefined") {
+    return "[]";
+  }
+
+  try {
+    return window.localStorage.getItem(getNewsletterInterestStorageKey(slug)) ?? "[]";
+  } catch {
+    return "[]";
+  }
+}
+
+function sanitizeSelectedInterests(value: unknown, availableInterestTags: string[]) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const availableTagSet = new Set(availableInterestTags);
+  const selected: string[] = [];
+  const seen = new Set<string>();
+
+  value.forEach((item) => {
+    if (typeof item !== "string") {
+      return;
+    }
+
+    const tag = item.trim();
+
+    if (!tag || !availableTagSet.has(tag) || seen.has(tag)) {
+      return;
+    }
+
+    seen.add(tag);
+    selected.push(tag);
+  });
+
+  return selected;
+}
+
+function saveStoredNewsletterInterests(slug: string, selectedInterests: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const storageKey = getNewsletterInterestStorageKey(slug);
+
+    if (selectedInterests.length === 0) {
+      window.localStorage.removeItem(storageKey);
+    } else {
+      window.localStorage.setItem(storageKey, JSON.stringify(selectedInterests));
+    }
+  } catch {
+    // localStorage may be unavailable in private browsing or embedded previews.
+  }
+
+  window.dispatchEvent(new Event(newsletterInterestPreferenceEventName));
+}
+
+function parseNewsletterInterestSnapshot(snapshot: string, availableInterestTags: string[]) {
+  try {
+    return sanitizeSelectedInterests(JSON.parse(snapshot), availableInterestTags);
+  } catch {
+    return [];
+  }
 }
 
 function isInteractiveTouchTarget(target: EventTarget | null) {
@@ -239,6 +323,87 @@ export function PublicMobileFirstArticleLink({
   );
 }
 
+function InterestPreferenceSelector({
+  availableInterestTags,
+  compact = false,
+  onReset,
+  onToggle,
+  selectedInterests,
+}: {
+  availableInterestTags: string[];
+  compact?: boolean;
+  onReset: () => void;
+  onToggle: (tag: string) => void;
+  selectedInterests: string[];
+}) {
+  if (availableInterestTags.length === 0) {
+    return null;
+  }
+
+  const selectedTagSet = new Set(selectedInterests);
+  const hasSelection = selectedInterests.length > 0;
+
+  return (
+    <section
+      data-swipe-navigation-ignore
+      className={
+        compact
+          ? "rounded-2xl border border-[#d8e8ff] bg-[#f8fbff] p-3"
+          : "mt-5 rounded-2xl border border-[#b8d7ff] bg-white p-4 shadow-sm"
+      }
+    >
+      <div className={compact ? "mb-2" : "mb-3"}>
+        <p className="text-xs font-black text-[#184a88]">맞춤 보기</p>
+        <h2 className={`${compact ? "mt-0.5 text-sm" : "mt-1 text-lg"} font-black leading-tight text-[#092046]`}>
+          어떤 소식을 먼저 볼까요?
+        </h2>
+        {!compact ? (
+          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+            관심분야를 선택하면 관련 소식을 먼저 보여드립니다. 전체 기사는 그대로 유지됩니다.
+          </p>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onReset}
+          className={`min-h-9 rounded-full border px-3 text-xs font-black transition ${
+            !hasSelection
+              ? "border-[#092046] bg-[#092046] text-white"
+              : "border-[#d8e8ff] bg-white text-[#184a88] hover:border-[#184a88]"
+          }`}
+          aria-pressed={!hasSelection}
+        >
+          전체보기
+        </button>
+        {availableInterestTags.map((tag) => {
+          const isSelected = selectedTagSet.has(tag);
+
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => onToggle(tag)}
+              className={`min-h-9 rounded-full border px-3 text-xs font-black transition ${
+                isSelected
+                  ? "border-[#092046] bg-[#092046] text-white"
+                  : "border-[#d8e8ff] bg-white text-[#184a88] hover:border-[#184a88]"
+              }`}
+              aria-pressed={isSelected}
+            >
+              {tag}
+            </button>
+          );
+        })}
+      </div>
+      {hasSelection ? (
+        <p className="mt-2 text-xs font-bold text-[#184a88]">관심분야 우선순으로 보고 있습니다.</p>
+      ) : null}
+      {!compact ? <p className="mt-2 text-xs font-semibold text-slate-500">선택은 이 기기에만 저장됩니다.</p> : null}
+    </section>
+  );
+}
+
 function PublicNewsletterCoverView({
   coverFit,
   coverImageSrc,
@@ -247,6 +412,7 @@ function PublicNewsletterCoverView({
   coverSubtitle,
   coverTitle,
   hasArticles,
+  interestSelector,
   onOpenToc,
   onStartReading,
   publicSurveyLinks = [],
@@ -259,6 +425,7 @@ function PublicNewsletterCoverView({
   coverSubtitle: string;
   coverTitle: string;
   hasArticles: boolean;
+  interestSelector?: ReactNode;
   onOpenToc: () => void;
   onStartReading: () => void;
   publicSurveyLinks?: ProjectSurveyItem[];
@@ -324,6 +491,7 @@ function PublicNewsletterCoverView({
           목차 보기
         </button>
       </div>
+      {interestSelector}
       {publicSurveyLinks.length > 0 ? (
         <section className="mt-5 rounded-2xl border border-[#b8d7ff] bg-white p-5 shadow-sm">
           <p className="text-xs font-black text-[#184a88]">참여하기</p>
@@ -1216,7 +1384,23 @@ export function PublicMobileArticleReader({
   slug,
 }: PublicMobileArticleReaderProps) {
   const isMobileReader = useSyncExternalStore(subscribeToMobileReader, readMobileReaderSnapshot, () => false);
-  const [currentIndex, setCurrentIndex] = useState(() => getInitialArticleIndex(articles, initialArticleId));
+  const availableInterestTags = useMemo(() => getAvailableInterestTags(articles), [articles]);
+  const selectedInterestSnapshot = useSyncExternalStore(
+    subscribeToNewsletterInterestPreference,
+    () => readNewsletterInterestSnapshot(slug),
+    () => "[]",
+  );
+  const selectedInterests = useMemo(
+    () => parseNewsletterInterestSnapshot(selectedInterestSnapshot, availableInterestTags),
+    [availableInterestTags, selectedInterestSnapshot],
+  );
+  const orderedArticles = useMemo(
+    () => getInterestOrderedArticles(articles, selectedInterests),
+    [articles, selectedInterests],
+  );
+  const [currentArticleId, setCurrentArticleId] = useState(
+    () => articles[getInitialArticleIndex(articles, initialArticleId)]?.id ?? null,
+  );
   const [isCoverView, setIsCoverView] = useState(() => Boolean(hasCoverPage && !initialArticleId));
   const [isIndexOpen, setIsIndexOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -1227,9 +1411,14 @@ export function PublicMobileArticleReader({
   const [isDraggingPage, setIsDraggingPage] = useState(false);
   const articleTopRef = useRef<HTMLDivElement>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
-  const safeCurrentIndex = Math.min(currentIndex, Math.max(articles.length - 1, 0));
-  const currentArticle = articles[safeCurrentIndex] ?? null;
-  const hasArticles = articles.length > 0;
+  const currentArticleIndex = currentArticleId
+    ? orderedArticles.findIndex((article) => article.id === currentArticleId)
+    : -1;
+  const fallbackCurrentIndex =
+    orderedArticles.length === 0 ? 0 : Math.min(getInitialArticleIndex(orderedArticles, initialArticleId), orderedArticles.length - 1);
+  const safeCurrentIndex = currentArticleIndex >= 0 ? currentArticleIndex : fallbackCurrentIndex;
+  const currentArticle = orderedArticles[safeCurrentIndex] ?? null;
+  const hasArticles = orderedArticles.length > 0;
   const surveyById = useMemo(() => new Map(surveys.map((survey) => [survey.id, survey])), [surveys]);
   const searchResults = useMemo<MobileArticleSearchResult[]>(() => {
     const query = searchQuery.trim();
@@ -1240,7 +1429,7 @@ export function PublicMobileArticleReader({
 
     const normalizedQuery = query.toLocaleLowerCase("ko-KR");
 
-    return articles.flatMap((article, index) => {
+    return orderedArticles.flatMap((article, index) => {
       const text = getPlainArticleSearchText(article, index);
 
       if (!text.toLocaleLowerCase("ko-KR").includes(normalizedQuery)) {
@@ -1256,16 +1445,16 @@ export function PublicMobileArticleReader({
         },
       ];
     });
-  }, [articles, searchQuery]);
+  }, [orderedArticles, searchQuery]);
   const canGoPrevious = !isCoverView && (safeCurrentIndex > 0 || hasCoverPage);
-  const canGoNext = isCoverView ? hasArticles : safeCurrentIndex < articles.length - 1 || hasCoverPage;
+  const canGoNext = isCoverView ? hasArticles : safeCurrentIndex < orderedArticles.length - 1 || hasCoverPage;
   const activeAudioSegments = useMemo(() => {
     if (!isMobileReader || !currentArticle) {
-      return buildAudioTextSegmentCandidates(articles);
+      return buildAudioTextSegmentCandidates(orderedArticles);
     }
 
     return buildAudioTextSegmentCandidates([currentArticle]);
-  }, [articles, currentArticle, isMobileReader]);
+  }, [currentArticle, isMobileReader, orderedArticles]);
 
   useEffect(() => {
     if (!isMobileReader) {
@@ -1284,6 +1473,46 @@ export function PublicMobileArticleReader({
 
     return () => window.removeEventListener(openMobileArticleTocEventName, openArticleToc);
   }, []);
+
+  function updateSelectedInterests(nextInterests: string[]) {
+    const sanitized = sanitizeSelectedInterests(nextInterests, availableInterestTags);
+
+    saveStoredNewsletterInterests(slug, sanitized);
+  }
+
+  function toggleSelectedInterest(tag: string) {
+    const selectedTagSet = new Set(selectedInterests);
+
+    if (selectedTagSet.has(tag)) {
+      selectedTagSet.delete(tag);
+    } else {
+      selectedTagSet.add(tag);
+    }
+
+    updateSelectedInterests([...selectedTagSet]);
+  }
+
+  function resetSelectedInterests() {
+    updateSelectedInterests([]);
+  }
+
+  const interestSelector = (
+    <InterestPreferenceSelector
+      availableInterestTags={availableInterestTags}
+      onReset={resetSelectedInterests}
+      onToggle={toggleSelectedInterest}
+      selectedInterests={selectedInterests}
+    />
+  );
+  const compactInterestSelector = (
+    <InterestPreferenceSelector
+      availableInterestTags={availableInterestTags}
+      compact
+      onReset={resetSelectedInterests}
+      onToggle={toggleSelectedInterest}
+      selectedInterests={selectedInterests}
+    />
+  );
 
   function stopCurrentArticleAudio() {
     window.dispatchEvent(new Event(stopArticleAudioEventName));
@@ -1314,25 +1543,26 @@ export function PublicMobileArticleReader({
     }
 
     stopCurrentArticleAudio();
-    setCurrentIndex(0);
+    setCurrentArticleId(orderedArticles[0]?.id ?? null);
     setIsCoverView(false);
     scrollToReaderTop();
     void playPageTurnSound();
   }
 
   function goToArticle(nextIndex: number, options: { playSound?: boolean } = {}) {
-    if (articles.length === 0) {
+    if (orderedArticles.length === 0) {
       return false;
     }
 
-    const clampedIndex = Math.min(Math.max(nextIndex, 0), articles.length - 1);
+    const clampedIndex = Math.min(Math.max(nextIndex, 0), orderedArticles.length - 1);
+    const nextArticle = orderedArticles[clampedIndex];
 
-    if (clampedIndex === safeCurrentIndex && !isCoverView) {
+    if (!nextArticle || (nextArticle.id === currentArticle?.id && !isCoverView)) {
       return false;
     }
 
     stopCurrentArticleAudio();
-    setCurrentIndex(clampedIndex);
+    setCurrentArticleId(nextArticle.id);
     setIsCoverView(false);
 
     if (options.playSound) {
@@ -1357,7 +1587,7 @@ export function PublicMobileArticleReader({
       return;
     }
 
-    if (safeCurrentIndex >= articles.length - 1 && hasCoverPage) {
+    if (safeCurrentIndex >= orderedArticles.length - 1 && hasCoverPage) {
       goToCoverFromArticle();
       return;
     }
@@ -1366,7 +1596,7 @@ export function PublicMobileArticleReader({
   }
 
   function goToArticleWithSlide(nextIndex: number, direction: Exclude<PageSlideDirection, null>) {
-    const clampedIndex = Math.min(Math.max(nextIndex, 0), articles.length - 1);
+    const clampedIndex = Math.min(Math.max(nextIndex, 0), orderedArticles.length - 1);
 
     if (clampedIndex === safeCurrentIndex) {
       return;
@@ -1481,7 +1711,7 @@ export function PublicMobileArticleReader({
   }
 
   useEffect(() => {
-    if (!isMobileReader || articles.length === 0) {
+    if (!isMobileReader || orderedArticles.length === 0) {
       return;
     }
 
@@ -1516,7 +1746,7 @@ export function PublicMobileArticleReader({
     };
   });
 
-  if (articles.length === 0 && !cover) {
+  if (orderedArticles.length === 0 && !cover) {
     return null;
   }
 
@@ -1555,6 +1785,7 @@ export function PublicMobileArticleReader({
               <PublicNewsletterCoverView
                 {...cover}
                 hasArticles={hasArticles}
+                interestSelector={interestSelector}
                 onOpenToc={() => setIsIndexOpen(true)}
                 onStartReading={goToFirstArticleFromCover}
                 publicSurveyLinks={publicSurveyLinks}
@@ -1622,9 +1853,9 @@ export function PublicMobileArticleReader({
                 onClick={() => setIsIndexOpen(true)}
                 disabled={!hasArticles}
                 className="h-9 rounded-full bg-[#092046]/82 px-3 text-xs font-black text-white shadow-sm transition hover:bg-[#092046]"
-                aria-label={isCoverView ? "표지" : `기사 목차 열기, 현재 ${safeCurrentIndex + 1} / ${articles.length}`}
+                aria-label={isCoverView ? "표지" : `기사 목차 열기, 현재 ${safeCurrentIndex + 1} / ${orderedArticles.length}`}
               >
-                {isCoverView ? "표지" : `${safeCurrentIndex + 1} / ${articles.length}`}
+                {isCoverView ? "표지" : `${safeCurrentIndex + 1} / ${orderedArticles.length}`}
               </button>
               <button
                 type="button"
@@ -1634,7 +1865,7 @@ export function PublicMobileArticleReader({
                 aria-label={
                   isCoverView
                     ? "첫 기사로 이동"
-                    : safeCurrentIndex >= articles.length - 1 && hasCoverPage
+                    : safeCurrentIndex >= orderedArticles.length - 1 && hasCoverPage
                       ? "표지로 이동"
                       : "다음 기사"
                 }
@@ -1652,7 +1883,7 @@ export function PublicMobileArticleReader({
                     <div>
                       <p className="text-xs font-black text-sky-200">기사 목차</p>
                       <h2 className="mt-1 text-xl font-black">
-                        {isCoverView ? "표지" : `${safeCurrentIndex + 1} / ${articles.length}`}
+                        {isCoverView ? "표지" : `${safeCurrentIndex + 1} / ${orderedArticles.length}`}
                       </h2>
                     </div>
                     <button
@@ -1665,6 +1896,7 @@ export function PublicMobileArticleReader({
                   </div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                  {availableInterestTags.length > 0 ? <div className="mb-4">{compactInterestSelector}</div> : null}
                   <div className="space-y-2">
                     {hasCoverPage && cover ? (
                       <button
@@ -1691,7 +1923,7 @@ export function PublicMobileArticleReader({
                         </span>
                       </button>
                     ) : null}
-                    {articles.map((article, index) => {
+                    {orderedArticles.map((article, index) => {
                       const isActive = !isCoverView && index === safeCurrentIndex;
                       const articleTitle = getArticleTitle(article, index);
                       const originalTitle = article.title.trim() || `기사 ${index + 1}`;
@@ -1715,7 +1947,7 @@ export function PublicMobileArticleReader({
                           }`}
                         >
                           <span className={`text-xs font-black ${isActive ? "text-sky-100" : "text-[#184a88]"}`}>
-                            {index + 1} / {articles.length}
+                            {index + 1} / {orderedArticles.length}
                           </span>
                           <span className="public-article-index-title mt-1 block min-w-0 max-w-full overflow-hidden text-sm font-black leading-6">
                             {articleTitle}
@@ -1748,13 +1980,14 @@ export function PublicMobileArticleReader({
             <PublicNewsletterCoverView
               {...cover}
               hasArticles={hasArticles}
+              interestSelector={interestSelector}
               onOpenToc={() => setIsIndexOpen(true)}
               onStartReading={() => goToArticle(0, { playSound: true })}
               publicSurveyLinks={publicSurveyLinks}
               slug={slug}
             />
           ) : null}
-          {articles.map((article, index) => (
+          {orderedArticles.map((article, index) => (
             <ArticleCard
               key={article.id}
               article={article}
@@ -1824,7 +2057,7 @@ export function PublicMobileArticleReader({
                         className="box-border block w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-[#f8fbff] px-4 py-3 text-left transition hover:border-[#2f73b7] hover:bg-white"
                         aria-label={`${result.title} 검색 결과로 이동`}
                       >
-                        <span className="block max-w-full text-xs font-black text-[#184a88]">{result.index + 1} / {articles.length}</span>
+                        <span className="block max-w-full text-xs font-black text-[#184a88]">{result.index + 1} / {orderedArticles.length}</span>
                         <span className="mt-1 line-clamp-3 block max-w-full whitespace-normal text-sm font-black leading-6 text-[#092046] [line-break:strict] [overflow-wrap:anywhere] [word-break:keep-all]">
                           {result.title}
                         </span>
