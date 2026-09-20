@@ -8,7 +8,17 @@ type PublicSurveyPageProps = {
   params: Promise<{ slug: string; surveyId: string }>;
 };
 
-function PublicSurveyUnavailablePage({ title, message, backHref }: { title: string; message: string; backHref: string }) {
+function PublicSurveyUnavailablePage({
+  backHref,
+  backLabel,
+  message,
+  title,
+}: {
+  backHref: string;
+  backLabel: string;
+  message: string;
+  title: string;
+}) {
   return (
     <main className="public-newsletter-screen grid min-h-screen place-items-center bg-[#edf4fb] px-5 text-slate-950">
       <section className="w-full max-w-[520px] rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-blue-950/10">
@@ -22,7 +32,7 @@ function PublicSurveyUnavailablePage({ title, message, backHref }: { title: stri
           href={backHref}
           className="mt-6 inline-flex rounded-xl bg-[#092046] px-5 py-3 text-sm font-black text-white transition hover:bg-[#123a78]"
         >
-          소식지로 돌아가기
+          {backLabel}
         </Link>
       </section>
     </main>
@@ -36,6 +46,8 @@ export default async function PublicSurveyPage({ params }: PublicSurveyPageProps
   const survey = surveyResult.survey;
   const headerColor = project?.primaryColor ?? "#071f46";
   const newsletterHref = `/newsletters/${slug}`;
+  const isEngagementOnly = Boolean(project && !project.capabilities.hasNewsletter && project.capabilities.hasEngagement);
+  const returnLabel = isEngagementOnly ? "참여 콘텐츠로 돌아가기" : "모바일 소식지로 돌아가기";
   const isPublished = project?.status === "발행 완료";
 
   if (!project || !survey || !isPublished) {
@@ -44,6 +56,7 @@ export default async function PublicSurveyPage({ params }: PublicSurveyPageProps
         title="참여 화면을 찾지 못했습니다."
         message="설문 또는 이벤트가 아직 공개되지 않았거나 주소가 변경됐습니다."
         backHref={newsletterHref}
+        backLabel={returnLabel}
       />
     );
   }
@@ -69,7 +82,7 @@ export default async function PublicSurveyPage({ params }: PublicSurveyPageProps
               href={newsletterHref}
               className="inline-flex rounded-xl border border-white/40 px-4 py-3 text-sm font-black text-white transition hover:bg-white/10"
             >
-              모바일 소식지 보기
+              {returnLabel}
             </Link>
             <PublicSurveyCloseButton fallbackHref={newsletterHref} />
           </div>
@@ -86,13 +99,13 @@ export default async function PublicSurveyPage({ params }: PublicSurveyPageProps
             </p>
           </div>
 
-          <PublicSurveyResponseForm projectSlug={slug} survey={survey} />
+          <PublicSurveyResponseForm projectSlug={slug} returnHref={newsletterHref} returnLabel={returnLabel} survey={survey} />
 
           <Link
             href={newsletterHref}
             className="block rounded-xl border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
-            소식지로 돌아가기
+            {returnLabel}
           </Link>
         </section>
       </section>

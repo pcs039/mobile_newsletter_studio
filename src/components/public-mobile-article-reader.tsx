@@ -630,6 +630,38 @@ function buildArticleSearchSnippet(text: string, query: string) {
   return `${start > 0 ? "..." : ""}${normalizedText.slice(start, end)}${end < normalizedText.length ? "..." : ""}`;
 }
 
+function getSurveyAvailabilityState(survey: ProjectSurveyItem | null | undefined) {
+  if (!survey) {
+    return "none";
+  }
+
+  if (survey.statusCode === "draft") {
+    return "draft";
+  }
+
+  if (survey.statusCode === "closed") {
+    return "closed";
+  }
+
+  if (survey.questionCount <= 0) {
+    return "empty";
+  }
+
+  const now = Date.now();
+  const startsAt = survey.startAtRaw ? Date.parse(survey.startAtRaw) : null;
+  const endsAt = survey.endAtRaw ? Date.parse(survey.endAtRaw) : null;
+
+  if (startsAt && startsAt > now) {
+    return "upcoming";
+  }
+
+  if (endsAt && endsAt < now) {
+    return "ended";
+  }
+
+  return "active";
+}
+
 function normalizeArticleMotionPreset(value: string | null | undefined): ArticleMotionPreset {
   const allowed: ArticleMotionPreset[] = ["none", "calm", "image_focus", "promotion", "dynamic"];
 
@@ -961,16 +993,21 @@ function ArticleCard({
   const hasUploadedArticleAudio = article.audioFile?.sourceType === "uploaded" && Boolean(article.audioFile.previewHref);
   const hasAiArticleAudio = article.audioSource === "ai_tts" && article.audioFile?.sourceType === "ai_tts";
   const shouldShowArticleAudio = hasUploadedArticleAudio || hasAiArticleAudio;
-  const hasPublicSurveyCta = Boolean(survey && survey.statusCode === "open" && survey.questionCount > 0);
+  const surveyAvailabilityState = getSurveyAvailabilityState(survey);
+  const hasPublicSurveyCta = surveyAvailabilityState === "active";
   const shouldShowSurveyStatus = Boolean(survey && (hasPublicSurveyCta || showSurveyConnectionStatus));
   const surveyStatusText =
-    survey?.statusCode === "draft"
-      ? "초안 · 실제 공개화면에는 표시되지 않습니다."
-      : survey?.statusCode === "closed"
-        ? "종료 · 실제 공개 참여가 불가합니다."
-        : survey && survey.questionCount <= 0
-          ? "문항 없음 · 실제 공개화면에는 표시되지 않습니다."
-          : "공개 전";
+    surveyAvailabilityState === "draft"
+      ? "준비 중 · 실제 공개화면에는 표시되지 않습니다."
+      : surveyAvailabilityState === "closed"
+        ? "마감 · 실제 공개 참여가 불가합니다."
+        : surveyAvailabilityState === "upcoming"
+          ? "진행 예정 · 시작 일시 이후 공개됩니다."
+          : surveyAvailabilityState === "ended"
+            ? "운영 종료 · 실제 공개 참여가 불가합니다."
+            : surveyAvailabilityState === "empty"
+              ? "문항 없음 · 실제 공개화면에는 표시되지 않습니다."
+              : "공개 전";
 
   return (
     <article

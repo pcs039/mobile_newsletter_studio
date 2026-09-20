@@ -296,7 +296,9 @@ export type ProjectSurveyItem = {
   statusCode: ProjectSurveyStatus;
   respondentTarget: string;
   startAt: string;
+  startAtRaw: string;
   endAt: string;
+  endAtRaw: string;
   eventPrize: string;
   drawNote: string;
   responseCount: number;
@@ -379,10 +381,36 @@ export type CreateProjectSurveyQuestionInput = {
   isRequired?: boolean;
 };
 
+export type UpdateProjectSurveyInput = CreateProjectSurveyInput & {
+  surveyId: string;
+};
+
+export type UpdateProjectSurveyQuestionInput = CreateProjectSurveyQuestionInput & {
+  questionId: string;
+};
+
+export type DeleteProjectSurveyInput = {
+  projectSlug: string;
+  surveyId: string;
+};
+
+export type DeleteProjectSurveyQuestionInput = {
+  projectSlug: string;
+  surveyId: string;
+  questionId: string;
+};
+
+export type MoveProjectSurveyQuestionInput = {
+  projectSlug: string;
+  surveyId: string;
+  questionId: string;
+  direction: "up" | "down";
+};
+
 export type SubmitProjectSurveyResponseInput = {
   projectSlug: string;
   surveyId: string;
-  answers: Record<string, string | string[]>;
+  answers: Record<string, unknown>;
 };
 
 export type CreateProjectSurveyResult =
@@ -2074,7 +2102,9 @@ function mapSurveyRow(
     statusCode: row.status,
     respondentTarget: row.respondent_target || "대상 미지정",
     startAt: formatOptionalCompactDateTime(row.start_at),
+    startAtRaw: row.start_at ?? "",
     endAt: formatOptionalCompactDateTime(row.end_at),
+    endAtRaw: row.end_at ?? "",
     eventPrize: row.event_prize || "해당 없음",
     drawNote: row.draw_note || "추첨·발표 메모 없음",
     responseCount,
@@ -2083,6 +2113,39 @@ function mapSurveyRow(
     updated: formatCompactDateTime(row.updated_at),
     questions,
   };
+}
+
+export function isProjectSurveyPubliclyActive(survey: ProjectSurveyItem, now = Date.now()) {
+  return isSurveyPubliclyActive({
+    status: survey.statusCode,
+    startAt: survey.startAtRaw,
+    endAt: survey.endAtRaw,
+    questionCount: survey.questions.length,
+    now,
+  });
+}
+
+function isSurveyPubliclyActive({
+  endAt,
+  now = Date.now(),
+  questionCount,
+  startAt,
+  status,
+}: {
+  endAt?: string | null;
+  now?: number;
+  questionCount: number;
+  startAt?: string | null;
+  status: ProjectSurveyStatus;
+}) {
+  if (status !== "open" || questionCount === 0) {
+    return false;
+  }
+
+  const startsAt = startAt ? Date.parse(startAt) : null;
+  const endsAt = endAt ? Date.parse(endAt) : null;
+
+  return (!startsAt || startsAt <= now) && (!endsAt || endsAt >= now);
 }
 
 function mapAssetRowToProjectAssetFile(asset: NewsletterAssetRow): ProjectAssetFile {
@@ -3382,7 +3445,7 @@ export async function getPublicProjectSurveys(projectSlug: string): Promise<Proj
 
   return {
     ...result,
-    surveys: result.surveys.filter((survey) => survey.statusCode === "open" && survey.questions.length > 0),
+    surveys: result.surveys.filter((survey) => isProjectSurveyPubliclyActive(survey)),
   };
 }
 
@@ -3556,6 +3619,121 @@ export async function getProjectSurveyResponses(projectSlug: string): Promise<Pr
   }
 }
 
+function validateSurveyDateRange(startAt?: string, endAt?: string) {
+  const start = startAt?.trim();
+  const end = endAt?.trim();
+
+  if (!start || !end) {
+    return true;
+  }
+
+  const startTime = Date.parse(start);
+  const endTime = Date.parse(end);
+
+  return Number.isFinite(startTime) && Number.isFinite(endTime) && startTime < endTime;
+}
+
+function getSurveyStatusValidationMessage(status: ProjectSurveyStatus, questionCount: number, startAt?: string, endAt?: string) {
+  if (status === "open" && questionCount < 1) {
+    return "문항을 1개 이상 등록한 뒤 진행 중으로 변경할 수 있습니다.";
+  }
+
+  if (!validateSurveyDateRange(startAt, endAt)) {
+    return "운영 시작 일시는 종료 일시보다 빨라야 합니다.";
+  }
+
+  return "";
+}
+
+async function getSurveyRowForProject(
+  projectId: string,
+  surveyId: string,
+  headers: HeadersInit,
+): Promise<NewsletterSurveyRow | null> {
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_surveys?select=id,project_id,title,description,survey_kind,status,respondent_target,start_at,end_at,event_prize,draw_note,created_at,updated_at&project_id=eq.${encodeURIComponent(
+      projectId,
+    )}&id=eq.${encodeURIComponent(surveyId)}&limit=1`,
+  );
+
+  if (!endpoint) {
+    return null;
+  }
+
+  const response = await fetch(endpoint, { headers, cache: "no-store" });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json()) as NewsletterSurveyRow[];
+
+  return rows[0] ?? null;
+}
+
+async function getSurveyQuestionRowsForProject(
+  projectId: string,
+  surveyId: string,
+  headers: HeadersInit,
+): Promise<NewsletterSurveyQuestionRow[] | null> {
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_survey_questions?select=id,survey_id,project_id,question_order,title,question_type,options,is_required,created_at,updated_at&project_id=eq.${encodeURIComponent(
+      projectId,
+    )}&survey_id=eq.${encodeURIComponent(surveyId)}&order=question_order.asc`,
+  );
+
+  if (!endpoint) {
+    return null;
+  }
+
+  const response = await fetch(endpoint, { headers, cache: "no-store" });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return (await response.json()) as NewsletterSurveyQuestionRow[];
+}
+
+async function normalizeSurveyQuestionOrder(
+  projectId: string,
+  surveyId: string,
+  headers: HeadersInit,
+  rows?: NewsletterSurveyQuestionRow[],
+) {
+  const questions = rows ?? (await getSurveyQuestionRowsForProject(projectId, surveyId, headers));
+
+  if (!questions) {
+    return false;
+  }
+
+  await Promise.all(
+    questions.map((question, index) => {
+      const endpoint = getSupabaseRestEndpoint(
+        `/rest/v1/newsletter_survey_questions?id=eq.${encodeURIComponent(question.id)}&project_id=eq.${encodeURIComponent(
+          projectId,
+        )}&survey_id=eq.${encodeURIComponent(surveyId)}`,
+      );
+
+      if (!endpoint) {
+        return Promise.resolve(false);
+      }
+
+      return fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          ...headers,
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ question_order: (index + 1) * 10, updated_at: new Date().toISOString() }),
+        cache: "no-store",
+      }).then((response) => response.ok);
+    }),
+  );
+
+  return true;
+}
+
 export async function createProjectSurvey(input: CreateProjectSurveyInput): Promise<CreateProjectSurveyResult> {
   const config = getSupabaseConfigStatus();
   const headers = getRequestHeaders(true);
@@ -3575,6 +3753,16 @@ export async function createProjectSurvey(input: CreateProjectSurveyInput): Prom
       ok: false,
       status: "invalid_input",
       message: "프로젝트와 설문·이벤트 제목은 필수입니다.",
+    };
+  }
+
+  const validationMessage = getSurveyStatusValidationMessage(input.status, 0, input.startAt, input.endAt);
+
+  if (validationMessage) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: validationMessage,
     };
   }
 
@@ -3688,6 +3876,16 @@ export async function createProjectSurveyQuestion(
       };
     }
 
+    const survey = await getSurveyRowForProject(project.id, surveyId, headers);
+
+    if (!survey) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: "현재 프로젝트에 속하지 않은 참여 콘텐츠입니다.",
+      };
+    }
+
     const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_survey_questions");
 
     if (!endpoint) {
@@ -3738,16 +3936,640 @@ export async function createProjectSurveyQuestion(
   }
 }
 
-function normalizeSurveyAnswer(value: unknown) {
-  if (Array.isArray(value)) {
-    return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
+export async function updateProjectSurvey(input: UpdateProjectSurveyInput): Promise<CreateProjectSurveyResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const surveyId = input.surveyId.trim();
+  const title = input.title.trim();
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 참여 콘텐츠를 수정합니다.",
+    };
   }
 
-  return typeof value === "string" ? value.trim() : "";
+  if (!projectSlug || !surveyId || !title) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트, 참여 콘텐츠, 제목은 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const [survey, questions] = await Promise.all([
+      getSurveyRowForProject(project.id, surveyId, headers),
+      getSurveyQuestionRowsForProject(project.id, surveyId, headers),
+    ]);
+
+    if (!survey || !questions) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: "현재 프로젝트에 속하지 않은 참여 콘텐츠입니다.",
+      };
+    }
+
+    const validationMessage = getSurveyStatusValidationMessage(input.status, questions.length, input.startAt, input.endAt);
+
+    if (validationMessage) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: validationMessage,
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_surveys?id=eq.${encodeURIComponent(surveyId)}&project_id=eq.${encodeURIComponent(project.id)}`,
+    );
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "참여 콘텐츠 수정 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        title,
+        description: input.description?.trim() || null,
+        survey_kind: input.kind,
+        status: input.status,
+        respondent_target: input.respondentTarget?.trim() || null,
+        start_at: input.startAt?.trim() || null,
+        end_at: input.endAt?.trim() || null,
+        event_prize: input.eventPrize?.trim() || null,
+        draw_note: input.drawNote?.trim() || null,
+        updated_at: new Date().toISOString(),
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "참여 콘텐츠 수정에 실패했습니다.",
+        httpStatus: response.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "참여 콘텐츠를 수정했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "참여 콘텐츠 수정 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function deleteProjectSurvey(input: DeleteProjectSurveyInput): Promise<CreateProjectSurveyResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const surveyId = input.surveyId.trim();
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 참여 콘텐츠를 삭제합니다.",
+    };
+  }
+
+  if (!projectSlug || !surveyId) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트와 참여 콘텐츠 ID는 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const survey = await getSurveyRowForProject(project.id, surveyId, headers);
+
+    if (!survey) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: "현재 프로젝트에 속하지 않은 참여 콘텐츠입니다.",
+      };
+    }
+
+    const responseCheckEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_survey_responses?select=id&project_id=eq.${encodeURIComponent(project.id)}&survey_id=eq.${encodeURIComponent(
+        surveyId,
+      )}&limit=1`,
+    );
+
+    if (!responseCheckEndpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "응답 존재 여부를 확인하지 못했습니다.",
+      };
+    }
+
+    const responseCheck = await fetch(responseCheckEndpoint, { headers, cache: "no-store" });
+
+    if (!responseCheck.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "응답 존재 여부를 확인하지 못했습니다.",
+        httpStatus: responseCheck.status,
+      };
+    }
+
+    const responseRows = (await responseCheck.json()) as Array<{ id: string }>;
+
+    if (responseRows.length > 0) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: "응답이 존재하는 참여 콘텐츠는 삭제할 수 없습니다. 상태를 '마감'으로 변경해 보관하세요.",
+      };
+    }
+
+    const articleEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_articles?project_id=eq.${encodeURIComponent(project.id)}&survey_id=eq.${encodeURIComponent(surveyId)}`,
+    );
+    const questionEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_survey_questions?project_id=eq.${encodeURIComponent(project.id)}&survey_id=eq.${encodeURIComponent(surveyId)}`,
+    );
+    const surveyEndpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_surveys?id=eq.${encodeURIComponent(surveyId)}&project_id=eq.${encodeURIComponent(project.id)}`,
+    );
+
+    if (!articleEndpoint || !questionEndpoint || !surveyEndpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "참여 콘텐츠 삭제 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const articleClearResponse = await fetch(articleEndpoint, {
+      method: "PATCH",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ survey_id: null }),
+      cache: "no-store",
+    });
+
+    if (!articleClearResponse.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "기사 연결 해제에 실패했습니다.",
+        httpStatus: articleClearResponse.status,
+      };
+    }
+
+    const questionDeleteResponse = await fetch(questionEndpoint, {
+      method: "DELETE",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      cache: "no-store",
+    });
+
+    if (!questionDeleteResponse.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "문항 삭제에 실패했습니다.",
+        httpStatus: questionDeleteResponse.status,
+      };
+    }
+
+    const surveyDeleteResponse = await fetch(surveyEndpoint, {
+      method: "DELETE",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      cache: "no-store",
+    });
+
+    if (!surveyDeleteResponse.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "참여 콘텐츠 삭제에 실패했습니다.",
+        httpStatus: surveyDeleteResponse.status,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "참여 콘텐츠를 삭제했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "참여 콘텐츠 삭제 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function updateProjectSurveyQuestion(
+  input: UpdateProjectSurveyQuestionInput,
+): Promise<CreateProjectSurveyResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const surveyId = input.surveyId.trim();
+  const questionId = input.questionId.trim();
+  const title = input.title.trim();
+  const order = Number(input.order) || 1;
+  const options = input.options ?? [];
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 문항을 수정합니다.",
+    };
+  }
+
+  if (!projectSlug || !surveyId || !questionId || !title) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트, 참여 콘텐츠, 문항 제목은 필수입니다.",
+    };
+  }
+
+  if ((input.type === "single_choice" || input.type === "multiple_choice") && options.length === 0) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "단일 선택 또는 복수 선택 문항은 선택지를 한 줄에 하나씩 입력해야 합니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const [survey, questions] = await Promise.all([
+      getSurveyRowForProject(project.id, surveyId, headers),
+      getSurveyQuestionRowsForProject(project.id, surveyId, headers),
+    ]);
+
+    if (!survey || !questions?.some((question) => question.id === questionId)) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: "현재 프로젝트에 속하지 않은 문항입니다.",
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_survey_questions?id=eq.${encodeURIComponent(questionId)}&project_id=eq.${encodeURIComponent(
+        project.id,
+      )}&survey_id=eq.${encodeURIComponent(surveyId)}`,
+    );
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "문항 수정 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        question_order: order,
+        title,
+        question_type: input.type,
+        options,
+        is_required: Boolean(input.isRequired),
+        updated_at: new Date().toISOString(),
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "문항 수정에 실패했습니다.",
+        httpStatus: response.status,
+      };
+    }
+
+    await normalizeSurveyQuestionOrder(project.id, surveyId, headers);
+
+    return {
+      ok: true,
+      message: "문항을 수정했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "문항 수정 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function deleteProjectSurveyQuestion(
+  input: DeleteProjectSurveyQuestionInput,
+): Promise<CreateProjectSurveyResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const surveyId = input.surveyId.trim();
+  const questionId = input.questionId.trim();
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 문항을 삭제합니다.",
+    };
+  }
+
+  if (!projectSlug || !surveyId || !questionId) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트, 참여 콘텐츠, 문항 ID는 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const [survey, questions] = await Promise.all([
+      getSurveyRowForProject(project.id, surveyId, headers),
+      getSurveyQuestionRowsForProject(project.id, surveyId, headers),
+    ]);
+
+    if (!survey || !questions?.some((question) => question.id === questionId)) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: "현재 프로젝트에 속하지 않은 문항입니다.",
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_survey_questions?id=eq.${encodeURIComponent(questionId)}&project_id=eq.${encodeURIComponent(
+        project.id,
+      )}&survey_id=eq.${encodeURIComponent(surveyId)}`,
+    );
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "문항 삭제 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "DELETE",
+      headers: {
+        ...headers,
+        Prefer: "return=minimal",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "문항 삭제에 실패했습니다.",
+        httpStatus: response.status,
+      };
+    }
+
+    await normalizeSurveyQuestionOrder(
+      project.id,
+      surveyId,
+      headers,
+      questions.filter((question) => question.id !== questionId),
+    );
+
+    return {
+      ok: true,
+      message: "문항을 삭제했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "문항 삭제 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function moveProjectSurveyQuestion(
+  input: MoveProjectSurveyQuestionInput,
+): Promise<CreateProjectSurveyResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const projectSlug = input.projectSlug.trim();
+  const surveyId = input.surveyId.trim();
+  const questionId = input.questionId.trim();
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Supabase 환경변수와 서버 저장 키 설정 후 문항 순서를 변경합니다.",
+    };
+  }
+
+  if (!projectSlug || !surveyId || !questionId) {
+    return {
+      ok: false,
+      status: "invalid_input",
+      message: "프로젝트, 참여 콘텐츠, 문항 ID는 필수입니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "프로젝트를 찾지 못했습니다.",
+      };
+    }
+
+    const [survey, questions] = await Promise.all([
+      getSurveyRowForProject(project.id, surveyId, headers),
+      getSurveyQuestionRowsForProject(project.id, surveyId, headers),
+    ]);
+
+    if (!survey || !questions) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: "현재 프로젝트에 속하지 않은 참여 콘텐츠입니다.",
+      };
+    }
+
+    const index = questions.findIndex((question) => question.id === questionId);
+    const nextIndex = input.direction === "up" ? index - 1 : index + 1;
+
+    if (index < 0 || nextIndex < 0 || nextIndex >= questions.length) {
+      return {
+        ok: true,
+        message: "문항 순서를 유지했습니다.",
+      };
+    }
+
+    const reorderedQuestions = [...questions];
+    const current = reorderedQuestions[index];
+    const target = reorderedQuestions[nextIndex];
+
+    reorderedQuestions[index] = target;
+    reorderedQuestions[nextIndex] = current;
+
+    await normalizeSurveyQuestionOrder(project.id, surveyId, headers, reorderedQuestions);
+
+    return {
+      ok: true,
+      message: "문항 순서를 변경했습니다.",
+    };
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "문항 순서 변경 중 오류가 발생했습니다.",
+    };
+  }
 }
 
 function isEmptySurveyAnswer(value: string | string[]) {
   return Array.isArray(value) ? value.length === 0 : value.length === 0;
+}
+
+function getValidatedSurveyAnswer(
+  question: Pick<NewsletterSurveyQuestionRow, "id" | "title" | "question_type" | "options" | "is_required">,
+  value: unknown,
+) {
+  const options = Array.isArray(question.options) ? question.options : [];
+
+  if (question.question_type === "single_choice") {
+    if (value === undefined || value === null || value === "") {
+      return { ok: true as const, answer: "" };
+    }
+
+    if (typeof value !== "string" || !options.includes(value.trim())) {
+      return { ok: false as const, message: `"${question.title}" 문항의 선택지가 올바르지 않습니다.` };
+    }
+
+    return { ok: true as const, answer: value.trim() };
+  }
+
+  if (question.question_type === "multiple_choice") {
+    if (value === undefined || value === null) {
+      return { ok: true as const, answer: [] };
+    }
+
+    if (!Array.isArray(value)) {
+      return { ok: false as const, message: `"${question.title}" 문항의 응답 형식이 올바르지 않습니다.` };
+    }
+
+    const answers = Array.from(new Set(value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean)));
+
+    if (answers.some((answer) => !options.includes(answer))) {
+      return { ok: false as const, message: `"${question.title}" 문항의 선택지가 올바르지 않습니다.` };
+    }
+
+    return { ok: true as const, answer: answers };
+  }
+
+  if (question.question_type === "scale") {
+    if (value === undefined || value === null || value === "") {
+      return { ok: true as const, answer: "" };
+    }
+
+    if (typeof value !== "string" || !["1", "2", "3", "4", "5"].includes(value.trim())) {
+      return { ok: false as const, message: `"${question.title}" 척도 응답은 1~5 중 하나여야 합니다.` };
+    }
+
+    return { ok: true as const, answer: value.trim() };
+  }
+
+  if (value === undefined || value === null || value === "") {
+    return { ok: true as const, answer: "" };
+  }
+
+  if (typeof value !== "string") {
+    return { ok: false as const, message: `"${question.title}" 문항의 응답 형식이 올바르지 않습니다.` };
+  }
+
+  return { ok: true as const, answer: value.trim() };
 }
 
 export async function submitProjectSurveyResponse(
@@ -3832,11 +4654,14 @@ export async function submitProjectSurveyResponse(
       };
     }
 
-    const now = Date.now();
-    const startsAt = survey.start_at ? Date.parse(survey.start_at) : null;
-    const endsAt = survey.end_at ? Date.parse(survey.end_at) : null;
-
-    if (survey.status !== "open" || (startsAt && startsAt > now) || (endsAt && endsAt < now)) {
+    if (
+      !isSurveyPubliclyActive({
+        status: survey.status,
+        startAt: survey.start_at,
+        endAt: survey.end_at,
+        questionCount: questionRows.length,
+      })
+    ) {
       return {
         ok: false,
         status: "closed",
@@ -3844,9 +4669,35 @@ export async function submitProjectSurveyResponse(
       };
     }
 
-    const answers = Object.fromEntries(
-      Object.entries(input.answers ?? {}).map(([questionId, value]) => [questionId, normalizeSurveyAnswer(value)]),
-    ) as Record<string, string | string[]>;
+    const questionIds = new Set(questionRows.map((question) => question.id));
+    const unknownQuestionId = Object.keys(input.answers ?? {}).find((questionId) => !questionIds.has(questionId));
+
+    if (unknownQuestionId) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: "알 수 없는 문항 응답이 포함되어 있습니다.",
+      };
+    }
+
+    const answers: Record<string, string | string[]> = {};
+
+    for (const question of questionRows) {
+      const validated = getValidatedSurveyAnswer(question, input.answers?.[question.id]);
+
+      if (!validated.ok) {
+        return {
+          ok: false,
+          status: "invalid_input",
+          message: validated.message,
+        };
+      }
+
+      if (!isEmptySurveyAnswer(validated.answer)) {
+        answers[question.id] = validated.answer;
+      }
+    }
+
     const missingRequired = questionRows.find((question) => question.is_required && isEmptySurveyAnswer(answers[question.id] ?? ""));
 
     if (missingRequired) {
@@ -5164,6 +6015,19 @@ export async function upsertProjectArticle(
       (requestedPageNumber > 0
         ? await ensureProjectPageReference(project.id, requestedPageNumber, project.page_count, headers)
         : null);
+    const resolvedSurveyId = nullableText(input.surveyId);
+
+    if (resolvedSurveyId) {
+      const survey = await getSurveyRowForProject(project.id, resolvedSurveyId, headers);
+
+      if (!survey) {
+        return {
+          ok: false,
+          status: "invalid_input",
+          message: "현재 프로젝트에 속하지 않은 참여 콘텐츠입니다.",
+        };
+      }
+    }
 
     const articleBody = {
       project_id: project.id,
@@ -5177,7 +6041,7 @@ export async function upsertProjectArticle(
       title_alignment: normalizeArticleTextAlignment(input.titleAlignment),
       summary_alignment: normalizeArticleTextAlignment(input.summaryAlignment ?? input.textAlignment),
       body_alignment: normalizeArticleTextAlignment(input.bodyAlignment ?? input.textAlignment),
-      survey_id: nullableText(input.surveyId),
+      survey_id: resolvedSurveyId,
       audio_source: normalizeArticleAudioSource(input.audioSource, Boolean(input.articleId)),
       article_tts_voice: normalizeArticleTtsVoice(input.articleTtsVoice),
       contact_name: nullableText(input.contactName),

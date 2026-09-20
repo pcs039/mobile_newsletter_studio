@@ -12,15 +12,7 @@ function asAnswers(value: unknown) {
     return {};
   }
 
-  return Object.fromEntries(
-    Object.entries(value).map(([key, answer]) => {
-      if (Array.isArray(answer)) {
-        return [key, answer.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean)];
-      }
-
-      return [key, typeof answer === "string" ? answer.trim() : ""];
-    }),
-  );
+  return Object.fromEntries(Object.entries(value));
 }
 
 function getErrorStatus(status: string, httpStatus?: number) {
