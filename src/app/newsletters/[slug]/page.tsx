@@ -216,9 +216,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
         <section
           className={
             useArticleReaderShell
-              ? publicSurveyLinks.length > 0
-                ? "pb-[calc(7rem+env(safe-area-inset-bottom))]"
-                : ""
+              ? ""
               : `space-y-5 px-5 py-5 ${isImagePageMode && publicAudioSrc ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`
           }
         >
@@ -294,6 +292,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               publicationTitle={project?.title ?? slug}
               projectBodyFontAssetId={project?.bodyFontAssetId}
               projectTitleFontAssetId={project?.titleFontAssetId}
+              publicSurveyLinks={publicSurveyLinks}
               ebookDesktopHref={!isEmbeddedAdminPreview ? ebookDesktopHref : undefined}
               ebookLinkRel={ebookLinkRel}
               ebookLinkTarget={ebookLinkTarget}
@@ -366,7 +365,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               ) : null}
             </div>
           )}
-          {!isEngagementOnly && publicSurveyLinks.length > 0 ? (
+          {!useArticleReaderShell && !isEngagementOnly && publicSurveyLinks.length > 0 ? (
             <section
               className={`public-card rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-5 ${
                 useArticleReaderShell ? "mx-5 my-5" : ""
