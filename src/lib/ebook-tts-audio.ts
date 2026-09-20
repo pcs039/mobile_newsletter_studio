@@ -50,10 +50,31 @@ export type EbookPageTtsGenerateResult =
       message: string;
     };
 
+export type PublicEbookAudioSegment = {
+  index: number;
+  url: string;
+};
+
+export type PublicEbookAudioManifest = {
+  hasAudio: boolean;
+  model: string | null;
+  pageId: string;
+  pageNumber: number;
+  segmentCount: number;
+  segments: PublicEbookAudioSegment[];
+  stale: boolean;
+  voice: string | null;
+};
+
 type ProjectRow = {
   ebook_source: string | null;
   id: string;
   slug: string;
+};
+
+type PublicProjectRow = {
+  id: string;
+  status: string;
 };
 
 type PageTtsRow = {
@@ -194,6 +215,30 @@ async function findProjectBySlug(projectSlug: string, headers: Record<string, st
   const rows = (await response.json().catch(() => [])) as ProjectRow[];
 
   return rows[0] ?? null;
+}
+
+async function findPublishedProject(slug: string, headers: Record<string, string>) {
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_projects?select=id,status&slug=eq.${encodeURIComponent(slug)}&deleted_at=is.null&limit=1`,
+  );
+
+  if (!endpoint) {
+    return null;
+  }
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json().catch(() => [])) as PublicProjectRow[];
+  const project = rows[0] ?? null;
+
+  return project?.status === "published" ? project : null;
 }
 
 async function getProjectTtsPages(projectId: string, headers: Record<string, string>) {
@@ -803,5 +848,148 @@ export async function generateProjectEbookPageTtsAudio(
     pageNumber: page.page_number,
     segments: newPaths.length,
     textHash,
+  };
+}
+
+export async function getPublicEbookPageAudioManifest(slug: string, pageId: string) {
+  const headers = getServiceHeaders();
+
+  if (!headers) {
+    return {
+      ok: false as const,
+      httpStatus: 503,
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 읽어주기 음성을 사용할 수 있습니다.",
+    };
+  }
+
+  const project = await findPublishedProject(slug, headers);
+
+  if (!project) {
+    return {
+      ok: false as const,
+      httpStatus: 404,
+      message: "공개된 e-book을 찾지 못했습니다.",
+    };
+  }
+
+  const page = await getProjectPage(project.id, pageId, headers);
+
+  if (!page) {
+    return {
+      ok: false as const,
+      httpStatus: 404,
+      message: "페이지를 찾지 못했습니다.",
+    };
+  }
+
+  const text = normalizeTtsText(page.search_text ?? "");
+  const textHash = text ? hashTtsText(text) : "";
+  const paths = getAudioPaths(page.tts_audio_paths);
+  const stale = Boolean(text && paths.length > 0 && page.tts_text_hash && page.tts_text_hash !== textHash);
+  const hasAudio = Boolean(text && !stale && paths.length > 0 && page.tts_text_hash === textHash);
+
+  return {
+    ok: true as const,
+    manifest: {
+      hasAudio,
+      model: hasAudio ? page.tts_model : null,
+      pageId: page.id,
+      pageNumber: page.page_number,
+      segmentCount: hasAudio ? paths.length : 0,
+      segments: hasAudio
+        ? paths.map((_path, index) => ({
+            index,
+            url: `/api/public/newsletters/${encodeURIComponent(slug)}/ebook/pages/${encodeURIComponent(
+              page.id,
+            )}/audio/${index}`,
+          }))
+        : [],
+      stale,
+      voice: hasAudio ? page.tts_voice : null,
+    } satisfies PublicEbookAudioManifest,
+  };
+}
+
+export async function downloadPublicEbookPageAudioSegment(slug: string, pageId: string, segmentIndex: number) {
+  const headers = getServiceHeaders();
+
+  if (!headers) {
+    return {
+      ok: false as const,
+      httpStatus: 503,
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 읽어주기 음성을 사용할 수 있습니다.",
+    };
+  }
+
+  const project = await findPublishedProject(slug, headers);
+
+  if (!project) {
+    return {
+      ok: false as const,
+      httpStatus: 404,
+      message: "공개된 e-book을 찾지 못했습니다.",
+    };
+  }
+
+  const page = await getProjectPage(project.id, pageId, headers);
+
+  if (!page) {
+    return {
+      ok: false as const,
+      httpStatus: 404,
+      message: "페이지를 찾지 못했습니다.",
+    };
+  }
+
+  const text = normalizeTtsText(page.search_text ?? "");
+  const textHash = text ? hashTtsText(text) : "";
+  const paths = getAudioPaths(page.tts_audio_paths);
+  const hasAudio = Boolean(text && paths.length > 0 && page.tts_text_hash === textHash);
+
+  if (!hasAudio || !Number.isInteger(segmentIndex) || segmentIndex < 0 || segmentIndex >= paths.length) {
+    return {
+      ok: false as const,
+      httpStatus: 404,
+      message: "읽어주기 음성을 찾지 못했습니다.",
+    };
+  }
+
+  const path = paths[segmentIndex];
+
+  if (!isSafeStoragePath(path)) {
+    return {
+      ok: false as const,
+      httpStatus: 404,
+      message: "읽어주기 음성 경로를 확인하세요.",
+    };
+  }
+
+  const endpoint = getSupabaseStorageEndpoint(`/object/${ttsBucket}/${encodeStoragePath(path)}`);
+
+  if (!endpoint) {
+    return {
+      ok: false as const,
+      httpStatus: 503,
+      message: "Supabase Storage URL 설정을 확인하세요.",
+    };
+  }
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok || !response.body) {
+    return {
+      ok: false as const,
+      httpStatus: response.status || 500,
+      message: "읽어주기 음성을 불러오지 못했습니다.",
+    };
+  }
+
+  return {
+    ok: true as const,
+    body: response.body,
+    contentLength: response.headers.get("Content-Length"),
   };
 }

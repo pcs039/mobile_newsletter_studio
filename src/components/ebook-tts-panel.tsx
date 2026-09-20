@@ -42,9 +42,21 @@ export function EbookTtsPanel({ onClose, title = "읽어주기", tts, variant }:
       </div>
 
       <div className="space-y-4 p-4">
-        {!tts.isSupported ? (
+        {tts.engine === "unavailable" && tts.currentPageTextState !== "loading" ? (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900">
-            이 브라우저에서는 읽어주기를 지원하지 않습니다.
+            읽어주기 음성이 준비되지 않았습니다.
+          </p>
+        ) : null}
+
+        {tts.engine === "generated_audio" ? (
+          <p className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs font-black text-[#184a88]">
+            {tts.engineLabel || "AI가 생성한 음성입니다."}
+          </p>
+        ) : null}
+
+        {tts.engine === "browser_tts" ? (
+          <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600">
+            {tts.engineLabel || "기기 음성으로 읽습니다."}
           </p>
         ) : null}
 
@@ -106,7 +118,7 @@ export function EbookTtsPanel({ onClose, title = "읽어주기", tts, variant }:
           <button
             type="button"
             onClick={tts.readPreviousPage}
-            disabled={!tts.isSupported || !tts.canReadPrevious}
+            disabled={!tts.canReadPrevious}
             className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs disabled:pointer-events-none disabled:opacity-40"
             aria-label="이전 페이지 읽기"
           >
@@ -115,7 +127,7 @@ export function EbookTtsPanel({ onClose, title = "읽어주기", tts, variant }:
           <button
             type="button"
             onClick={tts.readNextPage}
-            disabled={!tts.isSupported || !tts.canReadNext}
+            disabled={!tts.canReadNext}
             className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs disabled:pointer-events-none disabled:opacity-40"
             aria-label="다음 페이지 읽기"
           >
