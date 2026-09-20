@@ -23,11 +23,13 @@ import type {
   ProjectContentArticle,
   ProjectContentBlock,
   ProjectPageImage,
+  ProjectSurveyItem,
 } from "@/lib/newsletter-repository";
 
 type ProjectArticleEditorFormProps = {
   projectSlug: string;
   pages: ProjectPageImage[];
+  surveys?: ProjectSurveyItem[];
   assets: ProjectAssetFile[];
   fonts?: FontAsset[];
   projectBodyFontAssetId?: string | null;
@@ -118,6 +120,7 @@ type ArticlePayload = {
   status: string;
   summary: string;
   summaryAlignment: string;
+  surveyId: string;
   textAlignment: string;
   textBoxMotionEffect: string;
   textBoxMotionSpeed: string;
@@ -643,6 +646,7 @@ function FontSelect({
 export function ProjectArticleEditorForm({
   projectSlug,
   pages,
+  surveys = [],
   assets,
   fonts = [],
   projectBodyFontAssetId,
@@ -1060,6 +1064,7 @@ export function ProjectArticleEditorForm({
       pageId: getValue(formData, "pageId"),
       sourcePageNumber: Number(getValue(formData, "sourcePageNumber")) || 0,
       sortOrder: Number(getValue(formData, "sortOrder")) || 0,
+      surveyId: getValue(formData, "surveyId"),
       title: getValue(formData, "title"),
       displayTitle: getValue(formData, "displayTitle"),
       summary: getValue(formData, "summary"),
@@ -1551,6 +1556,27 @@ export function ProjectArticleEditorForm({
                 className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
               />
             </div>
+          </div>
+          <div className="mt-5 grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-end">
+            <div>
+              <FieldLabel>참여 콘텐츠 연결</FieldLabel>
+              <select
+                name="surveyId"
+                defaultValue={article?.surveyId ?? ""}
+                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              >
+                <option value="">연결 없음</option>
+                {surveys.map((survey) => (
+                  <option key={survey.id} value={survey.id}>
+                    {survey.kind} · {survey.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
+              연결된 설문·이벤트는 공개 모바일 기사 하단에 compact 참여 버튼으로 표시됩니다.
+              {surveys.length === 0 ? " 먼저 참여 콘텐츠 화면에서 설문 또는 이벤트를 등록하세요." : ""}
+            </p>
           </div>
         </div>
       </div>

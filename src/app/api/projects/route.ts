@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 const projectStatuses = ["draft", "in_review", "published", "private", "archived"] as const;
 const packageTiers = ["basic", "standard", "advanced", "premium", "retainer"] as const;
 const productionModes = ["template", "hybrid", "full_image", "external_ebook", "ocr_assist"] as const;
+const projectTypes = ["newsletter", "ebook", "engagement", "integrated"] as const;
 const ebookSources = ["internal", "external"] as const;
 const coverLayouts = ["image", "image_info", "image_overlay"] as const;
 const coverFits = ["contain", "cover"] as const;
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
   const publishedDate = asOptionalText(payload.publishedDate) || asOptionalText(payload.publishedMonth);
   const slug = normalizeSlug(asOptionalText(payload.slug));
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
+  const projectType = isOneOf(payload.projectType, projectTypes) ? payload.projectType : "integrated";
   const projectPassword = asOptionalText(payload.projectPassword);
   const ebookInput = resolveEbookSourceInput(payload);
   const coverLayout = isOneOf(payload.coverLayout, coverLayouts) ? payload.coverLayout : "image";
@@ -134,6 +136,7 @@ export async function POST(request: Request) {
     status: payload.status,
     packageTier: payload.packageTier,
     productionMode: payload.productionMode,
+    projectType,
     ebookSource: ebookInput.ebookSource,
     externalEbookUrl: ebookInput.externalEbookUrl,
     estimatedHours: asOptionalText(payload.estimatedHours),
@@ -220,6 +223,7 @@ export async function PATCH(request: Request) {
   const publishedDate = asOptionalText(payload.publishedDate) || asOptionalText(payload.publishedMonth);
   const slug = normalizeSlug(asOptionalText(payload.slug));
   const primaryColor = asOptionalText(payload.primaryColor) || "#092046";
+  const projectType = isOneOf(payload.projectType, projectTypes) ? payload.projectType : "integrated";
   const projectPassword = asOptionalText(payload.projectPassword);
   const clearProjectPassword = payload.clearProjectPassword === true;
   const ebookInput = resolveEbookSourceInput(payload);
@@ -276,6 +280,7 @@ export async function PATCH(request: Request) {
     status: payload.status,
     packageTier: payload.packageTier,
     productionMode: payload.productionMode,
+    projectType,
     ebookSource: ebookInput.ebookSource,
     externalEbookUrl: ebookInput.externalEbookUrl,
     estimatedHours: asOptionalText(payload.estimatedHours),

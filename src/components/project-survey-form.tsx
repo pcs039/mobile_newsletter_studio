@@ -111,7 +111,7 @@ export function ProjectSurveyForm({ projectSlug, surveys }: ProjectSurveyFormPro
       <form onSubmit={handleSurveySubmit} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4">
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">운영 항목</p>
-          <h3 className="mt-1 text-lg font-bold text-[#092046]">설문·이벤트 만들기</h3>
+          <h3 className="mt-1 text-lg font-bold text-[#092046]">참여 콘텐츠 만들기</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600 [word-break:keep-all]">
             공개 소식지와 연결할 만족도 조사, 참여 이벤트, 신청 접수용 설문을 프로젝트별로 관리합니다.
           </p>
@@ -210,7 +210,7 @@ export function ProjectSurveyForm({ projectSlug, surveys }: ProjectSurveyFormPro
           disabled={submitState.target !== null}
           className="mt-5 w-full rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#123a78] disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {submitState.target === "survey" ? "저장 중" : "설문·이벤트 저장"}
+          {submitState.target === "survey" ? "저장 중" : "참여 콘텐츠 저장"}
         </button>
       </form>
 

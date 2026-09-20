@@ -25,25 +25,25 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
     <ProjectAdminShell
       active="survey"
       projectId={projectId}
-      title="설문·이벤트"
-      description="모바일 소식지 공개 후 독자 반응, 만족도, 신청 접수, 이벤트 참여를 받을 수 있도록 설문 구조를 관리합니다."
+      title="참여 콘텐츠"
+      description="모바일 기사에 연결할 설문·이벤트를 만들고 응답 현황을 확인합니다."
       sidebarTitle={
         <>
-          설문
+          참여
           <br />
-          이벤트
+          콘텐츠
         </>
       }
-      sidebarDescription="프로젝트별 참여 설문과 이벤트 문항을 구성하고 응답 현황을 확인합니다."
+      sidebarDescription="프로젝트별 설문·이벤트 문항을 구성하고 기사 연결 상태를 확인합니다."
       sidebarNoteTitle="참여 기준"
-      sidebarNote="설문과 이벤트는 공개 화면에 연결할 후속 참여 기능입니다. 먼저 제목과 기간, 문항을 정리합니다."
+      sidebarNote="참여 콘텐츠를 만든 뒤 기사 작성 화면에서 연결하면 공개 기사 하단에 참여 버튼이 표시됩니다."
       actions={
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
             href="/projects/survey"
             className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:border-[#184a88] hover:bg-[#f4f8ff]"
           >
-            설문/이벤트 목록
+            참여 콘텐츠 목록
           </Link>
           <Link
             href={`/projects/${projectId}/distribution`}
@@ -58,7 +58,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
         <section className="space-y-5">
           <section className="grid gap-4 md:grid-cols-3">
             {[
-              { label: "설문·이벤트", value: surveyData.surveys.length, detail: "등록 항목" },
+              { label: "참여 콘텐츠", value: surveyData.surveys.length, detail: "등록 항목" },
               { label: "진행 중", value: openSurveys.length, detail: "공개 가능" },
               { label: "누적 응답", value: totalResponses.toLocaleString("ko-KR"), detail: "응답 테이블 기준" },
             ].map((card) => (
@@ -92,7 +92,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
             <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">운영 목록</p>
-                <h3 className="mt-1 text-lg font-bold text-[#092046]">설문·이벤트 구성</h3>
+                <h3 className="mt-1 text-lg font-bold text-[#092046]">참여 콘텐츠 구성</h3>
                 <p className="mt-1 text-sm leading-6 text-slate-500 [word-break:keep-all]">{surveyData.message}</p>
               </div>
               <StatusPill value={`${totalQuestions}개 문항`} />
@@ -101,7 +101,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
             <div className="divide-y divide-slate-200">
               {surveyData.surveys.length === 0 ? (
                 <div className="px-5 py-10 text-center">
-                  <p className="text-base font-bold text-[#092046]">등록된 설문·이벤트가 없습니다.</p>
+                  <p className="text-base font-bold text-[#092046]">등록된 참여 콘텐츠가 없습니다.</p>
                   <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">
                     먼저 설문 또는 이벤트를 저장한 뒤, 해당 항목에 문항을 추가하세요.
                   </p>
@@ -127,6 +127,25 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
                           <p className="mt-2 text-xs font-black text-[#184a88] [word-break:keep-all]">
                             참여 대상: {survey.respondentTarget}
                           </p>
+                          <div className="mt-3 rounded-lg border border-[#d8e8ff] bg-[#f8fbff] px-3 py-3">
+                            <p className="text-xs font-bold text-slate-500">연결된 모바일 기사</p>
+                            {survey.linkedArticleTitles.length > 0 ? (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {survey.linkedArticleTitles.map((title, index) => (
+                                  <span
+                                    key={`${survey.id}-article-${index}`}
+                                    className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#184a88] shadow-sm [word-break:keep-all]"
+                                  >
+                                    {title}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
+                                기사 작성 화면에서 이 참여 콘텐츠를 연결할 수 있습니다.
+                              </p>
+                            )}
+                          </div>
                           <div className="mt-4 grid gap-3 md:grid-cols-2">
                             <div className="rounded-lg bg-[#f8fbff] px-3 py-3">
                               <p className="text-xs font-bold text-slate-500">운영 기간</p>

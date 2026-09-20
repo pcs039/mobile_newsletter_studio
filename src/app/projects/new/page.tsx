@@ -13,6 +13,7 @@ const requiredFields = [
   "작업자명",
   "발행일",
   "공개 주소",
+  "프로젝트 유형",
   "대표 색상",
   "상품 옵션",
   "제작 방식",
@@ -34,6 +35,10 @@ const publishOptions = [
   {
     title: "외부 AI·프로그램 결과물 등록",
     description: "완성 파일 등록",
+  },
+  {
+    title: "참여 콘텐츠 연결",
+    description: "기사별 설문·이벤트 버튼",
   },
 ];
 
@@ -93,6 +98,24 @@ export default async function NewProjectPage() {
             <ProjectCreateForm fonts={fontData.fonts} />
 
             <aside className="space-y-5">
+              <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기준</p>
+                <h3 className="mt-1 text-lg font-bold text-[#092046]">프로젝트 유형</h3>
+                <div className="mt-4 space-y-3">
+                  {[
+                    ["모바일 소식지", "기사 작성, 음성, 참여 콘텐츠 중심"],
+                    ["eBook", "PDF 페이지 이미지와 클릭 영역 중심"],
+                    ["설문·이벤트", "참여 콘텐츠와 응답 운영 중심"],
+                    ["통합 프로젝트", "기존처럼 모든 제작 메뉴 표시"],
+                  ].map(([title, description]) => (
+                    <div key={title} className="rounded-lg bg-slate-50 p-4">
+                      <p className="text-sm font-bold text-[#092046]">{title}</p>
+                      <p className="mt-2 text-xs leading-5 text-slate-500">{description}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
               <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기준</p>
                 <h3 className="mt-1 text-lg font-bold text-[#092046]">상품 옵션 기준</h3>

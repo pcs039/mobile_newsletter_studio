@@ -32,9 +32,9 @@ export default async function SurveyProjectsPage() {
           <div className="mb-9">
             <DatadictionBrand theme="light" />
             <h1 className="mt-6 text-2xl font-bold leading-tight">
-              설문
+              참여
               <br />
-              이벤트
+              콘텐츠
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-300 [word-break:keep-all]">
               공개 소식지와 연결할 만족도 조사, 신청 접수, 참여 이벤트를 프로젝트별로 관리합니다.
@@ -55,7 +55,7 @@ export default async function SurveyProjectsPage() {
           <header className="mb-7 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-[#184a88]">참여 운영 큐</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">설문/이벤트 프로젝트</h2>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#092046]">참여 콘텐츠 프로젝트</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600 [word-break:keep-all]">
                 프로젝트를 선택해 독자 설문, 이벤트 참여, 신청 접수용 문항을 구성합니다.
               </p>
@@ -92,7 +92,7 @@ export default async function SurveyProjectsPage() {
           <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h3 className="text-lg font-bold text-[#092046]">프로젝트별 설문/이벤트 관리</h3>
+                <h3 className="text-lg font-bold text-[#092046]">프로젝트별 참여 콘텐츠 관리</h3>
                 <p className="mt-1 text-sm leading-6 text-slate-500 [word-break:keep-all]">
                   {publishData.message}
                 </p>
@@ -105,7 +105,7 @@ export default async function SurveyProjectsPage() {
             <div className="divide-y divide-slate-200">
               {projects.length === 0 ? (
                 <div className="px-5 py-12 text-center">
-                  <p className="text-base font-bold text-[#092046]">설문/이벤트를 연결할 프로젝트가 없습니다.</p>
+                  <p className="text-base font-bold text-[#092046]">참여 콘텐츠를 연결할 프로젝트가 없습니다.</p>
                   <p className="mt-2 text-sm leading-6 text-slate-500 [word-break:keep-all]">
                     작성/수정 목록에서 프로젝트를 생성한 뒤 이 화면에서 참여 기능을 구성하세요.
                   </p>
@@ -145,7 +145,7 @@ export default async function SurveyProjectsPage() {
                           href={`/projects/${project.slug}/survey`}
                           className="inline-flex h-11 items-center justify-center rounded-md bg-[#092046] px-3 text-sm font-black text-white shadow-sm transition hover:bg-[#123a78]"
                         >
-                          설문 관리
+                          참여 관리
                         </Link>
                         <Link
                           href={`/newsletters/${project.slug}?preview=admin`}
