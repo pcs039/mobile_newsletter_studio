@@ -1568,7 +1568,7 @@ export function ProjectArticleEditorForm({
                 <option value="">연결 없음</option>
                 {surveys.map((survey) => (
                   <option key={survey.id} value={survey.id}>
-                    {survey.kind} · {survey.title}
+                    [{survey.status}] {survey.kind} · {survey.title} · {survey.questionCount}문항
                   </option>
                 ))}
               </select>

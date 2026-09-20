@@ -12,9 +12,11 @@ import {
   getFontAssets,
   getProjectPageHotspotLinks,
   getProjectPageImages,
+  getProjectSurveys,
   getPublicProjectSurveys,
   getProjectWorkspace,
   makePublicStoragePreviewHref,
+  type ProjectSurveyItem,
   type ProjectPageHotspotLink,
 } from "@/lib/newsletter-repository";
 
@@ -43,6 +45,14 @@ function getHotspotsForPage(links: ProjectPageHotspotLink[], pageId: string) {
 
 function hasPublicArticleTitle(article: { displayTitle?: string | null; title?: string | null }) {
   return Boolean(getDisplayArticleTitle(article, "").trim());
+}
+
+function sanitizeReaderSurveys(surveys: ProjectSurveyItem[]) {
+  return surveys.map((survey) => ({
+    ...survey,
+    description: survey.statusCode === "open" && survey.questionCount > 0 ? survey.description : "",
+    questions: [],
+  }));
 }
 
 function PublicUnavailablePage({
@@ -76,12 +86,13 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const backToEditorHref = previewArticleId
     ? `/projects/${slug}/reading?articleId=${previewArticleId}`
     : `/projects/${slug}/reading`;
+  const surveyDataPromise = isAdminPreview ? getProjectSurveys(slug) : getPublicProjectSurveys(slug);
   const [workspace, contentData, pageImageData, hotspotData, surveyData, audioData, fontData] = await Promise.all([
     getProjectWorkspace(slug),
     getProjectContent(slug),
     getProjectPageImages(slug),
     getProjectPageHotspotLinks(slug),
-    getPublicProjectSurveys(slug),
+    surveyDataPromise,
     getProjectAudioFiles(slug),
     getFontAssets({ activeOnly: true }),
   ]);
@@ -108,6 +119,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   }
 
   const articles = contentData.articles.filter(hasPublicArticleTitle);
+  const publicSurveyLinks = surveyData.surveys.filter((survey) => survey.statusCode === "open" && survey.questionCount > 0);
   console.info("[public-newsletter] article visibility", {
     rawArticleCount: contentData.articles.length,
     slug,
@@ -282,7 +294,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               ebookLinkRel={ebookLinkRel}
               ebookLinkTarget={ebookLinkTarget}
               ebookMobileHref={!isEmbeddedAdminPreview ? ebookMobileHref : undefined}
-              surveys={surveyData.surveys}
+              showSurveyConnectionStatus={isAdminPreview}
+              surveys={sanitizeReaderSurveys(surveyData.surveys)}
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
             />
@@ -306,7 +319,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               ) : null}
             </div>
           )}
-          {surveyData.surveys.length > 0 ? (
+          {publicSurveyLinks.length > 0 ? (
             <section className={`public-card rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-5 ${useArticleReaderShell ? "mx-5 my-5" : ""}`}>
               <p className="text-xs font-black text-[#184a88]">참여하기</p>
               <h2 className="mt-2 text-xl font-black leading-tight text-[#092046]">설문·이벤트</h2>
@@ -314,7 +327,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                 모바일 소식지를 읽은 뒤 만족도 조사나 이벤트에 참여할 수 있습니다.
               </p>
               <div className="mt-4 grid gap-3">
-                {surveyData.surveys.map((survey) => (
+                {publicSurveyLinks.map((survey) => (
                   <Link
                     key={survey.id}
                     href={`/newsletters/${slug}/survey/${survey.id}`}

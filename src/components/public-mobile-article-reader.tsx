@@ -68,6 +68,7 @@ type PublicMobileArticleReaderProps = {
     src: string;
     title?: string;
   };
+  showSurveyConnectionStatus?: boolean;
   surveys?: ProjectSurveyItem[];
   showAdminPreviewControls: boolean;
   slug: string;
@@ -396,10 +397,23 @@ function PublicCompactPublicationHeader({
             <button
               type="button"
               onClick={onOpenSearch}
-              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2.5 text-sm font-black leading-none text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+              className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2 text-[13px] font-black leading-none text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
               aria-label="소식지 검색"
             >
-              검색
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.4"
+              >
+                <circle cx="11" cy="11" r="6" />
+                <path d="m16 16 4 4" />
+              </svg>
+              <span className="sr-only">검색</span>
             </button>
           ) : null}
           {showToc ? (
@@ -910,6 +924,7 @@ function ArticleCard({
   projectTitleFontAssetId,
   showTextSizeControl = false,
   showAdminPreviewControls,
+  showSurveyConnectionStatus = false,
   slug,
   survey,
 }: {
@@ -922,6 +937,7 @@ function ArticleCard({
   projectTitleFontAssetId?: string | null;
   showTextSizeControl?: boolean;
   showAdminPreviewControls: boolean;
+  showSurveyConnectionStatus?: boolean;
   slug: string;
   survey?: ProjectSurveyItem | null;
 }) {
@@ -945,6 +961,16 @@ function ArticleCard({
   const hasUploadedArticleAudio = article.audioFile?.sourceType === "uploaded" && Boolean(article.audioFile.previewHref);
   const hasAiArticleAudio = article.audioSource === "ai_tts" && article.audioFile?.sourceType === "ai_tts";
   const shouldShowArticleAudio = hasUploadedArticleAudio || hasAiArticleAudio;
+  const hasPublicSurveyCta = Boolean(survey && survey.statusCode === "open" && survey.questionCount > 0);
+  const shouldShowSurveyStatus = Boolean(survey && (hasPublicSurveyCta || showSurveyConnectionStatus));
+  const surveyStatusText =
+    survey?.statusCode === "draft"
+      ? "초안 · 실제 공개화면에는 표시되지 않습니다."
+      : survey?.statusCode === "closed"
+        ? "종료 · 실제 공개 참여가 불가합니다."
+        : survey && survey.questionCount <= 0
+          ? "문항 없음 · 실제 공개화면에는 표시되지 않습니다."
+          : "공개 전";
 
   return (
     <article
@@ -1082,19 +1108,25 @@ function ArticleCard({
           </p>
         </div>
       ) : null}
-      {survey ? (
+      {shouldShowSurveyStatus && survey ? (
         <div className="mt-5 rounded-xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4">
           <p className="text-xs font-black text-[#184a88]">참여 콘텐츠</p>
           <h3 className="mt-1 text-base font-black leading-7 text-[#092046] [word-break:keep-all]">{survey.title}</h3>
-          {survey.description ? (
+          {survey.description && hasPublicSurveyCta ? (
             <p className="mt-1 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">{survey.description}</p>
           ) : null}
-          <Link
-            href={`/newsletters/${slug}/survey/${survey.id}`}
-            className="dd-btn dd-btn-primary dd-btn-sm mt-3 rounded-full px-4"
-          >
-            {survey.kindCode === "event" ? "이벤트 참여하기" : "설문 참여하기"}
-          </Link>
+          {hasPublicSurveyCta ? (
+            <Link
+              href={`/newsletters/${slug}/survey/${survey.id}`}
+              className="dd-btn dd-btn-primary dd-btn-sm mt-3 rounded-full px-4"
+            >
+              {survey.kindCode === "event" ? "이벤트 참여하기" : "설문 참여하기"}
+            </Link>
+          ) : (
+            <span className="mt-3 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-800">
+              {surveyStatusText}
+            </span>
+          )}
         </div>
       ) : null}
     </article>
@@ -1117,6 +1149,7 @@ export function PublicMobileArticleReader({
   ebookLinkTarget,
   ebookMobileHref,
   publicAudio,
+  showSurveyConnectionStatus = false,
   surveys = [],
   showAdminPreviewControls,
   slug,
@@ -1568,6 +1601,7 @@ export function PublicMobileArticleReader({
                     projectBodyFontAssetId={projectBodyFontAssetId}
                     projectTitleFontAssetId={projectTitleFontAssetId}
                     showAdminPreviewControls={showAdminPreviewControls}
+                    showSurveyConnectionStatus={showSurveyConnectionStatus}
                     showTextSizeControl
                     slug={slug}
                     survey={currentArticle.surveyId ? surveyById.get(currentArticle.surveyId) ?? null : null}
@@ -1712,6 +1746,7 @@ export function PublicMobileArticleReader({
               projectBodyFontAssetId={projectBodyFontAssetId}
               projectTitleFontAssetId={projectTitleFontAssetId}
               showAdminPreviewControls={showAdminPreviewControls}
+              showSurveyConnectionStatus={showSurveyConnectionStatus}
               slug={slug}
               survey={article.surveyId ? surveyById.get(article.surveyId) ?? null : null}
             />
