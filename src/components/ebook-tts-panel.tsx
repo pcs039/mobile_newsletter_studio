@@ -67,11 +67,11 @@ export function EbookTtsPanel({ onClose, title = "읽어주기", tts, variant }:
             <button
               type="button"
               onClick={tts.playCurrentPage}
-              disabled={!tts.isSupported || tts.status === "loading"}
+              disabled={!tts.canPlayCurrentPage}
               className="dd-btn dd-btn-primary dd-btn-sm min-h-11 justify-center rounded-xl text-xs"
               aria-label="읽기 시작"
             >
-              ▶ 읽기 시작
+              {tts.currentPageTextState === "loading" ? "텍스트 준비 중" : "▶ 읽기 시작"}
             </button>
           )}
           <button
