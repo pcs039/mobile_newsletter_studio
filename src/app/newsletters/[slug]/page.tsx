@@ -15,6 +15,7 @@ import {
   getProjectSurveys,
   getPublicProjectSurveys,
   getProjectWorkspace,
+  isProjectSurveyPubliclyActive,
   makePublicStoragePreviewHref,
   type ProjectSurveyItem,
   type ProjectPageHotspotLink,
@@ -119,7 +120,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   }
 
   const articles = contentData.articles.filter(hasPublicArticleTitle);
-  const publicSurveyLinks = surveyData.surveys.filter((survey) => survey.statusCode === "open" && survey.questionCount > 0);
+  const publicSurveyLinks = surveyData.surveys.filter((survey) => isProjectSurveyPubliclyActive(survey));
   console.info("[public-newsletter] article visibility", {
     rawArticleCount: contentData.articles.length,
     slug,
@@ -145,6 +146,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) ?? ""
     : project?.coverImageUrl || "";
   const showCoverSection = Boolean(project?.coverEnabled && coverImageSrc && !isImagePageMode);
+  const isEngagementOnly = Boolean(project && !project.capabilities.hasNewsletter && project.capabilities.hasEngagement);
   const useArticleReaderShell = !isImagePageMode && (articles.length > 0 || showCoverSection);
 
   return (
@@ -182,7 +184,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             <h1 className="mt-3 text-3xl font-black leading-tight">{project?.title ?? slug}</h1>
             <p className="mt-2 text-lg font-bold text-white/95">{project?.issue ?? "-"}</p>
             <p className="mt-4 text-sm leading-6 text-slate-200">{project?.description ?? workspace.message}</p>
-            <div className="mt-5 flex gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               {!isEmbeddedAdminPreview ? (
                 <>
                   <Link
@@ -204,7 +206,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
                 </>
               ) : null}
               <span className="rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-slate-200">
-                {isImagePageMode ? "이미지형 모바일 보기" : "모바일 읽기 보기"}
+                {isEngagementOnly ? "참여 콘텐츠" : isImagePageMode ? "이미지형 모바일 보기" : "모바일 읽기 보기"}
               </span>
             </div>
           </header>
@@ -299,6 +301,49 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               showAdminPreviewControls={showAdminPreviewControls}
               slug={slug}
             />
+          ) : isEngagementOnly ? (
+            <section className="space-y-4 px-5 py-5">
+              <div className="public-card rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+                <p className="text-xs font-black text-[#184a88]">참여 콘텐츠</p>
+                <h2 className="mt-2 text-xl font-black leading-tight text-[#092046]">{project.title}</h2>
+                <p className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">
+                  {project.description || "현재 참여 가능한 설문·이벤트를 확인해 주세요."}
+                </p>
+              </div>
+              {publicSurveyLinks.length > 0 ? (
+                <div className="grid gap-3">
+                  {publicSurveyLinks.map((survey) => (
+                    <Link
+                      key={survey.id}
+                      href={`/newsletters/${slug}/survey/${survey.id}`}
+                      className="block rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-5 py-5 shadow-sm transition hover:border-[#2f73b7] hover:bg-white"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#184a88]">
+                          {survey.kind}
+                        </span>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                          {survey.questionCount}개 문항
+                        </span>
+                      </div>
+                      <h3 className="mt-3 text-lg font-black leading-7 text-[#092046] [word-break:keep-all]">
+                        {survey.title}
+                      </h3>
+                      {survey.description ? (
+                        <p className="mt-1 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">
+                          {survey.description}
+                        </p>
+                      ) : null}
+                      <p className="mt-3 text-sm font-black text-[#184a88]">참여하기</p>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center">
+                  <p className="text-sm font-black text-[#092046]">현재 참여 가능한 설문·이벤트가 없습니다.</p>
+                </div>
+              )}
+            </section>
           ) : (
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
               <p className="text-sm font-black text-[#092046]">
@@ -319,7 +364,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               ) : null}
             </div>
           )}
-          {publicSurveyLinks.length > 0 ? (
+          {!isEngagementOnly && publicSurveyLinks.length > 0 ? (
             <section className={`public-card rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-5 ${useArticleReaderShell ? "mx-5 my-5" : ""}`}>
               <p className="text-xs font-black text-[#184a88]">참여하기</p>
               <h2 className="mt-2 text-xl font-black leading-tight text-[#092046]">설문·이벤트</h2>

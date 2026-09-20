@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectSurveyForm } from "@/components/project-survey-form";
 import { StatusPill } from "@/components/status-pill";
-import { getProjectSurveyResponses, getProjectSurveys } from "@/lib/newsletter-repository";
+import { getProjectSurveyResponses, getProjectSurveys, isProjectSurveyPubliclyActive } from "@/lib/newsletter-repository";
 
 function splitDateTime(value: string) {
   const [date, time] = value.split(" ");
@@ -16,7 +16,7 @@ function splitDateTime(value: string) {
 export default async function ProjectSurveyPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
   const [surveyData, responseData] = await Promise.all([getProjectSurveys(projectId), getProjectSurveyResponses(projectId)]);
-  const openSurveys = surveyData.surveys.filter((survey) => survey.status === "진행 중");
+  const openSurveys = surveyData.surveys.filter((survey) => isProjectSurveyPubliclyActive(survey));
   const totalQuestions = surveyData.surveys.reduce((total, survey) => total + survey.questionCount, 0);
   const totalResponses = surveyData.surveys.reduce((total, survey) => total + survey.responseCount, 0);
   const answeredSummaries = responseData.summaries.filter((summary) => summary.responseCount > 0);
@@ -203,7 +203,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
                             <p className="mt-1 whitespace-nowrap text-sm font-black text-[#092046]">{updated.date}</p>
                             <p className="whitespace-nowrap text-xs font-black text-[#184a88]">{updated.time}</p>
                           </div>
-                          {survey.statusCode === "open" && survey.questions.length > 0 ? (
+                          {isProjectSurveyPubliclyActive(survey) ? (
                             <Link
                               href={`/newsletters/${projectId}/survey/${survey.id}`}
                               target="_blank"
@@ -359,9 +359,9 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
           </article>
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-bold text-[#092046]">필요 SQL</h3>
+            <h3 className="text-lg font-bold text-[#092046]">운영 메모</h3>
             <p className="mt-2 text-sm leading-6 text-slate-600 [word-break:keep-all]">
-              저장이 실패하면 Supabase SQL Editor에서 설문 관리 테이블을 먼저 생성해야 합니다.
+              진행 중 항목은 문항과 운영 기간을 확인한 뒤 공개됩니다. 응답이 쌓인 항목은 삭제하지 않고 마감 상태로 보관하세요.
             </p>
           </article>
         </aside>

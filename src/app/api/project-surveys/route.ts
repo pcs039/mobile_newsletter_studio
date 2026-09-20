@@ -3,7 +3,12 @@ import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import {
   createProjectSurvey,
   createProjectSurveyQuestion,
+  deleteProjectSurvey,
+  deleteProjectSurveyQuestion,
   getProjectSurveyResponses,
+  moveProjectSurveyQuestion,
+  updateProjectSurvey,
+  updateProjectSurveyQuestion,
   type CreateProjectSurveyInput,
   type CreateProjectSurveyQuestionInput,
 } from "@/lib/newsletter-repository";
@@ -148,6 +153,48 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status: 201 });
   }
 
+  if (action === "updateSurvey") {
+    const kind = asText(payload.kind);
+    const status = asText(payload.status);
+
+    if (!kinds.has(kind) || !statuses.has(status)) {
+      return NextResponse.json({ ok: false, message: "설문 종류 또는 상태 값을 확인해야 합니다." }, { status: 400 });
+    }
+
+    const result = await updateProjectSurvey({
+      projectSlug,
+      surveyId: asText(payload.surveyId),
+      title: asText(payload.title),
+      description: asText(payload.description),
+      kind: kind as CreateProjectSurveyInput["kind"],
+      status: status as CreateProjectSurveyInput["status"],
+      respondentTarget: asText(payload.respondentTarget),
+      startAt: asText(payload.startAt),
+      endAt: asText(payload.endAt),
+      eventPrize: asText(payload.eventPrize),
+      drawNote: asText(payload.drawNote),
+    });
+
+    if (!result.ok) {
+      return NextResponse.json(result, { status: getErrorStatus(result.status, result.httpStatus) });
+    }
+
+    return NextResponse.json(result);
+  }
+
+  if (action === "deleteSurvey") {
+    const result = await deleteProjectSurvey({
+      projectSlug,
+      surveyId: asText(payload.surveyId),
+    });
+
+    if (!result.ok) {
+      return NextResponse.json(result, { status: getErrorStatus(result.status, result.httpStatus) });
+    }
+
+    return NextResponse.json(result);
+  }
+
   if (action === "createQuestion") {
     const type = asText(payload.type);
     const options = asOptions(payload.options);
@@ -178,6 +225,74 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(result, { status: 201 });
+  }
+
+  if (action === "updateQuestion") {
+    const type = asText(payload.type);
+    const options = asOptions(payload.options);
+
+    if (!questionTypes.has(type)) {
+      return NextResponse.json({ ok: false, message: "문항 형식을 확인해야 합니다." }, { status: 400 });
+    }
+
+    if ((type === "single_choice" || type === "multiple_choice") && options.length === 0) {
+      return NextResponse.json(
+        { ok: false, message: "단일 선택 또는 복수 선택 문항은 선택지를 한 줄에 하나씩 입력해야 합니다." },
+        { status: 400 },
+      );
+    }
+
+    const result = await updateProjectSurveyQuestion({
+      projectSlug,
+      surveyId: asText(payload.surveyId),
+      questionId: asText(payload.questionId),
+      order: asNumber(payload.order),
+      title: asText(payload.title),
+      type: type as CreateProjectSurveyQuestionInput["type"],
+      options,
+      isRequired: asBoolean(payload.isRequired),
+    });
+
+    if (!result.ok) {
+      return NextResponse.json(result, { status: getErrorStatus(result.status, result.httpStatus) });
+    }
+
+    return NextResponse.json(result);
+  }
+
+  if (action === "deleteQuestion") {
+    const result = await deleteProjectSurveyQuestion({
+      projectSlug,
+      surveyId: asText(payload.surveyId),
+      questionId: asText(payload.questionId),
+    });
+
+    if (!result.ok) {
+      return NextResponse.json(result, { status: getErrorStatus(result.status, result.httpStatus) });
+    }
+
+    return NextResponse.json(result);
+  }
+
+  if (action === "moveQuestion") {
+    const direction = asText(payload.direction);
+
+    if (direction !== "up" && direction !== "down") {
+      return NextResponse.json({ ok: false, message: "문항 이동 방향을 확인해야 합니다." }, { status: 400 });
+    }
+
+    const result = await moveProjectSurveyQuestion({
+      projectSlug,
+      surveyId: asText(payload.surveyId),
+      questionId: asText(payload.questionId),
+      direction,
+    });
+
+    if (!result.ok) {
+      return NextResponse.json(result, { status: getErrorStatus(result.status, result.httpStatus) });
+    }
+
+    return NextResponse.json(result);
   }
 
   return NextResponse.json({ ok: false, message: "지원하지 않는 설문·이벤트 작업입니다." }, { status: 400 });

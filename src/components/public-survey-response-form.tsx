@@ -4,6 +4,8 @@ import { FormEvent, useState } from "react";
 import type { ProjectSurveyItem, ProjectSurveyQuestion } from "@/lib/newsletter-repository";
 
 type PublicSurveyResponseFormProps = {
+  returnHref?: string;
+  returnLabel?: string;
   projectSlug: string;
   survey: ProjectSurveyItem;
 };
@@ -97,9 +99,14 @@ function QuestionInput({ question }: { question: ProjectSurveyQuestion }) {
   );
 }
 
-export function PublicSurveyResponseForm({ projectSlug, survey }: PublicSurveyResponseFormProps) {
+export function PublicSurveyResponseForm({
+  projectSlug,
+  returnHref,
+  returnLabel = "모바일 소식지로 돌아가기",
+  survey,
+}: PublicSurveyResponseFormProps) {
   const [state, setState] = useState<SubmitState>({ message: "", isError: false, isSaving: false, isDone: false });
-  const newsletterHref = `/newsletters/${projectSlug}`;
+  const newsletterHref = returnHref ?? `/newsletters/${projectSlug}`;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -175,13 +182,13 @@ export function PublicSurveyResponseForm({ projectSlug, survey }: PublicSurveyRe
       {state.isDone ? (
         <div className="public-card rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4 text-center">
           <p className="text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">
-            참여해 주셔서 감사합니다. 아래 버튼을 눌러 모바일 소식지 화면으로 돌아갈 수 있습니다.
+            참여해 주셔서 감사합니다. 아래 버튼을 눌러 이전 화면으로 돌아갈 수 있습니다.
           </p>
           <a
             href={newsletterHref}
             className="mt-4 block rounded-xl bg-[#092046] px-5 py-4 text-base font-black text-white transition hover:bg-[#123a78]"
           >
-            모바일 소식지로 돌아가기
+            {returnLabel}
           </a>
         </div>
       ) : null}
