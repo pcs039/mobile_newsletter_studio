@@ -1,4 +1,5 @@
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
+import { normalizeArticlePublicInfoValue, type ArticlePublicInfo as ArticlePublicInfoRecord } from "@/lib/article-public-info-fields";
 import { normalizeEbookSource, type EbookSource } from "@/lib/ebook-source";
 import { hashProjectPassword, verifyProjectPasswordHash } from "@/lib/project-password";
 import type { DashboardProject } from "@/types/newsletter";
@@ -715,6 +716,7 @@ export type ArticlePublicInfoType =
   | "local_news"
   | "emergency";
 export type ArticleUrgency = "normal" | "time_sensitive" | "urgent";
+export type ArticlePublicInfo = ArticlePublicInfoRecord;
 export type ArticleElementMotionEffect =
   | "inherit"
   | "none"
@@ -747,6 +749,7 @@ type NewsletterArticleRow = {
   urgency: string | null;
   valid_from: string | null;
   valid_until: string | null;
+  public_info: Record<string, unknown> | null;
   survey_id: string | null;
   contact_name: string | null;
   contact_phone: string | null;
@@ -1064,6 +1067,7 @@ export type ProjectContentArticle = {
   urgency: ArticleUrgency;
   validFrom: string | null;
   validUntil: string | null;
+  publicInfo: ArticlePublicInfo;
   surveyId: string | null;
   contactName: string;
   contactPhone: string;
@@ -1145,6 +1149,7 @@ export type UpsertProjectArticleInput = {
   urgency?: string;
   validFrom?: string;
   validUntil?: string;
+  publicInfo?: Record<string, unknown>;
   surveyId?: string;
   contentSections?: Array<{
     title?: string;
@@ -2365,6 +2370,7 @@ function mapArticleRowToProjectContentArticle(
     urgency: normalizeArticleUrgency(article.urgency),
     validFrom: normalizeArticleValidityDate(article.valid_from),
     validUntil: normalizeArticleValidityDate(article.valid_until),
+    publicInfo: normalizeArticlePublicInfoValue(article.public_info, article.article_type),
     surveyId: article.survey_id,
     contactName: article.contact_name || "",
     contactPhone: article.contact_phone || "",
@@ -5699,7 +5705,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,interest_tags,article_type,institution_priority,urgency,valid_from,valid_until,survey_id,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,interest_tags,article_type,institution_priority,urgency,valid_from,valid_until,public_info,survey_id,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -6112,6 +6118,7 @@ export async function upsertProjectArticle(
     const requestedPageNumber = normalizeArticleSortOrder(input.sourcePageNumber);
     const validFrom = normalizeArticleValidityDate(input.validFrom);
     const validUntil = normalizeArticleValidityDate(input.validUntil);
+    const articleType = normalizeArticlePublicInfoType(input.articleType);
 
     if (validFrom && validUntil && Date.parse(validUntil) < Date.parse(validFrom)) {
       return {
@@ -6153,11 +6160,12 @@ export async function upsertProjectArticle(
       summary_alignment: normalizeArticleTextAlignment(input.summaryAlignment ?? input.textAlignment),
       body_alignment: normalizeArticleTextAlignment(input.bodyAlignment ?? input.textAlignment),
       interest_tags: normalizeInterestTags(input.interestTags),
-      article_type: normalizeArticlePublicInfoType(input.articleType),
+      article_type: articleType,
       institution_priority: normalizeInstitutionPriority(input.institutionPriority),
       urgency: normalizeArticleUrgency(input.urgency),
       valid_from: validFrom,
       valid_until: validUntil,
+      public_info: normalizeArticlePublicInfoValue(input.publicInfo, articleType),
       survey_id: resolvedSurveyId,
       audio_source: normalizeArticleAudioSource(input.audioSource, Boolean(input.articleId)),
       article_tts_voice: normalizeArticleTtsVoice(input.articleTtsVoice),
