@@ -1258,7 +1258,7 @@ export function PublicMobileArticleReader({
     });
   }, [articles, searchQuery]);
   const canGoPrevious = !isCoverView && (safeCurrentIndex > 0 || hasCoverPage);
-  const canGoNext = isCoverView ? hasArticles : safeCurrentIndex < articles.length - 1;
+  const canGoNext = isCoverView ? hasArticles : safeCurrentIndex < articles.length - 1 || hasCoverPage;
   const activeAudioSegments = useMemo(() => {
     if (!isMobileReader || !currentArticle) {
       return buildAudioTextSegmentCandidates(articles);
@@ -1296,8 +1296,8 @@ export function PublicMobileArticleReader({
     });
   }
 
-  function goToCoverFromFirstArticle() {
-    if (!hasCoverPage || safeCurrentIndex !== 0 || isCoverView) {
+  function goToCoverFromArticle() {
+    if (!hasCoverPage || isCoverView) {
       return false;
     }
 
@@ -1344,7 +1344,7 @@ export function PublicMobileArticleReader({
 
   function navigatePrevious() {
     if (safeCurrentIndex === 0 && hasCoverPage) {
-      goToCoverFromFirstArticle();
+      goToCoverFromArticle();
       return;
     }
 
@@ -1354,6 +1354,11 @@ export function PublicMobileArticleReader({
   function navigateNext() {
     if (isCoverView) {
       goToFirstArticleFromCover();
+      return;
+    }
+
+    if (safeCurrentIndex >= articles.length - 1 && hasCoverPage) {
+      goToCoverFromArticle();
       return;
     }
 
@@ -1626,7 +1631,13 @@ export function PublicMobileArticleReader({
                 onClick={navigateNext}
                 disabled={!canGoNext}
                 className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none disabled:pointer-events-none disabled:opacity-35"
-                aria-label={isCoverView ? "첫 기사로 이동" : "다음 기사"}
+                aria-label={
+                  isCoverView
+                    ? "첫 기사로 이동"
+                    : safeCurrentIndex >= articles.length - 1 && hasCoverPage
+                      ? "표지로 이동"
+                      : "다음 기사"
+                }
               >
                 ›
               </button>
@@ -1655,8 +1666,33 @@ export function PublicMobileArticleReader({
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto p-4">
                   <div className="space-y-2">
+                    {hasCoverPage && cover ? (
+                      <button
+                        type="button"
+                        aria-label="표지로 이동"
+                        title="표지"
+                        onClick={() => {
+                          if (!isCoverView) {
+                            goToCoverFromArticle();
+                          }
+                          setIsIndexOpen(false);
+                        }}
+                        className={`block min-w-0 w-full max-w-full overflow-hidden rounded-2xl border px-4 py-3 text-left transition ${
+                          isCoverView
+                            ? "border-[#092046] bg-[#092046] text-white shadow-md"
+                            : "border-slate-200 bg-white text-[#092046] hover:border-[#2f73b7]"
+                        }`}
+                      >
+                        <span className={`text-xs font-black ${isCoverView ? "text-sky-100" : "text-[#184a88]"}`}>
+                          표지
+                        </span>
+                        <span className="public-article-index-title mt-1 block min-w-0 max-w-full overflow-hidden text-sm font-black leading-6">
+                          {cover.coverTitle || publicationTitle}
+                        </span>
+                      </button>
+                    ) : null}
                     {articles.map((article, index) => {
-                      const isActive = index === safeCurrentIndex;
+                      const isActive = !isCoverView && index === safeCurrentIndex;
                       const articleTitle = getArticleTitle(article, index);
                       const originalTitle = article.title.trim() || `기사 ${index + 1}`;
                       const titleDescription =
