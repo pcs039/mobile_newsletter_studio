@@ -68,6 +68,7 @@ type PublicMobileArticleReaderProps = {
     src: string;
     title?: string;
   };
+  publicSurveyLinks?: ProjectSurveyItem[];
   showSurveyConnectionStatus?: boolean;
   surveys?: ProjectSurveyItem[];
   showAdminPreviewControls: boolean;
@@ -271,6 +272,8 @@ function PublicNewsletterCoverView({
   hasArticles,
   onOpenToc,
   onStartReading,
+  publicSurveyLinks = [],
+  slug,
 }: {
   coverFit: "contain" | "cover";
   coverImageSrc: string;
@@ -281,6 +284,8 @@ function PublicNewsletterCoverView({
   hasArticles: boolean;
   onOpenToc: () => void;
   onStartReading: () => void;
+  publicSurveyLinks?: ProjectSurveyItem[];
+  slug: string;
 }) {
   const hasInfo = Boolean(coverTitle || coverSubtitle || coverIssueText);
   const imageFitClass = coverFit === "cover" || coverLayout === "image_overlay" ? "object-cover" : "object-contain";
@@ -342,6 +347,42 @@ function PublicNewsletterCoverView({
           목차 보기
         </button>
       </div>
+      {publicSurveyLinks.length > 0 ? (
+        <section className="mt-5 rounded-2xl border border-[#b8d7ff] bg-white p-5 shadow-sm">
+          <p className="text-xs font-black text-[#184a88]">참여하기</p>
+          <h2 className="mt-2 text-xl font-black leading-tight text-[#092046]">설문·이벤트</h2>
+          <p className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">
+            모바일 소식지를 읽은 뒤 만족도 조사나 이벤트에 참여할 수 있습니다.
+          </p>
+          <div className="mt-4 grid gap-3">
+            {publicSurveyLinks.map((survey) => (
+              <Link
+                key={survey.id}
+                href={`/newsletters/${slug}/survey/${survey.id}`}
+                className="block rounded-xl border border-slate-200 bg-[#f8fbff] px-4 py-4 shadow-sm transition hover:border-[#2f73b7] hover:bg-white"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">
+                    {survey.kind}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                    {survey.questionCount}개 문항
+                  </span>
+                </div>
+                <h3 className="mt-3 text-base font-black leading-7 text-[#092046] [word-break:keep-all]">
+                  {survey.title}
+                </h3>
+                {survey.description ? (
+                  <p className="mt-1 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">
+                    {survey.description}
+                  </p>
+                ) : null}
+                <p className="mt-3 text-sm font-black text-[#184a88]">참여하기</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }
@@ -1191,6 +1232,7 @@ export function PublicMobileArticleReader({
   ebookLinkTarget,
   ebookMobileHref,
   publicAudio,
+  publicSurveyLinks = [],
   showSurveyConnectionStatus = false,
   surveys = [],
   showAdminPreviewControls,
@@ -1616,6 +1658,8 @@ export function PublicMobileArticleReader({
                 hasArticles={hasArticles}
                 onOpenToc={() => setIsIndexOpen(true)}
                 onStartReading={goToFirstArticleFromCover}
+                publicSurveyLinks={publicSurveyLinks}
+                slug={slug}
               />
             </>
           ) : (
@@ -1776,6 +1820,8 @@ export function PublicMobileArticleReader({
               hasArticles={hasArticles}
               onOpenToc={() => setIsIndexOpen(true)}
               onStartReading={() => goToArticle(0, { playSound: true })}
+              publicSurveyLinks={publicSurveyLinks}
+              slug={slug}
             />
           ) : null}
           {articles.map((article, index) => (
