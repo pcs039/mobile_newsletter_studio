@@ -1096,9 +1096,9 @@ function ArticleCard({
         </ScrollMotionReveal>
       ) : null}
       {shouldShowArticleAudio && article.audioFile ? (
-        <section className="mt-3 rounded-xl border border-[#d8e8ff] bg-[#f7fbff] px-3 py-2 shadow-sm shadow-blue-950/5">
+        <section className="mt-3 rounded-xl border border-[#d8e8ff] bg-[#f7fbff] px-2.5 py-2 shadow-sm shadow-blue-950/5">
           {hasAiArticleAudio ? (
-            <p className="mb-1 text-[11px] font-bold leading-4 text-[#184a88]">
+            <p className="mb-0.5 px-1 text-[10px] font-bold leading-4 text-slate-500">
               AI가 생성한 음성입니다.
             </p>
           ) : null}
