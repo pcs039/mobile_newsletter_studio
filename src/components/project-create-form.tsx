@@ -37,6 +37,7 @@ export type ProjectFormInitialValues = {
   projectPasswordUpdatedAt?: string;
   titleFontAssetId?: string;
   bodyFontAssetId?: string;
+  articleTtsVoice?: string;
   coverEnabled?: boolean;
   coverLayout?: NewsletterCoverLayout;
   coverImageUrl?: string;
@@ -62,6 +63,13 @@ const primaryColorOptions = [
   { label: "인디고", value: "#3730A3" },
   { label: "차콜", value: "#1F2937" },
   { label: "브라운", value: "#7C2D12" },
+];
+
+const articleTtsVoiceOptions = [
+  { value: "marin", label: "Marin · 부드럽고 자연스러운 톤" },
+  { value: "cedar", label: "Cedar · 차분하고 낮은 톤" },
+  { value: "onyx", label: "Onyx · 묵직한 중저음 톤" },
+  { value: "coral", label: "Coral · 밝고 명료한 톤" },
 ];
 
 function isHexColor(value: string) {
@@ -232,6 +240,7 @@ export function ProjectCreateForm({
           designerHoursCap: getFormText(formData, "designerHoursCap"),
           titleFontAssetId: getFormText(formData, "titleFontAssetId"),
           bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
+          articleTtsVoice: getFormText(formData, "articleTtsVoice"),
           coverEnabled: false,
           coverLayout,
           coverImageUrl: "",
@@ -426,6 +435,7 @@ export function ProjectCreateForm({
         designerHoursCap: getFormText(formData, "designerHoursCap"),
         titleFontAssetId: getFormText(formData, "titleFontAssetId"),
         bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
+        articleTtsVoice: getFormText(formData, "articleTtsVoice"),
         coverEnabled,
         coverLayout,
         coverImageUrl: getFormText(formData, "coverImageUrl"),
@@ -665,6 +675,23 @@ export function ProjectCreateForm({
                   ))}
                 </select>
               </div>
+            </div>
+            <div className="mt-4 max-w-xl">
+              <FieldLabel>AI 기사 기본 음색</FieldLabel>
+              <select
+                name="articleTtsVoice"
+                defaultValue={initialValues.articleTtsVoice ?? "marin"}
+                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              >
+                {articleTtsVoiceOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                기사별 음색을 따로 고르지 않으면 이 기본 음색을 사용합니다.
+              </p>
             </div>
             {fonts.length === 0 ? (
               <p className="mt-3 text-xs font-semibold text-slate-500">

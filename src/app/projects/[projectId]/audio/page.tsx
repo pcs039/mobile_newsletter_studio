@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { ProjectArticleTtsGenerationPanel } from "@/components/project-article-tts-generation-panel";
 import { FileUploadCard } from "@/components/file-upload-card";
 import { ProjectAudioLinkManager, type ProjectAudioLinkArticleOption } from "@/components/project-audio-link-manager";
 import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { StatusPill } from "@/components/status-pill";
+import { getArticleTtsProjectStatus } from "@/lib/article-tts-audio";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import { audioReviewChecks, audioWorkflow } from "@/lib/newsletter-data";
 import { getProjectAudioFiles, getProjectContent } from "@/lib/newsletter-repository";
@@ -26,12 +28,14 @@ function BrowserAudioControl({ src, title }: { src: string; title: string }) {
 
 export default async function AudioManagementPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const [audioData, contentData] = await Promise.all([
+  const [audioData, contentData, articleTtsStatus] = await Promise.all([
     getProjectAudioFiles(projectId),
     getProjectContent(projectId),
+    getArticleTtsProjectStatus(projectId),
   ]);
   const audioFiles = audioData.files;
-  const firstAudioFile = audioFiles[0];
+  const uploadedAudioFiles = audioFiles.filter((file) => file.sourceType === "uploaded");
+  const firstAudioFile = uploadedAudioFiles[0];
   const articleOptions: ProjectAudioLinkArticleOption[] = contentData.articles.map((article, index) => ({
     body: [article.body, ...article.blocks.filter((block) => block.isVisible).map((block) => block.body)]
       .filter(Boolean)
@@ -105,6 +109,8 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                 </div>
               </article>
 
+              <ProjectArticleTtsGenerationPanel projectSlug={projectId} status={articleTtsStatus} />
+
               <article className="rounded-lg border border-slate-200 bg-white shadow-sm">
                 <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -138,7 +144,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                       </tr>
                     </thead>
                     <tbody>
-                      {audioFiles.length === 0 ? (
+                      {uploadedAudioFiles.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-4 py-12 text-center">
                             <p className="text-base font-black text-[#092046]">등록된 음성 파일이 없습니다.</p>
@@ -146,7 +152,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
                           </td>
                         </tr>
                       ) : (
-                        audioFiles.map((item) => (
+                        uploadedAudioFiles.map((item) => (
                           <tr key={item.id} className="border-b border-slate-200 last:border-0">
                             <td className="px-4 py-4">
                               <p className="text-xs font-black text-[#184a88]">업로드 파일</p>

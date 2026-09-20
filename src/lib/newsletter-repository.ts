@@ -34,6 +34,7 @@ type NewsletterProjectRow = {
   project_password_updated_at: string | null;
   title_font_asset_id: string | null;
   body_font_asset_id: string | null;
+  article_tts_voice: string | null;
   cover_enabled: boolean | null;
   cover_layout: NewsletterCoverLayout | null;
   cover_image_url: string | null;
@@ -102,6 +103,7 @@ export type CreateNewsletterProjectInput = {
   clearProjectPassword?: boolean;
   titleFontAssetId?: string;
   bodyFontAssetId?: string;
+  articleTtsVoice?: string;
   coverEnabled?: boolean;
   coverLayout?: NewsletterCoverLayout;
   coverImageUrl?: string;
@@ -427,6 +429,7 @@ export type ProjectWorkspaceInfo = {
   projectPasswordUpdatedAt: string;
   titleFontAssetId: string | null;
   bodyFontAssetId: string | null;
+  articleTtsVoice: string | null;
   coverEnabled: boolean;
   coverLayout: NewsletterCoverLayout;
   coverImageUrl: string;
@@ -473,6 +476,7 @@ export type ProjectBasicInfo = {
   projectPasswordUpdatedAt: string;
   titleFontAssetId: string;
   bodyFontAssetId: string;
+  articleTtsVoice: string;
   coverEnabled: boolean;
   coverLayout: NewsletterCoverLayout;
   coverImageUrl: string;
@@ -598,6 +602,12 @@ type NewsletterAudioFileRow = {
   script_status: string;
   transcript_type: string | null;
   pronunciation_note: string | null;
+  source_type: string | null;
+  ai_tts_audio_paths?: unknown;
+  ai_tts_text_hash?: string | null;
+  ai_tts_voice?: string | null;
+  ai_tts_model?: string | null;
+  ai_tts_generated_at?: string | null;
   updated_at: string;
 };
 
@@ -703,6 +713,9 @@ type NewsletterArticleRow = {
   status: string;
   representative_asset_id: string | null;
   audio_id: string | null;
+  audio_source: string | null;
+  ai_audio_id: string | null;
+  article_tts_voice: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -934,6 +947,9 @@ export type ProjectAudioFile = {
   filePath: string;
   previewHref: string;
   duration: string;
+  sourceType: "uploaded" | "ai_tts";
+  aiTtsVoice: string | null;
+  aiTtsGeneratedAt: string | null;
   transcriptText: string;
   transcriptType: AudioTranscriptType;
   transcriptTypeLabel: string;
@@ -974,6 +990,9 @@ export type ProjectLinkAction = {
 export type ProjectContentArticle = {
   id: string;
   audioId: string | null;
+  aiAudioId: string | null;
+  audioSource: "uploaded" | "ai_tts" | "none";
+  articleTtsVoice: string | null;
   pageId: string | null;
   pageNumber: number | null;
   sortOrder: number;
@@ -1012,6 +1031,8 @@ export type ProjectArticleAudioFile = {
   id: string;
   title: string;
   previewHref: string;
+  sourceType: "uploaded" | "ai_tts";
+  aiTtsVoice: string | null;
   transcriptText: string;
   transcriptType: AudioTranscriptType;
   transcriptTypeLabel: string;
@@ -1044,6 +1065,8 @@ export type ArticleTextAlignment = "left" | "center" | "right" | "justify";
 export type UpsertProjectArticleInput = {
   projectSlug: string;
   articleId?: string;
+  audioSource?: string;
+  articleTtsVoice?: string;
   pageId?: string;
   sourcePageNumber?: number;
   sortOrder?: number;
@@ -1152,6 +1175,7 @@ const projectSelectColumns = [
   "project_password_updated_at",
   "title_font_asset_id",
   "body_font_asset_id",
+  "article_tts_voice",
   "cover_enabled",
   "cover_layout",
   "cover_image_url",
@@ -1298,6 +1322,18 @@ function normalizeAudioTranscriptType(value: string | null | undefined): AudioTr
 
 function normalizeAudioTranscriptReviewStatus(value: string | null | undefined): AudioTranscriptReviewStatus {
   return value === "approved" || value === "needs_revision" ? value : "pending";
+}
+
+function normalizeArticleAudioSource(value: string | null | undefined, hasUploadedAudio: boolean): "uploaded" | "ai_tts" | "none" {
+  return value === "uploaded" || value === "ai_tts" || value === "none" ? value : hasUploadedAudio ? "uploaded" : "none";
+}
+
+function normalizeAudioFileSourceType(value: string | null | undefined): "uploaded" | "ai_tts" {
+  return value === "ai_tts" ? "ai_tts" : "uploaded";
+}
+
+function normalizeArticleTtsVoice(value: string | null | undefined): "marin" | "cedar" | "onyx" | "coral" {
+  return value === "cedar" || value === "onyx" || value === "coral" ? value : "marin";
 }
 
 function normalizeArticleTextAlignment(value: string | null | undefined): ArticleTextAlignment {
@@ -1745,6 +1781,7 @@ function mapProjectRowToWorkspaceInfo(project: NewsletterProjectRow): ProjectWor
     projectPasswordUpdatedAt: project.project_password_updated_at ? formatCompactDateTime(project.project_password_updated_at) : "",
     titleFontAssetId: project.title_font_asset_id,
     bodyFontAssetId: project.body_font_asset_id,
+    articleTtsVoice: project.article_tts_voice,
     coverEnabled: Boolean(project.cover_enabled),
     coverLayout: normalizeCoverLayout(project.cover_layout),
     coverImageUrl: project.cover_image_url || "",
@@ -1778,6 +1815,7 @@ function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicIn
     projectPasswordUpdatedAt: project.project_password_updated_at ? formatCompactDateTime(project.project_password_updated_at) : "",
     titleFontAssetId: project.title_font_asset_id || "",
     bodyFontAssetId: project.body_font_asset_id || "",
+    articleTtsVoice: project.article_tts_voice || "marin",
     coverEnabled: Boolean(project.cover_enabled),
     coverLayout: normalizeCoverLayout(project.cover_layout),
     coverImageUrl: project.cover_image_url || "",
@@ -2024,6 +2062,9 @@ function mapAudioRowToProjectAudioFile(file: NewsletterAudioFileRow): ProjectAud
     filePath: file.file_path,
     previewHref: makeStoragePreviewHref("audio-files", file.file_path) ?? "",
     duration: formatDuration(file.duration_seconds),
+    sourceType: normalizeAudioFileSourceType(file.source_type),
+    aiTtsVoice: file.ai_tts_voice ?? null,
+    aiTtsGeneratedAt: file.ai_tts_generated_at ? formatCompactDateTime(file.ai_tts_generated_at) : null,
     transcriptText: file.script_text || "",
     transcriptType,
     transcriptTypeLabel: audioTranscriptTypeLabels[transcriptType],
@@ -2041,7 +2082,12 @@ function mapAudioRowToProjectArticleAudioFile(file: NewsletterAudioFileRow): Pro
   return {
     id: file.id,
     title: file.title,
-    previewHref: makePublicStoragePreviewHref("audio-files", file.file_path) ?? "",
+    previewHref:
+      normalizeAudioFileSourceType(file.source_type) === "ai_tts"
+        ? ""
+        : makePublicStoragePreviewHref("audio-files", file.file_path) ?? "",
+    sourceType: normalizeAudioFileSourceType(file.source_type),
+    aiTtsVoice: file.ai_tts_voice ?? null,
     transcriptText: file.script_text || "",
     transcriptType,
     transcriptTypeLabel: audioTranscriptTypeLabels[transcriptType],
@@ -2084,11 +2130,17 @@ function mapArticleRowToProjectContentArticle(
   audioByArticleId = new Map<string, NewsletterAudioFileRow>(),
   audioById = new Map<string, NewsletterAudioFileRow>(),
 ): ProjectContentArticle {
-  const audioFile = audioByArticleId.get(article.id) ?? (article.audio_id ? audioById.get(article.audio_id) : null) ?? null;
+  const uploadedAudio = audioByArticleId.get(article.id) ?? (article.audio_id ? audioById.get(article.audio_id) : null) ?? null;
+  const aiAudio = article.ai_audio_id ? audioById.get(article.ai_audio_id) ?? null : null;
+  const audioSource = normalizeArticleAudioSource(article.audio_source, Boolean(uploadedAudio));
+  const audioFile = audioSource === "ai_tts" ? aiAudio : audioSource === "uploaded" ? uploadedAudio : null;
 
   return {
     id: article.id,
     audioId: article.audio_id,
+    aiAudioId: article.ai_audio_id,
+    audioSource,
+    articleTtsVoice: article.article_tts_voice,
     pageId: article.page_id,
     pageNumber: article.page_id ? pageNumberById.get(article.page_id) ?? null : null,
     sortOrder: article.sort_order,
@@ -4462,7 +4514,7 @@ export async function getProjectAudioFiles(projectSlug: string): Promise<Project
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_text,script_status,transcript_type,pronunciation_note,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_text,script_status,transcript_type,pronunciation_note,source_type,ai_tts_audio_paths,ai_tts_text_hash,ai_tts_voice,ai_tts_model,ai_tts_generated_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=updated_at.desc&limit=100`,
   );
@@ -4562,7 +4614,7 @@ async function fetchArticleLinks(articleIds: string[], headers: Record<string, s
 
 async function fetchProjectAudioFilesForContent(projectId: string, headers: Record<string, string>) {
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_text,script_status,transcript_type,pronunciation_note,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_text,script_status,transcript_type,pronunciation_note,source_type,ai_tts_audio_paths,ai_tts_text_hash,ai_tts_voice,ai_tts_model,ai_tts_generated_at,updated_at&project_id=eq.${encodeURIComponent(
       projectId,
     )}&order=updated_at.desc`,
   );
@@ -4618,7 +4670,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -5047,6 +5099,8 @@ export async function upsertProjectArticle(
       title_alignment: normalizeArticleTextAlignment(input.titleAlignment),
       summary_alignment: normalizeArticleTextAlignment(input.summaryAlignment ?? input.textAlignment),
       body_alignment: normalizeArticleTextAlignment(input.bodyAlignment ?? input.textAlignment),
+      audio_source: normalizeArticleAudioSource(input.audioSource, Boolean(input.articleId)),
+      article_tts_voice: normalizeArticleTtsVoice(input.articleTtsVoice),
       contact_name: nullableText(input.contactName),
       contact_phone: nullableText(input.contactPhone),
       motion_preset: normalizeArticleMotionPreset(input.motionPreset),
@@ -5170,6 +5224,7 @@ export async function createNewsletterProject(
     designer_hours_cap: input.designerHoursCap || null,
     title_font_asset_id: nullableText(input.titleFontAssetId),
     body_font_asset_id: nullableText(input.bodyFontAssetId),
+    article_tts_voice: nullableText(input.articleTtsVoice) || "marin",
     cover_enabled: input.coverEnabled === true,
     cover_layout: normalizeCoverLayout(input.coverLayout),
     cover_image_url: nullableText(input.coverImageUrl),
@@ -5264,6 +5319,7 @@ export async function updateNewsletterProject(
     designer_hours_cap: input.designerHoursCap || null,
     title_font_asset_id: nullableText(input.titleFontAssetId),
     body_font_asset_id: nullableText(input.bodyFontAssetId),
+    article_tts_voice: nullableText(input.articleTtsVoice) || "marin",
     cover_enabled: input.coverEnabled === true,
     cover_layout: normalizeCoverLayout(input.coverLayout),
     cover_image_url: nullableText(input.coverImageUrl),

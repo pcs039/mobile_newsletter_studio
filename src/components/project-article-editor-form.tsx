@@ -84,6 +84,9 @@ type ProjectFileUploadResponse =
       message?: string;
     };
 
+type ArticleAudioSourceInput = "uploaded" | "ai_tts" | "none";
+type ArticleTtsVoiceInput = "marin" | "cedar" | "onyx" | "coral";
+
 const articleStatuses = [
   { value: "draft", label: "작성 중" },
   { value: "review", label: "검수 요청" },
@@ -111,6 +114,31 @@ const articleTextAlignmentOptions: Array<{ value: ArticleTextAlignment; label: s
   { value: "center", label: "가운데 정렬" },
   { value: "right", label: "오른쪽 정렬" },
   { value: "justify", label: "양쪽 정렬" },
+];
+
+const articleAudioSourceOptions: Array<{ value: ArticleAudioSourceInput; label: string; description: string }> = [
+  {
+    value: "uploaded",
+    label: "직접 제작 음성파일",
+    description: "음성 관리 화면에서 업로드한 MP3, WAV, M4A 파일을 기사와 연결합니다.",
+  },
+  {
+    value: "ai_tts",
+    label: "AI 음성 자동 생성",
+    description: "저장된 기사 제목, 요약, 본문, 대본을 기준으로 AI 음성을 생성합니다.",
+  },
+  {
+    value: "none",
+    label: "음성 사용 안 함",
+    description: "공개 모바일 기사에서 음성 플레이어를 표시하지 않습니다.",
+  },
+];
+
+const articleTtsVoiceOptions: Array<{ value: ArticleTtsVoiceInput; label: string }> = [
+  { value: "marin", label: "Marin" },
+  { value: "cedar", label: "Cedar" },
+  { value: "onyx", label: "Onyx" },
+  { value: "coral", label: "Coral" },
 ];
 
 const titleMotionEffectOptions: Array<{ value: ArticleElementMotionEffect; label: string }> = [
@@ -620,6 +648,16 @@ export function ProjectArticleEditorForm({
   const [linkMotionSpeed, setLinkMotionSpeed] = useState<ArticleElementMotionSpeed>(
     article?.linkMotionSpeed ?? "inherit",
   );
+  const [selectedAudioSource, setSelectedAudioSource] = useState<ArticleAudioSourceInput>(
+    article?.audioSource ?? (article?.audioFile?.sourceType === "uploaded" ? "uploaded" : "none"),
+  );
+  const [selectedArticleTtsVoice, setSelectedArticleTtsVoice] = useState<ArticleTtsVoiceInput>(
+    articleTtsVoiceOptions.some((option) => option.value === article?.articleTtsVoice)
+      ? (article?.articleTtsVoice as ArticleTtsVoiceInput)
+      : "marin",
+  );
+  const [isGeneratingArticleTts, setIsGeneratingArticleTts] = useState(false);
+  const [articleTtsMessage, setArticleTtsMessage] = useState("");
   const imageAssets = useMemo(
     () => assets.filter((asset) => asset.mimeType.startsWith("image/") || asset.previewHref),
     [assets],
@@ -1011,6 +1049,8 @@ export function ProjectArticleEditorForm({
       bodyFontAssetId: getValue(formData, "bodyFontAssetId"),
       captionFontAssetId: getValue(formData, "captionFontAssetId"),
       buttonFontAssetId: getValue(formData, "buttonFontAssetId"),
+      audioSource: getValue(formData, "audioSource"),
+      articleTtsVoice: getValue(formData, "articleTtsVoice"),
       status: getValue(formData, "status"),
     };
 
@@ -1082,6 +1122,52 @@ export function ProjectArticleEditorForm({
     router.refresh();
   }
 
+  async function generateArticleTtsAudio() {
+    if (!article?.id) {
+      setError("AI 음성은 기사를 먼저 저장한 뒤 생성할 수 있습니다.");
+      return;
+    }
+
+    if (selectedAudioSource !== "ai_tts") {
+      setError("음성 사용 방식을 'AI 음성 자동 생성'으로 저장한 뒤 생성하세요.");
+      return;
+    }
+
+    setError("");
+    setArticleTtsMessage("AI 음성을 생성하는 중입니다. 기사 길이에 따라 시간이 걸릴 수 있습니다.");
+    setIsGeneratingArticleTts(true);
+
+    const response = await fetch(
+      `/api/projects/${encodeURIComponent(projectSlug)}/articles/${encodeURIComponent(article.id)}/tts/generate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          force: true,
+          voice: selectedArticleTtsVoice,
+        }),
+      },
+    );
+    const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string; segments?: number } | null;
+
+    setIsGeneratingArticleTts(false);
+
+    if (!response.ok || result?.ok !== true) {
+      setError(result?.message ?? "AI 음성 생성에 실패했습니다.");
+      setArticleTtsMessage("");
+      return;
+    }
+
+    setArticleTtsMessage(
+      result.segments && result.segments > 1
+        ? `AI 음성을 생성했습니다. (${result.segments}개 구간)`
+        : result.message ?? "AI 음성을 생성했습니다.",
+    );
+    router.refresh();
+  }
+
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       <div className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
@@ -1096,7 +1182,9 @@ export function ProjectArticleEditorForm({
           <div className="flex flex-wrap gap-2">
             <SectionBadge tone="required">필수</SectionBadge>
             <StatusPill value={article ? "DB 저장됨" : "신규 작성"} />
-            {article?.audioFile ? <StatusPill value="연결된 음성 있음" /> : null}
+            {article?.audioFile ? (
+              <StatusPill value={article.audioFile.sourceType === "ai_tts" ? "AI 음성 있음" : "연결된 음성 있음"} />
+            ) : null}
           </div>
         </div>
         {article?.audioFile ? (
@@ -1113,6 +1201,100 @@ export function ProjectArticleEditorForm({
             </Link>
           </div>
         ) : null}
+
+        <div className="mt-4 rounded-xl border border-[#d8e8ff] bg-white p-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">음성·대본</p>
+              <h4 className="text-base font-black text-[#092046]">모바일 기사 음성 방식</h4>
+            </div>
+            <Link href={`/projects/${projectSlug}/audio`} className="dd-btn dd-btn-secondary dd-btn-sm self-start sm:self-auto">
+              음성 파일 관리
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {articleAudioSourceOptions.map((option) => (
+              <label
+                key={option.value}
+                className={`rounded-xl border px-4 py-3 transition ${
+                  selectedAudioSource === option.value
+                    ? "border-[#184a88] bg-[#eff6ff] shadow-sm"
+                    : "border-slate-200 bg-white hover:border-[#b8d7ff]"
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-black text-[#092046]">
+                  <input
+                    type="radio"
+                    name="audioSource"
+                    value={option.value}
+                    checked={selectedAudioSource === option.value}
+                    onChange={() => setSelectedAudioSource(option.value)}
+                    className="h-4 w-4 accent-[#184a88]"
+                  />
+                  {option.label}
+                </span>
+                <span className="mt-2 block text-xs font-semibold leading-5 text-slate-500">{option.description}</span>
+              </label>
+            ))}
+          </div>
+
+          {selectedAudioSource === "uploaded" ? (
+            <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3">
+              <p className="text-xs font-black text-emerald-800">
+                {article?.audioFile?.sourceType === "uploaded" ? "직접 제작 음성이 연결되어 있습니다." : "직접 제작 음성을 연결하세요."}
+              </p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-emerald-800">
+                기존 MP3/WAV/M4A 업로드와 기사 연결 기능을 그대로 사용합니다.
+              </p>
+            </div>
+          ) : null}
+
+          {selectedAudioSource === "ai_tts" ? (
+            <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3">
+              <div className="grid gap-3 sm:grid-cols-[220px_minmax(0,1fr)] sm:items-end">
+                <div>
+                  <FieldLabel>AI 음색</FieldLabel>
+                  <select
+                    name="articleTtsVoice"
+                    value={selectedArticleTtsVoice}
+                    onChange={(event) => setSelectedArticleTtsVoice(event.currentTarget.value as ArticleTtsVoiceInput)}
+                    className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-black text-[#092046] outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                  >
+                    {articleTtsVoiceOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void generateArticleTtsAudio();
+                    }}
+                    disabled={!article?.id || article.audioSource !== "ai_tts" || isGeneratingArticleTts}
+                    className="dd-btn dd-btn-primary dd-btn-sm disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    {isGeneratingArticleTts ? "생성 중..." : article?.aiAudioId ? "AI 음성 다시 생성" : "AI 음성 생성"}
+                  </button>
+                  {article?.audioSource !== "ai_tts" ? (
+                    <span className="text-xs font-bold text-slate-500">AI 음성 방식을 저장한 뒤 생성할 수 있습니다.</span>
+                  ) : null}
+                </div>
+              </div>
+              <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
+                기사 제목, 요약, 본문, 음성 대본 블록을 기준으로 생성합니다. 이미지·링크·영상 텍스트는 낭독 원문에서 제외됩니다.
+              </p>
+              {articleTtsMessage ? (
+                <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-black text-[#184a88]">{articleTtsMessage}</p>
+              ) : null}
+            </div>
+          ) : (
+            <input type="hidden" name="articleTtsVoice" value={selectedArticleTtsVoice} />
+          )}
+        </div>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_280px]">
           <div>
