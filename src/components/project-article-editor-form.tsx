@@ -1358,7 +1358,7 @@ export function ProjectArticleEditorForm({
                 </div>
               </div>
               <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
-                기사 제목, 요약, 본문, 음성 대본 블록을 기준으로 생성합니다. 이미지·링크·영상 텍스트는 낭독 원문에서 제외됩니다.
+                공개 본문 문단을 기준으로 생성합니다. 제목·요약·이미지·링크·영상 텍스트는 낭독 원문에서 제외됩니다.
               </p>
               {articleTtsMessage ? (
                 <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-black text-[#184a88]">{articleTtsMessage}</p>
