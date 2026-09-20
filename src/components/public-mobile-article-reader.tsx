@@ -29,6 +29,12 @@ import {
   tokenizeKoreanTitleForBreaks,
   renderKoreanTitleWithBreaks,
 } from "@/lib/korean-title-breaks";
+import {
+  getArticlePublicPresentation,
+  getArticleUrgencyLabel,
+  isArticleUrgencyCurrentlyRelevant,
+  type ArticlePublicPresentation,
+} from "@/lib/article-public-presentation";
 import { getAvailableInterestTags, getInterestOrderedArticles } from "@/lib/article-interest-order";
 import {
   enablePageTurnSoundWithPreview,
@@ -943,6 +949,7 @@ function renderContentBlock(
   block: ProjectContentBlock,
   motionSettings: ResolvedArticleMotionSettings,
   onOpenArticleImage: (image: PublicArticleLightboxImage) => void,
+  presentation: ArticlePublicPresentation,
 ) {
   const link = getBlockLink(article, block);
   const rawHref = link?.targetValue || block.body;
@@ -1037,7 +1044,7 @@ function renderContentBlock(
         motionSpeed={motionSettings.textBox.speed}
       >
         <section
-          className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm`}
+          className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} ${presentation.videoBlockClassName}`}
           data-motion-effect={motionSettings.textBox.effect}
           data-motion-speed={motionSettings.textBox.speed}
         >
@@ -1077,7 +1084,7 @@ function renderContentBlock(
           href={href}
           target="_blank"
           rel="noreferrer"
-          className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} block rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] px-4 py-4`}
+          className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} ${presentation.mapLinkClassName}`}
           data-motion-effect={motionSettings.textBox.effect}
           data-motion-speed={motionSettings.textBox.speed}
         >
@@ -1105,7 +1112,7 @@ function renderContentBlock(
           href={href}
           target="_blank"
           rel="noreferrer"
-          className={`article-motion-link-button ${articleMotionSpeedClassNames[motionSettings.link.speed]} dd-btn dd-btn-primary block rounded-xl px-4 py-3 text-center text-sm font-black`}
+          className={`article-motion-link-button ${articleMotionSpeedClassNames[motionSettings.link.speed]} ${presentation.actionLinkClassName}`}
           data-motion-effect={motionSettings.link.effect}
           data-motion-speed={motionSettings.link.speed}
         >
@@ -1187,6 +1194,10 @@ function ArticleCard({
   const surveyAvailabilityState = getSurveyAvailabilityState(survey);
   const hasPublicSurveyCta = surveyAvailabilityState === "active";
   const shouldShowSurveyStatus = Boolean(survey && (hasPublicSurveyCta || showSurveyConnectionStatus));
+  const presentation = getArticlePublicPresentation(article.articleType);
+  const shouldShowTypeCue = !presentation.isGeneral;
+  const shouldShowUrgencyCue = article.urgency !== "normal" && isArticleUrgencyCurrentlyRelevant(article);
+  const urgencyLabel = shouldShowUrgencyCue ? getArticleUrgencyLabel(article.urgency) : "";
   const surveyStatusText =
     surveyAvailabilityState === "draft"
       ? "준비 중 · 실제 공개화면에는 표시되지 않습니다."
@@ -1216,6 +1227,20 @@ function ArticleCard({
           >
             수정
           </Link>
+        </div>
+      ) : null}
+      {shouldShowTypeCue || urgencyLabel ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {shouldShowTypeCue ? (
+            <span className={presentation.typeBadgeClassName}>
+              {presentation.typeLabel}
+            </span>
+          ) : null}
+          {urgencyLabel ? (
+            <span className={presentation.urgencyBadgeClassName}>
+              {urgencyLabel}
+            </span>
+          ) : null}
         </div>
       ) : null}
       <div
@@ -1269,16 +1294,25 @@ function ArticleCard({
           motionEffect={motionSettings.textBox.effect}
           motionSpeed={motionSettings.textBox.speed}
         >
-          <p
-            data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
-            data-public-text-scale-target="article-summary"
-            data-text-alignment={article.summaryAlignment || article.textAlignment || "left"}
-            className={`article-motion-summary ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} public-audio-sync-segment mt-3 rounded-xl bg-[#f4f8ff] px-4 py-3 text-sm font-bold leading-6 text-[#092046]`}
+          <div
+            className={`article-motion-summary ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} ${presentation.summaryClassName}`}
             data-motion-effect={motionSettings.textBox.effect}
             data-motion-speed={motionSettings.textBox.speed}
           >
-            {article.summary}
-          </p>
+            {presentation.summaryLabel ? (
+              <p className={`${presentation.summaryLabelClassName} mb-1`}>
+                {presentation.summaryLabel}
+              </p>
+            ) : null}
+            <p
+              data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
+              data-public-text-scale-target="article-summary"
+              data-text-alignment={article.summaryAlignment || article.textAlignment || "left"}
+              className="public-audio-sync-segment"
+            >
+              {article.summary}
+            </p>
+          </div>
         </ScrollMotionReveal>
       ) : null}
       {shouldShowArticleAudio && article.audioFile ? (
@@ -1318,7 +1352,7 @@ function ArticleCard({
       ) : null}
       {visibleBlocks.length > 0 ? (
         <div className="public-article-content mt-6 space-y-6">
-          {visibleBlocks.map((block) => renderContentBlock(article, block, motionSettings, onOpenArticleImage))}
+          {visibleBlocks.map((block) => renderContentBlock(article, block, motionSettings, onOpenArticleImage, presentation))}
         </div>
       ) : (
         renderArticleBody(
@@ -1329,8 +1363,8 @@ function ArticleCard({
         )
       )}
       {article.contactName || article.contactPhone ? (
-        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
-          <p className="text-xs font-black text-[#184a88]">문의</p>
+        <div className={presentation.contactPanelClassName}>
+          <p className={presentation.contactLabelClassName}>문의</p>
           <p className="mt-1 font-bold">
             {[article.contactName, article.contactPhone].filter(Boolean).join(" · ")}
           </p>
