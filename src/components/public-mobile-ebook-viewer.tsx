@@ -1,13 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { EbookTtsPanel } from "@/components/ebook-tts-panel";
 import { EbookSearchPanel } from "@/components/ebook-search-panel";
 import { PublicAudioPlayer } from "@/components/public-audio-player";
 import { useEbookTts } from "@/hooks/use-ebook-tts";
 import { getAudioSyncedPageNumber } from "@/lib/audio-page-sync";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
+import {
+  enablePageTurnSoundWithPreview,
+  playPageTurnSound,
+  readPageTurnSoundPreference,
+  savePageTurnSoundPreference,
+  subscribeToPageTurnSoundPreference,
+} from "@/lib/page-turn-sound";
 
 type MobileEbookPage = {
   id: string;
@@ -106,6 +113,7 @@ export function PublicMobileEbookViewer({
   const [audioDuration, setAudioDuration] = useState(0);
   const [followPages, setFollowPages] = useState(getInitialFollowPagesEnabled);
   const [followPagesMessage, setFollowPagesMessage] = useState("");
+  const soundEnabled = useSyncExternalStore(subscribeToPageTurnSoundPreference, readPageTurnSoundPreference, () => true);
   const currentPage = pages[currentIndex] ?? null;
   const currentPageCustomTitle = currentPage ? getCustomPageTitle(currentPage.title, currentPage.pageNumber) : "";
   const getPageImageHref = useCallback((page: MobileEbookPage) => {
@@ -127,7 +135,7 @@ export function PublicMobileEbookViewer({
     [currentPage?.pageNumber, isAdminPreview, isEmbeddedAdminPreview, slug],
   );
 
-  const goToIndex = useCallback((nextIndex: number) => {
+  const goToIndex = useCallback((nextIndex: number, withSound = false) => {
     if (pages.length === 0) {
       return;
     }
@@ -138,7 +146,11 @@ export function PublicMobileEbookViewer({
     setCurrentIndex(clampedIndex);
     setPageInputValue(String(nextPage?.pageNumber ?? clampedIndex + 1));
     viewportRef.current?.scrollTo({ left: 0, top: 0 });
-  }, [pages]);
+
+    if (withSound && soundEnabled) {
+      void playPageTurnSound();
+    }
+  }, [pages, soundEnabled]);
 
   const disableFollowPagesForManualNavigation = useCallback(() => {
     if (!followPages) {
@@ -160,13 +172,13 @@ export function PublicMobileEbookViewer({
       disableFollowPagesForManualNavigation();
     }
 
-    goToIndex(nextIndex);
+    goToIndex(nextIndex, isManual);
   }, [disableFollowPagesForManualNavigation, goToIndex, pages]);
 
   const tts = useEbookTts({
     currentIndex,
     enabled: searchEnabled,
-    onNavigateToIndex: goToIndex,
+    onNavigateToIndex: (index) => goToIndex(index, false),
     pages,
     slug,
   });
@@ -175,13 +187,13 @@ export function PublicMobileEbookViewer({
   const goToPreviousPage = useCallback(() => {
     cancelTts();
     disableFollowPagesForManualNavigation();
-    goToIndex(currentIndex - pageStep);
+    goToIndex(currentIndex - pageStep, true);
   }, [cancelTts, currentIndex, disableFollowPagesForManualNavigation, goToIndex, pageStep]);
 
   const goToNextPage = useCallback(() => {
     cancelTts();
     disableFollowPagesForManualNavigation();
-    goToIndex(currentIndex + pageStep);
+    goToIndex(currentIndex + pageStep, true);
   }, [cancelTts, currentIndex, disableFollowPagesForManualNavigation, goToIndex, pageStep]);
 
   const syncPageToAudioTime = useCallback((nextTime: number) => {
@@ -203,7 +215,7 @@ export function PublicMobileEbookViewer({
       return;
     }
 
-    goToIndex(nextIndex);
+    goToIndex(nextIndex, false);
   }, [audioDuration, currentIndex, goToIndex, pages, viewMode]);
 
   useEffect(() => {
@@ -248,6 +260,15 @@ export function PublicMobileEbookViewer({
     if (nextValue) {
       syncPageToAudioTime(audioCurrentTime);
     }
+  }
+
+  function updateSoundPreference(nextValue: boolean) {
+    if (nextValue) {
+      void enablePageTurnSoundWithPreview();
+      return;
+    }
+
+    savePageTurnSoundPreference(false);
   }
 
   function updateZoom(nextZoom: number) {
@@ -449,6 +470,15 @@ export function PublicMobileEbookViewer({
                   aria-label={isFullscreen ? "전체화면 종료" : "전체화면"}
                 >
                   {isFullscreen ? "전체화면 종료" : "전체화면"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateSoundPreference(!soundEnabled)}
+                  className="dd-btn dd-btn-secondary dd-btn-sm min-h-11 justify-center rounded-xl text-xs"
+                  aria-pressed={soundEnabled}
+                  aria-label="페이지 전환 효과음"
+                >
+                  효과음 {soundEnabled ? "켜짐" : "꺼짐"}
                 </button>
                 {pdfDownloadHref ? (
                   <a
