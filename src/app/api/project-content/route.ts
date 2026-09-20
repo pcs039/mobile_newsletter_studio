@@ -17,6 +17,10 @@ function asOptionalNumber(value: unknown) {
   return Number.isInteger(numberValue) && numberValue >= 0 ? numberValue : 0;
 }
 
+function asStringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
 function getServiceHeaders() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
@@ -197,6 +201,12 @@ export async function POST(request: Request) {
     titleAlignment: asText(payload.titleAlignment),
     summaryAlignment: asText(payload.summaryAlignment),
     bodyAlignment: asText(payload.bodyAlignment),
+    interestTags: asStringArray(payload.interestTags),
+    articleType: asText(payload.articleType),
+    institutionPriority: asOptionalNumber(payload.institutionPriority),
+    urgency: asText(payload.urgency),
+    validFrom: asText(payload.validFrom),
+    validUntil: asText(payload.validUntil),
     surveyId: asText(payload.surveyId) || undefined,
     contentSections: asContentSections(payload.contentSections),
     contentBlocks: asContentBlocks(payload.contentBlocks),

@@ -704,6 +704,17 @@ type LinkDisplayStyle = "button" | "text_link" | "thumbnail_card" | "map_card";
 type PageHotspotLinkType = "url" | "phone" | "map" | "video";
 export type ArticleMotionPreset = "none" | "calm" | "image_focus" | "promotion" | "dynamic";
 export type ArticleMotionSpeed = "slow" | "normal" | "fast";
+export type ArticlePublicInfoType =
+  | "general"
+  | "welfare_health"
+  | "application_recruitment"
+  | "event_festival"
+  | "tourism_place"
+  | "life_civil"
+  | "government_major"
+  | "local_news"
+  | "emergency";
+export type ArticleUrgency = "normal" | "time_sensitive" | "urgent";
 export type ArticleElementMotionEffect =
   | "inherit"
   | "none"
@@ -730,6 +741,12 @@ type NewsletterArticleRow = {
   title_alignment: string | null;
   summary_alignment: string | null;
   body_alignment: string | null;
+  interest_tags: string[] | null;
+  article_type: string | null;
+  institution_priority: number | null;
+  urgency: string | null;
+  valid_from: string | null;
+  valid_until: string | null;
   survey_id: string | null;
   contact_name: string | null;
   contact_phone: string | null;
@@ -1041,6 +1058,12 @@ export type ProjectContentArticle = {
   titleAlignment: ArticleTextAlignment;
   summaryAlignment: ArticleTextAlignment;
   bodyAlignment: ArticleTextAlignment;
+  interestTags: string[];
+  articleType: ArticlePublicInfoType;
+  institutionPriority: number;
+  urgency: ArticleUrgency;
+  validFrom: string | null;
+  validUntil: string | null;
   surveyId: string | null;
   contactName: string;
   contactPhone: string;
@@ -1116,6 +1139,12 @@ export type UpsertProjectArticleInput = {
   titleAlignment?: string;
   summaryAlignment?: string;
   bodyAlignment?: string;
+  interestTags?: string[];
+  articleType?: string;
+  institutionPriority?: number;
+  urgency?: string;
+  validFrom?: string;
+  validUntil?: string;
   surveyId?: string;
   contentSections?: Array<{
     title?: string;
@@ -1407,6 +1436,71 @@ function normalizeArticleTtsVoice(value: string | null | undefined): "marin" | "
 
 function normalizeArticleTextAlignment(value: string | null | undefined): ArticleTextAlignment {
   return value === "center" || value === "right" || value === "justify" ? value : "left";
+}
+
+function normalizeArticlePublicInfoType(value: string | null | undefined): ArticlePublicInfoType {
+  const allowed: ArticlePublicInfoType[] = [
+    "general",
+    "welfare_health",
+    "application_recruitment",
+    "event_festival",
+    "tourism_place",
+    "life_civil",
+    "government_major",
+    "local_news",
+    "emergency",
+  ];
+  const cleaned = value?.trim() ?? "";
+
+  return allowed.includes(cleaned as ArticlePublicInfoType) ? (cleaned as ArticlePublicInfoType) : "general";
+}
+
+function normalizeArticleUrgency(value: string | null | undefined): ArticleUrgency {
+  return value === "time_sensitive" || value === "urgent" ? value : "normal";
+}
+
+function normalizeInstitutionPriority(value: number | string | null | undefined) {
+  const numberValue = typeof value === "number" || typeof value === "string" ? Number(value) : Number.NaN;
+
+  return Number.isInteger(numberValue) && numberValue >= 1 && numberValue <= 5 ? numberValue : 3;
+}
+
+function normalizeInterestTags(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const tags: string[] = [];
+
+  value.forEach((item) => {
+    if (typeof item !== "string") {
+      return;
+    }
+
+    const tag = item.trim().slice(0, 30);
+
+    if (!tag || seen.has(tag)) {
+      return;
+    }
+
+    seen.add(tag);
+    tags.push(tag);
+  });
+
+  return tags.slice(0, 8);
+}
+
+function normalizeArticleValidityDate(value: string | null | undefined) {
+  const cleaned = value?.trim() ?? "";
+
+  if (!cleaned) {
+    return null;
+  }
+
+  const time = Date.parse(cleaned);
+
+  return Number.isFinite(time) ? new Date(time).toISOString() : null;
 }
 
 export function getAudioTranscriptTypeLabel(value: AudioTranscriptType) {
@@ -2265,6 +2359,12 @@ function mapArticleRowToProjectContentArticle(
     titleAlignment: normalizeArticleTextAlignment(article.title_alignment),
     summaryAlignment: normalizeArticleTextAlignment(article.summary_alignment ?? article.text_alignment),
     bodyAlignment: normalizeArticleTextAlignment(article.body_alignment ?? article.text_alignment),
+    interestTags: normalizeInterestTags(article.interest_tags),
+    articleType: normalizeArticlePublicInfoType(article.article_type),
+    institutionPriority: normalizeInstitutionPriority(article.institution_priority),
+    urgency: normalizeArticleUrgency(article.urgency),
+    validFrom: normalizeArticleValidityDate(article.valid_from),
+    validUntil: normalizeArticleValidityDate(article.valid_until),
     surveyId: article.survey_id,
     contactName: article.contact_name || "",
     contactPhone: article.contact_phone || "",
@@ -5599,7 +5699,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,survey_id,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,interest_tags,article_type,institution_priority,urgency,valid_from,valid_until,survey_id,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -6010,6 +6110,17 @@ export async function upsertProjectArticle(
     }
 
     const requestedPageNumber = normalizeArticleSortOrder(input.sourcePageNumber);
+    const validFrom = normalizeArticleValidityDate(input.validFrom);
+    const validUntil = normalizeArticleValidityDate(input.validUntil);
+
+    if (validFrom && validUntil && Date.parse(validUntil) < Date.parse(validFrom)) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: "노출 종료일은 시작일보다 빠를 수 없습니다.",
+      };
+    }
+
     const resolvedPageId =
       nullableText(input.pageId) ??
       (requestedPageNumber > 0
@@ -6041,6 +6152,12 @@ export async function upsertProjectArticle(
       title_alignment: normalizeArticleTextAlignment(input.titleAlignment),
       summary_alignment: normalizeArticleTextAlignment(input.summaryAlignment ?? input.textAlignment),
       body_alignment: normalizeArticleTextAlignment(input.bodyAlignment ?? input.textAlignment),
+      interest_tags: normalizeInterestTags(input.interestTags),
+      article_type: normalizeArticlePublicInfoType(input.articleType),
+      institution_priority: normalizeInstitutionPriority(input.institutionPriority),
+      urgency: normalizeArticleUrgency(input.urgency),
+      valid_from: validFrom,
+      valid_until: validUntil,
       survey_id: resolvedSurveyId,
       audio_source: normalizeArticleAudioSource(input.audioSource, Boolean(input.articleId)),
       article_tts_voice: normalizeArticleTtsVoice(input.articleTtsVoice),

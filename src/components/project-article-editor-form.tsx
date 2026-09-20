@@ -17,8 +17,10 @@ import type {
   ArticleElementMotionSpeed,
   ArticleMotionPreset,
   ArticleMotionSpeed,
+  ArticlePublicInfoType,
   FontAsset,
   ArticleTextAlignment,
+  ArticleUrgency,
   ProjectAssetFile,
   ProjectContentArticle,
   ProjectContentBlock,
@@ -109,6 +111,8 @@ type ArticlePayload = {
   displayTitle: string;
   imageMotionEffect: string;
   imageMotionSpeed: string;
+  institutionPriority: number;
+  interestTags: string[];
   linkMotionEffect: string;
   linkMotionSpeed: string;
   motionPreset: string;
@@ -129,6 +133,10 @@ type ArticlePayload = {
   titleFontAssetId: string;
   titleMotionEffect: string;
   titleMotionSpeed: string;
+  articleType: string;
+  urgency: string;
+  validFrom: string;
+  validUntil: string;
 };
 
 const articleStatuses = [
@@ -158,6 +166,46 @@ const articleTextAlignmentOptions: Array<{ value: ArticleTextAlignment; label: s
   { value: "center", label: "가운데 정렬" },
   { value: "right", label: "오른쪽 정렬" },
   { value: "justify", label: "양쪽 정렬" },
+];
+
+const recommendedInterestTags = [
+  "건강·복지",
+  "생활·민원",
+  "교통·도시",
+  "청년·일자리",
+  "교육·돌봄",
+  "문화·축제",
+  "관광",
+  "농업·귀농",
+  "기업·산업",
+  "우리동네",
+  "시정·군정 주요소식",
+];
+
+const articlePublicInfoTypeOptions: Array<{ value: ArticlePublicInfoType; label: string }> = [
+  { value: "general", label: "일반형" },
+  { value: "welfare_health", label: "복지·건강형" },
+  { value: "application_recruitment", label: "신청·모집형" },
+  { value: "event_festival", label: "축제·행사형" },
+  { value: "tourism_place", label: "관광·장소형" },
+  { value: "life_civil", label: "생활·민원형" },
+  { value: "government_major", label: "시정·군정 주요소식형" },
+  { value: "local_news", label: "읍면동·지역소식형" },
+  { value: "emergency", label: "긴급·안전형" },
+];
+
+const articleUrgencyOptions: Array<{ value: ArticleUrgency; label: string; description: string }> = [
+  { value: "normal", label: "일반", description: "일반적인 정기 기사" },
+  { value: "time_sensitive", label: "시한성 정보", description: "신청 마감, 행사 일정, 모집 기간 등" },
+  { value: "urgent", label: "긴급", description: "재난·안전·교통 통제 등 우선 확인 정보" },
+];
+
+const institutionPriorityOptions = [
+  { value: 1, label: "1 낮음" },
+  { value: 2, label: "2 보통 이하" },
+  { value: 3, label: "3 보통" },
+  { value: 4, label: "4 중요" },
+  { value: 5, label: "5 최우선" },
 ];
 
 const articleAudioSourceOptions: Array<{ value: ArticleAudioSourceInput; label: string; description: string }> = [
@@ -328,6 +376,47 @@ function getValue(formData: FormData, name: string) {
   const value = formData.get(name);
 
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getValues(formData: FormData, name: string) {
+  return formData.getAll(name).filter((value): value is string => typeof value === "string").map((value) => value.trim());
+}
+
+function parseCustomInterestTags(value: string) {
+  return value
+    .split(/[,，\n]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function buildInterestTags(formData: FormData) {
+  return [...getValues(formData, "interestTags"), ...parseCustomInterestTags(getValue(formData, "customInterestTags"))];
+}
+
+function toIsoFromDatetimeLocal(value: string) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
+function toDatetimeLocalValue(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
 function makeBlockId(type: string) {
@@ -722,6 +811,10 @@ export function ProjectArticleEditorForm({
     () => detectLongKoreanTitleTokens(effectiveMobileTitle),
     [effectiveMobileTitle],
   );
+  const customInterestTagText = useMemo(
+    () => (article?.interestTags ?? []).filter((tag) => !recommendedInterestTags.includes(tag)).join(", "),
+    [article?.interestTags],
+  );
 
   function updateBlock(blockId: string, field: "title" | "body", value: string) {
     setBlocks((currentBlocks) =>
@@ -1073,6 +1166,12 @@ export function ProjectArticleEditorForm({
       titleAlignment: getValue(formData, "titleAlignment"),
       summaryAlignment: getValue(formData, "summaryAlignment"),
       bodyAlignment,
+      interestTags: buildInterestTags(formData),
+      articleType: getValue(formData, "articleType"),
+      institutionPriority: Number(getValue(formData, "institutionPriority")) || 3,
+      urgency: getValue(formData, "urgency"),
+      validFrom: toIsoFromDatetimeLocal(getValue(formData, "validFrom")),
+      validUntil: toIsoFromDatetimeLocal(getValue(formData, "validUntil")),
       contentBlocks,
       contactName: getValue(formData, "contactName"),
       contactPhone: getValue(formData, "contactPhone"),
@@ -1511,6 +1610,126 @@ export function ProjectArticleEditorForm({
             </p>
           </div>
           <input type="hidden" name="textAlignment" defaultValue={article?.textAlignment ?? "left"} />
+        </div>
+
+        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">공공정보 분류 및 노출 기준</p>
+              <h4 className="mt-1 text-base font-black text-[#092046]">기사 메타데이터</h4>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                관심분야와 정보 성격을 지정하면 향후 관심사별 보기와 기사 우선순위 구성에 활용됩니다.
+              </p>
+            </div>
+            <SectionBadge tone="optional">선택</SectionBadge>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            <div>
+              <FieldLabel>관심분야</FieldLabel>
+              <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-[#f8fbff] p-3">
+                {recommendedInterestTags.map((tag) => (
+                  <label
+                    key={tag}
+                    className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full border border-[#d8e8ff] bg-white px-3 text-xs font-black text-[#092046] transition hover:border-[#184a88]"
+                  >
+                    <input
+                      type="checkbox"
+                      name="interestTags"
+                      value={tag}
+                      defaultChecked={article?.interestTags.includes(tag) ?? false}
+                      className="h-3.5 w-3.5 accent-[#184a88]"
+                    />
+                    {tag}
+                  </label>
+                ))}
+              </div>
+              <input
+                name="customInterestTags"
+                defaultValue={customInterestTagText}
+                placeholder="직접 태그 추가: 반려동물, 안전교육"
+                className="mt-3 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              />
+              <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                직접 태그는 쉼표 또는 줄바꿈으로 구분합니다. 저장 시 최대 8개까지 정리됩니다.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <div>
+                <FieldLabel>기사 유형</FieldLabel>
+                <select
+                  name="articleType"
+                  defaultValue={article?.articleType ?? "general"}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  {articlePublicInfoTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>기관 중요도</FieldLabel>
+                <select
+                  name="institutionPriority"
+                  defaultValue={article?.institutionPriority ?? 3}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  {institutionPriorityOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                  기관이 판단하는 정보 중요도입니다. 향후 관심사별 기사 순서를 계산할 때 사용됩니다.
+                </p>
+              </div>
+              <div>
+                <FieldLabel>긴급도</FieldLabel>
+                <select
+                  name="urgency"
+                  defaultValue={article?.urgency ?? "normal"}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  {articleUrgencyOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                  {articleUrgencyOptions.map((option) => `${option.label}: ${option.description}`).join(" / ")}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <FieldLabel>노출 시작</FieldLabel>
+              <input
+                name="validFrom"
+                type="datetime-local"
+                defaultValue={toDatetimeLocalValue(article?.validFrom)}
+                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              />
+            </div>
+            <div>
+              <FieldLabel>노출 종료</FieldLabel>
+              <input
+                name="validUntil"
+                type="datetime-local"
+                defaultValue={toDatetimeLocalValue(article?.validUntil)}
+                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              />
+            </div>
+          </div>
+          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+            기간을 비워두면 기간 제한 없음으로 저장됩니다.
+          </p>
         </div>
 
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
