@@ -5,10 +5,12 @@ import { ProjectPageHotspotManager } from "@/components/project-page-hotspot-man
 import { ProjectFileDeleteButton } from "@/components/project-file-delete-button";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectEbookSearchIndexPanel } from "@/components/project-ebook-search-index-panel";
+import { ProjectEbookTtsAudioPanel } from "@/components/project-ebook-tts-audio-panel";
 import { ProjectPageImageBulkDelete } from "@/components/project-page-image-bulk-delete";
 import { PdfToPageImageConverter } from "@/components/pdf-to-page-image-converter";
 import { StatusPill } from "@/components/status-pill";
 import { getProjectEbookSearchStatus } from "@/lib/ebook-page-search";
+import { getProjectEbookTtsStatus } from "@/lib/ebook-tts-audio";
 import { pageConversionSteps, pageQualityChecks } from "@/lib/newsletter-data";
 import {
   getProjectOriginalPdf,
@@ -51,12 +53,13 @@ const imagePageAssemblySteps = [
 
 export default async function ProjectPagesPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const [workspace, originalPdfData, pageImageData, hotspotData, ebookSearchStatus] = await Promise.all([
+  const [workspace, originalPdfData, pageImageData, hotspotData, ebookSearchStatus, ebookTtsStatus] = await Promise.all([
     getProjectWorkspace(projectId),
     getProjectOriginalPdf(projectId),
     getProjectPageImages(projectId),
     getProjectPageHotspotLinks(projectId),
     getProjectEbookSearchStatus(projectId),
+    getProjectEbookTtsStatus(projectId),
   ]);
   const project = workspace.project;
   const originalPdf = originalPdfData.pdf;
@@ -192,6 +195,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
 
                 <PdfToPageImageConverter projectSlug={projectId} />
                 <ProjectEbookSearchIndexPanel projectSlug={projectId} status={ebookSearchStatus} />
+                <ProjectEbookTtsAudioPanel projectSlug={projectId} status={ebookTtsStatus} />
 
                 <div className="mt-5 rounded-lg border border-slate-300 bg-[#f8fbff] p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
