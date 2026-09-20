@@ -21,6 +21,10 @@ function asStringArray(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
+function asPlainObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
 function getServiceHeaders() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
@@ -207,6 +211,7 @@ export async function POST(request: Request) {
     urgency: asText(payload.urgency),
     validFrom: asText(payload.validFrom),
     validUntil: asText(payload.validUntil),
+    publicInfo: asPlainObject(payload.publicInfo),
     surveyId: asText(payload.surveyId) || undefined,
     contentSections: asContentSections(payload.contentSections),
     contentBlocks: asContentBlocks(payload.contentBlocks),

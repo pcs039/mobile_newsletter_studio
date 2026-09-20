@@ -35,6 +35,7 @@ import {
   isArticleUrgencyCurrentlyRelevant,
   type ArticlePublicPresentation,
 } from "@/lib/article-public-presentation";
+import { getArticlePublicInfoEntries, getArticlePublicInfoFieldGroup } from "@/lib/article-public-info-fields";
 import { getAvailableInterestTags, getInterestOrderedArticles } from "@/lib/article-interest-order";
 import {
   enablePageTurnSoundWithPreview,
@@ -1144,6 +1145,54 @@ function renderContentBlock(
   return null;
 }
 
+function ArticlePublicInfoCard({
+  article,
+  presentation,
+}: {
+  article: ProjectContentArticle;
+  presentation: ArticlePublicPresentation;
+}) {
+  if (presentation.isGeneral) {
+    return null;
+  }
+
+  const entries = getArticlePublicInfoEntries(article.publicInfo, article.articleType);
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const fieldGroup = getArticlePublicInfoFieldGroup(article.articleType);
+  const isEmergency = article.articleType === "emergency";
+
+  return (
+    <section
+      className={`mt-4 rounded-xl border px-4 py-4 ${
+        isEmergency ? "border-amber-200 bg-amber-50" : "border-[#d8e8ff] bg-[#f8fbff]"
+      }`}
+    >
+      <p className={isEmergency ? "text-xs font-black text-amber-800" : "text-xs font-black text-[#184a88]"}>
+        {fieldGroup.cardTitle || presentation.summaryLabel || "핵심정보"}
+      </p>
+      <dl className="mt-3 space-y-3">
+        {entries.map((entry) => (
+          <div key={entry.key} className="min-w-0">
+            <dt className={`text-xs font-black ${isEmergency ? "text-amber-800" : "text-[#184a88]"}`}>
+              {entry.label}
+            </dt>
+            <dd
+              data-public-text-scale-target="article-body"
+              className="mt-1 whitespace-pre-wrap break-words text-sm font-bold leading-6 text-slate-800 [overflow-wrap:anywhere] [word-break:keep-all]"
+            >
+              {entry.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 function ArticleCard({
   article,
   className = "",
@@ -1315,6 +1364,7 @@ function ArticleCard({
           </div>
         </ScrollMotionReveal>
       ) : null}
+      <ArticlePublicInfoCard article={article} presentation={presentation} />
       {shouldShowArticleAudio && article.audioFile ? (
         <section className="mt-3 rounded-xl border border-[#d8e8ff] bg-[#f7fbff] px-2.5 py-2 shadow-sm shadow-blue-950/5">
           {hasAiArticleAudio ? (

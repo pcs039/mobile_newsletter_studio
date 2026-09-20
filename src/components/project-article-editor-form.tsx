@@ -6,6 +6,7 @@ import { useMemo, useRef, useState } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
 import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { StatusPill } from "@/components/status-pill";
+import { getArticlePublicInfoFieldGroup, normalizeArticlePublicInfoValue } from "@/lib/article-public-info-fields";
 import { getSelectableFontAssets } from "@/lib/font-css";
 import {
   detectLongKoreanTitleTokens,
@@ -17,6 +18,7 @@ import type {
   ArticleElementMotionSpeed,
   ArticleMotionPreset,
   ArticleMotionSpeed,
+  ArticlePublicInfo,
   ArticlePublicInfoType,
   FontAsset,
   ArticleTextAlignment,
@@ -119,6 +121,7 @@ type ArticlePayload = {
   motionSpeed: string;
   pageId: string;
   projectSlug: string;
+  publicInfo: ArticlePublicInfo;
   sortOrder: number;
   sourcePageNumber: number;
   status: string;
@@ -391,6 +394,16 @@ function parseCustomInterestTags(value: string) {
 
 function buildInterestTags(formData: FormData) {
   return [...getValues(formData, "interestTags"), ...parseCustomInterestTags(getValue(formData, "customInterestTags"))];
+}
+
+function buildPublicInfo(formData: FormData, articleType: string) {
+  const rawInfo: Record<string, unknown> = {};
+
+  getArticlePublicInfoFieldGroup(articleType).fields.forEach((field) => {
+    rawInfo[field.key] = getValue(formData, `publicInfo.${field.key}`);
+  });
+
+  return normalizeArticlePublicInfoValue(rawInfo, articleType);
 }
 
 function toIsoFromDatetimeLocal(value: string) {
@@ -790,6 +803,7 @@ export function ProjectArticleEditorForm({
       ? (article?.articleTtsVoice as ArticleTtsVoiceInput)
       : "marin",
   );
+  const [selectedArticleType, setSelectedArticleType] = useState<ArticlePublicInfoType>(article?.articleType ?? "general");
   const [isGeneratingArticleTts, setIsGeneratingArticleTts] = useState(false);
   const [articleTtsMessage, setArticleTtsMessage] = useState("");
   const imageAssets = useMemo(
@@ -815,6 +829,7 @@ export function ProjectArticleEditorForm({
     () => (article?.interestTags ?? []).filter((tag) => !recommendedInterestTags.includes(tag)).join(", "),
     [article?.interestTags],
   );
+  const publicInfoFieldGroup = useMemo(() => getArticlePublicInfoFieldGroup(selectedArticleType), [selectedArticleType]);
 
   function updateBlock(blockId: string, field: "title" | "body", value: string) {
     setBlocks((currentBlocks) =>
@@ -1150,6 +1165,7 @@ export function ProjectArticleEditorForm({
       .map((block) => [block.title, block.body].filter(Boolean).join("\n"))
       .join("\n\n");
     const bodyAlignment = getValue(formData, "bodyAlignment");
+    const articleType = getValue(formData, "articleType");
 
     return {
       projectSlug,
@@ -1167,11 +1183,12 @@ export function ProjectArticleEditorForm({
       summaryAlignment: getValue(formData, "summaryAlignment"),
       bodyAlignment,
       interestTags: buildInterestTags(formData),
-      articleType: getValue(formData, "articleType"),
+      articleType,
       institutionPriority: Number(getValue(formData, "institutionPriority")) || 3,
       urgency: getValue(formData, "urgency"),
       validFrom: toIsoFromDatetimeLocal(getValue(formData, "validFrom")),
       validUntil: toIsoFromDatetimeLocal(getValue(formData, "validUntil")),
+      publicInfo: buildPublicInfo(formData, articleType),
       contentBlocks,
       contactName: getValue(formData, "contactName"),
       contactPhone: getValue(formData, "contactPhone"),
@@ -1660,7 +1677,8 @@ export function ProjectArticleEditorForm({
                 <FieldLabel>기사 유형</FieldLabel>
                 <select
                   name="articleType"
-                  defaultValue={article?.articleType ?? "general"}
+                  value={selectedArticleType}
+                  onChange={(event) => setSelectedArticleType(event.currentTarget.value as ArticlePublicInfoType)}
                   className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
                 >
                   {articlePublicInfoTypeOptions.map((option) => (
@@ -1729,6 +1747,43 @@ export function ProjectArticleEditorForm({
           </div>
           <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
             기간을 비워두면 기간 제한 없음으로 저장됩니다.
+          </p>
+        </div>
+
+        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사 핵심정보</p>
+              <h4 className="mt-1 text-base font-black text-[#092046]">구조화 공공정보</h4>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                공개 화면의 핵심정보 카드에 표시할 내용을 입력합니다. 없는 정보는 비워두세요.
+              </p>
+            </div>
+            <SectionBadge tone="optional">선택</SectionBadge>
+          </div>
+          {publicInfoFieldGroup.fields.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm font-bold text-slate-500">
+              기사 유형을 선택하면 핵심정보 입력항목이 표시됩니다.
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {publicInfoFieldGroup.fields.map((field) => (
+                <div key={field.key}>
+                  <FieldLabel>{field.label}</FieldLabel>
+                  <textarea
+                    name={`publicInfo.${field.key}`}
+                    defaultValue={article?.publicInfo[field.key] ?? ""}
+                    rows={2}
+                    maxLength={300}
+                    className="min-h-20 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                    placeholder={`${field.label} 내용을 입력하세요.`}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
+            저장 시 현재 기사 유형에 맞는 항목만 보관됩니다. 기사 본문이나 기존 블록 순서는 변경되지 않습니다.
           </p>
         </div>
 
