@@ -216,7 +216,9 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
         <section
           className={
             useArticleReaderShell
-              ? ""
+              ? publicSurveyLinks.length > 0
+                ? "pb-[calc(7rem+env(safe-area-inset-bottom))]"
+                : ""
               : `space-y-5 px-5 py-5 ${isImagePageMode && publicAudioSrc ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`
           }
         >
@@ -367,7 +369,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
           {!isEngagementOnly && publicSurveyLinks.length > 0 ? (
             <section
               className={`public-card rounded-2xl border border-[#b8d7ff] bg-[#f4f8ff] p-5 ${
-                useArticleReaderShell ? "mx-5 mb-[calc(5.5rem+env(safe-area-inset-bottom))] mt-5" : ""
+                useArticleReaderShell ? "mx-5 my-5" : ""
               }`}
             >
               <p className="text-xs font-black text-[#184a88]">참여하기</p>
