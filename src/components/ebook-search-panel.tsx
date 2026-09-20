@@ -137,13 +137,13 @@ export function EbookSearchPanel({ hasSearchText, onClose, onSelectPage, open, p
     <section
       className={
         placement === "desktop"
-          ? "fixed right-4 top-20 z-[70] flex max-h-[calc(100dvh-7rem)] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-blue-950/30"
-          : "relative z-10 mx-auto flex max-h-[78dvh] w-full max-w-[520px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl shadow-blue-950/30"
+          ? "fixed right-4 top-20 z-[70] flex max-h-[calc(100dvh-7rem)] w-[min(420px,calc(100vw-2rem))] max-w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-blue-950/30"
+          : "relative z-10 mx-auto flex max-h-[78dvh] w-full max-w-[520px] min-w-0 flex-col overflow-hidden rounded-3xl bg-white shadow-2xl shadow-blue-950/30"
       }
       aria-label="문서 검색"
     >
-      <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-[#092046] px-5 py-4 text-white">
-        <div>
+      <div className="flex min-w-0 items-start justify-between gap-3 border-b border-slate-200 bg-[#092046] px-5 py-4 text-white">
+        <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-wide text-sky-200">Document Search</p>
           <h2 className="mt-1 text-lg font-black">문서 검색</h2>
         </div>
@@ -151,7 +151,7 @@ export function EbookSearchPanel({ hasSearchText, onClose, onSelectPage, open, p
           닫기
         </button>
       </div>
-      <div className="border-b border-slate-200 p-4">
+      <div className="min-w-0 border-b border-slate-200 p-4">
         <form onSubmit={submitSearch} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
           <label className="sr-only" htmlFor={`ebook-search-input-${placement}`}>
             검색어
@@ -175,18 +175,18 @@ export function EbookSearchPanel({ hasSearchText, onClose, onSelectPage, open, p
         ) : null}
         {message ? <p className="mt-3 text-sm font-bold text-slate-600">{message}</p> : null}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4">
         {results.length > 0 ? (
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             {results.map((result) => (
               <button
                 key={result.pageId}
                 type="button"
                 onClick={() => onSelectPage(result.pageNumber)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-[#2f73b7] hover:bg-[#f4f8ff]"
+                className="w-full max-w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-[#2f73b7] hover:bg-[#f4f8ff]"
               >
-                <span className="text-sm font-black text-[#184a88]">{result.pageNumber}쪽</span>
-                <span className="mt-2 block text-sm font-semibold leading-6 text-slate-700">
+                <span className="block text-sm font-black text-[#184a88]">{result.pageNumber}쪽</span>
+                <span className="mt-2 block min-w-0 max-w-full whitespace-normal break-words text-sm font-semibold leading-6 text-slate-700 [overflow-wrap:anywhere]">
                   <HighlightedSnippet query={lastQuery} text={result.snippet} />
                 </span>
               </button>
@@ -211,7 +211,7 @@ export function EbookSearchPanel({ hasSearchText, onClose, onSelectPage, open, p
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end bg-slate-950/55 px-3 pb-3 pt-[calc(3rem+env(safe-area-inset-top))]">
+    <div className="fixed inset-0 z-[80] flex max-w-full items-end overflow-x-hidden bg-slate-950/55 px-3 pb-3 pt-[calc(3rem+env(safe-area-inset-top))]">
       <button type="button" className="absolute inset-0" aria-label="문서 검색 닫기" onClick={onClose} />
       {panel}
     </div>
