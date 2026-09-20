@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { EbookTtsPanel } from "@/components/ebook-tts-panel";
 import { EbookSearchPanel } from "@/components/ebook-search-panel";
 import { PublicAudioPlayer } from "@/components/public-audio-player";
+import { useEbookTts } from "@/hooks/use-ebook-tts";
 import { getAudioSyncedPageNumber } from "@/lib/audio-page-sync";
 import { formatPageLabel, getCustomPageTitle } from "@/lib/page-labels";
 
@@ -167,6 +169,7 @@ export function PublicDesktopEbookViewer({
   const [isThumbnailPanelOpen, setIsThumbnailPanelOpen] = useState(true);
   const [pageInputValue, setPageInputValue] = useState(String(initialPageNumber));
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isTtsOpen, setIsTtsOpen] = useState(false);
   const [utilityMessage, setUtilityMessage] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
@@ -247,6 +250,15 @@ export function PublicDesktopEbookViewer({
     goToIndex(viewMode === "double" && targetIndex % 2 === 1 ? Math.max(0, targetIndex - 1) : targetIndex, withSound);
   }, [goToIndex, pages, viewMode]);
 
+  const tts = useEbookTts({
+    currentIndex,
+    enabled: searchEnabled,
+    onNavigateToIndex: (index) => goToIndex(index, true),
+    pages,
+    slug,
+  });
+  const cancelTts = tts.cancel;
+
   const syncPageToAudioTime = useCallback((nextTime: number) => {
     const syncedPageNumber = getAudioSyncedPageNumber(nextTime, audioDuration, pages.length);
 
@@ -296,12 +308,14 @@ export function PublicDesktopEbookViewer({
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "ArrowLeft") {
         event.preventDefault();
+        cancelTts();
         disableFollowPagesForManualNavigation();
         goToIndex(currentIndex - pageStep, true);
       }
 
       if (event.key === "ArrowRight") {
         event.preventDefault();
+        cancelTts();
         disableFollowPagesForManualNavigation();
         goToIndex(currentIndex + pageStep, true);
       }
@@ -310,7 +324,7 @@ export function PublicDesktopEbookViewer({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, disableFollowPagesForManualNavigation, goToIndex, pageStep]);
+  }, [cancelTts, currentIndex, disableFollowPagesForManualNavigation, goToIndex, pageStep]);
 
   useEffect(() => {
     try {
@@ -347,6 +361,7 @@ export function PublicDesktopEbookViewer({
       return;
     }
 
+    cancelTts();
     disableFollowPagesForManualNavigation();
     goToIndex(viewMode === "double" && targetIndex % 2 === 1 ? Math.max(0, targetIndex - 1) : targetIndex, true);
   }
@@ -436,6 +451,7 @@ export function PublicDesktopEbookViewer({
                   }}
                   type="button"
                   onClick={() => {
+                    cancelTts();
                     disableFollowPagesForManualNavigation();
                     goToIndex(viewMode === "double" && index % 2 === 1 ? Math.max(0, index - 1) : index, true);
                   }}
@@ -527,6 +543,7 @@ export function PublicDesktopEbookViewer({
               <button
                 type="button"
                 onClick={() => {
+                  cancelTts();
                   disableFollowPagesForManualNavigation();
                   goToIndex(currentIndex - pageStep, true);
                 }}
@@ -553,6 +570,7 @@ export function PublicDesktopEbookViewer({
               <button
                 type="button"
                 onClick={() => {
+                  cancelTts();
                   disableFollowPagesForManualNavigation();
                   goToIndex(currentIndex + pageStep, true);
                 }}
@@ -607,11 +625,26 @@ export function PublicDesktopEbookViewer({
             </button>
             <button
               type="button"
-              onClick={() => setIsSearchOpen(true)}
+              onClick={() => {
+                setIsTtsOpen(false);
+                setIsSearchOpen(true);
+              }}
               className="dd-btn dd-btn-ghost dd-btn-sm text-xs"
               aria-label="문서 검색 열기"
             >
               검색
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsSearchOpen(false);
+                setIsTtsOpen(true);
+              }}
+              disabled={!searchEnabled}
+              className="dd-btn dd-btn-ghost dd-btn-sm text-xs disabled:pointer-events-none disabled:opacity-40"
+              aria-label="읽어주기 열기"
+            >
+              읽어주기
             </button>
           </div>
 
@@ -712,6 +745,7 @@ export function PublicDesktopEbookViewer({
                       key={page.id}
                       type="button"
                       onClick={() => {
+                        cancelTts();
                         disableFollowPagesForManualNavigation();
                         goToIndex(index, true);
                         setIsDrawerOpen(false);
@@ -743,13 +777,22 @@ export function PublicDesktopEbookViewer({
         hasSearchText={searchEnabled}
         onClose={() => setIsSearchOpen(false)}
         onSelectPage={(pageNumber) => {
+          cancelTts();
           disableFollowPagesForManualNavigation();
           goToPageNumber(pageNumber, true);
+          setIsSearchOpen(false);
         }}
         open={isSearchOpen}
         placement="desktop"
         slug={slug}
       />
+      {isTtsOpen ? (
+        <EbookTtsPanel
+          onClose={() => setIsTtsOpen(false)}
+          tts={tts}
+          variant="desktop"
+        />
+      ) : null}
 
       <div className="flex min-h-0 flex-1 bg-[radial-gradient(circle_at_top,#315c88_0%,#102b52_42%,#071f46_100%)]">
         {thumbnailPanel}
@@ -764,6 +807,7 @@ export function PublicDesktopEbookViewer({
         <button
           type="button"
           onClick={() => {
+            cancelTts();
             disableFollowPagesForManualNavigation();
             goToIndex(currentIndex - pageStep, true);
           }}
@@ -775,6 +819,7 @@ export function PublicDesktopEbookViewer({
         <button
           type="button"
           onClick={() => {
+            cancelTts();
             disableFollowPagesForManualNavigation();
             goToIndex(currentIndex + pageStep, true);
           }}
@@ -846,6 +891,7 @@ export function PublicDesktopEbookViewer({
               max={Math.max(pages.length - 1, 0)}
               value={currentIndex}
               onChange={(event) => {
+                cancelTts();
                 disableFollowPagesForManualNavigation();
                 goToIndex(Number(event.target.value), false);
               }}
