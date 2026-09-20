@@ -122,17 +122,19 @@ export async function playPageTurnSound() {
     const startTime = audioContext.currentTime;
     const masterGain = audioContext.createGain();
     const limiter = audioContext.createDynamicsCompressor();
-    const tickOscillator = audioContext.createOscillator();
-    const tickGain = audioContext.createGain();
-    const noiseBuffer = audioContext.createBuffer(1, Math.max(1, Math.floor(audioContext.sampleRate * 0.18)), audioContext.sampleRate);
+    const noiseBuffer = audioContext.createBuffer(1, Math.max(1, Math.floor(audioContext.sampleRate * 0.28)), audioContext.sampleRate);
     const noiseData = noiseBuffer.getChannelData(0);
     const noiseSource = audioContext.createBufferSource();
     const noiseFilter = audioContext.createBiquadFilter();
     const noiseGain = audioContext.createGain();
 
     for (let index = 0; index < noiseData.length; index += 1) {
-      const fadeOut = 1 - index / noiseData.length;
-      noiseData[index] = (Math.random() * 2 - 1) * fadeOut * fadeOut;
+      const progress = index / noiseData.length;
+      const fadeIn = Math.min(1, progress / 0.18);
+      const fadeOut = Math.max(0, 1 - progress);
+      const envelope = fadeIn * fadeOut * fadeOut;
+
+      noiseData[index] = (Math.random() * 2 - 1) * envelope;
     }
 
     limiter.threshold.setValueAtTime(-8, startTime);
@@ -142,34 +144,24 @@ export async function playPageTurnSound() {
     limiter.release.setValueAtTime(0.12, startTime);
 
     masterGain.gain.setValueAtTime(0.0001, startTime);
-    masterGain.gain.exponentialRampToValueAtTime(0.92, startTime + 0.012);
-    masterGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.19);
+    masterGain.gain.exponentialRampToValueAtTime(0.95, startTime + 0.035);
+    masterGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.28);
     masterGain.connect(limiter);
     limiter.connect(audioContext.destination);
 
-    tickOscillator.type = "triangle";
-    tickOscillator.frequency.setValueAtTime(880, startTime);
-    tickOscillator.frequency.exponentialRampToValueAtTime(280, startTime + 0.09);
-    tickGain.gain.setValueAtTime(0.13, startTime);
-    tickGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.11);
-    tickOscillator.connect(tickGain);
-    tickGain.connect(masterGain);
-
     noiseSource.buffer = noiseBuffer;
     noiseFilter.type = "bandpass";
-    noiseFilter.frequency.setValueAtTime(2100, startTime);
-    noiseFilter.frequency.exponentialRampToValueAtTime(680, startTime + 0.16);
-    noiseFilter.Q.setValueAtTime(0.8, startTime);
-    noiseGain.gain.setValueAtTime(0.2, startTime);
-    noiseGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.18);
+    noiseFilter.frequency.setValueAtTime(2800, startTime);
+    noiseFilter.frequency.exponentialRampToValueAtTime(820, startTime + 0.25);
+    noiseFilter.Q.setValueAtTime(0.55, startTime);
+    noiseGain.gain.setValueAtTime(0.34, startTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.28);
     noiseSource.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
     noiseGain.connect(masterGain);
 
-    tickOscillator.start(startTime);
-    tickOscillator.stop(startTime + 0.115);
     noiseSource.start(startTime);
-    noiseSource.stop(startTime + 0.19);
+    noiseSource.stop(startTime + 0.28);
   } catch {
     // Page turn sound is decorative and should never interrupt navigation.
   }
