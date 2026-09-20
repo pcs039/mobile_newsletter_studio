@@ -49,6 +49,18 @@ function formatPlaybackRate(value: number) {
   return `${value.toFixed(value === 1 ? 1 : 2).replace(/0$/, "")}×`;
 }
 
+function formatAudioTime(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0:00";
+  }
+
+  const totalSeconds = Math.floor(value);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 export function PublicArticleAudioPlayer({
   ariaLabel,
   className = "",
@@ -61,6 +73,8 @@ export function PublicArticleAudioPlayer({
   const [segments, setSegments] = useState<ArticleAudioManifest["segments"]>([]);
   const [segmentIndex, setSegmentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [loadState, setLoadState] = useState<"idle" | "loading" | "ready" | "error">(
     isAiGenerated ? "loading" : "ready",
   );
@@ -106,6 +120,7 @@ export function PublicArticleAudioPlayer({
     }
 
     setIsPlaying(false);
+    setCurrentTime(0);
     setSegmentIndex(0);
   }, []);
 
@@ -133,6 +148,8 @@ export function PublicArticleAudioPlayer({
       stopAudio();
       setSegments([]);
       setSegmentIndex(0);
+      setCurrentTime(0);
+      setDuration(0);
       setLoadState(isAiGenerated ? "loading" : src ? "ready" : "error");
 
       if (!isAiGenerated) {
@@ -190,7 +207,47 @@ export function PublicArticleAudioPlayer({
     setIsPlaying(!audio.paused);
   }
 
+  function handleStop() {
+    stopAudio();
+  }
+
+  function seekTo(value: number) {
+    const audio = audioRef.current;
+
+    if (!audio || !Number.isFinite(value)) {
+      return;
+    }
+
+    const safeDuration = duration || audio.duration || 0;
+    const nextTime = Math.max(0, Math.min(value, safeDuration || 0));
+
+    try {
+      audio.currentTime = nextTime;
+      setCurrentTime(nextTime);
+    } catch {
+      // Some mobile browsers can reject currentTime while metadata is not ready.
+    }
+  }
+
+  function skipBy(seconds: number) {
+    seekTo(currentTime + seconds);
+  }
+
+  function handleLoadedMetadata() {
+    applyPlaybackRate();
+    const audio = audioRef.current;
+
+    if (!audio) {
+      return;
+    }
+
+    setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+    setCurrentTime(Number.isFinite(audio.currentTime) ? audio.currentTime : 0);
+  }
+
   function handleEnded() {
+    setCurrentTime(0);
+
     if (segmentIndex < segments.length - 1) {
       shouldContinueSegmentRef.current = true;
       setSegmentIndex((current) => current + 1);
@@ -214,41 +271,82 @@ export function PublicArticleAudioPlayer({
 
   const currentSrc = segments[segmentIndex]?.url ?? "";
   const isReady = loadState === "ready" && segments.length > 0;
+  const progressValue = duration > 0 ? Math.min(currentTime, duration) : 0;
 
   return (
-    <div className={`space-y-1.5 ${className}`}>
+    <div className={`space-y-2 ${className}`}>
       <audio
         ref={audioRef}
         aria-label={ariaLabel}
         onCanPlay={applyPlaybackRate}
         onEnded={handleEnded}
-        onLoadedMetadata={applyPlaybackRate}
+        onLoadedMetadata={handleLoadedMetadata}
         onPause={() => setIsPlaying(false)}
         onPlay={() => setIsPlaying(true)}
+        onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
         preload="metadata"
         src={currentSrc}
       />
-      <div className="flex min-h-10 items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
           onClick={() => {
             void toggleAudio();
           }}
           disabled={!isReady}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#b8d7ff] bg-white text-sm font-black text-[#092046] shadow-sm transition hover:bg-[#eef6ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] disabled:pointer-events-none disabled:opacity-45"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#b8d7ff] bg-white text-sm font-black text-[#092046] shadow-sm transition hover:bg-[#eef6ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] disabled:pointer-events-none disabled:opacity-45"
           aria-label={isPlaying ? "기사 음성 일시정지" : "기사 음성 재생"}
         >
           {isPlaying ? "⏸" : "▶"}
         </button>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-black text-[#092046]">
-            {loadState === "loading" ? "음성 준비 중" : loadState === "error" ? "음성 준비 실패" : isPlaying ? "듣는 중" : "기사 듣기"}
-          </p>
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-200">
-            <div className={`h-full rounded-full bg-[#2f73b7] ${isPlaying ? "w-2/3" : "w-0"} transition-all duration-300`} />
-          </div>
+        <button
+          type="button"
+          onClick={handleStop}
+          disabled={!isReady}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-[13px] font-black text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] disabled:pointer-events-none disabled:opacity-45"
+          aria-label="기사 음성 정지"
+        >
+          ■
+        </button>
+        <button
+          type="button"
+          onClick={() => skipBy(-10)}
+          disabled={!isReady}
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-[11px] font-black text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] disabled:pointer-events-none disabled:opacity-45"
+          aria-label="10초 뒤로 이동"
+        >
+          -10
+        </button>
+        <button
+          type="button"
+          onClick={() => skipBy(10)}
+          disabled={!isReady}
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white px-2 text-[11px] font-black text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] disabled:pointer-events-none disabled:opacity-45"
+          aria-label="10초 앞으로 이동"
+        >
+          +10
+        </button>
+        <div className="min-w-0 flex-1 px-1">
+          <input
+            type="range"
+            min="0"
+            max={duration > 0 ? duration : 0}
+            step="0.1"
+            value={progressValue}
+            disabled={!isReady || duration <= 0}
+            onChange={(event) => seekTo(Number(event.currentTarget.value))}
+            className="h-2 w-full min-w-0 accent-[#2f73b7] disabled:opacity-45"
+            aria-label="기사 음성 재생 위치"
+          />
         </div>
         <PlaybackRateSelect playbackRate={playbackRate} setPlaybackRate={setPlaybackRate} />
+      </div>
+      <div className="flex items-center justify-between gap-2 px-1 text-[11px] font-bold text-slate-500">
+        <span>
+          {formatAudioTime(currentTime)} / {formatAudioTime(duration)}
+        </span>
+        {segments.length > 1 ? <span>{segmentIndex + 1} / {segments.length}</span> : null}
+        {loadState === "loading" ? <span>준비 중</span> : loadState === "error" ? <span>재생 불가</span> : null}
       </div>
     </div>
   );
@@ -262,12 +360,12 @@ function PlaybackRateSelect({
   setPlaybackRate: (value: number) => void;
 }) {
   return (
-    <label className="inline-flex items-center gap-2 text-xs font-bold text-[#184a88]">
-      <span className="shrink-0">재생 속도</span>
+    <label className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[#184a88]">
+      <span className="sr-only">재생 속도</span>
       <select
         value={playbackRate}
         onChange={(event) => setPlaybackRate(normalizePlaybackRate(Number(event.target.value)))}
-        className="h-8 rounded-lg border border-[#b8d7ff] bg-white px-2 text-xs font-black text-[#092046] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7]"
+        className="h-9 rounded-lg border border-[#b8d7ff] bg-white px-2 text-xs font-black text-[#092046] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7]"
         aria-label="음성 재생 속도"
       >
         {playbackRateOptions.map((option) => (
