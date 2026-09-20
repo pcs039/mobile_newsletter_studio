@@ -32,13 +32,6 @@ const blockLabels: Record<string, string> = {
   overlay_notice: "오버레이",
 };
 
-const outputChecks = [
-  "제목, 요약, 본문이 모바일 화면에서 바로 이해되는 순서인지 확인",
-  "버튼, 영상, 지도 URL이 실제 연결 가능한 주소인지 확인",
-  "PDF 원본과 다르게 재구성한 내용이 원문 취지를 벗어나지 않는지 확인",
-  "음성 대본이 본문 요지와 일치하는지 확인",
-];
-
 function getArticleStatusLabel(status: string) {
   return statusLabels[status] ?? status;
 }
@@ -214,20 +207,6 @@ export default async function ReadingEditorPage({
         </aside>
 
         <section className="space-y-5">
-          <details className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
-            <summary className="cursor-pointer text-sm font-black text-[#092046]">작업 안내</summary>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">콘텐츠 블록 작성 방식</p>
-            <h3 className="mt-1 text-lg font-black text-[#092046]">문단 사이에 이미지·URL·유튜브를 블록으로 끼워 넣습니다.</h3>
-            <div className="mt-4 grid gap-3 lg:grid-cols-4">
-              {["문단", "이미지", "URL 버튼", "유튜브"].map((item, index) => (
-                <div key={item} className="rounded-lg bg-white px-4 py-3">
-                  <p className="text-xs font-black text-[#184a88]">{index + 1}번</p>
-                  <p className="mt-1 text-sm font-black text-[#092046]">{item}</p>
-                </div>
-              ))}
-            </div>
-          </details>
-
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -301,48 +280,6 @@ export default async function ReadingEditorPage({
           <div className="xl:sticky xl:top-6">
             <AdminMobilePreviewFrame previewHref={mobilePreviewHref} />
           </div>
-
-          <article className="rounded-lg border border-slate-200 bg-[#eef6ff] p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">작업 안내</p>
-            <h3 className="mt-1 text-lg font-bold text-[#092046]">작성 흐름</h3>
-            <ol className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
-              <li className="rounded-lg bg-white px-3 py-2">1. 기본 정보와 제작 자료를 확인</li>
-              <li className="rounded-lg bg-white px-3 py-2">2. 기사 제목·요약 입력</li>
-              <li className="rounded-lg bg-white px-3 py-2">3. 문단·이미지·URL 버튼·유튜브 블록을 순서대로 배치</li>
-              <li className="rounded-lg bg-white px-3 py-2">4. 모바일 미리보기에서 검수</li>
-            </ol>
-          </article>
-
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이미지 페이지 참고</p>
-            <h3 className="mt-1 text-lg font-bold text-[#092046]">이미지형은 페이지 편집에서 관리</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-500">완성 이미지와 클릭 영역은 이미지 페이지 편집에서 관리합니다.</p>
-            <div className="mt-4 grid gap-2">
-              <Link
-                href={`/projects/${projectId}/pages`}
-                className="rounded-lg border border-[#2f73b7] bg-white px-4 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
-              >
-                이미지 페이지 편집으로 이동
-              </Link>
-              <Link
-                href={`/projects/${projectId}/assets`}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-slate-50"
-              >
-                사진·이미지 관리로 이동
-              </Link>
-            </div>
-          </article>
-
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-bold text-[#092046]">검수 체크</h3>
-            <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-              {outputChecks.map((check) => (
-                <li key={check} className="rounded-lg bg-[#f4f8ff] px-3 py-2">
-                  {check}
-                </li>
-              ))}
-            </ul>
-          </article>
         </aside>
       </div>
     </ProjectAdminShell>
