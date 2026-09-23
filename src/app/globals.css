@@ -592,14 +592,14 @@ select {
   touch-action: pan-y pinch-zoom;
 }
 
-.public-mobile-page-controls {
+.public-mobile-arrow-portal {
   inset: 0;
   pointer-events: none;
   position: fixed;
-  z-index: 50;
+  z-index: 60;
 }
 
-.public-mobile-page-arrow {
+.public-mobile-arrow-button {
   -webkit-tap-highlight-color: transparent;
   align-items: center;
   backdrop-filter: blur(10px);
@@ -613,6 +613,7 @@ select {
   pointer-events: auto;
   position: fixed;
   top: 50%;
+  top: 50dvh;
   touch-action: manipulation;
   transform: translateY(-50%);
   transition:
@@ -622,7 +623,7 @@ select {
     transform 160ms ease;
 }
 
-.public-mobile-page-arrow {
+.public-mobile-arrow-button {
   border-radius: 999px;
   font-size: 1.85rem;
   height: 2.9rem;
@@ -631,34 +632,35 @@ select {
   width: 2.9rem;
 }
 
-.public-mobile-page-arrow-left {
+.public-mobile-arrow-button-left {
   left: max(0.75rem, env(safe-area-inset-left));
 }
 
-.public-mobile-page-arrow-right {
+.public-mobile-arrow-button-right {
   right: max(0.75rem, env(safe-area-inset-right));
 }
 
-.public-mobile-page-arrow:hover {
+.public-mobile-arrow-button:hover {
   background: rgba(9, 32, 70, 0.68);
 }
 
-.public-mobile-page-arrow:active {
+.public-mobile-arrow-button:active {
   transform: translateY(-50%) scale(0.96);
 }
 
-.public-mobile-page-arrow:disabled {
+.public-mobile-arrow-button:disabled {
   opacity: 0.35;
   pointer-events: none;
 }
 
-.public-mobile-page-control-idle .public-mobile-page-arrow {
+.public-mobile-page-control-idle .public-mobile-arrow-button {
   background: rgba(9, 32, 70, 0.38);
   box-shadow: 0 8px 20px rgba(9, 32, 70, 0.12);
+  pointer-events: none;
 }
 
 .public-mobile-page-control-hidden,
-.public-mobile-page-control-hidden .public-mobile-page-arrow {
+.public-mobile-page-control-hidden .public-mobile-arrow-button {
   pointer-events: none;
 }
 
