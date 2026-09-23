@@ -593,11 +593,13 @@ select {
 }
 
 .public-mobile-page-controls {
+  display: flex;
+  gap: 0.45rem;
   pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
-.public-mobile-page-arrow,
-.public-mobile-home-button {
+.public-mobile-page-arrow {
   -webkit-tap-highlight-color: transparent;
   align-items: center;
   backdrop-filter: blur(10px);
@@ -619,62 +621,33 @@ select {
 
 .public-mobile-page-arrow {
   border-radius: 999px;
-  font-size: 2rem;
-  height: 3rem;
+  font-size: 1.85rem;
+  height: 2.9rem;
   line-height: 1;
-  min-width: 3rem;
-  position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3rem;
+  min-width: 2.9rem;
+  width: 2.9rem;
 }
 
-.public-mobile-page-arrow-left {
-  left: max(0.75rem, env(safe-area-inset-left));
-}
-
-.public-mobile-page-arrow-right {
-  right: max(0.75rem, env(safe-area-inset-right));
-}
-
-.public-mobile-home-button {
-  border-radius: 999px;
-  font-size: 0.75rem;
-  min-height: 2.5rem;
-  padding: 0.55rem 0.85rem;
-}
-
-.public-mobile-page-arrow:hover,
-.public-mobile-home-button:hover {
+.public-mobile-page-arrow:hover {
   background: rgba(9, 32, 70, 0.68);
 }
 
-.public-mobile-page-arrow:active,
-.public-mobile-home-button:active {
-  transform: translateY(-50%) scale(0.96);
-}
-
-.public-mobile-home-button:active {
+.public-mobile-page-arrow:active {
   transform: scale(0.96);
 }
 
 .public-mobile-page-arrow:disabled {
-  opacity: 0;
+  opacity: 0.35;
   pointer-events: none;
 }
 
-.public-mobile-page-control-idle :where(.public-mobile-page-arrow, .public-mobile-home-button) {
+.public-mobile-page-control-idle .public-mobile-page-arrow {
   background: rgba(9, 32, 70, 0.38);
   box-shadow: 0 8px 20px rgba(9, 32, 70, 0.12);
 }
 
-.public-mobile-page-control-idle .public-mobile-home-button {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .public-mobile-page-control-hidden,
-.public-mobile-page-control-hidden :where(.public-mobile-page-arrow, .public-mobile-home-button) {
+.public-mobile-page-control-hidden .public-mobile-page-arrow {
   pointer-events: none;
 }
 
