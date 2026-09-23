@@ -1578,7 +1578,7 @@ export function PublicMobileArticleReader({
       pageControlsTimerRef.current = null;
     }
 
-    if (!isMobileReader || isIndexOpen || isSearchOpen || lightboxImage) {
+    if (!isMobileReader || isCoverView || !currentArticle || isIndexOpen || isSearchOpen || lightboxImage) {
       return;
     }
 
@@ -1597,7 +1597,7 @@ export function PublicMobileArticleReader({
         pageControlsTimerRef.current = null;
       }
     };
-  }, [currentArticle?.id, isCoverView, isIndexOpen, isMobileReader, isSearchOpen, lightboxImage, safeCurrentIndex]);
+  }, [currentArticle, currentArticle?.id, isCoverView, isIndexOpen, isMobileReader, isSearchOpen, lightboxImage, safeCurrentIndex]);
 
   useEffect(
     () => () => {
@@ -1641,7 +1641,7 @@ export function PublicMobileArticleReader({
   }
 
   function revealPageControls() {
-    if (!isMobileReader || isIndexOpen || isSearchOpen || lightboxImage) {
+    if (!isMobileReader || isCoverView || !currentArticle || isIndexOpen || isSearchOpen || lightboxImage) {
       return;
     }
 
@@ -1959,16 +1959,12 @@ export function PublicMobileArticleReader({
         "--public-article-page-drag-x": `${dragOffset}px`,
       } as CSSProperties)
     : undefined;
-  const shouldShowFloatingPageControls = isMobileReader && hasArticles && !isIndexOpen && !isSearchOpen && !lightboxImage;
+  const shouldShowFloatingPageControls = isMobileReader && !isCoverView && Boolean(currentArticle) && !isIndexOpen && !isSearchOpen && !lightboxImage;
   const pageControlsVisibilityClass =
     shouldShowFloatingPageControls && arePageControlsVisible
       ? "opacity-100"
       : "public-mobile-page-control-idle opacity-60";
   const canGoFirstScreen = hasArticles && !isCoverView && (hasCoverPage || safeCurrentIndex > 0);
-  const pageControlsPositionStyle = {
-    left: "50%",
-    top: "50%",
-  };
 
   return (
     <>
@@ -2103,8 +2099,7 @@ export function PublicMobileArticleReader({
             <>
               <div
                 data-swipe-navigation-ignore
-                className={`public-mobile-page-controls fixed z-50 transition-opacity duration-200 ${pageControlsVisibilityClass}`}
-                style={pageControlsPositionStyle}
+                className={`public-mobile-page-controls transition-opacity duration-200 ${pageControlsVisibilityClass}`}
               >
                 <button
                   type="button"
@@ -2113,7 +2108,7 @@ export function PublicMobileArticleReader({
                     revealPageControls();
                   }}
                   disabled={!canGoPrevious}
-                  className="public-mobile-page-arrow"
+                  className="public-mobile-page-arrow public-mobile-page-arrow-left"
                   aria-label="이전 기사로 이동"
                 >
                   ‹
@@ -2125,7 +2120,7 @@ export function PublicMobileArticleReader({
                     revealPageControls();
                   }}
                   disabled={!canGoNext}
-                  className="public-mobile-page-arrow"
+                  className="public-mobile-page-arrow public-mobile-page-arrow-right"
                   aria-label="다음 기사로 이동"
                 >
                   ›
