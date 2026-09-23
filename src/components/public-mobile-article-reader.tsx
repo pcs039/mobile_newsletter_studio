@@ -1944,7 +1944,7 @@ export function PublicMobileArticleReader({
   const pageControlsVisibilityClass =
     shouldShowFloatingPageControls && arePageControlsVisible
       ? "opacity-100"
-      : "public-mobile-page-control-hidden opacity-0";
+      : "public-mobile-page-control-idle opacity-60";
   const canGoFirstScreen = hasArticles && !isCoverView && (hasCoverPage || safeCurrentIndex > 0);
 
   return (
@@ -2070,7 +2070,6 @@ export function PublicMobileArticleReader({
               <div
                 data-swipe-navigation-ignore
                 className={`public-mobile-page-controls fixed inset-y-0 left-0 right-0 z-50 transition-opacity duration-200 ${pageControlsVisibilityClass}`}
-                aria-hidden={!arePageControlsVisible}
               >
                 <button
                   type="button"
