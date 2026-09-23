@@ -593,12 +593,10 @@ select {
 }
 
 .public-mobile-page-controls {
-  display: flex;
-  gap: 1rem;
-  justify-content: space-between;
+  inset: 0;
   pointer-events: none;
-  transform: translate(-50%, -50%);
-  width: min(calc(100vw - 2.25rem), 30rem);
+  position: fixed;
+  z-index: 50;
 }
 
 .public-mobile-page-arrow {
@@ -613,7 +611,10 @@ select {
   font-weight: 900;
   justify-content: center;
   pointer-events: auto;
+  position: fixed;
+  top: 50%;
   touch-action: manipulation;
+  transform: translateY(-50%);
   transition:
     background-color 160ms ease,
     box-shadow 160ms ease,
@@ -630,12 +631,20 @@ select {
   width: 2.9rem;
 }
 
+.public-mobile-page-arrow-left {
+  left: max(0.75rem, env(safe-area-inset-left));
+}
+
+.public-mobile-page-arrow-right {
+  right: max(0.75rem, env(safe-area-inset-right));
+}
+
 .public-mobile-page-arrow:hover {
   background: rgba(9, 32, 70, 0.68);
 }
 
 .public-mobile-page-arrow:active {
-  transform: scale(0.96);
+  transform: translateY(-50%) scale(0.96);
 }
 
 .public-mobile-page-arrow:disabled {
