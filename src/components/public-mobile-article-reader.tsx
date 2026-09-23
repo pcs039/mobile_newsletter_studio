@@ -1954,6 +1954,13 @@ export function PublicMobileArticleReader({
           className={`public-mobile-article-reader pb-[calc(3.75rem+env(safe-area-inset-bottom))] ${
             publicAudio ? "pb-[calc(8.5rem+env(safe-area-inset-bottom))]" : ""
           }`}
+          onClickCapture={(event) => {
+            if (isInteractiveTouchTarget(event.target)) {
+              return;
+            }
+
+            revealPageControls();
+          }}
         >
           <div ref={articleTopRef} aria-hidden="true" />
 
@@ -2104,15 +2111,13 @@ export function PublicMobileArticleReader({
                     goToFirstScreen();
                     revealPageControls();
                   }}
-                  className={`public-mobile-home-button fixed left-3 z-50 transition-opacity duration-200 ${pageControlsVisibilityClass}`}
+                  className="public-mobile-home-button fixed left-3 z-50 transition-opacity duration-200"
                   style={{
-                    bottom: publicAudio
-                      ? "calc(6.75rem + env(safe-area-inset-bottom))"
-                      : "calc(4.35rem + env(safe-area-inset-bottom))",
+                    top: "calc(4.35rem + env(safe-area-inset-top))",
                   }}
                   aria-label="첫 화면으로 이동"
                 >
-                  처음으로
+                  처음 화면
                 </button>
               ) : null}
             </>
