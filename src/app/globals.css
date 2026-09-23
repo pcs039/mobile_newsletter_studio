@@ -663,6 +663,16 @@ select {
   pointer-events: none;
 }
 
+.public-mobile-page-control-idle :where(.public-mobile-page-arrow, .public-mobile-home-button) {
+  background: rgba(9, 32, 70, 0.38);
+  box-shadow: 0 8px 20px rgba(9, 32, 70, 0.12);
+}
+
+.public-mobile-page-control-idle .public-mobile-home-button {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .public-mobile-page-control-hidden,
 .public-mobile-page-control-hidden :where(.public-mobile-page-arrow, .public-mobile-home-button) {
   pointer-events: none;
