@@ -1,9 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "DataDiction Newsletter Studio",
   description: "DataDiction의 PDF 기반 공공 모바일 소식지 제작 관리자 도구",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  userScalable: true,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

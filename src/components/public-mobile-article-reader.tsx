@@ -91,6 +91,7 @@ type PublicMobileArticleReaderProps = {
 };
 
 type SwipeStart = {
+  isMultiTouch?: boolean;
   lockedAxis?: "horizontal" | "vertical";
   x: number;
   y: number;
@@ -1703,11 +1704,20 @@ export function PublicMobileArticleReader({
     }, 280);
   }
 
-  function startSwipeGesture(target: EventTarget | null, touch: Touch | undefined) {
+  function startSwipeGesture(target: EventTarget | null, touches: TouchList) {
+    if (touches.length >= 2) {
+      swipeStartRef.current = { isMultiTouch: true, lockedAxis: "vertical", x: 0, y: 0 };
+      setIsDraggingPage(false);
+      setDragOffset(0);
+      return;
+    }
+
     if (isInteractiveTouchTarget(target)) {
       swipeStartRef.current = null;
       return;
     }
+
+    const touch = touches[0];
 
     if (!touch) {
       return;
@@ -1718,10 +1728,23 @@ export function PublicMobileArticleReader({
     setDragOffset(0);
   }
 
-  function moveSwipeGesture(touch: Touch | undefined) {
+  function moveSwipeGesture(touches: TouchList) {
     const start = swipeStartRef.current;
 
-    if (!start || !touch || prefersReducedMotion()) {
+    if (!start || prefersReducedMotion()) {
+      return;
+    }
+
+    if (start.isMultiTouch || touches.length >= 2) {
+      swipeStartRef.current = { isMultiTouch: true, lockedAxis: "vertical", x: 0, y: 0 };
+      setIsDraggingPage(false);
+      setDragOffset(0);
+      return;
+    }
+
+    const touch = touches[0];
+
+    if (!touch) {
       return;
     }
 
@@ -1765,7 +1788,7 @@ export function PublicMobileArticleReader({
     setIsDraggingPage(false);
     setDragOffset(0);
 
-    if (!start || !touch || start.lockedAxis === "vertical") {
+    if (!start || !touch || start.isMultiTouch || start.lockedAxis === "vertical") {
       return;
     }
 
@@ -1806,11 +1829,11 @@ export function PublicMobileArticleReader({
     }
 
     function onTouchStart(event: globalThis.TouchEvent) {
-      startSwipeGesture(event.target, event.touches[0]);
+      startSwipeGesture(event.target, event.touches);
     }
 
     function onTouchMove(event: globalThis.TouchEvent) {
-      moveSwipeGesture(event.touches[0]);
+      moveSwipeGesture(event.touches);
     }
 
     function onTouchEnd(event: globalThis.TouchEvent) {
@@ -1980,6 +2003,9 @@ export function PublicMobileArticleReader({
                   </div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                  <div className="mb-4">
+                    <PublicTextSizeToggle compact />
+                  </div>
                   {availableInterestTags.length > 0 ? <div className="mb-4">{compactInterestSelector}</div> : null}
                   <div className="space-y-2">
                     {hasCoverPage && cover ? (
@@ -1993,16 +2019,22 @@ export function PublicMobileArticleReader({
                           }
                           setIsIndexOpen(false);
                         }}
-                        className={`block min-w-0 w-full max-w-full overflow-hidden rounded-2xl border px-4 py-3 text-left transition ${
+                        className={`block min-w-0 w-full max-w-full rounded-2xl border px-4 py-3 text-left transition ${
                           isCoverView
                             ? "border-[#092046] bg-[#092046] text-white shadow-md"
                             : "border-slate-200 bg-white text-[#092046] hover:border-[#2f73b7]"
                         }`}
                       >
-                        <span className={`text-xs font-black ${isCoverView ? "text-sky-100" : "text-[#184a88]"}`}>
+                        <span
+                          data-public-text-scale-target="toc-meta"
+                          className={`block min-w-0 max-w-full text-xs font-black ${isCoverView ? "text-sky-100" : "text-[#184a88]"}`}
+                        >
                           표지
                         </span>
-                        <span className="public-article-index-title mt-1 block min-w-0 max-w-full overflow-hidden text-sm font-black leading-6">
+                        <span
+                          data-public-text-scale-target="toc-title"
+                          className="public-article-index-title mt-1 block min-w-0 max-w-full whitespace-normal text-sm font-black leading-6"
+                        >
                           {cover.coverTitle || publicationTitle}
                         </span>
                       </button>
@@ -2024,16 +2056,22 @@ export function PublicMobileArticleReader({
                             goToArticle(index, { playSound: true });
                             setIsIndexOpen(false);
                           }}
-                          className={`block min-w-0 w-full max-w-full overflow-hidden rounded-2xl border px-4 py-3 text-left transition ${
+                          className={`block min-w-0 w-full max-w-full rounded-2xl border px-4 py-3 text-left transition ${
                             isActive
                               ? "border-[#092046] bg-[#092046] text-white shadow-md"
                               : "border-slate-200 bg-[#f8fbff] text-[#092046] hover:border-[#2f73b7]"
                           }`}
                         >
-                          <span className={`text-xs font-black ${isActive ? "text-sky-100" : "text-[#184a88]"}`}>
+                          <span
+                            data-public-text-scale-target="toc-meta"
+                            className={`block min-w-0 max-w-full text-xs font-black ${isActive ? "text-sky-100" : "text-[#184a88]"}`}
+                          >
                             {index + 1} / {orderedArticles.length}
                           </span>
-                          <span className="public-article-index-title mt-1 block min-w-0 max-w-full overflow-hidden text-sm font-black leading-6">
+                          <span
+                            data-public-text-scale-target="toc-title"
+                            className="public-article-index-title mt-1 block min-w-0 max-w-full whitespace-normal text-sm font-black leading-6"
+                          >
                             {articleTitle}
                           </span>
                         </button>
