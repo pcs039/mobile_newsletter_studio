@@ -11,6 +11,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
@@ -93,6 +94,12 @@ type PublicMobileArticleReaderProps = {
 type SwipeStart = {
   isMultiTouch?: boolean;
   lockedAxis?: "horizontal" | "vertical";
+  x: number;
+  y: number;
+} | null;
+
+type ArrowTapStart = {
+  isMultiTouch?: boolean;
   x: number;
   y: number;
 } | null;
@@ -1516,8 +1523,10 @@ export function PublicMobileArticleReader({
   const [dragOffset, setDragOffset] = useState(0);
   const [isDraggingPage, setIsDraggingPage] = useState(false);
   const [arePageControlsVisible, setArePageControlsVisible] = useState(true);
+  const [isArrowPortalMounted, setIsArrowPortalMounted] = useState(false);
   const articleTopRef = useRef<HTMLDivElement>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
+  const arrowTapStartRef = useRef<ArrowTapStart>(null);
   const pageControlsTimerRef = useRef<number | null>(null);
   const currentArticleIndex = currentArticleId
     ? orderedArticles.findIndex((article) => article.id === currentArticleId)
@@ -1563,6 +1572,14 @@ export function PublicMobileArticleReader({
 
     return buildAudioTextSegmentCandidates([currentArticle]);
   }, [currentArticle, isMobileReader, orderedArticles]);
+
+  useEffect(() => {
+    const mountTimer = window.setTimeout(() => {
+      setIsArrowPortalMounted(true);
+    }, 0);
+
+    return () => window.clearTimeout(mountTimer);
+  }, []);
 
   useEffect(() => {
     if (!isMobileReader) {
@@ -1655,6 +1672,67 @@ export function PublicMobileArticleReader({
       pageControlsTimerRef.current = null;
     }, pageControlsAutoHideMs);
   }
+
+  useEffect(() => {
+    if (!isMobileReader) {
+      return;
+    }
+
+    function onDocumentTouchStart(event: TouchEvent) {
+      if (event.touches.length >= 2 || isInteractiveTouchTarget(event.target)) {
+        arrowTapStartRef.current = { isMultiTouch: true, x: 0, y: 0 };
+        return;
+      }
+
+      const touch = event.touches[0];
+
+      if (!touch) {
+        arrowTapStartRef.current = null;
+        return;
+      }
+
+      arrowTapStartRef.current = { x: touch.clientX, y: touch.clientY };
+    }
+
+    function onDocumentTouchEnd(event: TouchEvent) {
+      const start = arrowTapStartRef.current;
+      arrowTapStartRef.current = null;
+
+      if (!start || start.isMultiTouch || event.changedTouches.length !== 1) {
+        return;
+      }
+
+      const touch = event.changedTouches[0];
+
+      if (!touch) {
+        return;
+      }
+
+      const tapDistance = Math.hypot(touch.clientX - start.x, touch.clientY - start.y);
+
+      if (tapDistance <= pageControlsTapDistance) {
+        revealPageControls();
+      }
+    }
+
+    function onDocumentClick(event: MouseEvent) {
+      if (isInteractiveTouchTarget(event.target)) {
+        return;
+      }
+
+      revealPageControls();
+    }
+
+    document.addEventListener("touchstart", onDocumentTouchStart, { capture: true, passive: true });
+    document.addEventListener("touchend", onDocumentTouchEnd, { capture: true, passive: true });
+    document.addEventListener("click", onDocumentClick, true);
+
+    return () => {
+      document.removeEventListener("touchstart", onDocumentTouchStart, true);
+      document.removeEventListener("touchend", onDocumentTouchEnd, true);
+      document.removeEventListener("click", onDocumentClick, true);
+    };
+  });
 
   const interestSelector = (
     <InterestPreferenceSelector
@@ -1963,23 +2041,52 @@ export function PublicMobileArticleReader({
   const pageControlsVisibilityClass =
     shouldShowFloatingPageControls && arePageControlsVisible
       ? "opacity-100"
-      : "public-mobile-page-control-idle opacity-60";
+      : "public-mobile-page-control-idle opacity-0";
   const canGoFirstScreen = hasArticles && !isCoverView && (hasCoverPage || safeCurrentIndex > 0);
+  const arrowOverlayPortal =
+    isArrowPortalMounted && shouldShowFloatingPageControls
+      ? createPortal(
+          <div
+            data-swipe-navigation-ignore
+            className={`public-mobile-arrow-portal transition-opacity duration-200 ${pageControlsVisibilityClass}`}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                navigatePrevious();
+                revealPageControls();
+              }}
+              disabled={!canGoPrevious}
+              className="public-mobile-arrow-button public-mobile-arrow-button-left"
+              aria-label="이전 기사로 이동"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                navigateNext();
+                revealPageControls();
+              }}
+              disabled={!canGoNext}
+              className="public-mobile-arrow-button public-mobile-arrow-button-right"
+              aria-label="다음 기사로 이동"
+            >
+              ›
+            </button>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <>
+      {arrowOverlayPortal}
       {isMobileReader ? (
         <section
           className={`public-mobile-article-reader pb-[calc(3.75rem+env(safe-area-inset-bottom))] ${
             publicAudio ? "pb-[calc(8.5rem+env(safe-area-inset-bottom))]" : ""
           }`}
-          onClickCapture={(event) => {
-            if (isInteractiveTouchTarget(event.target)) {
-              return;
-            }
-
-            revealPageControls();
-          }}
         >
           <div ref={articleTopRef} aria-hidden="true" />
 
@@ -2094,40 +2201,6 @@ export function PublicMobileArticleReader({
               </button>
             </div>
           </nav>
-
-          {shouldShowFloatingPageControls ? (
-            <>
-              <div
-                data-swipe-navigation-ignore
-                className={`public-mobile-page-controls transition-opacity duration-200 ${pageControlsVisibilityClass}`}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigatePrevious();
-                    revealPageControls();
-                  }}
-                  disabled={!canGoPrevious}
-                  className="public-mobile-page-arrow public-mobile-page-arrow-left"
-                  aria-label="이전 기사로 이동"
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigateNext();
-                    revealPageControls();
-                  }}
-                  disabled={!canGoNext}
-                  className="public-mobile-page-arrow public-mobile-page-arrow-right"
-                  aria-label="다음 기사로 이동"
-                >
-                  ›
-                </button>
-              </div>
-            </>
-          ) : null}
 
           {isIndexOpen && hasArticles ? (
             <div data-swipe-navigation-ignore className="fixed inset-0 z-[70] flex justify-center bg-slate-950/55 px-4 py-6">
