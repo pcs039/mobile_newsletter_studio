@@ -551,8 +551,10 @@ function PublicCompactPublicationHeader({
   issue,
   onOpenSearch,
   onOpenToc,
+  onGoHome,
   publicationTitle,
   showSearch,
+  showHomeButton = false,
   showToc,
 }: {
   ebookDesktopHref?: string;
@@ -561,13 +563,18 @@ function PublicCompactPublicationHeader({
   ebookMobileHref?: string;
   headerColor?: string | null;
   issue?: string | null;
+  onGoHome?: () => void;
   onOpenSearch: () => void;
   onOpenToc: () => void;
   publicationTitle: string;
   showSearch: boolean;
+  showHomeButton?: boolean;
   showToc: boolean;
 }) {
   const hasEbookLinks = Boolean(ebookMobileHref || ebookDesktopHref);
+  const headerUtilityButtonClassName =
+    "inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-3 text-xs font-black text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80";
+  const hasUtilityRow = hasEbookLinks || showHomeButton;
 
   return (
     <header
@@ -586,7 +593,7 @@ function PublicCompactPublicationHeader({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1.5 pr-[env(safe-area-inset-right)]">
-          {!hasEbookLinks ? (
+          {!hasUtilityRow ? (
             <PublicPageTurnSoundToggle
               compactLabel
               className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-2 text-[11px] font-black text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
@@ -627,8 +634,8 @@ function PublicCompactPublicationHeader({
           ) : null}
         </div>
       </div>
-      {hasEbookLinks ? (
-        <div className="mt-3 flex items-center gap-2">
+      {hasUtilityRow ? (
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
           {ebookMobileHref ? (
             <Link
               href={ebookMobileHref}
@@ -638,7 +645,9 @@ function PublicCompactPublicationHeader({
             >
               e-book 보기
             </Link>
-          ) : null}
+          ) : (
+            <span aria-hidden="true" />
+          )}
           {ebookDesktopHref ? (
             <Link
               href={ebookDesktopHref}
@@ -649,7 +658,17 @@ function PublicCompactPublicationHeader({
               e-book 보기
             </Link>
           ) : null}
-          <PublicPageTurnSoundToggle className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/10 px-3 text-xs font-black text-white shadow-sm backdrop-blur transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80" />
+          {showHomeButton && onGoHome ? (
+            <button
+              type="button"
+              onClick={onGoHome}
+              className={headerUtilityButtonClassName}
+              aria-label="첫 화면으로 이동"
+            >
+              처음화면
+            </button>
+          ) : null}
+          <PublicPageTurnSoundToggle className={headerUtilityButtonClassName} />
         </div>
       ) : null}
     </header>
@@ -1497,6 +1516,7 @@ export function PublicMobileArticleReader({
   const [dragOffset, setDragOffset] = useState(0);
   const [isDraggingPage, setIsDraggingPage] = useState(false);
   const [arePageControlsVisible, setArePageControlsVisible] = useState(true);
+  const [pageControlsPoint, setPageControlsPoint] = useState<{ x: number; y: number } | null>(null);
   const articleTopRef = useRef<HTMLDivElement>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
   const pageControlsTimerRef = useRef<number | null>(null);
@@ -1621,13 +1641,31 @@ export function PublicMobileArticleReader({
     updateSelectedInterests([]);
   }
 
-  function revealPageControls() {
+  function getSafePageControlPoint(point: { x: number; y: number }) {
+    if (typeof window === "undefined") {
+      return point;
+    }
+
+    const horizontalPadding = 78;
+    const verticalPadding = 88;
+
+    return {
+      x: Math.min(Math.max(point.x, horizontalPadding), window.innerWidth - horizontalPadding),
+      y: Math.min(Math.max(point.y, verticalPadding), window.innerHeight - verticalPadding),
+    };
+  }
+
+  function revealPageControls(point?: { x: number; y: number }) {
     if (!isMobileReader || isIndexOpen || isSearchOpen || lightboxImage) {
       return;
     }
 
     if (pageControlsTimerRef.current) {
       window.clearTimeout(pageControlsTimerRef.current);
+    }
+
+    if (point) {
+      setPageControlsPoint(getSafePageControlPoint(point));
     }
 
     setArePageControlsVisible(true);
@@ -1868,7 +1906,7 @@ export function PublicMobileArticleReader({
     const tapDistance = Math.hypot(deltaX, deltaY);
 
     if (!start.lockedAxis && tapDistance <= pageControlsTapDistance) {
-      revealPageControls();
+      revealPageControls({ x: touch.clientX, y: touch.clientY });
       return;
     }
 
@@ -1946,6 +1984,10 @@ export function PublicMobileArticleReader({
       ? "opacity-100"
       : "public-mobile-page-control-idle opacity-60";
   const canGoFirstScreen = hasArticles && !isCoverView && (hasCoverPage || safeCurrentIndex > 0);
+  const pageControlsPositionStyle = {
+    left: pageControlsPoint ? `${pageControlsPoint.x}px` : "50%",
+    top: pageControlsPoint ? `${pageControlsPoint.y}px` : "50%",
+  };
 
   return (
     <>
@@ -1959,7 +2001,7 @@ export function PublicMobileArticleReader({
               return;
             }
 
-            revealPageControls();
+            revealPageControls({ x: event.clientX, y: event.clientY });
           }}
         >
           <div ref={articleTopRef} aria-hidden="true" />
@@ -1977,7 +2019,9 @@ export function PublicMobileArticleReader({
                 onOpenSearch={() => setIsSearchOpen(true)}
                 publicationTitle={publicationTitle}
                 showSearch={hasArticles}
+                showHomeButton={canGoFirstScreen}
                 showToc={hasArticles}
+                onGoHome={goToFirstScreen}
               />
               <PublicNewsletterCoverView
                 {...cover}
@@ -1998,7 +2042,9 @@ export function PublicMobileArticleReader({
                 onOpenToc={() => setIsIndexOpen(true)}
                 publicationTitle={publicationTitle}
                 showSearch={hasArticles}
+                showHomeButton={canGoFirstScreen}
                 showToc={hasArticles}
+                onGoHome={goToFirstScreen}
               />
               {currentArticle ? (
                 <div
@@ -2076,7 +2122,8 @@ export function PublicMobileArticleReader({
             <>
               <div
                 data-swipe-navigation-ignore
-                className={`public-mobile-page-controls fixed inset-y-0 left-0 right-0 z-50 transition-opacity duration-200 ${pageControlsVisibilityClass}`}
+                className={`public-mobile-page-controls fixed z-50 transition-opacity duration-200 ${pageControlsVisibilityClass}`}
+                style={pageControlsPositionStyle}
               >
                 <button
                   type="button"
@@ -2085,7 +2132,7 @@ export function PublicMobileArticleReader({
                     revealPageControls();
                   }}
                   disabled={!canGoPrevious}
-                  className="public-mobile-page-arrow public-mobile-page-arrow-left"
+                  className="public-mobile-page-arrow"
                   aria-label="이전 기사로 이동"
                 >
                   ‹
@@ -2097,29 +2144,12 @@ export function PublicMobileArticleReader({
                     revealPageControls();
                   }}
                   disabled={!canGoNext}
-                  className="public-mobile-page-arrow public-mobile-page-arrow-right"
+                  className="public-mobile-page-arrow"
                   aria-label="다음 기사로 이동"
                 >
                   ›
                 </button>
               </div>
-              {canGoFirstScreen ? (
-                <button
-                  type="button"
-                  data-swipe-navigation-ignore
-                  onClick={() => {
-                    goToFirstScreen();
-                    revealPageControls();
-                  }}
-                  className="public-mobile-home-button fixed left-3 z-50 transition-opacity duration-200"
-                  style={{
-                    top: "calc(4.35rem + env(safe-area-inset-top))",
-                  }}
-                  aria-label="첫 화면으로 이동"
-                >
-                  처음 화면
-                </button>
-              ) : null}
             </>
           ) : null}
 
