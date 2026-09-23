@@ -142,6 +142,8 @@ const articleMotionSpeedSettings: Record<ArticleMotionSpeed, { characterDelayMs:
 };
 const newsletterInterestStorageKeyPrefix = "datadiction_newsletter_interests:";
 const newsletterInterestPreferenceEventName = "datadiction:newsletter-interest-preference";
+const pageControlsAutoHideMs = 2800;
+const pageControlsTapDistance = 12;
 
 const presetElementMotionEffects: Record<ArticleMotionPreset, Record<ArticleMotionTarget, ArticleElementMotionEffect>> = {
   none: {
@@ -1494,8 +1496,10 @@ export function PublicMobileArticleReader({
   const [pageSlideDirection, setPageSlideDirection] = useState<PageSlideDirection>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDraggingPage, setIsDraggingPage] = useState(false);
+  const [arePageControlsVisible, setArePageControlsVisible] = useState(true);
   const articleTopRef = useRef<HTMLDivElement>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
+  const pageControlsTimerRef = useRef<number | null>(null);
   const currentArticleIndex = currentArticleId
     ? orderedArticles.findIndex((article) => article.id === currentArticleId)
     : -1;
@@ -1550,6 +1554,42 @@ export function PublicMobileArticleReader({
   }, [isCoverView, isMobileReader, safeCurrentIndex]);
 
   useEffect(() => {
+    if (pageControlsTimerRef.current) {
+      window.clearTimeout(pageControlsTimerRef.current);
+      pageControlsTimerRef.current = null;
+    }
+
+    if (!isMobileReader || isIndexOpen || isSearchOpen || lightboxImage) {
+      return;
+    }
+
+    const revealTimer = window.setTimeout(() => {
+      setArePageControlsVisible(true);
+      pageControlsTimerRef.current = window.setTimeout(() => {
+        setArePageControlsVisible(false);
+        pageControlsTimerRef.current = null;
+      }, pageControlsAutoHideMs);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(revealTimer);
+      if (pageControlsTimerRef.current) {
+        window.clearTimeout(pageControlsTimerRef.current);
+        pageControlsTimerRef.current = null;
+      }
+    };
+  }, [currentArticle?.id, isCoverView, isIndexOpen, isMobileReader, isSearchOpen, lightboxImage, safeCurrentIndex]);
+
+  useEffect(
+    () => () => {
+      if (pageControlsTimerRef.current) {
+        window.clearTimeout(pageControlsTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
     function openArticleToc() {
       setIsIndexOpen(true);
     }
@@ -1579,6 +1619,22 @@ export function PublicMobileArticleReader({
 
   function resetSelectedInterests() {
     updateSelectedInterests([]);
+  }
+
+  function revealPageControls() {
+    if (!isMobileReader || isIndexOpen || isSearchOpen || lightboxImage) {
+      return;
+    }
+
+    if (pageControlsTimerRef.current) {
+      window.clearTimeout(pageControlsTimerRef.current);
+    }
+
+    setArePageControlsVisible(true);
+    pageControlsTimerRef.current = window.setTimeout(() => {
+      setArePageControlsVisible(false);
+      pageControlsTimerRef.current = null;
+    }, pageControlsAutoHideMs);
   }
 
   const interestSelector = (
@@ -1678,6 +1734,21 @@ export function PublicMobileArticleReader({
     }
 
     goToArticleWithSlide(safeCurrentIndex + 1, "next");
+  }
+
+  function goToFirstScreen() {
+    if (isCoverView) {
+      return;
+    }
+
+    if (hasCoverPage) {
+      goToCoverFromArticle();
+      return;
+    }
+
+    if (safeCurrentIndex > 0 && goToArticle(0, { playSound: true })) {
+      scrollToReaderTop();
+    }
   }
 
   function goToArticleWithSlide(nextIndex: number, direction: Exclude<PageSlideDirection, null>) {
@@ -1794,6 +1865,12 @@ export function PublicMobileArticleReader({
 
     const deltaX = touch.clientX - start.x;
     const deltaY = touch.clientY - start.y;
+    const tapDistance = Math.hypot(deltaX, deltaY);
+
+    if (!start.lockedAxis && tapDistance <= pageControlsTapDistance) {
+      revealPageControls();
+      return;
+    }
 
     const adaptiveThreshold =
       typeof window === "undefined" ? swipeThreshold : Math.min(90, Math.max(64, window.innerWidth * 0.16));
@@ -1863,6 +1940,12 @@ export function PublicMobileArticleReader({
         "--public-article-page-drag-x": `${dragOffset}px`,
       } as CSSProperties)
     : undefined;
+  const shouldShowFloatingPageControls = isMobileReader && hasArticles && !isIndexOpen && !isSearchOpen && !lightboxImage;
+  const pageControlsVisibilityClass =
+    shouldShowFloatingPageControls && arePageControlsVisible
+      ? "opacity-100"
+      : "public-mobile-page-control-hidden opacity-0";
+  const canGoFirstScreen = hasArticles && !isCoverView && (hasCoverPage || safeCurrentIndex > 0);
 
   return (
     <>
@@ -1981,6 +2064,60 @@ export function PublicMobileArticleReader({
               </button>
             </div>
           </nav>
+
+          {shouldShowFloatingPageControls ? (
+            <>
+              <div
+                data-swipe-navigation-ignore
+                className={`public-mobile-page-controls fixed inset-y-0 left-0 right-0 z-50 transition-opacity duration-200 ${pageControlsVisibilityClass}`}
+                aria-hidden={!arePageControlsVisible}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigatePrevious();
+                    revealPageControls();
+                  }}
+                  disabled={!canGoPrevious}
+                  className="public-mobile-page-arrow public-mobile-page-arrow-left"
+                  aria-label="이전 기사로 이동"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigateNext();
+                    revealPageControls();
+                  }}
+                  disabled={!canGoNext}
+                  className="public-mobile-page-arrow public-mobile-page-arrow-right"
+                  aria-label="다음 기사로 이동"
+                >
+                  ›
+                </button>
+              </div>
+              {canGoFirstScreen ? (
+                <button
+                  type="button"
+                  data-swipe-navigation-ignore
+                  onClick={() => {
+                    goToFirstScreen();
+                    revealPageControls();
+                  }}
+                  className={`public-mobile-home-button fixed left-3 z-50 transition-opacity duration-200 ${pageControlsVisibilityClass}`}
+                  style={{
+                    bottom: publicAudio
+                      ? "calc(6.75rem + env(safe-area-inset-bottom))"
+                      : "calc(4.35rem + env(safe-area-inset-bottom))",
+                  }}
+                  aria-label="첫 화면으로 이동"
+                >
+                  처음으로
+                </button>
+              ) : null}
+            </>
+          ) : null}
 
           {isIndexOpen && hasArticles ? (
             <div data-swipe-navigation-ignore className="fixed inset-0 z-[70] flex justify-center bg-slate-950/55 px-4 py-6">
