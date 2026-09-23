@@ -149,7 +149,7 @@ const articleMotionSpeedSettings: Record<ArticleMotionSpeed, { characterDelayMs:
 };
 const newsletterInterestStorageKeyPrefix = "datadiction_newsletter_interests:";
 const newsletterInterestPreferenceEventName = "datadiction:newsletter-interest-preference";
-const pageControlsAutoHideMs = 2800;
+const pageControlsAutoHideMs = 1500;
 const pageControlsTapDistance = 12;
 
 const presetElementMotionEffects: Record<ArticleMotionPreset, Record<ArticleMotionTarget, ArticleElementMotionEffect>> = {
@@ -1595,7 +1595,9 @@ export function PublicMobileArticleReader({
       pageControlsTimerRef.current = null;
     }
 
-    if (!isMobileReader || isCoverView || !currentArticle || isIndexOpen || isSearchOpen || lightboxImage) {
+    const canRenderArrowOverlay = isCoverView ? Boolean(cover && hasArticles) : Boolean(currentArticle);
+
+    if (!isMobileReader || !canRenderArrowOverlay || isIndexOpen || isSearchOpen || lightboxImage) {
       return;
     }
 
@@ -1614,7 +1616,7 @@ export function PublicMobileArticleReader({
         pageControlsTimerRef.current = null;
       }
     };
-  }, [currentArticle, currentArticle?.id, isCoverView, isIndexOpen, isMobileReader, isSearchOpen, lightboxImage, safeCurrentIndex]);
+  }, [cover, currentArticle, currentArticle?.id, hasArticles, isCoverView, isIndexOpen, isMobileReader, isSearchOpen, lightboxImage, safeCurrentIndex]);
 
   useEffect(
     () => () => {
@@ -1658,7 +1660,9 @@ export function PublicMobileArticleReader({
   }
 
   function revealPageControls() {
-    if (!isMobileReader || isCoverView || !currentArticle || isIndexOpen || isSearchOpen || lightboxImage) {
+    const canRenderArrowOverlay = isCoverView ? Boolean(cover && hasArticles) : Boolean(currentArticle);
+
+    if (!isMobileReader || !canRenderArrowOverlay || isIndexOpen || isSearchOpen || lightboxImage) {
       return;
     }
 
@@ -2037,43 +2041,57 @@ export function PublicMobileArticleReader({
         "--public-article-page-drag-x": `${dragOffset}px`,
       } as CSSProperties)
     : undefined;
-  const shouldShowFloatingPageControls = isMobileReader && !isCoverView && Boolean(currentArticle) && !isIndexOpen && !isSearchOpen && !lightboxImage;
+  const shouldRenderArrowOverlay =
+    isMobileReader &&
+    hasArticles &&
+    !isIndexOpen &&
+    !isSearchOpen &&
+    !lightboxImage &&
+    ((isCoverView && Boolean(cover)) || (!isCoverView && Boolean(currentArticle)));
+  const shouldShowPreviousArrow = !isCoverView && canGoPrevious;
+  const shouldShowNextArrow = isCoverView ? hasArticles : canGoNext;
   const pageControlsVisibilityClass =
-    shouldShowFloatingPageControls && arePageControlsVisible
+    shouldRenderArrowOverlay && arePageControlsVisible
       ? "opacity-100"
       : "public-mobile-page-control-idle opacity-0";
   const canGoFirstScreen = hasArticles && !isCoverView && (hasCoverPage || safeCurrentIndex > 0);
   const arrowOverlayPortal =
-    isArrowPortalMounted && shouldShowFloatingPageControls
+    isArrowPortalMounted && shouldRenderArrowOverlay
       ? createPortal(
           <div
             data-swipe-navigation-ignore
             className={`public-mobile-arrow-portal transition-opacity duration-200 ${pageControlsVisibilityClass}`}
           >
-            <button
-              type="button"
-              onClick={() => {
-                navigatePrevious();
-                revealPageControls();
-              }}
-              disabled={!canGoPrevious}
-              className="public-mobile-arrow-button public-mobile-arrow-button-left"
-              aria-label="이전 기사로 이동"
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                navigateNext();
-                revealPageControls();
-              }}
-              disabled={!canGoNext}
-              className="public-mobile-arrow-button public-mobile-arrow-button-right"
-              aria-label="다음 기사로 이동"
-            >
-              ›
-            </button>
+            {shouldShowPreviousArrow ? (
+              <button
+                type="button"
+                onClick={() => {
+                  navigatePrevious();
+                  revealPageControls();
+                }}
+                className="public-mobile-arrow-button public-mobile-arrow-button-left"
+                aria-label="이전 기사로 이동"
+              >
+                ‹
+              </button>
+            ) : null}
+            {shouldShowNextArrow ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (isCoverView) {
+                    goToFirstArticleFromCover();
+                  } else {
+                    navigateNext();
+                  }
+                  revealPageControls();
+                }}
+                className="public-mobile-arrow-button public-mobile-arrow-button-right"
+                aria-label={isCoverView ? "첫 기사로 이동" : "다음 기사로 이동"}
+              >
+                ›
+              </button>
+            ) : null}
           </div>,
           document.body,
         )
