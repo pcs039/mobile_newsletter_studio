@@ -1516,7 +1516,6 @@ export function PublicMobileArticleReader({
   const [dragOffset, setDragOffset] = useState(0);
   const [isDraggingPage, setIsDraggingPage] = useState(false);
   const [arePageControlsVisible, setArePageControlsVisible] = useState(true);
-  const [pageControlsPoint, setPageControlsPoint] = useState<{ x: number; y: number } | null>(null);
   const articleTopRef = useRef<HTMLDivElement>(null);
   const swipeStartRef = useRef<SwipeStart>(null);
   const pageControlsTimerRef = useRef<number | null>(null);
@@ -1641,31 +1640,13 @@ export function PublicMobileArticleReader({
     updateSelectedInterests([]);
   }
 
-  function getSafePageControlPoint(point: { x: number; y: number }) {
-    if (typeof window === "undefined") {
-      return point;
-    }
-
-    const horizontalPadding = 78;
-    const verticalPadding = 88;
-
-    return {
-      x: Math.min(Math.max(point.x, horizontalPadding), window.innerWidth - horizontalPadding),
-      y: Math.min(Math.max(point.y, verticalPadding), window.innerHeight - verticalPadding),
-    };
-  }
-
-  function revealPageControls(point?: { x: number; y: number }) {
+  function revealPageControls() {
     if (!isMobileReader || isIndexOpen || isSearchOpen || lightboxImage) {
       return;
     }
 
     if (pageControlsTimerRef.current) {
       window.clearTimeout(pageControlsTimerRef.current);
-    }
-
-    if (point) {
-      setPageControlsPoint(getSafePageControlPoint(point));
     }
 
     setArePageControlsVisible(true);
@@ -1906,7 +1887,7 @@ export function PublicMobileArticleReader({
     const tapDistance = Math.hypot(deltaX, deltaY);
 
     if (!start.lockedAxis && tapDistance <= pageControlsTapDistance) {
-      revealPageControls({ x: touch.clientX, y: touch.clientY });
+      revealPageControls();
       return;
     }
 
@@ -1985,8 +1966,8 @@ export function PublicMobileArticleReader({
       : "public-mobile-page-control-idle opacity-60";
   const canGoFirstScreen = hasArticles && !isCoverView && (hasCoverPage || safeCurrentIndex > 0);
   const pageControlsPositionStyle = {
-    left: pageControlsPoint ? `${pageControlsPoint.x}px` : "50%",
-    top: pageControlsPoint ? `${pageControlsPoint.y}px` : "50%",
+    left: "50%",
+    top: "50%",
   };
 
   return (
@@ -2001,7 +1982,7 @@ export function PublicMobileArticleReader({
               return;
             }
 
-            revealPageControls({ x: event.clientX, y: event.clientY });
+            revealPageControls();
           }}
         >
           <div ref={articleTopRef} aria-hidden="true" />

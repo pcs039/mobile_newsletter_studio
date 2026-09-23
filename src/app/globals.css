@@ -594,9 +594,11 @@ select {
 
 .public-mobile-page-controls {
   display: flex;
-  gap: 0.45rem;
+  gap: 1rem;
+  justify-content: space-between;
   pointer-events: none;
   transform: translate(-50%, -50%);
+  width: min(calc(100vw - 2.25rem), 30rem);
 }
 
 .public-mobile-page-arrow {
