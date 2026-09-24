@@ -603,17 +603,17 @@ select {
   -webkit-tap-highlight-color: transparent;
   align-items: center;
   backdrop-filter: blur(10px);
-  background: rgba(9, 32, 70, 0.52);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 12px 28px rgba(9, 32, 70, 0.18);
+  background: rgba(9, 32, 70, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  box-shadow: 0 10px 22px rgba(9, 32, 70, 0.12);
   color: #fff;
   display: inline-flex;
   font-weight: 900;
   justify-content: center;
   pointer-events: auto;
   position: fixed;
-  top: 50%;
-  top: 50dvh;
+  top: 72%;
+  top: 72dvh;
   touch-action: manipulation;
   transform: translateY(-50%);
   transition:
@@ -641,7 +641,7 @@ select {
 }
 
 .public-mobile-arrow-button:hover {
-  background: rgba(9, 32, 70, 0.68);
+  background: rgba(9, 32, 70, 0.46);
 }
 
 .public-mobile-arrow-button:active {
@@ -654,8 +654,8 @@ select {
 }
 
 .public-mobile-page-control-idle .public-mobile-arrow-button {
-  background: rgba(9, 32, 70, 0.38);
-  box-shadow: 0 8px 20px rgba(9, 32, 70, 0.12);
+  background: rgba(9, 32, 70, 0.24);
+  box-shadow: 0 8px 18px rgba(9, 32, 70, 0.08);
   pointer-events: none;
 }
 
