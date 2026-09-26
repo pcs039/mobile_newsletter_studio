@@ -4,7 +4,7 @@ import { getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
 export const dynamic = "force-dynamic";
 
-const allowedBuckets = new Set(["pdf-originals", "page-images", "mobile-assets", "audio-files"]);
+const allowedBuckets = new Set(["pdf-originals", "page-images", "mobile-assets", "audio-files", "brand-assets"]);
 
 function encodeStoragePath(path: string) {
   return path.split("/").map(encodeURIComponent).join("/");
