@@ -26,7 +26,6 @@ import {
 } from "@/lib/audio-text-sync";
 import { getFontAssetById, getFontFamilyValue } from "@/lib/font-css";
 import {
-  getDisplayArticleTitle,
   tokenizeKoreanTitleForBreaks,
   renderKoreanTitleWithBreaks,
 } from "@/lib/korean-title-breaks";
@@ -819,7 +818,7 @@ function getYoutubeId(value: string) {
 }
 
 function getArticleTitle(article: ProjectContentArticle, index: number) {
-  return getDisplayArticleTitle(article, `기사 ${index + 1}`);
+  return article.title?.trim() || `기사 ${index + 1}`;
 }
 
 function getPlainArticleSearchText(article: ProjectContentArticle, index: number) {
@@ -831,8 +830,6 @@ function getPlainArticleSearchText(article: ProjectContentArticle, index: number
 
   return [
     getArticleTitle(article, index),
-    article.title,
-    article.displayTitle,
     article.summary,
     paragraphText || article.body,
   ]

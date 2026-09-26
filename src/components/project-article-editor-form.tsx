@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
 import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { StatusPill } from "@/components/status-pill";
@@ -10,7 +10,6 @@ import { getArticlePublicInfoFieldGroup, normalizeArticlePublicInfoValue } from 
 import { getSelectableFontAssets } from "@/lib/font-css";
 import {
   detectLongKoreanTitleTokens,
-  getDisplayArticleTitle,
   renderKoreanTitleWithBreaks,
 } from "@/lib/korean-title-breaks";
 import type {
@@ -110,7 +109,6 @@ type ArticlePayload = {
     title: string;
     type: EditorBlockType;
   }>;
-  displayTitle: string;
   imageMotionEffect: string;
   imageMotionSpeed: string;
   institutionPriority: number;
@@ -373,6 +371,26 @@ function SectionBadge({ tone, children }: { tone: "required" | "optional" | "adv
         : "bg-slate-100 text-slate-600";
 
   return <span className={`rounded-full px-3 py-1 text-xs font-black ${className}`}>{children}</span>;
+}
+
+function DetailSection({
+  children,
+  summary,
+  title,
+}: {
+  children: ReactNode;
+  summary: string;
+  title: string;
+}) {
+  return (
+    <details className="rounded-lg border border-slate-200 bg-white p-4">
+      <summary className="flex cursor-pointer list-none flex-col gap-2 text-sm font-black text-[#092046] sm:flex-row sm:items-center sm:justify-between">
+        <span>{title}</span>
+        <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-black text-[#184a88]">{summary}</span>
+      </summary>
+      <div className="mt-4">{children}</div>
+    </details>
+  );
 }
 
 function getValue(formData: FormData, name: string) {
@@ -767,7 +785,6 @@ export function ProjectArticleEditorForm({
   const [wordImportMessage, setWordImportMessage] = useState("");
   const [blocks, setBlocks] = useState<EditorBlock[]>(() => makeInitialBlocks(article));
   const [motionPreviewTitle, setMotionPreviewTitle] = useState(article?.title ?? "");
-  const [mobileDisplayTitle, setMobileDisplayTitle] = useState(article?.displayTitle ?? "");
   const [motionPreviewSummary, setMotionPreviewSummary] = useState(article?.summary ?? "");
   const [selectedMotionPreset, setSelectedMotionPreset] = useState<ArticleMotionPreset>(article?.motionPreset ?? "dynamic");
   const [selectedMotionSpeed, setSelectedMotionSpeed] = useState<ArticleMotionSpeed>(article?.motionSpeed ?? "normal");
@@ -817,10 +834,7 @@ export function ProjectArticleEditorForm({
         .join(" / "),
     [blocks],
   );
-  const effectiveMobileTitle = useMemo(
-    () => getDisplayArticleTitle({ displayTitle: mobileDisplayTitle, title: motionPreviewTitle }, "기사 제목 미리보기"),
-    [mobileDisplayTitle, motionPreviewTitle],
-  );
+  const effectiveMobileTitle = useMemo(() => motionPreviewTitle.trim() || "기사 제목 미리보기", [motionPreviewTitle]);
   const mobileTitleRiskTokens = useMemo(
     () => detectLongKoreanTitleTokens(effectiveMobileTitle),
     [effectiveMobileTitle],
@@ -830,6 +844,38 @@ export function ProjectArticleEditorForm({
     [article?.interestTags],
   );
   const publicInfoFieldGroup = useMemo(() => getArticlePublicInfoFieldGroup(selectedArticleType), [selectedArticleType]);
+  const selectedArticleTypeLabel =
+    articlePublicInfoTypeOptions.find((option) => option.value === selectedArticleType)?.label ?? "일반형";
+  const selectedAudioSourceLabel =
+    selectedAudioSource === "ai_tts"
+      ? `AI 음성 · ${selectedArticleTtsVoice}`
+      : selectedAudioSource === "uploaded"
+        ? article?.audioFile?.sourceType === "uploaded"
+          ? "직접 음성 연결됨"
+          : "직접 음성 연결"
+        : "음성 사용 안 함";
+  const selectedMotionPresetLabel =
+    articleMotionPresetOptions.find((option) => option.value === selectedMotionPreset)?.label ?? "기본형";
+  const selectedMotionSpeedLabel =
+    articleMotionSpeedOptions.find((option) => option.value === selectedMotionSpeed)?.label ?? "기본";
+  const selectedSurveySummary = article?.surveyId
+    ? surveys.find((survey) => survey.id === article.surveyId)?.title ?? "참여 콘텐츠 연결됨"
+    : "연결 없음";
+  const publicInfoFilledCount = publicInfoFieldGroup.fields.filter((field) => {
+    const value = article?.publicInfo[field.key];
+
+    return typeof value === "string" && value.trim().length > 0;
+  }).length;
+  const publicInfoSummary =
+    publicInfoFieldGroup.fields.length > 0
+      ? `${selectedArticleTypeLabel} · 입력 ${publicInfoFilledCount}/${publicInfoFieldGroup.fields.length}`
+      : selectedArticleTypeLabel;
+  const prioritySummary =
+    institutionPriorityOptions.find((option) => option.value === (article?.institutionPriority ?? 3))?.label ?? "3 보통";
+  const urgencySummary = articleUrgencyOptions.find((option) => option.value === (article?.urgency ?? "normal"))?.label ?? "일반";
+  const validitySummary = article?.validFrom || article?.validUntil ? "기간 설정됨" : "기간 제한 없음";
+  const sourcePageSummary = article?.pageNumber ? `원본 ${article.pageNumber}쪽 연결` : "페이지 미지정";
+  const statusSummary = articleStatuses.find((status) => status.value === (article?.status ?? "draft"))?.label ?? "작성 중";
 
   function updateBlock(blockId: string, field: "title" | "body", value: string) {
     setBlocks((currentBlocks) =>
@@ -1083,10 +1129,8 @@ export function ProjectArticleEditorForm({
     }
 
     setFormFieldValue("title", result.imported.title);
-    setFormFieldValue("displayTitle", "");
     setFormFieldValue("summary", result.imported.summary);
     setMotionPreviewTitle(result.imported.title);
-    setMobileDisplayTitle("");
     setMotionPreviewSummary(result.imported.summary);
     setBlocks(
       result.imported.blocks.map((block, index) => ({
@@ -1175,7 +1219,6 @@ export function ProjectArticleEditorForm({
       sortOrder: Number(getValue(formData, "sortOrder")) || 0,
       surveyId: getValue(formData, "surveyId"),
       title: getValue(formData, "title"),
-      displayTitle: getValue(formData, "displayTitle"),
       summary: getValue(formData, "summary"),
       body,
       textAlignment: getValue(formData, "textAlignment") || bodyAlignment,
@@ -1374,7 +1417,9 @@ export function ProjectArticleEditorForm({
             <h3 className="mt-1 text-lg font-black text-[#092046]">
               {article ? "선택 기사 수정" : "새 기사 작성"}
             </h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">제목·요약, 노출 설정, 참여 연결, 본문 블록 순서로 정리합니다.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              제목과 요약을 먼저 입력한 뒤 본문 블록을 작성합니다. 세부 설정은 필요한 항목만 펼쳐서 조정하세요.
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <SectionBadge tone="required">필수</SectionBadge>
@@ -1384,115 +1429,9 @@ export function ProjectArticleEditorForm({
             ) : null}
           </div>
         </div>
-        {article?.audioFile ? (
-          <div className="mt-4 flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-black text-emerald-800">연결된 음성</p>
-              <p className="mt-1 text-sm font-bold text-emerald-900">{article.audioFile.title}</p>
-              <p className="mt-1 text-xs font-bold text-emerald-800">
-                {article.audioFile.transcriptTypeLabel} · {article.audioFile.transcriptReviewStatusLabel}
-              </p>
-            </div>
-            <Link href={`/projects/${projectSlug}/audio`} className="dd-btn dd-btn-secondary dd-btn-sm self-start sm:self-auto">
-              음성 파일 관리로 이동
-            </Link>
-          </div>
-        ) : null}
-
-        <div className="mt-4 rounded-xl border border-[#d8e8ff] bg-white p-4">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">음성·대본</p>
-              <h4 className="text-base font-black text-[#092046]">모바일 기사 음성 방식</h4>
-            </div>
-            <Link href={`/projects/${projectSlug}/audio`} className="dd-btn dd-btn-secondary dd-btn-sm self-start sm:self-auto">
-              음성 파일 관리
-            </Link>
-          </div>
-
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
-            {articleAudioSourceOptions.map((option) => (
-              <label
-                key={option.value}
-                className={`rounded-xl border px-4 py-3 transition ${
-                  selectedAudioSource === option.value
-                    ? "border-[#184a88] bg-[#eff6ff] shadow-sm"
-                    : "border-slate-200 bg-white hover:border-[#b8d7ff]"
-                }`}
-              >
-                <span className="flex items-center gap-2 text-sm font-black text-[#092046]">
-                  <input
-                    type="radio"
-                    name="audioSource"
-                    value={option.value}
-                    checked={selectedAudioSource === option.value}
-                    onChange={() => setSelectedAudioSource(option.value)}
-                    className="h-4 w-4 accent-[#184a88]"
-                  />
-                  {option.label}
-                </span>
-                <span className="mt-2 block text-xs font-semibold leading-5 text-slate-500">{option.description}</span>
-              </label>
-            ))}
-          </div>
-
-          {selectedAudioSource === "uploaded" ? (
-            <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3">
-              <p className="text-xs font-black text-emerald-800">
-                {article?.audioFile?.sourceType === "uploaded" ? "직접 제작 음성이 연결되어 있습니다." : "직접 제작 음성을 연결하세요."}
-              </p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-emerald-800">
-                기존 MP3/WAV/M4A 업로드와 기사 연결 기능을 그대로 사용합니다.
-              </p>
-            </div>
-          ) : null}
-
-          {selectedAudioSource === "ai_tts" ? (
-            <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3">
-              <div className="grid gap-3 sm:grid-cols-[220px_minmax(0,1fr)] sm:items-end">
-                <div>
-                  <FieldLabel>AI 음색</FieldLabel>
-                  <select
-                    name="articleTtsVoice"
-                    value={selectedArticleTtsVoice}
-                    onChange={(event) => setSelectedArticleTtsVoice(event.currentTarget.value as ArticleTtsVoiceInput)}
-                    className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-black text-[#092046] outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                  >
-                    {articleTtsVoiceOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void generateArticleTtsAudio();
-                    }}
-                    disabled={isGeneratingArticleTts}
-                    className="dd-btn dd-btn-primary dd-btn-sm disabled:pointer-events-none disabled:opacity-50"
-                  >
-                    {isGeneratingArticleTts ? "생성 중..." : article?.aiAudioId ? "AI 음성 다시 생성" : "AI 음성 생성"}
-                  </button>
-                </div>
-              </div>
-              <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
-                공개 본문 문단을 기준으로 생성합니다. 제목·요약·이미지·링크·영상 텍스트는 낭독 원문에서 제외됩니다.
-              </p>
-              {articleTtsMessage ? (
-                <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-black text-[#184a88]">{articleTtsMessage}</p>
-              ) : null}
-            </div>
-          ) : (
-            <input type="hidden" name="articleTtsVoice" value={selectedArticleTtsVoice} />
-          )}
-        </div>
-
         <div className="mt-5 rounded-2xl border border-[#d8e8ff] bg-white px-4 py-3">
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제목/요약</p>
-          <p className="mt-1 text-sm font-bold text-slate-600">모바일 기사 첫 화면에 보이는 기본 문구를 입력합니다.</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">1. 기사 기본내용</p>
+          <p className="mt-1 text-sm font-bold text-slate-600">제목, 요약, 관심분야와 기사 유형만 먼저 정합니다.</p>
         </div>
 
         <div className="mt-4">
@@ -1505,71 +1444,6 @@ export function ProjectArticleEditorForm({
               placeholder="예: 군정 주요 소식"
               className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
             />
-          </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="min-w-0">
-              <FieldLabel>제목 정렬 방식</FieldLabel>
-              <select
-                name="titleAlignment"
-                defaultValue={article?.titleAlignment ?? "left"}
-                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              >
-                {articleTextAlignmentOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <FontSelect
-              name="titleFontAssetId"
-              label="제목 글꼴"
-              fonts={fonts}
-              defaultValue={article?.titleFontAssetId}
-              inheritLabel={projectTitleFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
-              help="공개 모바일 기사 제목에 적용됩니다."
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div>
-            <FieldLabel>모바일 표시 제목</FieldLabel>
-            <textarea
-              name="displayTitle"
-              defaultValue={article?.displayTitle ?? ""}
-              onChange={(event) => setMobileDisplayTitle(event.currentTarget.value)}
-              placeholder="비워두면 원문 제목을 사용합니다."
-              className="min-h-20 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            />
-            <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-              모바일 화면에서만 사용할 제목입니다. 원문 제목은 그대로 유지됩니다.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[#d8e8ff] bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-black text-[#184a88]">모바일 제목 미리보기</p>
-              <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-[11px] font-black text-[#184a88]">
-                최대 기준
-              </span>
-            </div>
-            <p className="mt-3 whitespace-pre-wrap break-words text-[clamp(1.6rem,8vw,2.35rem)] font-black leading-tight text-[#092046] [line-break:strict] [overflow-wrap:anywhere] [text-wrap:balance]">
-              {renderKoreanTitleWithBreaks(effectiveMobileTitle)}
-            </p>
-            {mobileTitleRiskTokens.length > 0 ? (
-              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                <p className="text-xs font-black text-amber-900">
-                  긴 고유명사가 있어 최대 글자 크기에서 줄바꿈을 확인하세요.
-                </p>
-                <p className="mt-1 text-xs font-semibold leading-5 text-amber-800">
-                  {mobileTitleRiskTokens.join(" · ")}
-                </p>
-              </div>
-            ) : (
-              <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
-                긴 제목은 의미 단위 줄바꿈 후보를 자동으로 보정합니다.
-              </p>
-            )}
           </div>
         </div>
 
@@ -1584,65 +1458,18 @@ export function ProjectArticleEditorForm({
               className="min-h-28 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
             />
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="min-w-0">
-              <FieldLabel>요약문 정렬 방식</FieldLabel>
-              <select
-                name="summaryAlignment"
-                defaultValue={article?.summaryAlignment ?? article?.textAlignment ?? "left"}
-                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              >
-                {articleTextAlignmentOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <FontSelect
-              name="bodyFontAssetId"
-              label="본문 글꼴"
-              fonts={fonts}
-              defaultValue={article?.bodyFontAssetId}
-              inheritLabel={projectBodyFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
-              help="요약과 기사 본문 문단에 적용됩니다."
-            />
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
-          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <div>
-              <FieldLabel>본문 정렬 방식</FieldLabel>
-              <select
-                name="bodyAlignment"
-                defaultValue={article?.bodyAlignment ?? article?.textAlignment ?? "left"}
-                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              >
-                {articleTextAlignmentOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <p className="self-end text-xs font-semibold leading-5 text-slate-500">
-              제목, 요약문, 본문 문단별로 정렬 방식을 선택할 수 있습니다. 단, 독자가 글자를 크게 또는 최대로 보는 경우에는 가독성을 위해 왼쪽 정렬로 표시됩니다.
-            </p>
-          </div>
-          <input type="hidden" name="textAlignment" defaultValue={article?.textAlignment ?? "left"} />
         </div>
 
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">공공정보 분류 및 노출 기준</p>
-              <h4 className="mt-1 text-base font-black text-[#092046]">기사 메타데이터</h4>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">분류</p>
+              <h4 className="mt-1 text-base font-black text-[#092046]">관심분야와 기사 유형</h4>
               <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                관심분야와 정보 성격을 지정하면 향후 관심사별 보기와 기사 우선순위 구성에 활용됩니다.
+                관심분야는 맞춤 보기에, 기사 유형은 핵심 공공정보 입력 기준에 사용됩니다.
               </p>
             </div>
-            <SectionBadge tone="optional">선택</SectionBadge>
+            <SectionBadge tone="required">기본</SectionBadge>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
@@ -1676,7 +1503,7 @@ export function ProjectArticleEditorForm({
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+            <div>
               <div>
                 <FieldLabel>기사 유형</FieldLabel>
                 <select
@@ -1692,191 +1519,16 @@ export function ProjectArticleEditorForm({
                   ))}
                 </select>
               </div>
-              <div>
-                <FieldLabel>기관 중요도</FieldLabel>
-                <select
-                  name="institutionPriority"
-                  defaultValue={article?.institutionPriority ?? 3}
-                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                >
-                  {institutionPriorityOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                  기관이 판단하는 정보 중요도입니다. 향후 관심사별 기사 순서를 계산할 때 사용됩니다.
-                </p>
-              </div>
-              <div>
-                <FieldLabel>긴급도</FieldLabel>
-                <select
-                  name="urgency"
-                  defaultValue={article?.urgency ?? "normal"}
-                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                >
-                  {articleUrgencyOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                  {articleUrgencyOptions.map((option) => `${option.label}: ${option.description}`).join(" / ")}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <FieldLabel>노출 시작</FieldLabel>
-              <input
-                name="validFrom"
-                type="datetime-local"
-                defaultValue={toDatetimeLocalValue(article?.validFrom)}
-                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-            </div>
-            <div>
-              <FieldLabel>노출 종료</FieldLabel>
-              <input
-                name="validUntil"
-                type="datetime-local"
-                defaultValue={toDatetimeLocalValue(article?.validUntil)}
-                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-            </div>
-          </div>
-          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-            기간을 비워두면 기간 제한 없음으로 저장됩니다.
-          </p>
-        </div>
-
-        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사 핵심정보</p>
-              <h4 className="mt-1 text-base font-black text-[#092046]">구조화 공공정보</h4>
-              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                공개 화면의 핵심정보 카드에 표시할 내용을 입력합니다. 없는 정보는 비워두세요.
-              </p>
-            </div>
-            <SectionBadge tone="optional">선택</SectionBadge>
-          </div>
-          {publicInfoFieldGroup.fields.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm font-bold text-slate-500">
-              기사 유형을 선택하면 핵심정보 입력항목이 표시됩니다.
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {publicInfoFieldGroup.fields.map((field) => (
-                <div key={field.key}>
-                  <FieldLabel>{field.label}</FieldLabel>
-                  <textarea
-                    name={`publicInfo.${field.key}`}
-                    defaultValue={article?.publicInfo[field.key] ?? ""}
-                    rows={2}
-                    maxLength={300}
-                    className="min-h-20 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                    placeholder={`${field.label} 내용을 입력하세요.`}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-          <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
-            저장 시 현재 기사 유형에 맞는 항목만 보관됩니다. 기사 본문이나 기존 블록 순서는 변경되지 않습니다.
-          </p>
-        </div>
-
-        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <SectionBadge tone="required">필수</SectionBadge>
-            <p className="text-sm font-black text-[#092046]">노출 설정</p>
-            <p className="text-xs font-semibold text-slate-500">기사 순서와 원본 PDF 연결 기준을 정합니다.</p>
-          </div>
-          <div className="grid gap-5 lg:grid-cols-[140px_minmax(0,1fr)_180px]">
-            <div>
-              <FieldLabel>순서</FieldLabel>
-              <input
-                name="sortOrder"
-                type="number"
-                min="0"
-                defaultValue={article?.sortOrder ?? 0}
-                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-            </div>
-            <div>
-              <FieldLabel>연결 원본 페이지</FieldLabel>
-              <select
-                name="pageId"
-                defaultValue={article?.pageId ?? ""}
-                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              >
-                <option value="">페이지 미지정</option>
-                {pages.map((page) => (
-                  <option key={page.id} value={page.id}>
-                    {page.pageNumber}쪽 · {page.title}
-                  </option>
-                ))}
-              </select>
-              {pages.length === 0 ? (
-                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                  등록된 페이지 이미지가 없으면 오른쪽에 원본 PDF 쪽수를 직접 입력하세요.
-                </p>
-              ) : null}
-            </div>
-            <div>
-              <FieldLabel>원본 PDF 쪽수 직접 입력</FieldLabel>
-              <input
-                name="sourcePageNumber"
-                type="number"
-                min="1"
-                max={projectPageCount > 0 ? projectPageCount : undefined}
-                defaultValue={article?.pageNumber ?? ""}
-                placeholder={projectPageCount > 0 ? `1~${projectPageCount}` : "예: 3"}
-                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-            </div>
-          </div>
-          <div className="mt-5 rounded-xl border border-[#d8e8ff] bg-[#f7fbff] p-4">
-            <div className="mb-3">
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참여 콘텐츠 연결</p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                설문·이벤트를 연결하면 공개 모바일 기사 하단에 참여 카드가 표시됩니다.
-              </p>
-            </div>
-            <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-end">
-            <div>
-              <FieldLabel>연결할 설문·이벤트</FieldLabel>
-              <select
-                name="surveyId"
-                defaultValue={article?.surveyId ?? ""}
-                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              >
-                <option value="">연결 없음</option>
-                {surveys.map((survey) => (
-                  <option key={survey.id} value={survey.id}>
-                    [{survey.status}] {survey.kind} · {survey.title} · {survey.questionCount}문항
-                  </option>
-                ))}
-              </select>
-            </div>
-            <p className="text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
-              진행 중이고 문항이 있는 참여 콘텐츠만 실제 공개 화면에 버튼으로 표시됩니다.
-              {surveys.length === 0 ? " 먼저 참여 콘텐츠 화면에서 설문 또는 이벤트를 등록하세요." : ""}
-            </p>
             </div>
           </div>
         </div>
+
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">본문과 선택 콘텐츠</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">2. 본문 제작</p>
             <h3 className="mt-1 text-lg font-black text-[#092046]">본문 블록을 작성합니다.</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">이미지, URL, 영상, 지도는 필요한 경우에만 추가합니다.</p>
           </div>
@@ -1892,22 +1544,9 @@ export function ProjectArticleEditorForm({
           </div>
         </div>
 
-        <details className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
-          <summary className="cursor-pointer text-sm font-black text-[#092046]">
-            <SectionBadge tone="optional">선택</SectionBadge>
-            <span className="ml-2">선택 콘텐츠 추가</span>
-          </summary>
-          <p className="mt-3 text-sm leading-6 text-slate-500">필요한 콘텐츠만 추가합니다.</p>
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
-            {blockUseCases.map((item) => (
-              <div key={item.title} className="rounded-lg border border-[#d8e8ff] bg-white px-4 py-3">
-                <p className="text-sm font-black text-[#092046]">{item.title}</p>
-                <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">{item.description}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
+          <p className="text-sm font-black text-[#092046]">콘텐츠 블록 추가</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
             {editableBlockTypes.map((item) => {
               const theme = blockTypeThemes[item.type];
 
@@ -1926,39 +1565,17 @@ export function ProjectArticleEditorForm({
               );
             })}
           </div>
-        </details>
-
-        <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이미지·URL 글꼴</p>
-              <h4 className="text-base font-black text-[#092046]">선택 콘텐츠 표시 기준</h4>
+          <details className="mt-4 rounded-lg border border-[#d8e8ff] bg-white p-3">
+            <summary className="cursor-pointer text-xs font-black text-[#092046]">블록 활용 예시 보기</summary>
+            <div className="mt-3 grid gap-3 lg:grid-cols-3">
+            {blockUseCases.map((item) => (
+              <div key={item.title} className="rounded-lg border border-[#d8e8ff] bg-white px-4 py-3">
+                <p className="text-sm font-black text-[#092046]">{item.title}</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">{item.description}</p>
+              </div>
+            ))}
             </div>
-            <p className="text-xs font-semibold text-slate-500">프로젝트 기본값 따름 가능</p>
-          </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <FontSelect
-              name="captionFontAssetId"
-              label="이미지 캡션 글꼴"
-              fonts={fonts}
-              defaultValue={article?.captionFontAssetId}
-              inheritLabel="본문 글꼴 사용"
-              help="이미지 블록의 캡션 문구에 적용됩니다."
-            />
-            <FontSelect
-              name="buttonFontAssetId"
-              label="URL 버튼 글꼴"
-              fonts={fonts}
-              defaultValue={article?.buttonFontAssetId}
-              inheritLabel="본문 글꼴 사용"
-              help="URL 버튼 블록의 버튼 문구에 적용됩니다."
-            />
-          </div>
-          {fonts.length === 0 ? (
-            <p className="mt-3 text-xs font-semibold text-slate-500">
-              활성화된 폰트가 없어 시스템 기본 글꼴로 표시됩니다.
-            </p>
-          ) : null}
+          </details>
         </div>
 
         <div className="mt-5 space-y-4">
@@ -2242,12 +1859,373 @@ export function ProjectArticleEditorForm({
         </div>
       </div>
 
-      <details className="rounded-lg border border-slate-200 bg-white p-5">
-        <summary className="cursor-pointer text-sm font-black text-[#092046]">
-          <SectionBadge tone="advanced">고급 설정</SectionBadge>
-          <span className="ml-2">상태, Word 원고, 문의 정보</span>
-        </summary>
-        <p className="mt-3 text-sm leading-6 text-slate-500">필요할 때만 수정합니다.</p>
+      <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-5">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">세부 설정</p>
+          <h3 className="mt-1 text-lg font-black text-[#092046]">필요한 항목만 펼쳐서 설정하세요.</h3>
+        </div>
+        <div className="mt-5 space-y-3">
+          <DetailSection title="핵심 공공정보" summary={publicInfoSummary}>
+            <p className="text-sm font-semibold leading-6 text-slate-500">
+              공개 화면의 핵심정보 카드에 표시할 내용을 입력합니다. 없는 정보는 비워두세요.
+            </p>
+            {publicInfoFieldGroup.fields.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm font-bold text-slate-500">
+                추가 핵심정보 없음
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {publicInfoFieldGroup.fields.map((field) => (
+                  <div key={field.key}>
+                    <FieldLabel>{field.label}</FieldLabel>
+                    <textarea
+                      name={`publicInfo.${field.key}`}
+                      defaultValue={article?.publicInfo[field.key] ?? ""}
+                      rows={2}
+                      maxLength={300}
+                      className="min-h-20 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                      placeholder={`${field.label} 내용을 입력하세요.`}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </DetailSection>
+
+          <DetailSection title="음성·TTS" summary={selectedAudioSourceLabel}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <p className="text-sm font-semibold leading-6 text-slate-500">
+                공개 모바일 기사에서 사용할 음성 방식입니다. 음성 대본 블록은 본문 제작 영역에서 별도로 관리합니다.
+              </p>
+              <Link href={`/projects/${projectSlug}/audio`} className="dd-btn dd-btn-secondary dd-btn-sm self-start">
+                음성 파일 관리
+              </Link>
+            </div>
+            {article?.audioFile ? (
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <p className="text-xs font-black text-emerald-800">연결된 음성</p>
+                <p className="mt-1 text-sm font-bold text-emerald-900">{article.audioFile.title}</p>
+                <p className="mt-1 text-xs font-bold text-emerald-800">
+                  {article.audioFile.transcriptTypeLabel} · {article.audioFile.transcriptReviewStatusLabel}
+                </p>
+              </div>
+            ) : null}
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              {articleAudioSourceOptions.map((option) => (
+                <label
+                  key={option.value}
+                  className={`rounded-xl border px-4 py-3 transition ${
+                    selectedAudioSource === option.value
+                      ? "border-[#184a88] bg-[#eff6ff] shadow-sm"
+                      : "border-slate-200 bg-white hover:border-[#b8d7ff]"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-sm font-black text-[#092046]">
+                    <input
+                      type="radio"
+                      name="audioSource"
+                      value={option.value}
+                      checked={selectedAudioSource === option.value}
+                      onChange={() => setSelectedAudioSource(option.value)}
+                      className="h-4 w-4 accent-[#184a88]"
+                    />
+                    {option.label}
+                  </span>
+                  <span className="mt-2 block text-xs font-semibold leading-5 text-slate-500">{option.description}</span>
+                </label>
+              ))}
+            </div>
+            {selectedAudioSource === "uploaded" ? (
+              <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3">
+                <p className="text-xs font-black text-emerald-800">
+                  {article?.audioFile?.sourceType === "uploaded" ? "직접 제작 음성이 연결되어 있습니다." : "직접 제작 음성을 연결하세요."}
+                </p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-emerald-800">
+                  기존 MP3/WAV/M4A 업로드와 기사 연결 기능을 그대로 사용합니다.
+                </p>
+              </div>
+            ) : null}
+            {selectedAudioSource === "ai_tts" ? (
+              <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3">
+                <div className="grid gap-3 sm:grid-cols-[220px_minmax(0,1fr)] sm:items-end">
+                  <div>
+                    <FieldLabel>AI 음색</FieldLabel>
+                    <select
+                      name="articleTtsVoice"
+                      value={selectedArticleTtsVoice}
+                      onChange={(event) => setSelectedArticleTtsVoice(event.currentTarget.value as ArticleTtsVoiceInput)}
+                      className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-black text-[#092046] outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                    >
+                      {articleTtsVoiceOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void generateArticleTtsAudio();
+                      }}
+                      disabled={isGeneratingArticleTts}
+                      className="dd-btn dd-btn-primary dd-btn-sm disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      {isGeneratingArticleTts ? "생성 중..." : article?.aiAudioId ? "AI 음성 다시 생성" : "AI 음성 생성"}
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
+                  공개 본문 문단을 기준으로 생성합니다. 제목·요약·이미지·링크·영상 텍스트는 낭독 원문에서 제외됩니다.
+                </p>
+                {articleTtsMessage ? (
+                  <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-black text-[#184a88]">{articleTtsMessage}</p>
+                ) : null}
+              </div>
+            ) : (
+              <input type="hidden" name="articleTtsVoice" value={selectedArticleTtsVoice} />
+            )}
+          </DetailSection>
+
+          <DetailSection title="노출·우선순위" summary={`${prioritySummary} · ${urgencySummary} · ${validitySummary}`}>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <FieldLabel>기사 순서</FieldLabel>
+                <input
+                  name="sortOrder"
+                  type="number"
+                  min="0"
+                  defaultValue={article?.sortOrder ?? 0}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                />
+              </div>
+              <div>
+                <FieldLabel>기관 중요도</FieldLabel>
+                <select
+                  name="institutionPriority"
+                  defaultValue={article?.institutionPriority ?? 3}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  {institutionPriorityOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>긴급도</FieldLabel>
+                <select
+                  name="urgency"
+                  defaultValue={article?.urgency ?? "normal"}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  {articleUrgencyOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="text-xs font-semibold leading-5 text-slate-500">
+                기관 중요도와 긴급도는 관심사별 보기와 기사 우선순위 구성에 활용됩니다.
+              </div>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel>노출 시작</FieldLabel>
+                <input
+                  name="validFrom"
+                  type="datetime-local"
+                  defaultValue={toDatetimeLocalValue(article?.validFrom)}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                />
+              </div>
+              <div>
+                <FieldLabel>노출 종료</FieldLabel>
+                <input
+                  name="validUntil"
+                  type="datetime-local"
+                  defaultValue={toDatetimeLocalValue(article?.validUntil)}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                />
+              </div>
+            </div>
+          </DetailSection>
+
+          <DetailSection title="참여 콘텐츠" summary={selectedSurveySummary}>
+            <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-end">
+              <div>
+                <FieldLabel>연결할 설문·이벤트</FieldLabel>
+                <select
+                  name="surveyId"
+                  defaultValue={article?.surveyId ?? ""}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  <option value="">연결 없음</option>
+                  {surveys.map((survey) => (
+                    <option key={survey.id} value={survey.id}>
+                      [{survey.status}] {survey.kind} · {survey.title} · {survey.questionCount}문항
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
+                진행 중이고 문항이 있는 참여 콘텐츠만 실제 공개 화면에 버튼으로 표시됩니다.
+                {surveys.length === 0 ? " 먼저 참여 콘텐츠 화면에서 설문 또는 이벤트를 등록하세요." : ""}
+              </p>
+            </div>
+          </DetailSection>
+
+          <DetailSection title="제목·본문 표시" summary="기관 디자인 사용">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <FieldLabel>제목 정렬 방식</FieldLabel>
+                <select
+                  name="titleAlignment"
+                  defaultValue={article?.titleAlignment ?? "left"}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  {articleTextAlignmentOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>요약문 정렬 방식</FieldLabel>
+                <select
+                  name="summaryAlignment"
+                  defaultValue={article?.summaryAlignment ?? article?.textAlignment ?? "left"}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  {articleTextAlignmentOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>본문 정렬 방식</FieldLabel>
+                <select
+                  name="bodyAlignment"
+                  defaultValue={article?.bodyAlignment ?? article?.textAlignment ?? "left"}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  {articleTextAlignmentOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="self-end text-xs font-semibold leading-5 text-slate-500">
+                독자가 글자를 크게 또는 최대로 보는 경우 본문형 텍스트는 가독성을 위해 왼쪽 정렬로 표시됩니다.
+              </p>
+            </div>
+            <input type="hidden" name="textAlignment" defaultValue={article?.textAlignment ?? "left"} />
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <FontSelect
+                name="titleFontAssetId"
+                label="제목 글꼴"
+                fonts={fonts}
+                defaultValue={article?.titleFontAssetId}
+                inheritLabel={projectTitleFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
+                help="공개 모바일 기사 제목에 적용됩니다."
+              />
+              <FontSelect
+                name="bodyFontAssetId"
+                label="본문 글꼴"
+                fonts={fonts}
+                defaultValue={article?.bodyFontAssetId}
+                inheritLabel={projectBodyFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
+                help="요약과 기사 본문 문단에 적용됩니다."
+              />
+              <FontSelect
+                name="captionFontAssetId"
+                label="이미지 캡션 글꼴"
+                fonts={fonts}
+                defaultValue={article?.captionFontAssetId}
+                inheritLabel="본문 글꼴 사용"
+                help="이미지 블록의 캡션 문구에 적용됩니다."
+              />
+              <FontSelect
+                name="buttonFontAssetId"
+                label="URL 버튼 글꼴"
+                fonts={fonts}
+                defaultValue={article?.buttonFontAssetId}
+                inheritLabel="본문 글꼴 사용"
+                help="URL 버튼 블록의 버튼 문구에 적용됩니다."
+              />
+            </div>
+            <div className="mt-4 rounded-2xl border border-[#d8e8ff] bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-black text-[#184a88]">모바일 제목 미리보기</p>
+                <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-[11px] font-black text-[#184a88]">
+                  title 기준
+                </span>
+              </div>
+              <p className="mt-3 whitespace-pre-wrap break-words text-[clamp(1.6rem,8vw,2.35rem)] font-black leading-tight text-[#092046] [line-break:strict] [overflow-wrap:anywhere] [text-wrap:balance]">
+                {renderKoreanTitleWithBreaks(effectiveMobileTitle)}
+              </p>
+              {mobileTitleRiskTokens.length > 0 ? (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-xs font-black text-amber-900">
+                    긴 고유명사가 있어 최대 글자 크기에서 줄바꿈을 확인하세요.
+                  </p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-amber-800">
+                    {mobileTitleRiskTokens.join(" · ")}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
+                  긴 제목은 의미 단위 줄바꿈 후보를 자동으로 보정합니다.
+                </p>
+              )}
+            </div>
+          </DetailSection>
+
+          <DetailSection title="원본 자료 연결" summary={sourcePageSummary}>
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_180px]">
+              <div>
+                <FieldLabel>연결 원본 페이지</FieldLabel>
+                <select
+                  name="pageId"
+                  defaultValue={article?.pageId ?? ""}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  <option value="">페이지 미지정</option>
+                  {pages.map((page) => (
+                    <option key={page.id} value={page.id}>
+                      {page.pageNumber}쪽 · {page.title}
+                    </option>
+                  ))}
+                </select>
+                {pages.length === 0 ? (
+                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                    등록된 페이지 이미지가 없으면 오른쪽에 원본 PDF 쪽수를 직접 입력하세요.
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <FieldLabel>원본 PDF 쪽수 직접 입력</FieldLabel>
+                <input
+                  name="sourcePageNumber"
+                  type="number"
+                  min="1"
+                  max={projectPageCount > 0 ? projectPageCount : undefined}
+                  defaultValue={article?.pageNumber ?? ""}
+                  placeholder={projectPageCount > 0 ? `1~${projectPageCount}` : "예: 3"}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                />
+              </div>
+            </div>
+          </DetailSection>
+
+          <DetailSection title="그래픽·모션 효과" summary={`${selectedMotionPresetLabel} · ${selectedMotionSpeedLabel}`}>
 
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
           <div>
@@ -2371,8 +2349,10 @@ export function ProjectArticleEditorForm({
             />
           </div>
         </div>
+          </DetailSection>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+          <DetailSection title="기타 관리" summary={statusSummary}>
+        <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <div>
             <FieldLabel>상태</FieldLabel>
             <select
@@ -2440,7 +2420,9 @@ export function ProjectArticleEditorForm({
             </div>
           </div>
         </div>
-      </details>
+          </DetailSection>
+        </div>
+      </div>
 
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
