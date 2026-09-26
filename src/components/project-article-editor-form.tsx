@@ -1546,7 +1546,7 @@ export function ProjectArticleEditorForm({
 
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
           <p className="text-sm font-black text-[#092046]">콘텐츠 블록 추가</p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {editableBlockTypes.map((item) => {
               const theme = blockTypeThemes[item.type];
 
@@ -1555,12 +1555,14 @@ export function ProjectArticleEditorForm({
                   key={item.type}
                   type="button"
                   onClick={() => addBlock(item.type)}
-                  className={`group rounded-xl border px-3 py-3 text-left shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-md ${theme.button}`}
+                  className={`group flex h-full min-h-[92px] w-full min-w-0 flex-col items-start overflow-hidden rounded-xl border px-3 py-3 text-left shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-md ${theme.button}`}
                 >
-                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${theme.marker}`}>
+                  <span className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-black ${theme.marker}`}>
                     + {item.label}
                   </span>
-                  <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600">{item.help}</span>
+                  <span className="mt-2 block w-full min-w-0 overflow-hidden whitespace-normal text-xs font-semibold leading-5 text-slate-600 line-clamp-2 [overflow-wrap:anywhere] [word-break:keep-all]">
+                    {item.help}
+                  </span>
                 </button>
               );
             })}
@@ -1585,7 +1587,7 @@ export function ProjectArticleEditorForm({
               <p className="mt-2 text-sm leading-6 text-slate-500">
                 삭제 후에도 새 문단, 이미지, URL 버튼, 영상 블록을 다시 추가할 수 있습니다.
               </p>
-              <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+              <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {editableBlockTypes.map((item) => {
                   const theme = blockTypeThemes[item.type];
 
@@ -1594,12 +1596,14 @@ export function ProjectArticleEditorForm({
                       key={`empty-${item.type}`}
                       type="button"
                       onClick={() => addBlock(item.type)}
-                      className={`group rounded-xl border px-3 py-3 text-left shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-md ${theme.button}`}
+                      className={`group flex h-full min-h-[92px] w-full min-w-0 flex-col items-start overflow-hidden rounded-xl border px-3 py-3 text-left shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-md ${theme.button}`}
                     >
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${theme.marker}`}>
+                      <span className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-black ${theme.marker}`}>
                         + {item.label}
                       </span>
-                      <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600">{item.help}</span>
+                      <span className="mt-2 block w-full min-w-0 overflow-hidden whitespace-normal text-xs font-semibold leading-5 text-slate-600 line-clamp-2 [overflow-wrap:anywhere] [word-break:keep-all]">
+                        {item.help}
+                      </span>
                     </button>
                   );
                 })}
