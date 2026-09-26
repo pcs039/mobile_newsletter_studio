@@ -1495,8 +1495,8 @@ export function ProjectArticleEditorForm({
           <p className="mt-1 text-sm font-bold text-slate-600">모바일 기사 첫 화면에 보이는 기본 문구를 입력합니다.</p>
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_280px]">
-          <div>
+        <div className="mt-4">
+          <div className="min-w-0">
             <FieldLabel required>기사 제목</FieldLabel>
             <input
               name="title"
@@ -1506,28 +1506,30 @@ export function ProjectArticleEditorForm({
               className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
             />
           </div>
-          <div>
-            <FieldLabel>제목 정렬 방식</FieldLabel>
-            <select
-              name="titleAlignment"
-              defaultValue={article?.titleAlignment ?? "left"}
-              className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            >
-              {articleTextAlignmentOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="min-w-0">
+              <FieldLabel>제목 정렬 방식</FieldLabel>
+              <select
+                name="titleAlignment"
+                defaultValue={article?.titleAlignment ?? "left"}
+                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              >
+                {articleTextAlignmentOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <FontSelect
+              name="titleFontAssetId"
+              label="제목 글꼴"
+              fonts={fonts}
+              defaultValue={article?.titleFontAssetId}
+              inheritLabel={projectTitleFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
+              help="공개 모바일 기사 제목에 적용됩니다."
+            />
           </div>
-          <FontSelect
-            name="titleFontAssetId"
-            label="제목 글꼴"
-            fonts={fonts}
-            defaultValue={article?.titleFontAssetId}
-            inheritLabel={projectTitleFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
-            help="공개 모바일 기사 제목에 적용됩니다."
-          />
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -1571,39 +1573,41 @@ export function ProjectArticleEditorForm({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_280px]">
-          <div>
+        <div className="mt-5">
+          <div className="min-w-0">
             <FieldLabel>요약 문장</FieldLabel>
             <textarea
               name="summary"
               defaultValue={article?.summary ?? ""}
               onChange={(event) => setMotionPreviewSummary(event.currentTarget.value)}
               placeholder="목록 카드와 모바일 첫 화면에 표시할 핵심 요약을 입력합니다."
-              className="min-h-24 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              className="min-h-28 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
             />
           </div>
-          <div>
-            <FieldLabel>요약문 정렬 방식</FieldLabel>
-            <select
-              name="summaryAlignment"
-              defaultValue={article?.summaryAlignment ?? article?.textAlignment ?? "left"}
-              className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            >
-              {articleTextAlignmentOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="min-w-0">
+              <FieldLabel>요약문 정렬 방식</FieldLabel>
+              <select
+                name="summaryAlignment"
+                defaultValue={article?.summaryAlignment ?? article?.textAlignment ?? "left"}
+                className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+              >
+                {articleTextAlignmentOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <FontSelect
+              name="bodyFontAssetId"
+              label="본문 글꼴"
+              fonts={fonts}
+              defaultValue={article?.bodyFontAssetId}
+              inheritLabel={projectBodyFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
+              help="요약과 기사 본문 문단에 적용됩니다."
+            />
           </div>
-          <FontSelect
-            name="bodyFontAssetId"
-            label="본문 글꼴"
-            fonts={fonts}
-            defaultValue={article?.bodyFontAssetId}
-            inheritLabel={projectBodyFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
-            help="요약과 기사 본문 문단에 적용됩니다."
-          />
         </div>
 
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">
