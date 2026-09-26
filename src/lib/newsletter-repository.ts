@@ -86,6 +86,29 @@ type FontAssetRow = {
   } | null;
 };
 
+type ProjectDesignKitRow = {
+  id: string;
+  project_id: string;
+  logo_url: string | null;
+  logo_alt: string | null;
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  background_color: string;
+  text_color: string;
+  heading_font_family: string | null;
+  body_font_family: string | null;
+  button_radius: number;
+  card_radius: number;
+  button_style: ProjectDesignKitButtonStyle;
+  icon_style: ProjectDesignKitIconStyle;
+  image_style: ProjectDesignKitImageStyle;
+  template_notes: string | null;
+  design_tokens: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type CreateNewsletterProjectInput = {
   title: string;
   issueLabel?: string;
@@ -523,6 +546,66 @@ export type ProjectBasicInfo = {
   coverIssueText: string;
   coverFit: NewsletterCoverFit;
 };
+
+export type ProjectDesignKitButtonStyle = "solid" | "outline" | "soft";
+export type ProjectDesignKitIconStyle = "outline" | "filled" | "illustration";
+export type ProjectDesignKitImageStyle = "photo" | "illustration" | "mixed";
+
+export type ProjectDesignKit = {
+  id: string;
+  projectId: string;
+  logoUrl: string;
+  logoAlt: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  textColor: string;
+  headingFontFamily: string;
+  bodyFontFamily: string;
+  buttonRadius: number;
+  cardRadius: number;
+  buttonStyle: ProjectDesignKitButtonStyle;
+  iconStyle: ProjectDesignKitIconStyle;
+  imageStyle: ProjectDesignKitImageStyle;
+  templateNotes: string;
+  designTokens: Record<string, unknown>;
+  created: string;
+  updated: string;
+  isDefault: boolean;
+};
+
+export type ProjectDesignKitInput = Omit<ProjectDesignKit, "id" | "projectId" | "created" | "updated" | "isDefault">;
+
+export type ProjectDesignKitResult =
+  | {
+      ok: true;
+      designKit: ProjectDesignKit;
+      project: ProjectWorkspaceInfo;
+      source: "supabase";
+      message: string;
+    }
+  | {
+      ok: false;
+      designKit: null;
+      project: ProjectWorkspaceInfo | null;
+      source: "unconfigured" | "error" | "not_found";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type UpsertProjectDesignKitResult =
+  | {
+      ok: true;
+      designKit: ProjectDesignKit;
+      message: string;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "request_failed" | "not_found";
+      message: string;
+      httpStatus?: number;
+    };
 
 export type FontAsset = {
   id: string;
@@ -1999,6 +2082,103 @@ function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicIn
     coverSubtitle: project.cover_subtitle || "",
     coverIssueText: project.cover_issue_text || "",
     coverFit: normalizeCoverFit(project.cover_fit),
+  };
+}
+
+const designKitSelectColumns = [
+  "id",
+  "project_id",
+  "logo_url",
+  "logo_alt",
+  "primary_color",
+  "secondary_color",
+  "accent_color",
+  "background_color",
+  "text_color",
+  "heading_font_family",
+  "body_font_family",
+  "button_radius",
+  "card_radius",
+  "button_style",
+  "icon_style",
+  "image_style",
+  "template_notes",
+  "design_tokens",
+  "created_at",
+  "updated_at",
+].join(",");
+
+function normalizeDesignKitButtonStyle(value: string | null | undefined): ProjectDesignKitButtonStyle {
+  return value === "outline" || value === "soft" ? value : "solid";
+}
+
+function normalizeDesignKitIconStyle(value: string | null | undefined): ProjectDesignKitIconStyle {
+  return value === "filled" || value === "illustration" ? value : "outline";
+}
+
+function normalizeDesignKitImageStyle(value: string | null | undefined): ProjectDesignKitImageStyle {
+  return value === "photo" || value === "illustration" ? value : "mixed";
+}
+
+function clampInteger(value: number | null | undefined, fallback: number, min: number, max: number) {
+  return typeof value === "number" && Number.isInteger(value) ? Math.min(Math.max(value, min), max) : fallback;
+}
+
+function normalizeHexColor(value: string | null | undefined, fallback: string) {
+  return value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
+}
+
+function makeDefaultProjectDesignKit(project: ProjectWorkspaceInfo): ProjectDesignKit {
+  const primaryColor = normalizeHexColor(project.primaryColor, "#092046");
+
+  return {
+    id: "",
+    projectId: project.id,
+    logoUrl: "",
+    logoAlt: project.organization,
+    primaryColor,
+    secondaryColor: "#184a88",
+    accentColor: "#2f73b7",
+    backgroundColor: "#ffffff",
+    textColor: "#0f172a",
+    headingFontFamily: "",
+    bodyFontFamily: "",
+    buttonRadius: 12,
+    cardRadius: 16,
+    buttonStyle: "solid",
+    iconStyle: "outline",
+    imageStyle: "mixed",
+    templateNotes: "",
+    designTokens: {},
+    created: "",
+    updated: "",
+    isDefault: true,
+  };
+}
+
+function mapProjectDesignKitRow(row: ProjectDesignKitRow): ProjectDesignKit {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    logoUrl: row.logo_url || "",
+    logoAlt: row.logo_alt || "",
+    primaryColor: normalizeHexColor(row.primary_color, "#092046"),
+    secondaryColor: normalizeHexColor(row.secondary_color, "#184a88"),
+    accentColor: normalizeHexColor(row.accent_color, "#2f73b7"),
+    backgroundColor: normalizeHexColor(row.background_color, "#ffffff"),
+    textColor: normalizeHexColor(row.text_color, "#0f172a"),
+    headingFontFamily: row.heading_font_family || "",
+    bodyFontFamily: row.body_font_family || "",
+    buttonRadius: clampInteger(row.button_radius, 12, 0, 40),
+    cardRadius: clampInteger(row.card_radius, 16, 0, 48),
+    buttonStyle: normalizeDesignKitButtonStyle(row.button_style),
+    iconStyle: normalizeDesignKitIconStyle(row.icon_style),
+    imageStyle: normalizeDesignKitImageStyle(row.image_style),
+    templateNotes: row.template_notes || "",
+    designTokens: row.design_tokens ?? {},
+    created: formatCompactDateTime(row.created_at),
+    updated: formatCompactDateTime(row.updated_at),
+    isDefault: false,
   };
 }
 
@@ -5039,6 +5219,201 @@ export async function getProjectBasicInfo(projectSlug: string): Promise<ProjectB
       project: null,
       source: "error",
       message: "프로젝트 기본 정보 조회 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function getProjectDesignKit(projectSlug: string): Promise<ProjectDesignKitResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const workspace = await getProjectWorkspace(projectSlug);
+
+  if (!workspace.ok) {
+    return {
+      ok: false,
+      designKit: null,
+      project: null,
+      source: workspace.source,
+      message: workspace.message,
+      httpStatus: workspace.httpStatus,
+    };
+  }
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      designKit: null,
+      project: workspace.project,
+      source: "unconfigured",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 기관 Design Kit을 조회할 수 있습니다.",
+    };
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_project_design_kits?select=${designKitSelectColumns}&project_id=eq.${encodeURIComponent(
+      workspace.project.id,
+    )}&limit=1`,
+  );
+
+  if (!endpoint) {
+    return {
+      ok: false,
+      designKit: null,
+      project: workspace.project,
+      source: "unconfigured",
+      message: "Supabase REST 주소를 만들지 못했습니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      console.error("Failed to fetch project design kit", {
+        status: response.status,
+        body: await response.text().catch(() => ""),
+      });
+
+      return {
+        ok: false,
+        designKit: null,
+        project: workspace.project,
+        source: "error",
+        message: "기관 Design Kit 테이블을 조회하지 못했습니다. Supabase migration v1.14 적용 여부와 서버 설정을 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    const rows = (await response.json().catch(() => [])) as ProjectDesignKitRow[];
+    const row = rows[0];
+
+    return {
+      ok: true,
+      designKit: row ? mapProjectDesignKitRow(row) : makeDefaultProjectDesignKit(workspace.project),
+      project: workspace.project,
+      source: "supabase",
+      message: row ? "기관 Design Kit을 수정합니다." : "등록된 Design Kit이 없어 기본값을 표시합니다.",
+    };
+  } catch (error) {
+    console.error("Failed to fetch project design kit", error);
+
+    return {
+      ok: false,
+      designKit: null,
+      project: workspace.project,
+      source: "error",
+      message: "기관 Design Kit 조회 중 오류가 발생했습니다. 서버 설정과 Supabase migration 상태를 확인하세요.",
+    };
+  }
+}
+
+export async function upsertProjectDesignKit(
+  projectSlug: string,
+  input: ProjectDesignKitInput,
+): Promise<UpsertProjectDesignKitResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 기관 Design Kit을 저장할 수 있습니다.",
+    };
+  }
+
+  try {
+    const project = await getProjectRowBySlug(projectSlug, headers);
+
+    if (!project) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "Design Kit을 저장할 프로젝트를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_project_design_kits?on_conflict=project_id&select=${designKitSelectColumns}`,
+    );
+
+    if (!endpoint) {
+      return {
+        ok: false,
+        status: "not_configured",
+        message: "Supabase REST 주소를 만들지 못했습니다.",
+      };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify({
+        project_id: project.id,
+        logo_url: nullableText(input.logoUrl),
+        logo_alt: nullableText(input.logoAlt),
+        primary_color: input.primaryColor,
+        secondary_color: input.secondaryColor,
+        accent_color: input.accentColor,
+        background_color: input.backgroundColor,
+        text_color: input.textColor,
+        heading_font_family: nullableText(input.headingFontFamily),
+        body_font_family: nullableText(input.bodyFontFamily),
+        button_radius: input.buttonRadius,
+        card_radius: input.cardRadius,
+        button_style: input.buttonStyle,
+        icon_style: input.iconStyle,
+        image_style: input.imageStyle,
+        template_notes: nullableText(input.templateNotes),
+        design_tokens: input.designTokens ?? {},
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      console.error("Failed to save project design kit", {
+        status: response.status,
+        body: await response.text().catch(() => ""),
+      });
+
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "기관 Design Kit 저장에 실패했습니다. 서버 설정과 Supabase migration 상태를 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    const rows = (await response.json().catch(() => [])) as ProjectDesignKitRow[];
+    const row = rows[0];
+
+    if (!row) {
+      return {
+        ok: false,
+        status: "request_failed",
+        message: "기관 Design Kit 저장 응답을 확인하지 못했습니다.",
+      };
+    }
+
+    return {
+      ok: true,
+      designKit: mapProjectDesignKitRow(row),
+      message: "기관 Design Kit을 저장했습니다.",
+    };
+  } catch (error) {
+    console.error("Failed to save project design kit", error);
+
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "기관 Design Kit 저장 중 오류가 발생했습니다. 서버 설정과 Supabase migration 상태를 확인하세요.",
     };
   }
 }

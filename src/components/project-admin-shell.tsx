@@ -7,10 +7,11 @@ import { HomeButton } from "@/components/home-button";
 import { canAccessProject, hasProjectUnlock, requireAppUser } from "@/lib/app-auth";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
-type ProjectSection = "settings" | "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey";
+type ProjectSection = "settings" | "design" | "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey";
 type ProjectModule = "newsletter" | "ebook" | "engagement" | "common";
 
 const contentToolNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
+  { key: "design", label: "기관 디자인", path: "design", guide: "CI·색상·스타일", module: "common" },
   { key: "reading", label: "모바일 소식지", path: "reading", guide: "기사·문단·URL", module: "newsletter" },
   { key: "pages", label: "eBook", path: "pages", guide: "페이지·클릭 영역", module: "ebook" },
   { key: "assets", label: "자산 관리", path: "assets", guide: "이미지·유튜브 소재", module: "common" },
@@ -36,6 +37,12 @@ const workflowStages: Array<{
     sections: ["settings"],
   },
   {
+    label: "기관 디자인",
+    detail: "CI·색상·스타일",
+    path: "design",
+    sections: ["design"],
+  },
+  {
     label: "콘텐츠 제작",
     detail: "기사·이미지·음성",
     path: "reading",
@@ -56,7 +63,8 @@ const workflowStages: Array<{
 ];
 
 const nextSteps: Partial<Record<ProjectSection, { label: string; path: ProjectSection; detail: string }>> = {
-  settings: { label: "콘텐츠 제작", path: "reading", detail: "기사와 이미지 작업으로 이동합니다." },
+  settings: { label: "기관 디자인", path: "design", detail: "CI 색상과 스타일 규칙으로 이동합니다." },
+  design: { label: "콘텐츠 제작", path: "reading", detail: "기사와 이미지 작업으로 이동합니다." },
   reading: { label: "검수·발행", path: "publish", detail: "공개 전 상태를 확인합니다." },
   pages: { label: "검수·발행", path: "publish", detail: "페이지 이미지 상태를 확인합니다." },
   assets: { label: "검수·발행", path: "publish", detail: "소재 상태를 확인합니다." },
@@ -148,10 +156,14 @@ export async function ProjectAdminShell({
   const capabilities = project?.capabilities ?? { hasNewsletter: true, hasEbook: true, hasEngagement: true };
   const nextStep =
     active === "settings" && !capabilities.hasNewsletter && capabilities.hasEbook
-      ? { label: "eBook", path: "pages" as const, detail: "페이지 이미지 작업으로 이동합니다." }
+      ? { label: "기관 디자인", path: "design" as const, detail: "eBook 제작 전 기본 디자인 기준을 확인합니다." }
       : active === "settings" && !capabilities.hasNewsletter && capabilities.hasEngagement
-        ? { label: "참여 콘텐츠", path: "survey" as const, detail: "설문·이벤트 구성으로 이동합니다." }
-        : nextSteps[active];
+        ? { label: "기관 디자인", path: "design" as const, detail: "참여 콘텐츠 제작 전 기본 디자인 기준을 확인합니다." }
+        : active === "design" && !capabilities.hasNewsletter && capabilities.hasEbook
+          ? { label: "eBook", path: "pages" as const, detail: "페이지 이미지 작업으로 이동합니다." }
+          : active === "design" && !capabilities.hasNewsletter && capabilities.hasEngagement
+            ? { label: "참여 콘텐츠", path: "survey" as const, detail: "설문·이벤트 구성으로 이동합니다." }
+            : nextSteps[active];
   const visibleContentToolNavigation = contentToolNavigation.filter(
     (item) => isNavigationItemVisible(item.module, capabilities) || item.key === active,
   );
@@ -245,7 +257,7 @@ export async function ProjectAdminShell({
               </p>
             ) : null}
 
-            <div className="mt-4 grid gap-2 md:grid-cols-4">
+            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
               {workflowStages.map((stage, index) => {
                 const isActive = index === workflowStageActiveIndex;
                 const isDone = index < workflowStageActiveIndex;
