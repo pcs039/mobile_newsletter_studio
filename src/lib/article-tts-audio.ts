@@ -780,7 +780,7 @@ export async function generateArticleTtsAudio(projectSlug: string, articleId: st
     newPaths.push(path);
   }
 
-  const audioTitle = `${article.display_title || article.title} AI 음성`;
+  const audioTitle = `${article.title} AI 음성`;
   const audioId = await upsertArticleAiAudioRow(project.id, article, audioTitle, { model, paths: newPaths, textHash, voice }, headers);
 
   if (!audioId) {
@@ -852,7 +852,7 @@ export async function getArticleTtsProjectStatus(projectSlug: string): Promise<A
 
     items.push({
       articleId: article.id,
-      articleTitle: article.display_title || article.title,
+      articleTitle: article.title,
       state,
       voice,
     });

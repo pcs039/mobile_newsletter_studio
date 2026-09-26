@@ -92,12 +92,6 @@ function addPhraseBreaks(value: string, indexes: Set<number>) {
 }
 
 export function getDisplayArticleTitle(article: TitleLike, fallback = "기사") {
-  const displayTitle = normalizeDisplayValue(article.displayTitle);
-
-  if (displayTitle) {
-    return displayTitle;
-  }
-
   return normalizeDisplayValue(article.title) || fallback;
 }
 

@@ -3758,7 +3758,7 @@ export async function getProjectSurveys(projectSlug: string): Promise<ProjectSur
       `/rest/v1/newsletter_survey_responses?select=survey_id&project_id=eq.${encodedProjectId}&limit=5000`,
     );
     const linkedArticleEndpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_articles?select=survey_id,title,display_title,sort_order&project_id=eq.${encodedProjectId}&survey_id=not.is.null&order=sort_order.asc`,
+      `/rest/v1/newsletter_articles?select=survey_id,title,sort_order&project_id=eq.${encodedProjectId}&survey_id=not.is.null&order=sort_order.asc`,
     );
 
     if (!surveyEndpoint || !questionEndpoint || !responseEndpoint || !linkedArticleEndpoint) {
@@ -3793,7 +3793,7 @@ export async function getProjectSurveys(projectSlug: string): Promise<ProjectSur
       NewsletterSurveyRow[],
       NewsletterSurveyQuestionRow[],
       NewsletterSurveyResponseCountRow[],
-      Array<{ survey_id: string | null; title: string | null; display_title: string | null; sort_order: number | null }>,
+      Array<{ survey_id: string | null; title: string | null; sort_order: number | null }>,
     ];
     const questionsBySurveyId = new Map<string, ProjectSurveyQuestion[]>();
     const responseCountBySurveyId = new Map<string, number>();
@@ -3814,7 +3814,7 @@ export async function getProjectSurveys(projectSlug: string): Promise<ProjectSur
         continue;
       }
 
-      const title = article.display_title?.trim() || article.title?.trim() || "제목 없음 기사";
+      const title = article.title?.trim() || "제목 없음 기사";
       const titles = linkedArticleTitlesBySurveyId.get(article.survey_id) ?? [];
       titles.push(title);
       linkedArticleTitlesBySurveyId.set(article.survey_id, titles);
@@ -6723,12 +6723,11 @@ export async function upsertProjectArticle(
       }
     }
 
-    const articleBody = {
+    const articleBody: Record<string, unknown> = {
       project_id: project.id,
       page_id: resolvedPageId,
       sort_order: normalizeArticleSortOrder(input.sortOrder),
       title,
-      display_title: nullableText(input.displayTitle),
       summary: nullableText(input.summary),
       body: nullableText(input.body),
       text_alignment: normalizeArticleTextAlignment(input.textAlignment),
@@ -6763,6 +6762,10 @@ export async function upsertProjectArticle(
       button_font_asset_id: nullableText(input.buttonFontAssetId),
       status: normalizeArticleStatus(input.status),
     };
+
+    if (Object.prototype.hasOwnProperty.call(input, "displayTitle")) {
+      articleBody.display_title = nullableText(input.displayTitle);
+    }
 
     const articleId = cleanText(input.articleId);
     const endpoint = articleId
