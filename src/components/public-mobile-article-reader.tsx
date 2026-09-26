@@ -38,7 +38,6 @@ import {
 } from "@/lib/article-public-presentation";
 import { getArticlePublicInfoEntries, getArticlePublicInfoFieldGroup } from "@/lib/article-public-info-fields";
 import { getAvailableInterestTags, getInterestOrderedArticles } from "@/lib/article-interest-order";
-import { buildPublicHomeSections } from "@/lib/public-home-order";
 import {
   enablePageTurnSoundWithPreview,
   playPageTurnSound,
@@ -55,7 +54,6 @@ import type {
   FontAsset,
   ProjectContentArticle,
   ProjectContentBlock,
-  ProjectHomeSettings,
   ProjectSurveyItem,
 } from "@/lib/newsletter-repository";
 import { getArticleLinkButtonLabel, getValidArticleUrl } from "@/lib/public-article-url";
@@ -86,7 +84,6 @@ type PublicMobileArticleReaderProps = {
     src: string;
     title?: string;
   };
-  publicHomeSettings?: ProjectHomeSettings | null;
   publicSurveyLinks?: ProjectSurveyItem[];
   showSurveyConnectionStatus?: boolean;
   surveys?: ProjectSurveyItem[];
@@ -152,8 +149,6 @@ const articleMotionSpeedSettings: Record<ArticleMotionSpeed, { characterDelayMs:
 };
 const newsletterInterestStorageKeyPrefix = "datadiction_newsletter_interests:";
 const newsletterInterestPreferenceEventName = "datadiction:newsletter-interest-preference";
-const newsletterRegionStorageKeyPrefix = "datadiction_newsletter_region:";
-const newsletterRegionPreferenceEventName = "datadiction:newsletter-region-preference";
 const pageControlsAutoHideMs = 1500;
 const pageControlsTapDistance = 12;
 
@@ -214,10 +209,6 @@ function getNewsletterInterestStorageKey(slug: string) {
   return `${newsletterInterestStorageKeyPrefix}${slug}`;
 }
 
-function getNewsletterRegionStorageKey(slug: string) {
-  return `${newsletterRegionStorageKeyPrefix}${slug}`;
-}
-
 function subscribeToNewsletterInterestPreference(onStoreChange: () => void) {
   window.addEventListener("storage", onStoreChange);
   window.addEventListener(newsletterInterestPreferenceEventName, onStoreChange);
@@ -225,16 +216,6 @@ function subscribeToNewsletterInterestPreference(onStoreChange: () => void) {
   return () => {
     window.removeEventListener("storage", onStoreChange);
     window.removeEventListener(newsletterInterestPreferenceEventName, onStoreChange);
-  };
-}
-
-function subscribeToNewsletterRegionPreference(onStoreChange: () => void) {
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener(newsletterRegionPreferenceEventName, onStoreChange);
-
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener(newsletterRegionPreferenceEventName, onStoreChange);
   };
 }
 
@@ -247,18 +228,6 @@ function readNewsletterInterestSnapshot(slug: string) {
     return window.localStorage.getItem(getNewsletterInterestStorageKey(slug)) ?? "[]";
   } catch {
     return "[]";
-  }
-}
-
-function readNewsletterRegionSnapshot(slug: string) {
-  if (typeof window === "undefined") {
-    return "all";
-  }
-
-  try {
-    return window.localStorage.getItem(getNewsletterRegionStorageKey(slug)) ?? "all";
-  } catch {
-    return "all";
   }
 }
 
@@ -309,38 +278,12 @@ function saveStoredNewsletterInterests(slug: string, selectedInterests: string[]
   window.dispatchEvent(new Event(newsletterInterestPreferenceEventName));
 }
 
-function saveStoredNewsletterRegion(slug: string, selectedRegion: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    const storageKey = getNewsletterRegionStorageKey(slug);
-
-    if (!selectedRegion || selectedRegion === "all") {
-      window.localStorage.removeItem(storageKey);
-    } else {
-      window.localStorage.setItem(storageKey, selectedRegion);
-    }
-  } catch {
-    // localStorage may be unavailable in private browsing or embedded previews.
-  }
-
-  window.dispatchEvent(new Event(newsletterRegionPreferenceEventName));
-}
-
 function parseNewsletterInterestSnapshot(snapshot: string, availableInterestTags: string[]) {
   try {
     return sanitizeSelectedInterests(JSON.parse(snapshot), availableInterestTags);
   } catch {
     return [];
   }
-}
-
-function parseNewsletterRegionSnapshot(snapshot: string, availableRegions: string[]) {
-  const cleaned = snapshot.trim();
-
-  return cleaned && availableRegions.includes(cleaned) ? cleaned : "all";
 }
 
 function isInteractiveTouchTarget(target: EventTarget | null) {
@@ -602,138 +545,6 @@ function PublicNewsletterCoverView({
           </div>
         </section>
       ) : null}
-    </section>
-  );
-}
-
-function PublicNewsletterHomeView({
-  hasArticles,
-  homeSections,
-  interestSelector,
-  onOpenToc,
-  onSelectArticle,
-  onSelectRegion,
-  onStartReading,
-  publicationTitle,
-  regions,
-  selectedRegion,
-}: {
-  hasArticles: boolean;
-  homeSections: ReturnType<typeof buildPublicHomeSections>;
-  interestSelector?: ReactNode;
-  onOpenToc: () => void;
-  onSelectArticle: (articleId: string) => void;
-  onSelectRegion: (region: string) => void;
-  onStartReading: () => void;
-  publicationTitle: string;
-  regions: string[];
-  selectedRegion: string;
-}) {
-  return (
-    <section className="border-b border-slate-200 bg-[#f4f8ff] px-4 py-5">
-      <div className="rounded-[1.5rem] bg-[#092046] px-5 py-6 text-white shadow-lg shadow-blue-950/20">
-        <p className="text-xs font-black text-sky-100">생활수요형 첫 화면</p>
-        <h2 className="mt-2 text-3xl font-black leading-tight [word-break:keep-all]">{publicationTitle}</h2>
-        <p className="mt-3 text-sm font-bold leading-6 text-white/82 [word-break:keep-all]">
-          지역과 관심분야를 선택하면 필요한 공공정보를 먼저 보여드립니다.
-        </p>
-      </div>
-
-      <section data-swipe-navigation-ignore className="mt-4 rounded-2xl border border-[#b8d7ff] bg-white p-4 shadow-sm">
-        <p className="text-xs font-black text-[#184a88]">지역 선택</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onSelectRegion("all")}
-            className={`min-h-9 rounded-full border px-3 text-xs font-black transition ${
-              selectedRegion === "all"
-                ? "border-[#092046] bg-[#092046] text-white"
-                : "border-[#d8e8ff] bg-white text-[#184a88] hover:border-[#184a88]"
-            }`}
-            aria-pressed={selectedRegion === "all"}
-          >
-            전체 지역
-          </button>
-          {regions.map((region) => (
-            <button
-              key={region}
-              type="button"
-              onClick={() => onSelectRegion(region)}
-              className={`min-h-9 rounded-full border px-3 text-xs font-black transition ${
-                selectedRegion === region
-                  ? "border-[#092046] bg-[#092046] text-white"
-                  : "border-[#d8e8ff] bg-white text-[#184a88] hover:border-[#184a88]"
-              }`}
-              aria-pressed={selectedRegion === region}
-            >
-              {region}
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-xs font-semibold text-slate-500">선택은 이 기기에만 저장됩니다.</p>
-      </section>
-
-      {interestSelector}
-
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={onStartReading}
-          disabled={!hasArticles}
-          className="dd-btn dd-btn-primary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45"
-        >
-          첫 기사 읽기
-        </button>
-        <button
-          type="button"
-          onClick={onOpenToc}
-          disabled={!hasArticles}
-          className="dd-btn dd-btn-secondary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45"
-        >
-          전체 소식 보기
-        </button>
-      </div>
-
-      <div className="mt-5 space-y-5">
-        {homeSections.map((section) => (
-          <section key={section.key} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg font-black leading-tight text-[#092046] [word-break:keep-all]">{section.label}</h3>
-              <span className="rounded-full bg-[#eaf2ff] px-2.5 py-1 text-[11px] font-black text-[#184a88]">
-                {section.articles.length}건
-              </span>
-            </div>
-            {section.articles.length > 0 ? (
-              <div className="mt-3 grid gap-2">
-                {section.articles.map((article, index) => (
-                  <button
-                    key={article.id}
-                    type="button"
-                    onClick={() => onSelectArticle(article.id)}
-                    className="block min-w-0 rounded-xl border border-slate-200 bg-[#f8fbff] px-4 py-3 text-left transition hover:border-[#2f73b7] hover:bg-white"
-                  >
-                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-[#184a88]">
-                      {index + 1}
-                    </span>
-                    <span className="mt-2 block min-w-0 max-w-full whitespace-normal text-base font-black leading-6 text-[#092046] [line-break:strict] [overflow-wrap:anywhere] [word-break:keep-all]">
-                      {getArticleTitle(article, index)}
-                    </span>
-                    {article.summary ? (
-                      <span className="mt-1 line-clamp-2 block text-sm font-semibold leading-6 text-slate-600 [overflow-wrap:anywhere] [word-break:keep-all]">
-                        {article.summary}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-500">
-                아직 이 묶음에 배치된 기사가 없습니다.
-              </p>
-            )}
-          </section>
-        ))}
-      </div>
     </section>
   );
 }
@@ -1679,7 +1490,6 @@ export function PublicMobileArticleReader({
   ebookLinkTarget,
   ebookMobileHref,
   publicAudio,
-  publicHomeSettings,
   publicSurveyLinks = [],
   showSurveyConnectionStatus = false,
   surveys = [],
@@ -1697,48 +1507,14 @@ export function PublicMobileArticleReader({
     () => parseNewsletterInterestSnapshot(selectedInterestSnapshot, availableInterestTags),
     [availableInterestTags, selectedInterestSnapshot],
   );
-  const availableHomeRegions = useMemo(() => {
-    const configuredRegions = publicHomeSettings?.regions ?? [];
-    const articleRegions = articles.flatMap((article) => article.homeTargetRegions);
-    const seen = new Set<string>();
-
-    return [...configuredRegions, ...articleRegions].filter((region) => {
-      const cleaned = region.trim();
-
-      if (!cleaned || seen.has(cleaned)) {
-        return false;
-      }
-
-      seen.add(cleaned);
-      return true;
-    });
-  }, [articles, publicHomeSettings?.regions]);
-  const selectedRegionSnapshot = useSyncExternalStore(
-    subscribeToNewsletterRegionPreference,
-    () => readNewsletterRegionSnapshot(slug),
-    () => "all",
-  );
-  const selectedHomeRegion = useMemo(
-    () => parseNewsletterRegionSnapshot(selectedRegionSnapshot, availableHomeRegions),
-    [availableHomeRegions, selectedRegionSnapshot],
-  );
   const orderedArticles = useMemo(
     () => getInterestOrderedArticles(articles, selectedInterests),
     [articles, selectedInterests],
   );
-  const isPublicHomeEnabled = Boolean(publicHomeSettings?.isEnabled);
-  const hasIntroPage = hasCoverPage || isPublicHomeEnabled;
-  const homeSections = useMemo(
-    () =>
-      isPublicHomeEnabled && publicHomeSettings
-        ? buildPublicHomeSections(articles, publicHomeSettings.sectionSettings, selectedHomeRegion, selectedInterests)
-        : [],
-    [articles, isPublicHomeEnabled, publicHomeSettings, selectedHomeRegion, selectedInterests],
-  );
   const [currentArticleId, setCurrentArticleId] = useState(
     () => articles[getInitialArticleIndex(articles, initialArticleId)]?.id ?? null,
   );
-  const [isCoverView, setIsCoverView] = useState(() => Boolean(hasIntroPage && !initialArticleId));
+  const [isCoverView, setIsCoverView] = useState(() => Boolean(hasCoverPage && !initialArticleId));
   const [isIndexOpen, setIsIndexOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1787,8 +1563,8 @@ export function PublicMobileArticleReader({
       ];
     });
   }, [orderedArticles, searchQuery]);
-  const canGoPrevious = !isCoverView && (safeCurrentIndex > 0 || hasIntroPage);
-  const canGoNext = isCoverView ? hasArticles : safeCurrentIndex < orderedArticles.length - 1 || hasIntroPage;
+  const canGoPrevious = !isCoverView && (safeCurrentIndex > 0 || hasCoverPage);
+  const canGoNext = isCoverView ? hasArticles : safeCurrentIndex < orderedArticles.length - 1 || hasCoverPage;
   const activeAudioSegments = useMemo(() => {
     if (!isMobileReader || !currentArticle) {
       return buildAudioTextSegmentCandidates(orderedArticles);
@@ -1819,7 +1595,7 @@ export function PublicMobileArticleReader({
       pageControlsTimerRef.current = null;
     }
 
-    const canRenderArrowOverlay = isCoverView ? Boolean(hasIntroPage && hasArticles) : Boolean(currentArticle);
+    const canRenderArrowOverlay = isCoverView ? Boolean(cover && hasArticles) : Boolean(currentArticle);
 
     if (!isMobileReader || !canRenderArrowOverlay || isIndexOpen || isSearchOpen || lightboxImage) {
       return;
@@ -1840,7 +1616,7 @@ export function PublicMobileArticleReader({
         pageControlsTimerRef.current = null;
       }
     };
-  }, [currentArticle, currentArticle?.id, hasArticles, hasIntroPage, isCoverView, isIndexOpen, isMobileReader, isSearchOpen, lightboxImage, safeCurrentIndex]);
+  }, [cover, currentArticle, currentArticle?.id, hasArticles, isCoverView, isIndexOpen, isMobileReader, isSearchOpen, lightboxImage, safeCurrentIndex]);
 
   useEffect(
     () => () => {
@@ -1883,12 +1659,8 @@ export function PublicMobileArticleReader({
     updateSelectedInterests([]);
   }
 
-  function updateSelectedRegion(nextRegion: string) {
-    saveStoredNewsletterRegion(slug, nextRegion);
-  }
-
   function revealPageControls() {
-    const canRenderArrowOverlay = isCoverView ? Boolean(hasIntroPage && hasArticles) : Boolean(currentArticle);
+    const canRenderArrowOverlay = isCoverView ? Boolean(cover && hasArticles) : Boolean(currentArticle);
 
     if (!isMobileReader || !canRenderArrowOverlay || isIndexOpen || isSearchOpen || lightboxImage) {
       return;
@@ -1996,7 +1768,7 @@ export function PublicMobileArticleReader({
   }
 
   function goToCoverFromArticle() {
-    if (!hasIntroPage || isCoverView) {
+    if (!hasCoverPage || isCoverView) {
       return false;
     }
 
@@ -2043,7 +1815,7 @@ export function PublicMobileArticleReader({
   }
 
   function navigatePrevious() {
-    if (safeCurrentIndex === 0 && hasIntroPage) {
+    if (safeCurrentIndex === 0 && hasCoverPage) {
       goToCoverFromArticle();
       return;
     }
@@ -2057,7 +1829,7 @@ export function PublicMobileArticleReader({
       return;
     }
 
-    if (safeCurrentIndex >= orderedArticles.length - 1 && hasIntroPage) {
+    if (safeCurrentIndex >= orderedArticles.length - 1 && hasCoverPage) {
       goToCoverFromArticle();
       return;
     }
@@ -2070,7 +1842,7 @@ export function PublicMobileArticleReader({
       return;
     }
 
-    if (hasIntroPage) {
+    if (hasCoverPage) {
       goToCoverFromArticle();
       return;
     }
@@ -2259,7 +2031,7 @@ export function PublicMobileArticleReader({
     };
   });
 
-  if (orderedArticles.length === 0 && !cover && !isPublicHomeEnabled) {
+  if (orderedArticles.length === 0 && !cover) {
     return null;
   }
 
@@ -2275,16 +2047,14 @@ export function PublicMobileArticleReader({
     !isIndexOpen &&
     !isSearchOpen &&
     !lightboxImage &&
-    ((isCoverView && hasIntroPage) || (!isCoverView && Boolean(currentArticle)));
+    ((isCoverView && Boolean(cover)) || (!isCoverView && Boolean(currentArticle)));
   const shouldShowPreviousArrow = !isCoverView && canGoPrevious;
   const shouldShowNextArrow = isCoverView ? hasArticles : canGoNext;
   const pageControlsVisibilityClass =
     shouldRenderArrowOverlay && arePageControlsVisible
       ? "opacity-100"
       : "public-mobile-page-control-idle opacity-0";
-  const canGoFirstScreen = hasArticles && !isCoverView && (hasIntroPage || safeCurrentIndex > 0);
-  const introLabel = isPublicHomeEnabled ? "첫 화면" : "표지";
-  const introTitle = isPublicHomeEnabled ? publicationTitle : cover?.coverTitle || publicationTitle;
+  const canGoFirstScreen = hasArticles && !isCoverView && (hasCoverPage || safeCurrentIndex > 0);
   const arrowOverlayPortal =
     isArrowPortalMounted && shouldRenderArrowOverlay
       ? createPortal(
@@ -2338,7 +2108,7 @@ export function PublicMobileArticleReader({
         >
           <div ref={articleTopRef} aria-hidden="true" />
 
-          {isCoverView && (isPublicHomeEnabled || cover) ? (
+          {isCoverView && cover ? (
             <>
               <PublicCompactPublicationHeader
                 ebookDesktopHref={ebookDesktopHref}
@@ -2355,36 +2125,15 @@ export function PublicMobileArticleReader({
                 showToc={hasArticles}
                 onGoHome={goToFirstScreen}
               />
-              {isPublicHomeEnabled && publicHomeSettings ? (
-                <PublicNewsletterHomeView
-                  hasArticles={hasArticles}
-                  homeSections={homeSections}
-                  interestSelector={interestSelector}
-                  onOpenToc={() => setIsIndexOpen(true)}
-                  onSelectArticle={(articleId) => {
-                    const nextIndex = orderedArticles.findIndex((article) => article.id === articleId);
-
-                    if (nextIndex >= 0) {
-                      goToArticle(nextIndex, { playSound: true });
-                    }
-                  }}
-                  onSelectRegion={updateSelectedRegion}
-                  onStartReading={goToFirstArticleFromCover}
-                  publicationTitle={publicationTitle}
-                  regions={availableHomeRegions}
-                  selectedRegion={selectedHomeRegion}
-                />
-              ) : cover ? (
-                <PublicNewsletterCoverView
-                  {...cover}
-                  hasArticles={hasArticles}
-                  interestSelector={interestSelector}
-                  onOpenToc={() => setIsIndexOpen(true)}
-                  onStartReading={goToFirstArticleFromCover}
-                  publicSurveyLinks={publicSurveyLinks}
-                  slug={slug}
-                />
-              ) : null}
+              <PublicNewsletterCoverView
+                {...cover}
+                hasArticles={hasArticles}
+                interestSelector={interestSelector}
+                onOpenToc={() => setIsIndexOpen(true)}
+                onStartReading={goToFirstArticleFromCover}
+                publicSurveyLinks={publicSurveyLinks}
+                slug={slug}
+              />
             </>
           ) : (
             <>
@@ -2440,7 +2189,7 @@ export function PublicMobileArticleReader({
                 onClick={navigatePrevious}
                 disabled={!canGoPrevious}
                 className="dd-btn dd-btn-secondary h-9 rounded-full px-0 text-lg leading-none disabled:pointer-events-none disabled:opacity-35"
-                aria-label={safeCurrentIndex === 0 && hasIntroPage ? `${introLabel}으로 이동` : "이전 기사"}
+                aria-label={safeCurrentIndex === 0 && hasCoverPage ? "표지로 이동" : "이전 기사"}
               >
                 ‹
               </button>
@@ -2449,9 +2198,9 @@ export function PublicMobileArticleReader({
                 onClick={() => setIsIndexOpen(true)}
                 disabled={!hasArticles}
                 className="h-9 rounded-full bg-[#092046]/82 px-3 text-xs font-black text-white shadow-sm transition hover:bg-[#092046]"
-                aria-label={isCoverView ? introLabel : `기사 목차 열기, 현재 ${safeCurrentIndex + 1} / ${orderedArticles.length}`}
+                aria-label={isCoverView ? "표지" : `기사 목차 열기, 현재 ${safeCurrentIndex + 1} / ${orderedArticles.length}`}
               >
-                {isCoverView ? introLabel : `${safeCurrentIndex + 1} / ${orderedArticles.length}`}
+                {isCoverView ? "표지" : `${safeCurrentIndex + 1} / ${orderedArticles.length}`}
               </button>
               <button
                 type="button"
@@ -2461,8 +2210,8 @@ export function PublicMobileArticleReader({
                 aria-label={
                   isCoverView
                     ? "첫 기사로 이동"
-                    : safeCurrentIndex >= orderedArticles.length - 1 && hasIntroPage
-                      ? `${introLabel}으로 이동`
+                    : safeCurrentIndex >= orderedArticles.length - 1 && hasCoverPage
+                      ? "표지로 이동"
                       : "다음 기사"
                 }
               >
@@ -2479,7 +2228,7 @@ export function PublicMobileArticleReader({
                     <div>
                       <p className="text-xs font-black text-sky-200">기사 목차</p>
                       <h2 className="mt-1 text-xl font-black">
-                        {isCoverView ? introLabel : `${safeCurrentIndex + 1} / ${orderedArticles.length}`}
+                        {isCoverView ? "표지" : `${safeCurrentIndex + 1} / ${orderedArticles.length}`}
                       </h2>
                     </div>
                     <button
@@ -2497,11 +2246,11 @@ export function PublicMobileArticleReader({
                   </div>
                   {availableInterestTags.length > 0 ? <div className="mb-4">{compactInterestSelector}</div> : null}
                   <div className="space-y-2">
-                    {hasIntroPage ? (
+                    {hasCoverPage && cover ? (
                       <button
                         type="button"
-                        aria-label={`${introLabel}으로 이동`}
-                        title={introLabel}
+                        aria-label="표지로 이동"
+                        title="표지"
                         onClick={() => {
                           if (!isCoverView) {
                             goToCoverFromArticle();
@@ -2518,13 +2267,13 @@ export function PublicMobileArticleReader({
                           data-public-text-scale-target="toc-meta"
                           className={`block min-w-0 max-w-full text-xs font-black ${isCoverView ? "text-sky-100" : "text-[#184a88]"}`}
                         >
-                          {introLabel}
+                          표지
                         </span>
                         <span
                           data-public-text-scale-target="toc-title"
                           className="public-article-index-title mt-1 block min-w-0 max-w-full whitespace-normal text-sm font-black leading-6"
                         >
-                          {introTitle}
+                          {cover.coverTitle || publicationTitle}
                         </span>
                       </button>
                     ) : null}
@@ -2575,10 +2324,10 @@ export function PublicMobileArticleReader({
       ) : (
         <section className={`space-y-5 ${publicAudio ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : ""}`}>
           <PublicCompactPublicationHeader
-            ebookDesktopHref={hasIntroPage ? ebookDesktopHref : undefined}
-            ebookLinkRel={hasIntroPage ? ebookLinkRel : undefined}
-            ebookLinkTarget={hasIntroPage ? ebookLinkTarget : undefined}
-            ebookMobileHref={hasIntroPage ? ebookMobileHref : undefined}
+            ebookDesktopHref={cover ? ebookDesktopHref : undefined}
+            ebookLinkRel={cover ? ebookLinkRel : undefined}
+            ebookLinkTarget={cover ? ebookLinkTarget : undefined}
+            ebookMobileHref={cover ? ebookMobileHref : undefined}
             headerColor={headerColor}
             issue={issue}
             onOpenSearch={() => setIsSearchOpen(true)}
@@ -2587,26 +2336,7 @@ export function PublicMobileArticleReader({
             showSearch={hasArticles}
             showToc={hasArticles}
           />
-          {isPublicHomeEnabled && publicHomeSettings ? (
-            <PublicNewsletterHomeView
-              hasArticles={hasArticles}
-              homeSections={homeSections}
-              interestSelector={interestSelector}
-              onOpenToc={() => setIsIndexOpen(true)}
-              onSelectArticle={(articleId) => {
-                const nextIndex = orderedArticles.findIndex((article) => article.id === articleId);
-
-                if (nextIndex >= 0) {
-                  goToArticle(nextIndex, { playSound: true });
-                }
-              }}
-              onSelectRegion={updateSelectedRegion}
-              onStartReading={() => goToArticle(0, { playSound: true })}
-              publicationTitle={publicationTitle}
-              regions={availableHomeRegions}
-              selectedRegion={selectedHomeRegion}
-            />
-          ) : cover ? (
+          {cover ? (
             <PublicNewsletterCoverView
               {...cover}
               hasArticles={hasArticles}

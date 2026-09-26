@@ -115,8 +115,6 @@ type ArticlePayload = {
   imageMotionSpeed: string;
   institutionPriority: number;
   interestTags: string[];
-  homeSectionOverride: string;
-  homeTargetRegions: string[];
   linkMotionEffect: string;
   linkMotionSpeed: string;
   motionPreset: string;
@@ -203,15 +201,6 @@ const articleUrgencyOptions: Array<{ value: ArticleUrgency; label: string; descr
   { value: "normal", label: "일반", description: "일반적인 정기 기사" },
   { value: "time_sensitive", label: "시한성 정보", description: "신청 마감, 행사 일정, 모집 기간 등" },
   { value: "urgent", label: "긴급", description: "재난·안전·교통 통제 등 우선 확인 정보" },
-];
-
-const homeSectionOverrideOptions = [
-  { value: "", label: "자동 배치" },
-  { value: "must_know", label: "지금 꼭 알아야 할 소식" },
-  { value: "support", label: "신청할 수 있어요" },
-  { value: "local", label: "우리 동네" },
-  { value: "life", label: "생활에 도움돼요" },
-  { value: "event", label: "이번 주 행사" },
 ];
 
 const institutionPriorityOptions = [
@@ -405,13 +394,6 @@ function parseCustomInterestTags(value: string) {
 
 function buildInterestTags(formData: FormData) {
   return [...getValues(formData, "interestTags"), ...parseCustomInterestTags(getValue(formData, "customInterestTags"))];
-}
-
-function buildHomeTargetRegions(formData: FormData) {
-  return getValue(formData, "homeTargetRegions")
-    .split(/[,，\n]/)
-    .map((region) => region.trim())
-    .filter(Boolean);
 }
 
 function buildPublicInfo(formData: FormData, articleType: string) {
@@ -1201,8 +1183,6 @@ export function ProjectArticleEditorForm({
       summaryAlignment: getValue(formData, "summaryAlignment"),
       bodyAlignment,
       interestTags: buildInterestTags(formData),
-      homeTargetRegions: buildHomeTargetRegions(formData),
-      homeSectionOverride: getValue(formData, "homeSectionOverride"),
       articleType,
       institutionPriority: Number(getValue(formData, "institutionPriority")) || 3,
       urgency: getValue(formData, "urgency"),
@@ -1742,23 +1722,6 @@ export function ProjectArticleEditorForm({
                   {articleUrgencyOptions.map((option) => `${option.label}: ${option.description}`).join(" / ")}
                 </p>
               </div>
-              <div>
-                <FieldLabel>첫 화면 섹션</FieldLabel>
-                <select
-                  name="homeSectionOverride"
-                  defaultValue={article?.homeSectionOverride ?? ""}
-                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                >
-                  {homeSectionOverrideOptions.map((option) => (
-                    <option key={option.value || "auto"} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                  자동 배치는 기사 유형, 긴급도, 중요도를 기준으로 계산합니다.
-                </p>
-              </div>
             </div>
           </div>
 
@@ -1785,18 +1748,6 @@ export function ProjectArticleEditorForm({
           <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
             기간을 비워두면 기간 제한 없음으로 저장됩니다.
           </p>
-          <div className="mt-4">
-            <FieldLabel>대상 지역</FieldLabel>
-            <textarea
-              name="homeTargetRegions"
-              defaultValue={article?.homeTargetRegions.join("\n") ?? ""}
-              placeholder={"남양읍\n향남읍\n동탄1동"}
-              className="min-h-24 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-            />
-            <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-              줄바꿈 또는 쉼표로 여러 지역을 입력합니다. 주민이 해당 지역을 선택하면 이 기사가 우선 배치됩니다.
-            </p>
-          </div>
         </div>
 
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-white p-4">

@@ -12,7 +12,6 @@ import {
   getFontAssets,
   getProjectPageHotspotLinks,
   getProjectPageImages,
-  getProjectHomeSettings,
   getProjectSurveys,
   getPublicProjectSurveys,
   getProjectWorkspace,
@@ -89,7 +88,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     ? `/projects/${slug}/reading?articleId=${previewArticleId}`
     : `/projects/${slug}/reading`;
   const surveyDataPromise = isAdminPreview ? getProjectSurveys(slug) : getPublicProjectSurveys(slug);
-  const [workspace, contentData, pageImageData, hotspotData, surveyData, audioData, fontData, homeSettingsData] = await Promise.all([
+  const [workspace, contentData, pageImageData, hotspotData, surveyData, audioData, fontData] = await Promise.all([
     getProjectWorkspace(slug),
     getProjectContent(slug),
     getProjectPageImages(slug),
@@ -97,7 +96,6 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     surveyDataPromise,
     getProjectAudioFiles(slug),
     getFontAssets({ activeOnly: true }),
-    getProjectHomeSettings(slug),
   ]);
   const project = workspace.project;
   const isPublished = project?.status === "발행 완료";
@@ -149,11 +147,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     : project?.coverImageUrl || "";
   const showCoverSection = Boolean(project?.coverEnabled && coverImageSrc && !isImagePageMode);
   const isEngagementOnly = Boolean(project && !project.capabilities.hasNewsletter && project.capabilities.hasEngagement);
-  const publicHomeSettings =
-    project?.capabilities.hasNewsletter && !isImagePageMode && homeSettingsData.settings?.isEnabled
-      ? homeSettingsData.settings
-      : null;
-  const useArticleReaderShell = !isImagePageMode && (articles.length > 0 || showCoverSection || Boolean(publicHomeSettings));
+  const useArticleReaderShell = !isImagePageMode && (articles.length > 0 || showCoverSection);
 
   return (
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
@@ -299,7 +293,6 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               projectBodyFontAssetId={project?.bodyFontAssetId}
               projectTitleFontAssetId={project?.titleFontAssetId}
               publicSurveyLinks={publicSurveyLinks}
-              publicHomeSettings={publicHomeSettings}
               ebookDesktopHref={!isEmbeddedAdminPreview ? ebookDesktopHref : undefined}
               ebookLinkRel={ebookLinkRel}
               ebookLinkTarget={ebookLinkTarget}
