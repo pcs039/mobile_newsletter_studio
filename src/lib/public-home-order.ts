@@ -17,25 +17,34 @@ const sectionByType: Partial<Record<ProjectContentArticle["articleType"], Public
   event_festival: "event",
   tourism_place: "event",
   emergency: "must_know",
-  government_major: "must_know",
 };
 
 export function normalizePublicHomeSectionKey(value: string | null | undefined): PublicHomeSectionKey | null {
   return publicHomeSectionDefaults.some((section) => section.key === value) ? (value as PublicHomeSectionKey) : null;
 }
 
-function getArticleHomeSection(article: ProjectContentArticle): PublicHomeSectionKey {
+function getArticleHomeSection(article: ProjectContentArticle): PublicHomeSectionKey | null {
   const override = normalizePublicHomeSectionKey(article.homeSectionOverride);
 
   if (override) {
     return override;
   }
 
-  if (article.urgency === "urgent" || article.institutionPriority >= 5) {
+  const isWithinValidity = isArticleWithinValidityWindow(article);
+
+  if (article.urgency === "urgent" && isWithinValidity) {
     return "must_know";
   }
 
-  return sectionByType[article.articleType] ?? "life";
+  if (article.urgency === "time_sensitive" && isWithinValidity && article.institutionPriority >= 4) {
+    return "must_know";
+  }
+
+  if (article.institutionPriority >= 5 && isWithinValidity) {
+    return "must_know";
+  }
+
+  return sectionByType[article.articleType] ?? null;
 }
 
 function getRegionScore(article: ProjectContentArticle, selectedRegion: string) {
