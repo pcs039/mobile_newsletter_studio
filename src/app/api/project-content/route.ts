@@ -212,8 +212,6 @@ export async function POST(request: Request) {
     validFrom: asText(payload.validFrom),
     validUntil: asText(payload.validUntil),
     publicInfo: asPlainObject(payload.publicInfo),
-    homeTargetRegions: asStringArray(payload.homeTargetRegions),
-    homeSectionOverride: asText(payload.homeSectionOverride),
     surveyId: asText(payload.surveyId) || undefined,
     contentSections: asContentSections(payload.contentSections),
     contentBlocks: asContentBlocks(payload.contentBlocks),

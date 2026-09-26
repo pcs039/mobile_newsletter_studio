@@ -109,22 +109,6 @@ type ProjectDesignKitRow = {
   updated_at: string;
 };
 
-type ProjectHomeSettingsRow = {
-  project_id: string;
-  is_enabled: boolean;
-  regions: string[] | null;
-  section_settings: unknown;
-  updated_at: string;
-};
-
-type ProjectArticleHomeMetadataRow = {
-  article_id: string;
-  project_id: string;
-  target_regions: string[] | null;
-  section_override: string | null;
-  updated_at: string;
-};
-
 type ProjectDesignAssetRow = {
   id: string;
   project_id: string;
@@ -615,60 +599,6 @@ export type ProjectDesignKit = {
 };
 
 export type ProjectDesignKitInput = Omit<ProjectDesignKit, "id" | "projectId" | "created" | "updated" | "isDefault">;
-
-export type PublicHomeSectionKey = "must_know" | "support" | "local" | "life" | "event";
-
-export type PublicHomeSectionSetting = {
-  key: PublicHomeSectionKey;
-  label: string;
-  enabled: boolean;
-  order: number;
-};
-
-export type ProjectHomeSettings = {
-  projectId: string;
-  isEnabled: boolean;
-  regions: string[];
-  sectionSettings: PublicHomeSectionSetting[];
-  updated: string;
-  isDefault: boolean;
-};
-
-export type ProjectHomeSettingsInput = {
-  isEnabled: boolean;
-  regions: string[];
-  sectionSettings: PublicHomeSectionSetting[];
-};
-
-export type ProjectHomeSettingsResult =
-  | {
-      ok: true;
-      settings: ProjectHomeSettings;
-      project: ProjectWorkspaceInfo;
-      source: "supabase";
-      message: string;
-    }
-  | {
-      ok: false;
-      settings: ProjectHomeSettings | null;
-      project: ProjectWorkspaceInfo | null;
-      source: "unconfigured" | "error" | "not_found";
-      message: string;
-      httpStatus?: number;
-    };
-
-export type UpsertProjectHomeSettingsResult =
-  | {
-      ok: true;
-      settings: ProjectHomeSettings;
-      message: string;
-    }
-  | {
-      ok: false;
-      status: "not_configured" | "request_failed" | "not_found" | "invalid_input";
-      message: string;
-      httpStatus?: number;
-    };
 
 export type ProjectDesignAsset = {
   id: string;
@@ -1281,8 +1211,6 @@ export type ProjectContentArticle = {
   validFrom: string | null;
   validUntil: string | null;
   publicInfo: ArticlePublicInfo;
-  homeTargetRegions: string[];
-  homeSectionOverride: PublicHomeSectionKey | null;
   surveyId: string | null;
   contactName: string;
   contactPhone: string;
@@ -1365,8 +1293,6 @@ export type UpsertProjectArticleInput = {
   validFrom?: string;
   validUntil?: string;
   publicInfo?: Record<string, unknown>;
-  homeTargetRegions?: string[];
-  homeSectionOverride?: string;
   surveyId?: string;
   contentSections?: Array<{
     title?: string;
@@ -2242,17 +2168,6 @@ const designKitSelectColumns = [
   "updated_at",
 ].join(",");
 
-const homeSettingsSelectColumns = "project_id,is_enabled,regions,section_settings,updated_at";
-const articleHomeMetadataSelectColumns = "article_id,project_id,target_regions,section_override,updated_at";
-
-const defaultPublicHomeSectionSettings: PublicHomeSectionSetting[] = [
-  { key: "must_know", label: "지금 꼭 알아야 할 소식", enabled: true, order: 10 },
-  { key: "support", label: "신청할 수 있어요", enabled: true, order: 20 },
-  { key: "local", label: "우리 동네", enabled: true, order: 30 },
-  { key: "life", label: "생활에 도움돼요", enabled: true, order: 40 },
-  { key: "event", label: "이번 주 행사", enabled: true, order: 50 },
-];
-
 const designAssetSelectColumns = [
   "id",
   "project_id",
@@ -2282,73 +2197,6 @@ function normalizeDesignKitIconStyle(value: string | null | undefined): ProjectD
 
 function normalizeDesignKitImageStyle(value: string | null | undefined): ProjectDesignKitImageStyle {
   return value === "photo" || value === "illustration" ? value : "mixed";
-}
-
-function normalizePublicHomeSectionKey(value: string | null | undefined): PublicHomeSectionKey | null {
-  const cleaned = value?.trim() ?? "";
-
-  return defaultPublicHomeSectionSettings.some((section) => section.key === cleaned)
-    ? (cleaned as PublicHomeSectionKey)
-    : null;
-}
-
-function normalizeRegionList(value: unknown) {
-  const rawList = Array.isArray(value)
-    ? value
-    : typeof value === "string"
-      ? value.split(/[,，\n]/)
-      : [];
-  const seen = new Set<string>();
-
-  return rawList
-    .filter((item): item is string => typeof item === "string")
-    .map((item) => item.trim())
-    .filter((item) => {
-      if (!item || seen.has(item)) {
-        return false;
-      }
-
-      seen.add(item);
-      return true;
-    })
-    .slice(0, 24);
-}
-
-function normalizePublicHomeSectionSettings(value: unknown): PublicHomeSectionSetting[] {
-  const payload = Array.isArray(value) ? value : [];
-  const byKey = new Map<PublicHomeSectionKey, Partial<PublicHomeSectionSetting>>();
-
-  payload.forEach((item) => {
-    if (!item || typeof item !== "object") {
-      return;
-    }
-
-    const record = item as Record<string, unknown>;
-    const key = normalizePublicHomeSectionKey(typeof record.key === "string" ? record.key : null);
-
-    if (!key) {
-      return;
-    }
-
-    byKey.set(key, {
-      enabled: typeof record.enabled === "boolean" ? record.enabled : undefined,
-      label: typeof record.label === "string" ? record.label.trim() : undefined,
-      order: typeof record.order === "number" && Number.isFinite(record.order) ? record.order : undefined,
-    });
-  });
-
-  return defaultPublicHomeSectionSettings
-    .map((section) => {
-      const override = byKey.get(section.key);
-
-      return {
-        key: section.key,
-        label: override?.label || section.label,
-        enabled: override?.enabled ?? section.enabled,
-        order: typeof override?.order === "number" ? override.order : section.order,
-      };
-    })
-    .sort((a, b) => a.order - b.order);
 }
 
 function clampInteger(value: number | null | undefined, fallback: number, min: number, max: number) {
@@ -2399,17 +2247,6 @@ function makeDefaultProjectDesignKit(project: ProjectWorkspaceInfo): ProjectDesi
   };
 }
 
-function makeDefaultProjectHomeSettings(project: ProjectWorkspaceInfo): ProjectHomeSettings {
-  return {
-    projectId: project.id,
-    isEnabled: false,
-    regions: [],
-    sectionSettings: defaultPublicHomeSectionSettings,
-    updated: "",
-    isDefault: true,
-  };
-}
-
 function mapProjectDesignKitRow(row: ProjectDesignKitRow): ProjectDesignKit {
   return {
     id: row.id,
@@ -2434,29 +2271,6 @@ function mapProjectDesignKitRow(row: ProjectDesignKitRow): ProjectDesignKit {
     updated: formatCompactDateTime(row.updated_at),
     isDefault: false,
   };
-}
-
-function mapProjectHomeSettingsRow(row: ProjectHomeSettingsRow): ProjectHomeSettings {
-  return {
-    projectId: row.project_id,
-    isEnabled: Boolean(row.is_enabled),
-    regions: normalizeRegionList(row.regions),
-    sectionSettings: normalizePublicHomeSectionSettings(row.section_settings),
-    updated: formatCompactDateTime(row.updated_at),
-    isDefault: false,
-  };
-}
-
-function mapArticleHomeMetadataRows(rows: ProjectArticleHomeMetadataRow[]) {
-  return new Map(
-    rows.map((row) => [
-      row.article_id,
-      {
-        homeTargetRegions: normalizeRegionList(row.target_regions),
-        homeSectionOverride: normalizePublicHomeSectionKey(row.section_override),
-      },
-    ]),
-  );
 }
 
 function mapProjectDesignAssetRow(row: ProjectDesignAssetRow): ProjectDesignAsset {
@@ -2822,16 +2636,11 @@ function mapArticleRowToProjectContentArticle(
   pageNumberById: Map<string, number>,
   audioByArticleId = new Map<string, NewsletterAudioFileRow>(),
   audioById = new Map<string, NewsletterAudioFileRow>(),
-  homeMetadataByArticleId = new Map<
-    string,
-    { homeTargetRegions: string[]; homeSectionOverride: PublicHomeSectionKey | null }
-  >(),
 ): ProjectContentArticle {
   const uploadedAudio = audioByArticleId.get(article.id) ?? (article.audio_id ? audioById.get(article.audio_id) : null) ?? null;
   const aiAudio = article.ai_audio_id ? audioById.get(article.ai_audio_id) ?? null : null;
   const audioSource = normalizeArticleAudioSource(article.audio_source, Boolean(uploadedAudio));
   const audioFile = audioSource === "ai_tts" ? aiAudio : audioSource === "uploaded" ? uploadedAudio : null;
-  const homeMetadata = homeMetadataByArticleId.get(article.id);
 
   return {
     id: article.id,
@@ -2857,8 +2666,6 @@ function mapArticleRowToProjectContentArticle(
     validFrom: normalizeArticleValidityDate(article.valid_from),
     validUntil: normalizeArticleValidityDate(article.valid_until),
     publicInfo: normalizeArticlePublicInfoValue(article.public_info, article.article_type),
-    homeTargetRegions: homeMetadata?.homeTargetRegions ?? [],
-    homeSectionOverride: homeMetadata?.homeSectionOverride ?? null,
     surveyId: article.survey_id,
     contactName: article.contact_name || "",
     contactPhone: article.contact_phone || "",
@@ -5726,224 +5533,6 @@ export async function upsertProjectDesignKit(
   }
 }
 
-export async function getProjectHomeSettings(projectSlug: string): Promise<ProjectHomeSettingsResult> {
-  const headers = getRequestHeaders(true);
-  const workspace = await getProjectWorkspace(projectSlug);
-
-  if (!workspace.ok) {
-    return {
-      ok: false,
-      settings: null,
-      project: null,
-      source: workspace.source,
-      message: workspace.message,
-      httpStatus: workspace.httpStatus,
-    };
-  }
-
-  if (!headers) {
-    return {
-      ok: false,
-      settings: makeDefaultProjectHomeSettings(workspace.project),
-      project: workspace.project,
-      source: "unconfigured",
-      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 첫 화면 설정을 조회할 수 있습니다.",
-    };
-  }
-
-  const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_project_home_settings?select=${homeSettingsSelectColumns}&project_id=eq.${encodeURIComponent(
-      workspace.project.id,
-    )}&limit=1`,
-  );
-
-  if (!endpoint) {
-    return {
-      ok: false,
-      settings: makeDefaultProjectHomeSettings(workspace.project),
-      project: workspace.project,
-      source: "unconfigured",
-      message: "Supabase REST 주소를 만들지 못했습니다.",
-    };
-  }
-
-  try {
-    const response = await fetch(endpoint, {
-      headers,
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      console.info("Project home settings unavailable; using disabled fallback", {
-        status: response.status,
-      });
-
-      return {
-        ok: false,
-        settings: makeDefaultProjectHomeSettings(workspace.project),
-        project: workspace.project,
-        source: "error",
-        message: "첫 화면 설정 테이블을 조회하지 못했습니다. Supabase migration v1.16 적용 여부를 확인하세요.",
-        httpStatus: response.status,
-      };
-    }
-
-    const rows = (await response.json().catch(() => [])) as ProjectHomeSettingsRow[];
-    const row = rows[0];
-
-    return {
-      ok: true,
-      settings: row ? mapProjectHomeSettingsRow(row) : makeDefaultProjectHomeSettings(workspace.project),
-      project: workspace.project,
-      source: "supabase",
-      message: row ? "생활수요형 첫 화면 설정을 수정합니다." : "등록된 첫 화면 설정이 없어 기본값을 표시합니다.",
-    };
-  } catch (error) {
-    console.error("Failed to fetch project home settings", error);
-
-    return {
-      ok: false,
-      settings: makeDefaultProjectHomeSettings(workspace.project),
-      project: workspace.project,
-      source: "error",
-      message: "첫 화면 설정 조회 중 오류가 발생했습니다.",
-    };
-  }
-}
-
-export async function upsertProjectHomeSettings(
-  projectSlug: string,
-  input: ProjectHomeSettingsInput,
-): Promise<UpsertProjectHomeSettingsResult> {
-  const headers = getRequestHeaders(true);
-
-  if (!headers) {
-    return {
-      ok: false,
-      status: "not_configured",
-      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 첫 화면 설정을 저장할 수 있습니다.",
-    };
-  }
-
-  try {
-    const project = await getProjectRowBySlug(projectSlug, headers);
-
-    if (!project) {
-      return {
-        ok: false,
-        status: "not_found",
-        message: "첫 화면 설정을 저장할 프로젝트를 찾지 못했습니다.",
-        httpStatus: 404,
-      };
-    }
-
-    const endpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_project_home_settings?on_conflict=project_id&select=${homeSettingsSelectColumns}`,
-    );
-
-    if (!endpoint) {
-      return {
-        ok: false,
-        status: "not_configured",
-        message: "Supabase REST 주소를 만들지 못했습니다.",
-      };
-    }
-
-    const sectionSettings = normalizePublicHomeSectionSettings(input.sectionSettings);
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        ...headers,
-        Prefer: "resolution=merge-duplicates,return=representation",
-      },
-      body: JSON.stringify({
-        project_id: project.id,
-        is_enabled: Boolean(input.isEnabled),
-        regions: normalizeRegionList(input.regions),
-        section_settings: sectionSettings,
-      }),
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      console.error("Failed to save project home settings", {
-        status: response.status,
-        body: await response.text().catch(() => ""),
-      });
-
-      return {
-        ok: false,
-        status: "request_failed",
-        message: "첫 화면 설정 저장에 실패했습니다. Supabase migration v1.16 적용 여부를 확인하세요.",
-        httpStatus: response.status,
-      };
-    }
-
-    const rows = (await response.json().catch(() => [])) as ProjectHomeSettingsRow[];
-    const row = rows[0];
-
-    if (!row) {
-      return {
-        ok: false,
-        status: "request_failed",
-        message: "첫 화면 설정 저장 응답을 확인하지 못했습니다.",
-      };
-    }
-
-    return {
-      ok: true,
-      settings: mapProjectHomeSettingsRow(row),
-      message: "생활수요형 첫 화면 설정을 저장했습니다.",
-    };
-  } catch (error) {
-    console.error("Failed to save project home settings", error);
-
-    return {
-      ok: false,
-      status: "request_failed",
-      message: "첫 화면 설정 저장 중 오류가 발생했습니다.",
-    };
-  }
-}
-
-async function upsertArticleHomeMetadata(
-  projectId: string,
-  articleId: string,
-  input: Pick<UpsertProjectArticleInput, "homeTargetRegions" | "homeSectionOverride">,
-  headers: Record<string, string>,
-) {
-  const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_article_home_metadata?on_conflict=article_id&select=${articleHomeMetadataSelectColumns}`,
-  );
-
-  if (!endpoint) {
-    return true;
-  }
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      ...headers,
-      Prefer: "resolution=merge-duplicates,return=minimal",
-    },
-    body: JSON.stringify({
-      article_id: articleId,
-      project_id: projectId,
-      target_regions: normalizeRegionList(input.homeTargetRegions),
-      section_override: normalizePublicHomeSectionKey(input.homeSectionOverride) ?? null,
-    }),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    console.info("Article home metadata save skipped or failed", {
-      status: response.status,
-    });
-  }
-
-  return true;
-}
-
 export async function getProjectDesignAssets(projectSlug: string): Promise<ProjectDesignAssetsResult> {
   const config = getSupabaseConfigStatus();
   const headers = getRequestHeaders(true);
@@ -6634,40 +6223,6 @@ async function fetchArticleLinks(articleIds: string[], headers: Record<string, s
   return (await response.json()) as NewsletterLinkActionRow[];
 }
 
-async function fetchArticleHomeMetadata(articleIds: string[], headers: Record<string, string>) {
-  if (articleIds.length === 0) {
-    return new Map<string, { homeTargetRegions: string[]; homeSectionOverride: PublicHomeSectionKey | null }>();
-  }
-
-  const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_article_home_metadata?select=${articleHomeMetadataSelectColumns}&article_id=${makeArticleIdFilter(
-      articleIds,
-    )}`,
-  );
-
-  if (!endpoint) {
-    return new Map<string, { homeTargetRegions: string[]; homeSectionOverride: PublicHomeSectionKey | null }>();
-  }
-
-  try {
-    const response = await fetch(endpoint, {
-      headers,
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      console.info("Article home metadata unavailable; continuing without public home metadata", {
-        status: response.status,
-      });
-      return new Map<string, { homeTargetRegions: string[]; homeSectionOverride: PublicHomeSectionKey | null }>();
-    }
-
-    return mapArticleHomeMetadataRows((await response.json()) as ProjectArticleHomeMetadataRow[]);
-  } catch {
-    return new Map<string, { homeTargetRegions: string[]; homeSectionOverride: PublicHomeSectionKey | null }>();
-  }
-}
-
 async function fetchProjectAudioFilesForContent(projectId: string, headers: Record<string, string>) {
   const endpoint = getSupabaseRestEndpoint(
     `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_text,script_status,transcript_type,pronunciation_note,source_type,ai_tts_audio_paths,ai_tts_text_hash,ai_tts_voice,ai_tts_model,ai_tts_generated_at,updated_at&project_id=eq.${encodeURIComponent(
@@ -6756,12 +6311,11 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
 
     const articleRows = (await response.json()) as NewsletterArticleRow[];
     const articleIds = articleRows.map((article) => article.id);
-    const [blockRows, linkRows, articleAudioRows, pageNumberById, homeMetadataByArticleId] = await Promise.all([
+    const [blockRows, linkRows, articleAudioRows, pageNumberById] = await Promise.all([
       fetchArticleBlocks(articleIds, headers),
       fetchArticleLinks(articleIds, headers),
       fetchProjectAudioFilesForContent(workspace.project.id, headers),
       fetchProjectPageNumbers(workspace.project.id, headers),
-      fetchArticleHomeMetadata(articleIds, headers),
     ]);
     const audioByArticleId = new Map(
       articleAudioRows.filter((file) => file.article_id).map((file) => [file.article_id as string, file]),
@@ -6777,7 +6331,6 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
           pageNumberById,
           audioByArticleId,
           audioById,
-          homeMetadataByArticleId,
         ),
       ),
       source: "supabase",
@@ -7269,8 +6822,6 @@ export async function upsertProjectArticle(
         message: "기사는 저장됐지만 콘텐츠 블록 저장에 실패했습니다.",
       };
     }
-
-    await upsertArticleHomeMetadata(project.id, savedArticle.id, input, headers);
 
     return {
       ok: true,
