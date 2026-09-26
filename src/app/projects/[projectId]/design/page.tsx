@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectDesignKitForm } from "@/components/project-design-kit-form";
-import { getFontAssets, getProjectDesignKit } from "@/lib/newsletter-repository";
+import { getFontAssets, getProjectDesignAssets, getProjectDesignKit } from "@/lib/newsletter-repository";
 
 export default async function ProjectDesignKitPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const [designKitData, fontData] = await Promise.all([
+  const [designKitData, designAssetsData, fontData] = await Promise.all([
     getProjectDesignKit(projectId),
+    getProjectDesignAssets(projectId),
     getFontAssets(),
   ]);
 
@@ -35,6 +36,8 @@ export default async function ProjectDesignKitPage({ params }: { params: Promise
     >
       {designKitData.ok ? (
         <ProjectDesignKitForm
+          assets={designAssetsData.ok ? designAssetsData.assets : []}
+          assetsMessage={designAssetsData.ok ? designAssetsData.message : designAssetsData.message}
           designKit={designKitData.designKit}
           fonts={fontData.fonts}
           projectId={projectId}

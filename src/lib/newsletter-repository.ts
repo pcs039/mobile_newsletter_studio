@@ -109,6 +109,25 @@ type ProjectDesignKitRow = {
   updated_at: string;
 };
 
+type ProjectDesignAssetRow = {
+  id: string;
+  project_id: string;
+  asset_type: ProjectDesignAssetType;
+  name: string;
+  language: ProjectDesignAssetLanguage;
+  variant: ProjectDesignAssetVariant;
+  background_mode: ProjectDesignAssetBackgroundMode;
+  storage_path: string | null;
+  external_url: string | null;
+  alt_text: string | null;
+  usage_note: string | null;
+  is_primary: boolean;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type CreateNewsletterProjectInput = {
   title: string;
   issueLabel?: string;
@@ -550,6 +569,10 @@ export type ProjectBasicInfo = {
 export type ProjectDesignKitButtonStyle = "solid" | "outline" | "soft";
 export type ProjectDesignKitIconStyle = "outline" | "filled" | "illustration";
 export type ProjectDesignKitImageStyle = "photo" | "illustration" | "mixed";
+export type ProjectDesignAssetType = "logo";
+export type ProjectDesignAssetLanguage = "ko" | "en" | "mixed" | "other";
+export type ProjectDesignAssetVariant = "primary" | "compact" | "inverse" | "symbol" | "other";
+export type ProjectDesignAssetBackgroundMode = "light" | "dark" | "any";
 
 export type ProjectDesignKit = {
   id: string;
@@ -577,6 +600,26 @@ export type ProjectDesignKit = {
 
 export type ProjectDesignKitInput = Omit<ProjectDesignKit, "id" | "projectId" | "created" | "updated" | "isDefault">;
 
+export type ProjectDesignAsset = {
+  id: string;
+  projectId: string;
+  assetType: ProjectDesignAssetType;
+  name: string;
+  language: ProjectDesignAssetLanguage;
+  variant: ProjectDesignAssetVariant;
+  backgroundMode: ProjectDesignAssetBackgroundMode;
+  storagePath: string;
+  externalUrl: string;
+  previewHref: string;
+  altText: string;
+  usageNote: string;
+  isPrimary: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  created: string;
+  updated: string;
+};
+
 export type ProjectDesignKitResult =
   | {
       ok: true;
@@ -603,6 +646,23 @@ export type UpsertProjectDesignKitResult =
   | {
       ok: false;
       status: "not_configured" | "request_failed" | "not_found";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type ProjectDesignAssetsResult =
+  | {
+      ok: true;
+      assets: ProjectDesignAsset[];
+      project: ProjectWorkspaceInfo;
+      source: "supabase";
+      message: string;
+    }
+  | {
+      ok: false;
+      assets: [];
+      project: ProjectWorkspaceInfo | null;
+      source: "unconfigured" | "error" | "not_found";
       message: string;
       httpStatus?: number;
     };
@@ -2108,6 +2168,25 @@ const designKitSelectColumns = [
   "updated_at",
 ].join(",");
 
+const designAssetSelectColumns = [
+  "id",
+  "project_id",
+  "asset_type",
+  "name",
+  "language",
+  "variant",
+  "background_mode",
+  "storage_path",
+  "external_url",
+  "alt_text",
+  "usage_note",
+  "is_primary",
+  "is_active",
+  "sort_order",
+  "created_at",
+  "updated_at",
+].join(",");
+
 function normalizeDesignKitButtonStyle(value: string | null | undefined): ProjectDesignKitButtonStyle {
   return value === "outline" || value === "soft" ? value : "solid";
 }
@@ -2126,6 +2205,18 @@ function clampInteger(value: number | null | undefined, fallback: number, min: n
 
 function normalizeHexColor(value: string | null | undefined, fallback: string) {
   return value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
+}
+
+function normalizeDesignAssetLanguage(value: string | null | undefined): ProjectDesignAssetLanguage {
+  return value === "en" || value === "mixed" || value === "other" ? value : "ko";
+}
+
+function normalizeDesignAssetVariant(value: string | null | undefined): ProjectDesignAssetVariant {
+  return value === "compact" || value === "inverse" || value === "symbol" || value === "other" ? value : "primary";
+}
+
+function normalizeDesignAssetBackgroundMode(value: string | null | undefined): ProjectDesignAssetBackgroundMode {
+  return value === "light" || value === "dark" ? value : "any";
 }
 
 function makeDefaultProjectDesignKit(project: ProjectWorkspaceInfo): ProjectDesignKit {
@@ -2179,6 +2270,30 @@ function mapProjectDesignKitRow(row: ProjectDesignKitRow): ProjectDesignKit {
     created: formatCompactDateTime(row.created_at),
     updated: formatCompactDateTime(row.updated_at),
     isDefault: false,
+  };
+}
+
+function mapProjectDesignAssetRow(row: ProjectDesignAssetRow): ProjectDesignAsset {
+  const storagePreviewHref = makeStoragePreviewHref("brand-assets", row.storage_path);
+
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    assetType: "logo",
+    name: row.name || "공식 로고",
+    language: normalizeDesignAssetLanguage(row.language),
+    variant: normalizeDesignAssetVariant(row.variant),
+    backgroundMode: normalizeDesignAssetBackgroundMode(row.background_mode),
+    storagePath: row.storage_path || "",
+    externalUrl: row.external_url || "",
+    previewHref: storagePreviewHref || row.external_url || "",
+    altText: row.alt_text || "",
+    usageNote: row.usage_note || "",
+    isPrimary: Boolean(row.is_primary),
+    isActive: Boolean(row.is_active),
+    sortOrder: typeof row.sort_order === "number" ? row.sort_order : 0,
+    created: formatCompactDateTime(row.created_at),
+    updated: formatCompactDateTime(row.updated_at),
   };
 }
 
@@ -5414,6 +5529,92 @@ export async function upsertProjectDesignKit(
       ok: false,
       status: "request_failed",
       message: "기관 Design Kit 저장 중 오류가 발생했습니다. 서버 설정과 Supabase migration 상태를 확인하세요.",
+    };
+  }
+}
+
+export async function getProjectDesignAssets(projectSlug: string): Promise<ProjectDesignAssetsResult> {
+  const config = getSupabaseConfigStatus();
+  const headers = getRequestHeaders(true);
+  const workspace = await getProjectWorkspace(projectSlug);
+
+  if (!workspace.ok) {
+    return {
+      ok: false,
+      assets: [],
+      project: null,
+      source: workspace.source,
+      message: workspace.message,
+      httpStatus: workspace.httpStatus,
+    };
+  }
+
+  if (!config.isConfigured || !headers || !config.hasServiceRoleKey) {
+    return {
+      ok: false,
+      assets: [],
+      project: workspace.project,
+      source: "unconfigured",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 기관 로고 자산을 조회할 수 있습니다.",
+    };
+  }
+
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_project_design_assets?select=${designAssetSelectColumns}&project_id=eq.${encodeURIComponent(
+      workspace.project.id,
+    )}&asset_type=eq.logo&order=is_primary.desc&order=sort_order.asc&order=created_at.asc`,
+  );
+
+  if (!endpoint) {
+    return {
+      ok: false,
+      assets: [],
+      project: workspace.project,
+      source: "unconfigured",
+      message: "Supabase REST 주소를 만들지 못했습니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      console.error("Failed to fetch project design assets", {
+        status: response.status,
+        body: await response.text().catch(() => ""),
+      });
+
+      return {
+        ok: false,
+        assets: [],
+        project: workspace.project,
+        source: "error",
+        message: "기관 로고 자산 테이블을 조회하지 못했습니다. Supabase migration v1.15 적용 여부와 서버 설정을 확인하세요.",
+        httpStatus: response.status,
+      };
+    }
+
+    const rows = (await response.json().catch(() => [])) as ProjectDesignAssetRow[];
+
+    return {
+      ok: true,
+      assets: rows.map(mapProjectDesignAssetRow),
+      project: workspace.project,
+      source: "supabase",
+      message: rows.length > 0 ? "기관 로고 자산을 표시합니다." : "등록된 기관 로고 자산이 아직 없습니다.",
+    };
+  } catch (error) {
+    console.error("Failed to fetch project design assets", error);
+
+    return {
+      ok: false,
+      assets: [],
+      project: workspace.project,
+      source: "error",
+      message: "기관 로고 자산 조회 중 오류가 발생했습니다. 서버 설정과 Supabase migration 상태를 확인하세요.",
     };
   }
 }
