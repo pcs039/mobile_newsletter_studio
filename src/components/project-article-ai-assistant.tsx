@@ -2,6 +2,10 @@
 
 import { useRef, useState } from "react";
 import type { ArticleAiDraft, ArticleAiDraftResponse } from "@/lib/article-ai-draft-types";
+import {
+  findIncompleteContactPhones,
+  getArticleContactPhoneStatus,
+} from "@/lib/article-contact-phone";
 import type { ArticleSourceImportResponse, ArticleSourceKind } from "@/lib/article-source-import-types";
 import { getArticlePublicInfoEntries } from "@/lib/article-public-info-fields";
 import type { ImportedWordArticle } from "@/lib/word-document-import";
@@ -190,6 +194,7 @@ export function ProjectArticleAiAssistant({
   }
 
   const publicInfoEntries = draft ? getArticlePublicInfoEntries(draft.publicInfo, draft.articleType) : [];
+  const incompleteSourcePhones = findIncompleteContactPhones(sourceText);
 
   return (
     <details className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 sm:p-5">
@@ -268,6 +273,18 @@ export function ProjectArticleAiAssistant({
             <p>PDF·Word·HWPX에서 추출한 원문 또는 직접 입력한 원문은 AI 초안 생성을 누를 때 외부 AI API로 전송됩니다. 파일 원본 자체는 AI에 전송하거나 자동 보관하지 않습니다. 개인정보·민감정보는 필요한 부분을 제거한 뒤 사용하세요.</p>
             <span className="shrink-0 tabular-nums">{sourceText.length.toLocaleString("ko-KR")} / 30,000자</span>
           </div>
+          {incompleteSourcePhones.length > 0 ? (
+            <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              <p className="font-black">전화번호 확인 필요</p>
+              <p className="mt-1 font-semibold leading-6">
+                원자료에서 지역번호가 없는 전화번호가 확인되었습니다. AI가 지역번호를 임의로 추가하지 않습니다. 기사 적용 전에 전체 전화번호를 확인해 주세요.
+              </p>
+              <p className="mt-2 font-black [overflow-wrap:anywhere]">
+                {incompleteSourcePhones.join(", ")}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-amber-800">확인이 필요한 번호가 있어도 AI 초안 생성은 계속할 수 있습니다.</p>
+            </div>
+          ) : null}
         </div>
 
         <div>
@@ -310,7 +327,7 @@ export function ProjectArticleAiAssistant({
               <PreviewField label="기사 유형" value={articleTypeLabels[draft.articleType] ?? draft.articleType} />
               <PreviewField label="관심분야" value={draft.interestTags.join(", ") || "제안 없음"} />
               <PreviewField label="담당 부서·담당자" value={draft.contactName || "원문에서 확인되지 않음"} />
-              <PreviewField label="문의 전화" value={draft.contactPhone || "원문에서 확인되지 않음"} />
+              <PreviewPhoneField value={draft.contactPhone} />
             </div>
 
             {publicInfoEntries.length > 0 ? (
@@ -358,6 +375,24 @@ function PreviewField({ label, value }: { label: string; value: string }) {
     <div className="min-w-0 rounded-lg bg-slate-50 px-3 py-3">
       <p className="text-xs font-black text-slate-500">{label}</p>
       <p className="mt-1 text-sm font-bold leading-6 text-slate-800 [overflow-wrap:anywhere]">{value || "제안 없음"}</p>
+    </div>
+  );
+}
+
+function PreviewPhoneField({ value }: { value: string }) {
+  const status = getArticleContactPhoneStatus(value);
+
+  return (
+    <div className="min-w-0 rounded-lg bg-slate-50 px-3 py-3">
+      <p className="text-xs font-black text-slate-500">문의 전화</p>
+      <p className="mt-1 text-sm font-bold leading-6 text-slate-800 [overflow-wrap:anywhere]">
+        {value || "원문에서 확인되지 않음"}
+      </p>
+      {status === "needs_area_code" ? (
+        <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs font-black text-amber-900">
+          지역번호 확인 필요 · AI가 번호를 추측해 보완하지 않았습니다.
+        </p>
+      ) : null}
     </div>
   );
 }

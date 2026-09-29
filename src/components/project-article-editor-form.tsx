@@ -8,6 +8,7 @@ import { ProjectArticleAiAssistant } from "@/components/project-article-ai-assis
 import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { StatusPill } from "@/components/status-pill";
 import type { ArticleAiDraft } from "@/lib/article-ai-draft-types";
+import { getArticleContactPhoneStatus } from "@/lib/article-contact-phone";
 import { recommendedArticleInterestTags } from "@/lib/article-interest-tags";
 import { getArticlePublicInfoFieldGroup, normalizeArticlePublicInfoValue } from "@/lib/article-public-info-fields";
 import { getSelectableFontAssets } from "@/lib/font-css";
@@ -731,6 +732,8 @@ export function ProjectArticleEditorForm({
   const [blocks, setBlocks] = useState<EditorBlock[]>(() => makeInitialBlocks(article));
   const [motionPreviewTitle, setMotionPreviewTitle] = useState(article?.title ?? "");
   const [motionPreviewSummary, setMotionPreviewSummary] = useState(article?.summary ?? "");
+  const [contactPhoneValue, setContactPhoneValue] = useState(article?.contactPhone ?? "");
+  const contactPhoneStatus = getArticleContactPhoneStatus(contactPhoneValue);
   const [selectedMotionPreset, setSelectedMotionPreset] = useState<ArticleMotionPreset>(article?.motionPreset ?? "dynamic");
   const [selectedMotionSpeed, setSelectedMotionSpeed] = useState<ArticleMotionSpeed>(article?.motionSpeed ?? "normal");
   const [titleMotionEffect, setTitleMotionEffect] = useState<ArticleElementMotionEffect>(
@@ -1070,6 +1073,7 @@ export function ProjectArticleEditorForm({
     setFormFieldValue("summary", draft.summary);
     setFormFieldValue("contactName", draft.contactName);
     setFormFieldValue("contactPhone", draft.contactPhone);
+    setContactPhoneValue(draft.contactPhone);
     setFormFieldValue("customInterestTags", "");
     formRef.current?.querySelectorAll<HTMLInputElement>('input[name="interestTags"]').forEach((checkbox) => {
       checkbox.checked = draft.interestTags.includes(checkbox.value);
@@ -2392,9 +2396,18 @@ export function ProjectArticleEditorForm({
               <input
                 name="contactPhone"
                 defaultValue={article?.contactPhone ?? ""}
+                inputMode="tel"
                 placeholder="예: 061-000-0000"
+                onChange={(event) => setContactPhoneValue(event.target.value)}
                 className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
               />
+              {contactPhoneStatus === "needs_area_code" ? (
+                <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black leading-5 text-amber-900">
+                  지역번호 확인 필요 · 전체 전화번호를 확인해 수정해 주세요. 저장은 계속할 수 있습니다.
+                </p>
+              ) : contactPhoneValue.trim() && contactPhoneStatus === "invalid" ? (
+                <p className="mt-2 text-xs font-bold text-rose-700">전화번호 형식을 확인해 주세요. 저장은 계속할 수 있습니다.</p>
+              ) : null}
             </div>
           </div>
         </div>

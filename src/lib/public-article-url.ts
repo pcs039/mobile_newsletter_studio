@@ -1,3 +1,5 @@
+import { getArticleContactPhoneStatus } from "@/lib/article-contact-phone";
+
 const unclearLinkLabels = new Set(["", "URL", "url", "http", "https://"]);
 
 type ArticleActionType = "url" | "phone" | "map" | "video" | "internal_page" | "download";
@@ -47,6 +49,10 @@ export function getValidArticlePhoneHref(rawPhone?: string | null) {
   }
 
   if (!value || /[a-z]/i.test(value)) {
+    return null;
+  }
+
+  if (getArticleContactPhoneStatus(value) !== "complete") {
     return null;
   }
 
