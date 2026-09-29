@@ -7,6 +7,7 @@ type PublicArticleAudioPlayerProps = {
   className?: string;
   isAiGenerated?: boolean;
   manifestUrl?: string;
+  onPlaybackStart?: () => void;
   src?: string;
 };
 
@@ -66,6 +67,7 @@ export function PublicArticleAudioPlayer({
   className = "",
   isAiGenerated = false,
   manifestUrl,
+  onPlaybackStart,
   src = "",
 }: PublicArticleAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -79,6 +81,7 @@ export function PublicArticleAudioPlayer({
     isAiGenerated ? "loading" : "ready",
   );
   const shouldContinueSegmentRef = useRef(false);
+  const hasNotifiedPlaybackStartRef = useRef(false);
   const playerSourceKey = `${isAiGenerated ? "ai" : "uploaded"}:${manifestUrl || src}`;
 
   useEffect(() => {
@@ -146,6 +149,7 @@ export function PublicArticleAudioPlayer({
       }
 
       stopAudio();
+      hasNotifiedPlaybackStartRef.current = false;
       setSegments([]);
       setSegmentIndex(0);
       setCurrentTime(0);
@@ -278,7 +282,14 @@ export function PublicArticleAudioPlayer({
         onEnded={handleEnded}
         onLoadedMetadata={handleLoadedMetadata}
         onPause={() => setIsPlaying(false)}
-        onPlay={() => setIsPlaying(true)}
+        onPlay={() => {
+          setIsPlaying(true);
+
+          if (!hasNotifiedPlaybackStartRef.current) {
+            hasNotifiedPlaybackStartRef.current = true;
+            onPlaybackStart?.();
+          }
+        }}
         onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
         preload="metadata"
         src={currentSrc}

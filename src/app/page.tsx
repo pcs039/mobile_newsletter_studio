@@ -315,9 +315,9 @@ export default async function Home() {
                               <Link href={project.actions.previewHref} className={dashboardActionClass}>
                                 미리보기
                               </Link>
-                              <a href={project.actions.analyticsHref} className={dashboardActionClass}>
+                              <Link href={project.actions.analyticsHref} className={dashboardActionClass}>
                                 통계
-                              </a>
+                              </Link>
                               {canEditProject ? (
                                 <>
                                   <Link href={project.actions.duplicateHref} className={dashboardActionClass}>

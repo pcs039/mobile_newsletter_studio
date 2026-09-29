@@ -7,7 +7,7 @@ import { HomeButton } from "@/components/home-button";
 import { canAccessProject, hasProjectUnlock, requireAppUser } from "@/lib/app-auth";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
-type ProjectSection = "settings" | "design" | "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey";
+type ProjectSection = "settings" | "design" | "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey" | "analytics";
 type ProjectModule = "newsletter" | "ebook" | "engagement" | "common";
 
 const contentToolNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
@@ -22,6 +22,7 @@ const operationNavigation: Array<{ key: ProjectSection; label: string; path: str
   { key: "publish", label: "검수·발행", path: "publish", guide: "최종 확인·공개 URL", module: "common" },
   { key: "distribution", label: "배포 관리", path: "distribution", guide: "배포 기록", module: "common" },
   { key: "survey", label: "참여 콘텐츠", path: "survey", guide: "설문·이벤트", module: "engagement" },
+  { key: "analytics", label: "반응 통계", path: "analytics", guide: "기사·행동 분석", module: "common" },
 ];
 
 const workflowStages: Array<{
@@ -58,7 +59,7 @@ const workflowStages: Array<{
     label: "배포 관리",
     detail: "기록·공유 문안",
     path: "distribution",
-    sections: ["distribution", "survey"],
+    sections: ["distribution", "survey", "analytics"],
   },
 ];
 
@@ -185,7 +186,13 @@ export async function ProjectAdminShell({
 
           <AdminMainNavigation
             active={
-              active === "publish" ? "publish" : active === "distribution" ? "distribution" : active === "survey" ? "survey" : "edit"
+              active === "publish"
+                ? "publish"
+                : active === "distribution" || active === "analytics"
+                  ? "distribution"
+                  : active === "survey"
+                    ? "survey"
+                    : "edit"
             }
             projectId={projectId}
           />

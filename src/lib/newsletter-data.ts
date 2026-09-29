@@ -276,7 +276,7 @@ export const dashboardProjects: DashboardProject[] = [
     actions: {
       editHref: "/projects/muan-2025-94/pages",
       previewHref: "/newsletters/muan-2025-94?preview=admin",
-      analyticsHref: "#analytics-preview",
+      analyticsHref: "/projects/muan-2025-94/analytics",
       duplicateHref: "/projects/new?copyFrom=muan-2025-94",
       archiveHref: "#archive-policy",
     },
@@ -304,7 +304,7 @@ export const dashboardProjects: DashboardProject[] = [
     actions: {
       editHref: "/projects/muan-2025-94/pages",
       previewHref: "/newsletters/muan-2025-94/ebook?preview=admin",
-      analyticsHref: "#analytics-preview",
+      analyticsHref: "/projects/seungdal-2026-05/analytics",
       duplicateHref: "/projects/new?copyFrom=seungdal-2026-05",
       archiveHref: "#archive-policy",
     },
@@ -332,7 +332,7 @@ export const dashboardProjects: DashboardProject[] = [
     actions: {
       editHref: "/projects/muan-2025-94/reading",
       previewHref: "/newsletters/muan-2025-94?preview=admin",
-      analyticsHref: "#analytics-preview",
+      analyticsHref: "/projects/incheon-mind-link/analytics",
       duplicateHref: "/projects/new?copyFrom=incheon-mind-link",
       archiveHref: "#archive-policy",
     },
