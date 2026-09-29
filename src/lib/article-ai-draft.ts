@@ -1,4 +1,11 @@
-import { articleAiBlockTypes, type ArticleAiDraft, type ArticleAiDraftBlock } from "@/lib/article-ai-draft-types";
+import {
+  articleAiBlockTypes,
+  articleAiPhotoPlacements,
+  articleAiPhotoRecommendations,
+  type ArticleAiDraft,
+  type ArticleAiDraftBlock,
+  type ArticleAiPhotoSuggestion,
+} from "@/lib/article-ai-draft-types";
 import {
   findArticleContactPhones,
   getArticleContactPhoneStatus,
@@ -57,6 +64,7 @@ export const articleAiDraftJsonSchema = {
     "blocks",
     "contactName",
     "contactPhone",
+    "photoSuggestions",
     "suggestedUrgency",
     "urgencyReason",
     "missingFacts",
@@ -88,6 +96,23 @@ export const articleAiDraftJsonSchema = {
     },
     contactName: { type: "string" },
     contactPhone: { type: "string" },
+    photoSuggestions: {
+      type: "array",
+      maxItems: 3,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["sourceId", "recommendation", "placement", "caption", "altText", "reason"],
+        properties: {
+          sourceId: { type: "string" },
+          recommendation: { type: "string", enum: articleAiPhotoRecommendations },
+          placement: { type: "string", enum: articleAiPhotoPlacements },
+          caption: { type: "string" },
+          altText: { type: "string" },
+          reason: { type: "string" },
+        },
+      },
+    },
     suggestedUrgency: { type: "string", enum: urgencyValues },
     urgencyReason: { type: "string" },
     missingFacts: { type: "array", items: { type: "string" } },
@@ -122,7 +147,14 @@ contactName 또는 contactPhone을 구조화했다면 문의, 문의처, 연락�
 button_group, video_link, map_link의 body에는 원문에 있는 URL만 넣고 다른 설명을 섞지 않는다.
 원자료 URL로 button_group을 만들면 publicInfo의 method나 guide에는 URL 자체를 반복하지 말고 온라인 신청처럼 신청 경로만 짧게 적는다.
 suggestedUrgency는 편집자 검토용 제안일 뿐이며 긴급 여부를 확정하지 않는다.
-기관 중요도, 발행 방식, 공개 상태, 유효기간, 정렬순서, 설문, 이미지, 음성, 디자인, 모션은 제안하지 않는다.
+기관 중요도, 발행 방식, 공개 상태, 유효기간, 정렬순서, 설문, 음성, 디자인, 모션은 제안하지 않는다.
+
+사진이 제공된 경우 사진은 기사 사실을 새로 만드는 근거가 아니다. 기사 제목, 요약, 공공정보, 담당자, 날짜, 금액, 기관명, 대상, 정책효과는 텍스트 원자료만 1차 근거로 사용한다.
+사진은 대표사진·보조사진 선정, 짧고 사실적인 사진설명과 대체텍스트, 현재 기사 블록에서 지원하는 배치 위치를 제안하는 데만 사용한다.
+사진만 보고 사람 이름, 직책, 소속, 정확한 나이, 건강상태, 정치적 성향, 정확한 장소·날짜·참석 인원, 원문에 없는 기관명이나 사진 속 사람의 신원을 추론하지 않는다.
+caption은 이미지에서 실제 보이는 장면만 짧게 설명하고 홍보성 과장을 피한다. altText는 시각장애 사용자가 핵심 장면을 이해할 수 있게 간결하게 쓰며 사진, 이미지라는 불필요한 말을 반복하지 않는다.
+사진과 텍스트 원자료가 충돌하거나 관련성을 확인하기 어려우면 기사 사실은 텍스트 원자료를 우선한다. 관련성이 낮은 사진은 recommendation을 omit으로 두고 reason에 확인하기 어렵다고 적는다.
+recommendation은 representative, supporting, omit 중 하나이며 representative는 최대 한 장이다. placement는 first_content, after_paragraph_1, after_paragraph_2 중 하나만 사용한다. 제공된 사진 sourceId를 그대로 반환하고 사진이 없으면 photoSuggestions는 빈 배열로 둔다.
 
 구조 예시: 짧은 모집 안내라면 summary는 대상과 모집 사실을 한 문장으로 압축하고, publicInfo에 대상·기간·지원내용·신청방법을 둔다. paragraph는 필요한 맥락 설명만 0~2개 두고, 원문 URL은 신청하기 button_group으로 분리하며, 문의는 contactName/contactPhone에 둔다. 예시에 등장하는 기관명·지역·날짜·대상·URL·전화번호는 실제 원자료에서만 가져오며 예시의 사실을 다른 기사에 재사용하지 않는다.`;
 
@@ -138,6 +170,45 @@ function cleanList(value: unknown) {
   if (!Array.isArray(value)) return [];
 
   return value.map((item) => cleanText(item, 300)).filter(Boolean).slice(0, 8);
+}
+
+function sanitizePhotoSuggestions(value: unknown, allowedPhotoSourceIds: ReadonlySet<string>) {
+  if (!Array.isArray(value) || allowedPhotoSourceIds.size === 0) return [];
+
+  const suggestions: ArticleAiPhotoSuggestion[] = [];
+  const sourceIds = new Set<string>();
+  let hasRepresentative = false;
+
+  for (const item of value.slice(0, 3)) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+
+    const input = item as Record<string, unknown>;
+    const sourceId = cleanText(input.sourceId, 80);
+    const recommendation = articleAiPhotoRecommendations.find((candidate) => candidate === input.recommendation);
+    const placement = articleAiPhotoPlacements.find((candidate) => candidate === input.placement);
+
+    if (!sourceId || !allowedPhotoSourceIds.has(sourceId) || sourceIds.has(sourceId) || !recommendation || !placement) {
+      continue;
+    }
+
+    sourceIds.add(sourceId);
+    const normalizedRecommendation = recommendation === "representative" && hasRepresentative
+      ? "supporting"
+      : recommendation;
+
+    if (normalizedRecommendation === "representative") hasRepresentative = true;
+
+    suggestions.push({
+      sourceId,
+      recommendation: normalizedRecommendation,
+      placement,
+      caption: cleanText(input.caption, 240),
+      altText: cleanText(input.altText, 300),
+      reason: cleanText(input.reason, 300),
+    });
+  }
+
+  return suggestions;
 }
 
 function normalizeComparableUrl(value: string) {
@@ -464,7 +535,11 @@ function cleanupParagraphBlocks(
   return cleanedBlocks;
 }
 
-export function sanitizeArticleAiDraft(value: unknown, sourceText: string): ArticleAiDraft {
+export function sanitizeArticleAiDraft(
+  value: unknown,
+  sourceText: string,
+  allowedPhotoSourceIds: ReadonlySet<string> = new Set(),
+): ArticleAiDraft {
   const input = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
   const articleType = articleTypes.find((candidate) => candidate === input.articleType) ?? "general";
   const suggestedUrgency = urgencyValues.find((candidate) => candidate === input.suggestedUrgency) ?? "normal";
@@ -529,6 +604,7 @@ export function sanitizeArticleAiDraft(value: unknown, sourceText: string): Arti
     blocks,
     contactName,
     contactPhone: verifiedPhone,
+    photoSuggestions: sanitizePhotoSuggestions(input.photoSuggestions, allowedPhotoSourceIds),
     suggestedUrgency,
     urgencyReason: cleanText(input.urgencyReason, 300),
     missingFacts: [...new Set(missingFacts)].slice(0, 8),
