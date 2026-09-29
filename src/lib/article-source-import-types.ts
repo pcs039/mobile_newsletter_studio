@@ -1,6 +1,6 @@
 import type { ImportedWordArticle } from "@/lib/word-document-import";
 
-export type ArticleSourceKind = "pdf" | "docx";
+export type ArticleSourceKind = "pdf" | "docx" | "hwpx";
 
 export type ArticleSourceImportSuccess = {
   ok: true;
