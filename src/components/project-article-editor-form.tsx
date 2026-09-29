@@ -1059,7 +1059,7 @@ export function ProjectArticleEditorForm({
     return sections.filter(Boolean).join("\n\n").slice(0, 30_000);
   }
 
-  function applyAiDraft(draft: ArticleAiDraft) {
+  function applyAiDraft(draft: ArticleAiDraft, photos: ArticleAiPhotoApplyInput[]) {
     const hasTypedContent = Boolean(getCurrentContentForAi());
 
     if (
@@ -1082,29 +1082,19 @@ export function ProjectArticleEditorForm({
     setMotionPreviewSummary(draft.summary);
     setSelectedArticleType(draft.articleType);
     setPublicInfoValues(draft.publicInfo);
-    setBlocks(
-      draft.blocks.map((block, index) => ({
-        id: makeBlockId(`ai-${block.type}-${index}`),
-        type: block.type,
-        title: block.title,
-        body: block.body,
-        textAlignment: "left",
-      })),
-    );
-    setError("");
-    setMessage("AI 제안을 입력폼에 반영했습니다. 원문과 비교해 사실관계를 확인한 뒤 저장하세요.");
-
-    return true;
-  }
-
-  function applyAiPhotoSuggestions(photos: ArticleAiPhotoApplyInput[]) {
+    const nextBlocks: EditorBlock[] = draft.blocks.map((block, index) => ({
+      id: makeBlockId(`ai-${block.type}-${index}`),
+      type: block.type,
+      title: block.title,
+      body: block.body,
+      textAlignment: "left",
+    }));
     const existingPaths = new Set(
-      blocks
+      nextBlocks
         .filter((block) => block.type === "image")
         .map((block) => getMobileAssetPathFromPreviewHref(block.body))
         .filter(Boolean),
     );
-    const nextBlocks = [...blocks];
     let addedCount = 0;
 
     for (const photo of photos) {
@@ -1142,15 +1132,13 @@ export function ProjectArticleEditorForm({
       addedCount += 1;
     }
 
-    if (addedCount === 0) {
-      setError("선택한 사진은 이미 기사 이미지 블록에 적용되어 있습니다.");
-      setMessage("");
-      return false;
-    }
-
     setBlocks(nextBlocks);
     setError("");
-    setMessage(`선택한 사진 ${addedCount}장을 기사 이미지 블록에 배치했습니다. 저장 버튼을 눌러야 DB에 반영됩니다.`);
+    setMessage(
+      addedCount > 0
+        ? `AI 기사 초안과 선택한 사진 ${addedCount}장을 입력폼에 반영했습니다. 원문과 사진을 확인한 뒤 저장하세요.`
+        : "AI 제안을 입력폼에 반영했습니다. 원문과 비교해 사실관계를 확인한 뒤 저장하세요.",
+    );
     return true;
   }
 
@@ -1474,7 +1462,6 @@ export function ProjectArticleEditorForm({
             getCurrentContent={getCurrentContentForAi}
             onApplyDraft={applyAiDraft}
             onApplyImportedWord={applyImportedWord}
-            onApplyPhotoSuggestions={applyAiPhotoSuggestions}
             projectSlug={projectSlug}
           />
         </div>

@@ -44,9 +44,8 @@ const blockTypeLabels: Record<string, string> = {
 
 type ProjectArticleAiAssistantProps = {
   getCurrentContent: () => string;
-  onApplyDraft: (draft: ArticleAiDraft) => boolean;
+  onApplyDraft: (draft: ArticleAiDraft, photos: ArticleAiPhotoApplyInput[]) => boolean;
   onApplyImportedWord: (article: ImportedWordArticle) => boolean;
-  onApplyPhotoSuggestions: (photos: ArticleAiPhotoApplyInput[]) => boolean;
   projectSlug: string;
 };
 
@@ -126,7 +125,6 @@ export function ProjectArticleAiAssistant({
   getCurrentContent,
   onApplyDraft,
   onApplyImportedWord,
-  onApplyPhotoSuggestions,
   projectSlug,
 }: ProjectArticleAiAssistantProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -139,7 +137,6 @@ export function ProjectArticleAiAssistant({
   const [draft, setDraft] = useState<ArticleAiDraft | null>(null);
   const [photoAssets, setPhotoAssets] = useState<AiPhotoAsset[]>([]);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
-  const [isDraftApplied, setIsDraftApplied] = useState(false);
   const [isImportingSource, setIsImportingSource] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
@@ -170,7 +167,6 @@ export function ProjectArticleAiAssistant({
     setSourceFile(null);
     setWordImportedArticle(null);
     setDraft(null);
-    setIsDraftApplied(false);
     setError("");
     setMessage("현재 기사 입력 내용을 원자료로 가져왔습니다.");
   }
@@ -185,7 +181,6 @@ export function ProjectArticleAiAssistant({
     setError("");
     setMessage("");
     setDraft(null);
-    setIsDraftApplied(false);
     setIsImportingSource(true);
 
     const formData = new FormData();
@@ -275,7 +270,6 @@ export function ProjectArticleAiAssistant({
     setPhotoAssets((current) => [...current, ...nextPhotos]);
     setDraft(null);
     setSelectedPhotoIds(new Set());
-    setIsDraftApplied(false);
     setError("");
     setMessage("보도사진을 분석 대상으로 추가했습니다. AI 초안 생성 시 프로젝트 소재로 먼저 저장됩니다.");
   }
@@ -294,7 +288,6 @@ export function ProjectArticleAiAssistant({
       return next;
     });
     setDraft(null);
-    setIsDraftApplied(false);
     setError("");
     setMessage(photo?.storagePath
       ? "사진을 AI 분석 대상에서 제외했습니다. 이미 저장된 프로젝트 소재는 삭제하지 않았습니다."
@@ -395,7 +388,6 @@ export function ProjectArticleAiAssistant({
     setMessage("");
     setDraft(null);
     setSelectedPhotoIds(new Set());
-    setIsDraftApplied(false);
     setIsGenerating(true);
 
     const uploadedPhotos: AiPhotoAsset[] = [];
@@ -446,20 +438,7 @@ export function ProjectArticleAiAssistant({
   }
 
   function applyDraft() {
-    if (!draft || !onApplyDraft(draft)) return;
-
-    setIsDraftApplied(true);
-    setError("");
-    setMessage("AI 제안을 입력폼에 반영했습니다. 원문과 비교해 사실관계를 확인한 뒤 저장하세요.");
-  }
-
-  function applySelectedPhotos() {
     if (!draft) return;
-
-    if (!isDraftApplied) {
-      setError("먼저 기사 제안을 적용한 뒤 사진을 배치해 주세요.");
-      return;
-    }
 
     const selectedPhotos = draft.photoSuggestions.flatMap((suggestion) => {
       if (!selectedPhotoIds.has(suggestion.sourceId)) return [];
@@ -477,15 +456,14 @@ export function ProjectArticleAiAssistant({
       } satisfies ArticleAiPhotoApplyInput];
     });
 
-    if (selectedPhotos.length === 0) {
-      setError("기사에 적용할 사진을 선택해 주세요.");
-      return;
-    }
-
-    if (!onApplyPhotoSuggestions(selectedPhotos)) return;
+    if (!onApplyDraft(draft, selectedPhotos)) return;
 
     setError("");
-    setMessage("선택한 사진을 기사 이미지 블록에 배치했습니다. 기사 저장 버튼을 눌러야 DB에 반영됩니다.");
+    setMessage(
+      selectedPhotos.length > 0
+        ? `AI 기사 초안과 선택한 사진 ${selectedPhotos.length}장을 입력폼에 반영했습니다. 원문과 사진을 확인한 뒤 저장하세요.`
+        : "AI 제안을 입력폼에 반영했습니다. 원문과 비교해 사실관계를 확인한 뒤 저장하세요.",
+    );
   }
 
   function applyImportedWord() {
@@ -499,7 +477,6 @@ export function ProjectArticleAiAssistant({
     setSourceFile(null);
     setWordImportedArticle(null);
     setDraft(null);
-    setIsDraftApplied(false);
     setMessage("파일 연결을 해제했습니다. 추출된 원문은 계속 편집할 수 있습니다.");
   }
 
@@ -662,7 +639,6 @@ export function ProjectArticleAiAssistant({
             onChange={(event) => {
               setSourceText(event.target.value.slice(0, 30_000));
               setDraft(null);
-              setIsDraftApplied(false);
               setError("");
               setMessage("");
             }}
@@ -720,7 +696,7 @@ export function ProjectArticleAiAssistant({
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">AI 제안</p>
                 <h3 className="mt-1 text-lg font-black text-[#092046]">저장 전 검수할 기사 초안</h3>
               </div>
-              <button type="button" onClick={applyDraft} className="dd-btn dd-btn-primary dd-btn-sm self-start">제안 적용</button>
+              <button type="button" onClick={applyDraft} className="dd-btn dd-btn-primary dd-btn-sm self-start">AI 초안 전체 적용</button>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
@@ -761,14 +737,14 @@ export function ProjectArticleAiAssistant({
 
             {draft.photoSuggestions.length > 0 ? (
               <div className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
                   <div>
                     <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">사진 활용 제안</p>
                     <h4 className="mt-1 text-base font-black text-[#092046]">사용할 사진을 사람이 최종 선택</h4>
                   </div>
-                  <button type="button" onClick={applySelectedPhotos} className="dd-btn dd-btn-secondary dd-btn-sm self-start">
-                    선택 사진 기사에 적용
-                  </button>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">
+                    선택한 사진도 AI 초안 전체 적용 시 권장 위치에 함께 배치됩니다.
+                  </p>
                 </div>
                 <ul className="mt-4 grid gap-3 lg:grid-cols-2">
                   {draft.photoSuggestions.map((suggestion) => {
@@ -840,9 +816,6 @@ export function ProjectArticleAiAssistant({
                 <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
                   현재 기사 이미지 블록은 사진설명을 캡션과 이미지 설명에 함께 사용합니다. 별도 대체텍스트 저장은 후속 개선 대상입니다.
                 </p>
-                {!isDraftApplied ? (
-                  <p className="mt-2 text-xs font-black text-amber-800">먼저 기사 제안을 적용한 뒤 사진을 배치해 주세요.</p>
-                ) : null}
               </div>
             ) : photoAssets.length > 0 ? (
               <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
