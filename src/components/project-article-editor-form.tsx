@@ -276,7 +276,7 @@ const editableBlockTypes: Array<{ type: EditorBlockType; label: string; help: st
   { type: "image", label: "이미지", help: "사진 URL과 캡션" },
   { type: "video_link", label: "유튜브", help: "영상 주소 삽입" },
   { type: "map_link", label: "지도", help: "위치 링크 삽입" },
-  { type: "button_group", label: "URL 버튼", help: "신청·문의 바로가기" },
+  { type: "button_group", label: "행동 버튼", help: "신청·문의·전화·관련 페이지" },
   { type: "audio", label: "음성 대본", help: "낭독용 원고" },
 ];
 
@@ -312,7 +312,7 @@ const blockTypeLabels: Record<EditorBlockType, string> = {
   image: "이미지",
   video_link: "유튜브",
   map_link: "지도",
-  button_group: "URL 버튼",
+  button_group: "행동 버튼",
   audio: "음성 대본",
 };
 
@@ -349,7 +349,7 @@ const standardArticleTemplate: EditorBlock[] = [
 
 const blockUseCases: Array<{ title: string; description: string }> = [
   { title: "텍스트 사이 사진", description: "문단 → 이미지 → 문단 순서로 블록을 배치합니다." },
-  { title: "신청 링크", description: "URL 버튼 블록에 버튼명과 연결 주소를 입력합니다." },
+  { title: "신청 링크", description: "행동 버튼 블록에 버튼명과 연결 주소를 입력합니다." },
   { title: "유튜브 영상", description: "유튜브 블록에 영상 제목과 YouTube URL을 입력합니다." },
 ];
 
@@ -547,7 +547,7 @@ function getBlockBodyLabel(type: EditorBlockType) {
     case "map_link":
       return "지도 URL";
     case "button_group":
-      return "연결 URL 또는 전화번호";
+      return "연결 주소 또는 전화번호";
     case "audio":
       return "음성 대본";
     default:
@@ -585,7 +585,7 @@ function getBlockGuide(type: EditorBlockType) {
     case "map_link":
       return "카카오맵, 네이버지도, 구글지도 공유 주소를 입력하면 위치 확인 카드로 표시됩니다.";
     case "button_group":
-      return "신청하기, 자세히 보기, 문의하기처럼 독자가 눌러야 하는 링크를 버튼으로 표시합니다.";
+      return "신청, 문의, 전화, 홈페이지처럼 독자가 바로 행동해야 하는 기능을 버튼으로 연결합니다. 전화번호를 입력하면 모바일에서 전화걸기로 연결됩니다.";
     case "audio":
       return "음성 파일 제작이나 낭독 검수에 사용할 원고입니다. 공개 화면에서는 접어서 볼 수 있는 대본으로 표시됩니다.";
     default:
@@ -611,7 +611,7 @@ function getBlockPreviewText(block: EditorBlock) {
   }
 
   if (block.type === "button_group") {
-    return block.body || "연결 URL 입력 전";
+    return block.body || "연결 대상 입력 전";
   }
 
   return block.body || "음성 대본 입력 전";
@@ -1585,7 +1585,7 @@ export function ProjectArticleEditorForm({
             <div className="rounded-lg border-2 border-dashed border-sky-200 bg-[#f7fbff] px-5 py-8 text-center">
               <p className="text-base font-black text-[#092046]">콘텐츠 블록이 없습니다.</p>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                삭제 후에도 새 문단, 이미지, URL 버튼, 영상 블록을 다시 추가할 수 있습니다.
+                삭제 후에도 새 문단, 이미지, 행동 버튼, 영상 블록을 다시 추가할 수 있습니다.
               </p>
               <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {editableBlockTypes.map((item) => {
@@ -2158,11 +2158,11 @@ export function ProjectArticleEditorForm({
               />
               <FontSelect
                 name="buttonFontAssetId"
-                label="URL 버튼 글꼴"
+                label="행동 버튼 글꼴"
                 fonts={fonts}
                 defaultValue={article?.buttonFontAssetId}
                 inheritLabel="본문 글꼴 사용"
-                help="URL 버튼 블록의 버튼 문구에 적용됩니다."
+                help="행동 버튼 블록의 버튼 문구에 적용됩니다."
               />
             </div>
             <div className="mt-4 rounded-2xl border border-[#d8e8ff] bg-white p-4 shadow-sm">
@@ -2328,7 +2328,7 @@ export function ProjectArticleEditorForm({
                 effectName="linkMotionEffect"
                 effectOptions={linkMotionEffectOptions}
                 effectValue={linkMotionEffect}
-                label="URL 버튼 효과"
+                label="행동 버튼 효과"
                 onEffectChange={setLinkMotionEffect}
                 onSpeedChange={setLinkMotionSpeed}
                 speedName="linkMotionSpeed"

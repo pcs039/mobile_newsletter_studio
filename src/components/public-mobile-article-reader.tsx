@@ -55,7 +55,7 @@ import type {
   ProjectContentBlock,
   ProjectSurveyItem,
 } from "@/lib/newsletter-repository";
-import { getArticleLinkButtonLabel, getValidArticleUrl } from "@/lib/public-article-url";
+import { getArticleLinkButtonLabel, getValidArticleActionHref, getValidArticleUrl } from "@/lib/public-article-url";
 
 type PublicMobileArticleReaderProps = {
   articles: ProjectContentArticle[];
@@ -1112,6 +1112,10 @@ function renderContentBlock(
           target="_blank"
           rel="noreferrer"
           className={`article-motion-content-block ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} ${presentation.mapLinkClassName}`}
+          data-action-type="map"
+          data-article-action="map"
+          data-article-id={article.id}
+          data-link-action-id={link?.id ?? undefined}
           data-motion-effect={motionSettings.textBox.effect}
           data-motion-speed={motionSettings.textBox.speed}
         >
@@ -1123,11 +1127,13 @@ function renderContentBlock(
   }
 
   if (block.type === "button_group") {
-    const href = getValidArticleUrl(rawHref);
+    const actionHref = getValidArticleActionHref(rawHref, link?.actionType);
 
-    if (!href) {
+    if (!actionHref) {
       return null;
     }
+
+    const isPhoneAction = actionHref.actionType === "phone";
 
     return (
       <ScrollMotionReveal
@@ -1136,10 +1142,14 @@ function renderContentBlock(
         motionSpeed={motionSettings.link.speed}
       >
         <a
-          href={href}
-          target="_blank"
-          rel="noreferrer"
+          href={actionHref.href}
+          target={isPhoneAction ? undefined : "_blank"}
+          rel={isPhoneAction ? undefined : "noreferrer"}
           className={`article-motion-link-button ${articleMotionSpeedClassNames[motionSettings.link.speed]} ${presentation.actionLinkClassName}`}
+          data-action-type={actionHref.actionType}
+          data-article-action="button"
+          data-article-id={article.id}
+          data-link-action-id={link?.id ?? undefined}
           data-motion-effect={motionSettings.link.effect}
           data-motion-speed={motionSettings.link.speed}
         >
