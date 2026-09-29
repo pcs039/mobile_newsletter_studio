@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ArticleAiDraft, ArticleAiDraftResponse } from "@/lib/article-ai-draft-types";
+import type { ArticleSourceImportResponse, ArticleSourceKind } from "@/lib/article-source-import-types";
 import { getArticlePublicInfoEntries } from "@/lib/article-public-info-fields";
+import type { ImportedWordArticle } from "@/lib/word-document-import";
 
 const articleTypeLabels: Record<string, string> = {
   general: "일반형",
@@ -32,11 +34,35 @@ const blockTypeLabels: Record<string, string> = {
 type ProjectArticleAiAssistantProps = {
   getCurrentContent: () => string;
   onApplyDraft: (draft: ArticleAiDraft) => boolean;
+  onApplyImportedWord: (article: ImportedWordArticle) => boolean;
 };
 
-export function ProjectArticleAiAssistant({ getCurrentContent, onApplyDraft }: ProjectArticleAiAssistantProps) {
+type ImportedSourceFile = {
+  fileName: string;
+  fileSize: number;
+  kind: ArticleSourceKind;
+  originalCharCount: number;
+  truncated: boolean;
+  usedCharCount: number;
+};
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024).toLocaleString("ko-KR")}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+export function ProjectArticleAiAssistant({
+  getCurrentContent,
+  onApplyDraft,
+  onApplyImportedWord,
+}: ProjectArticleAiAssistantProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [sourceText, setSourceText] = useState("");
+  const [sourceFile, setSourceFile] = useState<ImportedSourceFile | null>(null);
+  const [wordImportedArticle, setWordImportedArticle] = useState<ImportedWordArticle | null>(null);
   const [draft, setDraft] = useState<ArticleAiDraft | null>(null);
+  const [isImportingSource, setIsImportingSource] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -54,9 +80,59 @@ export function ProjectArticleAiAssistant({ getCurrentContent, onApplyDraft }: P
     }
 
     setSourceText(content.slice(0, 30_000));
+    setSourceFile(null);
+    setWordImportedArticle(null);
     setDraft(null);
     setError("");
     setMessage("현재 기사 입력 내용을 원자료로 가져왔습니다.");
+  }
+
+  async function importSourceFile(file: File | undefined) {
+    if (!file) return;
+
+    if (sourceText.trim() && !window.confirm("현재 원자료 내용을 선택한 파일의 내용으로 바꿀까요?")) {
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setDraft(null);
+    setIsImportingSource(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch("/api/project-content/source-import", {
+      method: "POST",
+      body: formData,
+    }).catch(() => null);
+    const result = response
+      ? ((await response.json().catch(() => null)) as ArticleSourceImportResponse | null)
+      : null;
+
+    setIsImportingSource(false);
+
+    if (!response?.ok || !result || result.ok !== true) {
+      setError(
+        result && result.ok === false
+          ? result.error === "PDF_TEXT_NOT_FOUND"
+            ? `${result.message} 스캔 PDF는 현재 자동 문자 인식을 지원하지 않습니다. 텍스트형 PDF 또는 Word 파일을 사용하거나 원문을 직접 붙여넣어 주세요.`
+            : result.message
+          : "원자료 파일을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+      return;
+    }
+
+    setSourceText(result.source.sourceText);
+    setSourceFile({
+      fileName: result.source.fileName,
+      fileSize: file.size,
+      kind: result.source.kind,
+      originalCharCount: result.source.originalCharCount,
+      truncated: result.source.truncated,
+      usedCharCount: result.source.usedCharCount,
+    });
+    setWordImportedArticle(result.wordArticle ?? null);
+    setMessage("파일에서 원문을 가져왔습니다. 내용을 확인하고 필요하면 수정하세요.");
   }
 
   async function generateDraft() {
@@ -99,6 +175,20 @@ export function ProjectArticleAiAssistant({ getCurrentContent, onApplyDraft }: P
     setMessage("AI 제안을 입력폼에 반영했습니다. 원문과 비교해 사실관계를 확인한 뒤 저장하세요.");
   }
 
+  function applyImportedWord() {
+    if (!wordImportedArticle || !onApplyImportedWord(wordImportedArticle)) return;
+
+    setError("");
+    setMessage("Word 원고를 입력폼에 반영했습니다. 저장 버튼을 눌러야 DB에 저장됩니다.");
+  }
+
+  function clearSourceFile() {
+    setSourceFile(null);
+    setWordImportedArticle(null);
+    setDraft(null);
+    setMessage("파일 연결을 해제했습니다. 추출된 원문은 계속 편집할 수 있습니다.");
+  }
+
   const publicInfoEntries = draft ? getArticlePublicInfoEntries(draft.publicInfo, draft.articleType) : [];
 
   return (
@@ -112,8 +202,54 @@ export function ProjectArticleAiAssistant({ getCurrentContent, onApplyDraft }: P
       </summary>
 
       <div className="mt-5 space-y-4 border-t border-[#d8e8ff] pt-5">
+        <section className="rounded-lg border border-[#d8e8ff] bg-white p-4" aria-labelledby="article-source-import-heading">
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">1. 원자료 가져오기</p>
+          <h3 id="article-source-import-heading" className="mt-1 text-base font-black text-[#092046]">PDF 또는 Word 원고 선택</h3>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isImportingSource || isGenerating}
+              className="dd-btn dd-btn-secondary dd-btn-sm"
+            >
+              {isImportingSource ? "원문을 가져오는 중..." : "PDF / Word 파일 선택"}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="sr-only"
+              disabled={isImportingSource || isGenerating}
+              onChange={(event) => {
+                void importSourceFile(event.currentTarget.files?.[0]);
+                event.currentTarget.value = "";
+              }}
+            />
+            <span className="text-xs font-semibold text-slate-500">PDF 최대 15MB · Word(.docx) 최대 8MB</span>
+          </div>
+
+          {sourceFile ? (
+            <div className="mt-3 flex min-w-0 flex-col gap-3 rounded-lg bg-[#f7fbff] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black text-[#092046]" title={sourceFile.fileName}>{sourceFile.fileName}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {sourceFile.kind === "pdf" ? "PDF" : "Word"} · {formatFileSize(sourceFile.fileSize)} · {sourceFile.originalCharCount.toLocaleString("ko-KR")}자 추출
+                </p>
+              </div>
+              <button type="button" onClick={clearSourceFile} className="dd-btn dd-btn-secondary dd-btn-sm self-start">파일 해제</button>
+            </div>
+          ) : null}
+
+          {sourceFile?.truncated ? (
+            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-xs font-bold leading-5 text-amber-900">
+              문서에서 {sourceFile.originalCharCount.toLocaleString("ko-KR")}자를 추출했습니다. 현재 AI 초안에는 최대 {sourceFile.usedCharCount.toLocaleString("ko-KR")}자까지 사용됩니다. 중요한 내용이 뒤쪽에 있다면 원문을 직접 줄여 주세요.
+            </p>
+          ) : null}
+        </section>
+
         <div>
-          <label htmlFor="article-ai-source" className="text-sm font-black text-[#092046]">원자료 입력</label>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">2. 원문 확인</p>
+          <label htmlFor="article-ai-source" className="mt-1 block text-sm font-black text-[#092046]">추출된 원문 또는 직접 입력</label>
           <textarea
             id="article-ai-source"
             value={sourceText}
@@ -125,22 +261,30 @@ export function ProjectArticleAiAssistant({ getCurrentContent, onApplyDraft }: P
             }}
             maxLength={30_000}
             rows={9}
-            placeholder="보도자료, 공지문, 사업안내, 행사 안내문 등 원문을 붙여넣으세요."
+            placeholder="파일을 선택하거나 보도자료, 공지문, 사업안내, 행사 안내문 등 원문을 붙여넣으세요."
             className="mt-2 min-h-48 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
           />
           <div className="mt-2 flex flex-col gap-2 text-xs font-semibold leading-5 text-slate-500 sm:flex-row sm:items-start sm:justify-between">
-            <p>입력한 원자료는 AI 초안 생성을 위해 외부 AI API로 전송됩니다. 개인정보·민감정보는 필요한 부분을 제거한 뒤 사용하세요.</p>
+            <p>PDF·Word에서 추출한 원문 또는 직접 입력한 원문은 AI 초안 생성을 누를 때 외부 AI API로 전송됩니다. 파일 원본 자체는 AI에 전송하거나 자동 보관하지 않습니다. 개인정보·민감정보는 필요한 부분을 제거한 뒤 사용하세요.</p>
             <span className="shrink-0 tabular-nums">{sourceText.length.toLocaleString("ko-KR")} / 30,000자</span>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={loadCurrentContent} disabled={isGenerating} className="dd-btn dd-btn-secondary dd-btn-sm">
-            현재 입력 내용 가져오기
-          </button>
-          <button type="button" onClick={() => void generateDraft()} disabled={isGenerating} className="dd-btn dd-btn-primary dd-btn-sm">
-            {isGenerating ? "공공정보 구조를 분석하고 있습니다..." : "AI 초안 만들기"}
-          </button>
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 기사 초안 생성</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" onClick={loadCurrentContent} disabled={isGenerating} className="dd-btn dd-btn-secondary dd-btn-sm">
+              현재 입력 내용 가져오기
+            </button>
+            <button type="button" onClick={() => void generateDraft()} disabled={isGenerating} className="dd-btn dd-btn-primary dd-btn-sm">
+              {isGenerating ? "공공정보 구조를 분석하고 있습니다..." : "AI 초안 만들기"}
+            </button>
+            {wordImportedArticle ? (
+              <button type="button" onClick={applyImportedWord} disabled={isGenerating} className="dd-btn dd-btn-secondary dd-btn-sm">
+                원문 그대로 기사에 적용
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-900">

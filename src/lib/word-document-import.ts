@@ -21,6 +21,11 @@ export type ImportedWordArticle = {
   blocks: ImportedWordBlock[];
 };
 
+export type ImportedWordSourceDocument = {
+  article: ImportedWordArticle;
+  sourceText: string;
+};
+
 const centralDirectorySignature = 0x02014b50;
 const endOfCentralDirectorySignature = 0x06054b50;
 const localFileHeaderSignature = 0x04034b50;
@@ -172,7 +177,7 @@ function makeBlockFromParagraph(paragraph: string, index: number): ImportedWordB
   };
 }
 
-export function importWordDocument(buffer: Buffer): ImportedWordArticle {
+export function extractWordSourceDocument(buffer: Buffer): ImportedWordSourceDocument {
   const entries = readZipEntries(buffer);
   const documentXml = readZipFile(buffer, entries, "word/document.xml")?.toString("utf8");
 
@@ -192,8 +197,15 @@ export function importWordDocument(buffer: Buffer): ImportedWordArticle {
   const blocks = bodyParagraphs.map(makeBlockFromParagraph);
 
   return {
-    title,
-    summary: summaryCandidate,
-    blocks: blocks.length > 0 ? blocks : [makeBlockFromParagraph(title, 0)],
+    article: {
+      title,
+      summary: summaryCandidate,
+      blocks: blocks.length > 0 ? blocks : [makeBlockFromParagraph(title, 0)],
+    },
+    sourceText: paragraphs.join("\n\n"),
   };
+}
+
+export function importWordDocument(buffer: Buffer): ImportedWordArticle {
+  return extractWordSourceDocument(buffer).article;
 }
