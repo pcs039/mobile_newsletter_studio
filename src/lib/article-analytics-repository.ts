@@ -1,6 +1,12 @@
 import { detectDeviceType } from "@/lib/device-type";
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
-import type { ArticleEventType } from "@/lib/article-analytics-types";
+import {
+  getAnalyticsPeriodRange,
+  normalizeAnalyticsPeriod,
+  type AnalyticsPeriod,
+  type AnalyticsPeriodRange,
+  type ArticleEventType,
+} from "@/lib/article-analytics-types";
 
 type ArticleEventRow = {
   article_id: string;
@@ -10,13 +16,17 @@ type ArticleEventRow = {
 type AnalyticsArticleRow = {
   article_type: string | null;
   id: string;
+  publication_kind: string | null;
   sort_order: number | null;
   title: string | null;
+  urgency: string | null;
+};
+
+type DailyStatsRow = {
+  view_count: number | null;
 };
 
 export type ArticleAnalyticsRow = {
-  actionCount: number;
-  actionRate: number | null;
   articleId: string;
   articleType: string;
   articleViews: number;
@@ -24,17 +34,33 @@ export type ArticleAnalyticsRow = {
   ctaClicks: number;
   mapClicks: number;
   phoneClicks: number;
+  publicationKind: "regular" | "rolling";
+  reactionCount: number;
+  reactionScore: number | null;
   sortOrder: number;
   surveyClicks: number;
   title: string;
+  urgency: "normal" | "time_sensitive" | "urgent";
 };
 
 export type ProjectArticleAnalyticsResult = {
   articles: ArticleAnalyticsRow[];
+  eventAggregationWarning: string;
   message: string;
+  periodRange: AnalyticsPeriodRange;
   projectTitle: string;
   source: "supabase" | "unconfigured" | "not_found" | "migration_required" | "error";
+  totalVisits: number | null;
+  totalVisitsMessage: string;
 };
+
+export type GetProjectArticleAnalyticsOptions = {
+  now?: Date;
+  period?: AnalyticsPeriod | string;
+};
+
+const EVENT_PAGE_SIZE = 5000;
+const MAX_EVENT_PAGES = 100;
 
 export type RecordArticleEventInput = {
   articleId: string;
@@ -215,26 +241,123 @@ function makeEmptyAnalyticsRow(article: AnalyticsArticleRow): ArticleAnalyticsRo
     title: article.title?.trim() || "제목 없음 기사",
     sortOrder: Number(article.sort_order) || 0,
     articleType: article.article_type?.trim() || "general",
+    publicationKind: article.publication_kind === "rolling" ? "rolling" : "regular",
+    urgency:
+      article.urgency === "urgent" || article.urgency === "time_sensitive"
+        ? article.urgency
+        : "normal",
     articleViews: 0,
     phoneClicks: 0,
     mapClicks: 0,
     ctaClicks: 0,
     surveyClicks: 0,
     audioPlays: 0,
-    actionCount: 0,
-    actionRate: null,
+    reactionCount: 0,
+    reactionScore: null,
   };
 }
 
-export async function getProjectArticleAnalytics(projectSlug: string): Promise<ProjectArticleAnalyticsResult> {
+async function fetchArticleEvents(
+  projectId: string,
+  periodRange: AnalyticsPeriodRange,
+  headers: Record<string, string>,
+) {
+  const rows: ArticleEventRow[] = [];
+
+  for (let page = 0; page < MAX_EVENT_PAGES; page += 1) {
+    const offset = page * EVENT_PAGE_SIZE;
+    const periodFilter = periodRange.startIso
+      ? `&occurred_at=gte.${encodeURIComponent(periodRange.startIso)}`
+      : "";
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_article_events?select=article_id,event_type&project_id=eq.${encodeURIComponent(
+        projectId,
+      )}${periodFilter}&order=occurred_at.asc,id.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
+    );
+
+    if (!endpoint) {
+      return { ok: false as const, migrationRequired: false, rows, truncated: rows.length > 0 };
+    }
+
+    const response = await fetch(endpoint, { headers, cache: "no-store" });
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => null)) as { code?: string } | null;
+
+      return {
+        ok: false as const,
+        migrationRequired: response.status === 404 || error?.code === "PGRST205",
+        rows,
+        truncated: rows.length > 0,
+      };
+    }
+
+    const pageRows = (await response.json()) as ArticleEventRow[];
+    rows.push(...pageRows);
+
+    if (pageRows.length < EVENT_PAGE_SIZE) {
+      return { ok: true as const, migrationRequired: false, rows, truncated: false };
+    }
+  }
+
+  return { ok: true as const, migrationRequired: false, rows, truncated: true };
+}
+
+async function fetchTotalVisits(
+  projectId: string,
+  periodRange: AnalyticsPeriodRange,
+  headers: Record<string, string>,
+) {
+  let total = 0;
+
+  for (let page = 0; page < 100; page += 1) {
+    const offset = page * EVENT_PAGE_SIZE;
+    const periodFilter = periodRange.startDate ? `&stat_date=gte.${periodRange.startDate}` : "";
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_daily_stats?select=view_count&project_id=eq.${encodeURIComponent(
+        projectId,
+      )}${periodFilter}&order=stat_date.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
+    );
+
+    if (!endpoint) {
+      return { message: "전체 접속 집계 확인이 필요합니다.", value: null };
+    }
+
+    const response = await fetch(endpoint, { headers, cache: "no-store" });
+
+    if (!response.ok) {
+      return { message: "전체 접속 집계 확인이 필요합니다.", value: null };
+    }
+
+    const rows = (await response.json()) as DailyStatsRow[];
+    total += rows.reduce((sum, row) => sum + (Number(row.view_count) || 0), 0);
+
+    if (rows.length < EVENT_PAGE_SIZE) {
+      return { message: "", value: total };
+    }
+  }
+
+  return { message: "전체 접속 데이터가 많아 집계 확인이 필요합니다.", value: null };
+}
+
+export async function getProjectArticleAnalytics(
+  projectSlug: string,
+  options: GetProjectArticleAnalyticsOptions = {},
+): Promise<ProjectArticleAnalyticsResult> {
+  const period = normalizeAnalyticsPeriod(options.period);
+  const periodRange = getAnalyticsPeriodRange(period, options.now);
   const headers = getServiceHeaders();
 
   if (!headers) {
     return {
       articles: [],
+      eventAggregationWarning: "",
+      periodRange,
       projectTitle: "",
       source: "unconfigured",
       message: "Supabase 환경변수와 서버 저장 키 설정 후 기사 반응 통계를 표시합니다.",
+      totalVisits: null,
+      totalVisitsMessage: "전체 접속 집계 확인이 필요합니다.",
     };
   }
 
@@ -242,42 +365,73 @@ export async function getProjectArticleAnalytics(projectSlug: string): Promise<P
     const project = await getProjectBySlug(projectSlug.trim(), headers);
 
     if (!project) {
-      return { articles: [], projectTitle: "", source: "not_found", message: "프로젝트를 찾지 못했습니다." };
+      return {
+        articles: [],
+        eventAggregationWarning: "",
+        message: "프로젝트를 찾지 못했습니다.",
+        periodRange,
+        projectTitle: "",
+        source: "not_found",
+        totalVisits: null,
+        totalVisitsMessage: "",
+      };
     }
 
     const articleEndpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_articles?select=id,title,sort_order,article_type&project_id=eq.${encodeURIComponent(project.id)}&order=sort_order.asc`,
-    );
-    const eventEndpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_article_events?select=article_id,event_type&project_id=eq.${encodeURIComponent(project.id)}&limit=50000`,
+      `/rest/v1/newsletter_articles?select=id,title,sort_order,article_type,publication_kind,urgency&project_id=eq.${encodeURIComponent(project.id)}&order=sort_order.asc`,
     );
 
-    if (!articleEndpoint || !eventEndpoint) {
-      return { articles: [], projectTitle: project.title, source: "error", message: "기사 반응 통계 조회 주소를 만들지 못했습니다." };
+    if (!articleEndpoint) {
+      return {
+        articles: [],
+        eventAggregationWarning: "",
+        message: "기사 반응 통계 조회 주소를 만들지 못했습니다.",
+        periodRange,
+        projectTitle: project.title,
+        source: "error",
+        totalVisits: null,
+        totalVisitsMessage: "전체 접속 집계 확인이 필요합니다.",
+      };
     }
 
     const articleResponse = await fetch(articleEndpoint, { headers, cache: "no-store" });
 
     if (!articleResponse.ok) {
-      return { articles: [], projectTitle: project.title, source: "error", message: "기사 목록을 조회하지 못했습니다." };
+      return {
+        articles: [],
+        eventAggregationWarning: "",
+        message: "기사 목록을 조회하지 못했습니다.",
+        periodRange,
+        projectTitle: project.title,
+        source: "error",
+        totalVisits: null,
+        totalVisitsMessage: "전체 접속 집계 확인이 필요합니다.",
+      };
     }
 
     const articleRows = (await articleResponse.json()) as AnalyticsArticleRow[];
     const analyticsByArticleId = new Map(articleRows.map((article) => [article.id, makeEmptyAnalyticsRow(article)]));
-    const eventResponse = await fetch(eventEndpoint, { headers, cache: "no-store" });
+    const [eventResult, totalVisitsResult] = await Promise.all([
+      fetchArticleEvents(project.id, periodRange, headers),
+      fetchTotalVisits(project.id, periodRange, headers),
+    ]);
 
-    if (!eventResponse.ok) {
+    if (!eventResult.ok && eventResult.rows.length === 0) {
       return {
         articles: [...analyticsByArticleId.values()],
+        eventAggregationWarning: "",
+        periodRange,
         projectTitle: project.title,
-        source: "migration_required",
-        message: "반응 통계 DB 준비가 필요합니다. v1.17 migration을 적용하면 이벤트가 집계됩니다.",
+        source: eventResult.migrationRequired ? "migration_required" : "error",
+        message: eventResult.migrationRequired
+          ? "반응 통계 DB 준비가 필요합니다. v1.17 migration을 적용하면 이벤트가 집계됩니다."
+          : "기사 반응 이벤트를 조회하지 못했습니다.",
+        totalVisits: totalVisitsResult.value,
+        totalVisitsMessage: totalVisitsResult.message,
       };
     }
 
-    const events = (await eventResponse.json()) as ArticleEventRow[];
-
-    for (const event of events) {
+    for (const event of eventResult.rows) {
       const row = analyticsByArticleId.get(event.article_id);
 
       if (!row) {
@@ -293,17 +447,30 @@ export async function getProjectArticleAnalytics(projectSlug: string): Promise<P
     }
 
     for (const row of analyticsByArticleId.values()) {
-      row.actionCount = row.phoneClicks + row.mapClicks + row.ctaClicks + row.surveyClicks;
-      row.actionRate = row.articleViews > 0 ? (row.actionCount / row.articleViews) * 100 : null;
+      row.reactionCount = row.phoneClicks + row.mapClicks + row.ctaClicks + row.surveyClicks;
+      row.reactionScore = row.articleViews > 0 ? (row.reactionCount / row.articleViews) * 100 : null;
     }
 
     return {
       articles: [...analyticsByArticleId.values()],
+      eventAggregationWarning: eventResult.truncated ? "일부 이벤트만 집계되었습니다." : "",
+      periodRange,
       projectTitle: project.title,
       source: "supabase",
-      message: events.length > 0 ? "기사별 누적 반응 이벤트를 표시합니다." : "아직 기사 반응 데이터가 없습니다.",
+      message: eventResult.rows.length > 0 ? `${periodRange.label} 기사 반응 이벤트를 표시합니다.` : `${periodRange.label} 기사 반응 데이터가 없습니다.`,
+      totalVisits: totalVisitsResult.value,
+      totalVisitsMessage: totalVisitsResult.message,
     };
   } catch {
-    return { articles: [], projectTitle: "", source: "error", message: "기사 반응 통계를 조회하는 중 오류가 발생했습니다." };
+    return {
+      articles: [],
+      eventAggregationWarning: "",
+      message: "기사 반응 통계를 조회하는 중 오류가 발생했습니다.",
+      periodRange,
+      projectTitle: "",
+      source: "error",
+      totalVisits: null,
+      totalVisitsMessage: "전체 접속 집계 확인이 필요합니다.",
+    };
   }
 }
