@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
+import { ProjectArticleAiAssistant } from "@/components/project-article-ai-assistant";
 import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { StatusPill } from "@/components/status-pill";
+import type { ArticleAiDraft } from "@/lib/article-ai-draft-types";
+import { recommendedArticleInterestTags } from "@/lib/article-interest-tags";
 import { getArticlePublicInfoFieldGroup, normalizeArticlePublicInfoValue } from "@/lib/article-public-info-fields";
 import { getSelectableFontAssets } from "@/lib/font-css";
 import { toDatetimeLocalValue, toIsoFromDatetimeLocal } from "@/lib/datetime-local";
@@ -169,20 +172,6 @@ const articleTextAlignmentOptions: Array<{ value: ArticleTextAlignment; label: s
   { value: "center", label: "가운데 정렬" },
   { value: "right", label: "오른쪽 정렬" },
   { value: "justify", label: "양쪽 정렬" },
-];
-
-const recommendedInterestTags = [
-  "건강·복지",
-  "생활·민원",
-  "교통·도시",
-  "청년·일자리",
-  "교육·돌봄",
-  "문화·축제",
-  "관광",
-  "농업·귀농",
-  "기업·산업",
-  "우리동네",
-  "시정·군정 주요소식",
 ];
 
 const articlePublicInfoTypeOptions: Array<{ value: ArticlePublicInfoType; label: string }> = [
@@ -797,6 +786,7 @@ export function ProjectArticleEditorForm({
       : "marin",
   );
   const [selectedArticleType, setSelectedArticleType] = useState<ArticlePublicInfoType>(article?.articleType ?? "general");
+  const [publicInfoValues, setPublicInfoValues] = useState<ArticlePublicInfo>(article?.publicInfo ?? {});
   const [isGeneratingArticleTts, setIsGeneratingArticleTts] = useState(false);
   const [articleTtsMessage, setArticleTtsMessage] = useState("");
   const imageAssets = useMemo(
@@ -816,7 +806,7 @@ export function ProjectArticleEditorForm({
     [effectiveMobileTitle],
   );
   const customInterestTagText = useMemo(
-    () => (article?.interestTags ?? []).filter((tag) => !recommendedInterestTags.includes(tag)).join(", "),
+    () => (article?.interestTags ?? []).filter((tag) => !recommendedArticleInterestTags.some((candidate) => candidate === tag)).join(", "),
     [article?.interestTags],
   );
   const publicInfoFieldGroup = useMemo(() => getArticlePublicInfoFieldGroup(selectedArticleType), [selectedArticleType]);
@@ -838,7 +828,7 @@ export function ProjectArticleEditorForm({
     ? surveys.find((survey) => survey.id === article.surveyId)?.title ?? "참여 콘텐츠 연결됨"
     : "연결 없음";
   const publicInfoFilledCount = publicInfoFieldGroup.fields.filter((field) => {
-    const value = article?.publicInfo[field.key];
+    const value = publicInfoValues[field.key];
 
     return typeof value === "string" && value.trim().length > 0;
   }).length;
@@ -1062,6 +1052,65 @@ export function ProjectArticleEditorForm({
     if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
       field.value = value;
     }
+  }
+
+  function getCurrentContentForAi() {
+    const publicInfoText = publicInfoFieldGroup.fields
+      .flatMap((field) => {
+        const value = publicInfoValues[field.key]?.trim();
+        return value ? [`${field.label}: ${value}`] : [];
+      })
+      .join("\n");
+    const sections = [
+      getFormFieldValue("title") ? `[제목]\n${getFormFieldValue("title")}` : "",
+      getFormFieldValue("summary") ? `[요약]\n${getFormFieldValue("summary")}` : "",
+      publicInfoText ? `[핵심 공공정보]\n${publicInfoText}` : "",
+      ...blocks.flatMap((block, index) => {
+        const content = [block.title.trim(), block.body.trim()].filter(Boolean).join("\n");
+        return content ? [`[콘텐츠 ${index + 1} · ${blockTypeLabels[block.type]}]\n${content}`] : [];
+      }),
+      getFormFieldValue("contactName") ? `[담당 부서·담당자]\n${getFormFieldValue("contactName")}` : "",
+      getFormFieldValue("contactPhone") ? `[문의 전화]\n${getFormFieldValue("contactPhone")}` : "",
+    ];
+
+    return sections.filter(Boolean).join("\n\n").slice(0, 30_000);
+  }
+
+  function applyAiDraft(draft: ArticleAiDraft) {
+    const hasTypedContent = Boolean(getCurrentContentForAi());
+
+    if (
+      hasTypedContent &&
+      !window.confirm("현재 입력 중인 제목·요약·본문을 AI 제안으로 바꿀까요?\n저장 전에는 DB에 반영되지 않습니다.")
+    ) {
+      return false;
+    }
+
+    setFormFieldValue("title", draft.title);
+    setFormFieldValue("summary", draft.summary);
+    setFormFieldValue("contactName", draft.contactName);
+    setFormFieldValue("contactPhone", draft.contactPhone);
+    setFormFieldValue("customInterestTags", "");
+    formRef.current?.querySelectorAll<HTMLInputElement>('input[name="interestTags"]').forEach((checkbox) => {
+      checkbox.checked = draft.interestTags.includes(checkbox.value);
+    });
+    setMotionPreviewTitle(draft.title);
+    setMotionPreviewSummary(draft.summary);
+    setSelectedArticleType(draft.articleType);
+    setPublicInfoValues(draft.publicInfo);
+    setBlocks(
+      draft.blocks.map((block, index) => ({
+        id: makeBlockId(`ai-${block.type}-${index}`),
+        type: block.type,
+        title: block.title,
+        body: block.body,
+        textAlignment: "left",
+      })),
+    );
+    setError("");
+    setMessage("AI 제안을 입력폼에 반영했습니다. 원문과 비교해 사실관계를 확인한 뒤 저장하세요.");
+
+    return true;
   }
 
   async function handleWordImport(file: File | undefined) {
@@ -1406,6 +1455,12 @@ export function ProjectArticleEditorForm({
             ) : null}
           </div>
         </div>
+        <div className="mt-5">
+          <ProjectArticleAiAssistant
+            getCurrentContent={getCurrentContentForAi}
+            onApplyDraft={applyAiDraft}
+          />
+        </div>
         <div className="mt-5 rounded-2xl border border-[#d8e8ff] bg-white px-4 py-3">
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">1. 기사 기본내용</p>
           <p className="mt-1 text-sm font-bold text-slate-600">제목, 요약, 관심분야와 기사 유형만 먼저 정합니다.</p>
@@ -1453,7 +1508,7 @@ export function ProjectArticleEditorForm({
             <div>
               <FieldLabel>관심분야</FieldLabel>
               <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-[#f8fbff] p-3">
-                {recommendedInterestTags.map((tag) => (
+                {recommendedArticleInterestTags.map((tag) => (
                   <label
                     key={tag}
                     className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full border border-[#d8e8ff] bg-white px-3 text-xs font-black text-[#092046] transition hover:border-[#184a88]"
@@ -1861,7 +1916,11 @@ export function ProjectArticleEditorForm({
                     <FieldLabel>{field.label}</FieldLabel>
                     <textarea
                       name={`publicInfo.${field.key}`}
-                      defaultValue={article?.publicInfo[field.key] ?? ""}
+                      value={publicInfoValues[field.key] ?? ""}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        setPublicInfoValues((current) => ({ ...current, [field.key]: value }));
+                      }}
                       rows={2}
                       maxLength={300}
                       className="min-h-20 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
