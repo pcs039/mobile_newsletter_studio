@@ -1162,7 +1162,7 @@ function renderContentBlock(
           data-motion-effect={motionSettings.link.effect}
           data-motion-speed={motionSettings.link.speed}
         >
-          {getArticleLinkButtonLabel(block.title || link?.label)}
+          {getArticleLinkButtonLabel(block.title || link?.label, actionHref.actionType)}
         </a>
       </ScrollMotionReveal>
     );
@@ -1577,7 +1577,7 @@ function ArticleCard({
               data-article-action="button"
               data-article-id={article.id}
             >
-              전화 문의
+              전화 연결
             </a>
           ) : null}
         </div>
