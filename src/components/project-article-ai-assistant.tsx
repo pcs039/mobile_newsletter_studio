@@ -204,7 +204,7 @@ export function ProjectArticleAiAssistant({
       <div className="mt-5 space-y-4 border-t border-[#d8e8ff] pt-5">
         <section className="rounded-lg border border-[#d8e8ff] bg-white p-4" aria-labelledby="article-source-import-heading">
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">1. 원자료 가져오기</p>
-          <h3 id="article-source-import-heading" className="mt-1 text-base font-black text-[#092046]">PDF 또는 Word 원고 선택</h3>
+          <h3 id="article-source-import-heading" className="mt-1 text-base font-black text-[#092046]">PDF, Word 또는 HWPX 원고 선택</h3>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -212,12 +212,12 @@ export function ProjectArticleAiAssistant({
               disabled={isImportingSource || isGenerating}
               className="dd-btn dd-btn-secondary dd-btn-sm"
             >
-              {isImportingSource ? "원문을 가져오는 중..." : "PDF / Word 파일 선택"}
+              {isImportingSource ? "원문을 가져오는 중..." : "PDF / Word / HWPX 파일 선택"}
             </button>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.hwpx,application/hwp+zip,application/vnd.hancom.hwpx,application/x-hwpx"
               className="sr-only"
               disabled={isImportingSource || isGenerating}
               onChange={(event) => {
@@ -225,7 +225,7 @@ export function ProjectArticleAiAssistant({
                 event.currentTarget.value = "";
               }}
             />
-            <span className="text-xs font-semibold text-slate-500">PDF 최대 15MB · Word(.docx) 최대 8MB</span>
+            <span className="text-xs font-semibold text-slate-500">PDF · Word(.docx) · HWPX 지원</span>
           </div>
 
           {sourceFile ? (
@@ -233,7 +233,7 @@ export function ProjectArticleAiAssistant({
               <div className="min-w-0">
                 <p className="truncate text-sm font-black text-[#092046]" title={sourceFile.fileName}>{sourceFile.fileName}</p>
                 <p className="mt-1 text-xs font-semibold text-slate-500">
-                  {sourceFile.kind === "pdf" ? "PDF" : "Word"} · {formatFileSize(sourceFile.fileSize)} · {sourceFile.originalCharCount.toLocaleString("ko-KR")}자 추출
+                  {sourceFile.kind === "pdf" ? "PDF" : sourceFile.kind === "hwpx" ? "HWPX" : "Word"} · {formatFileSize(sourceFile.fileSize)} · {sourceFile.originalCharCount.toLocaleString("ko-KR")}자 추출
                 </p>
               </div>
               <button type="button" onClick={clearSourceFile} className="dd-btn dd-btn-secondary dd-btn-sm self-start">파일 해제</button>
@@ -265,7 +265,7 @@ export function ProjectArticleAiAssistant({
             className="mt-2 min-h-48 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
           />
           <div className="mt-2 flex flex-col gap-2 text-xs font-semibold leading-5 text-slate-500 sm:flex-row sm:items-start sm:justify-between">
-            <p>PDF·Word에서 추출한 원문 또는 직접 입력한 원문은 AI 초안 생성을 누를 때 외부 AI API로 전송됩니다. 파일 원본 자체는 AI에 전송하거나 자동 보관하지 않습니다. 개인정보·민감정보는 필요한 부분을 제거한 뒤 사용하세요.</p>
+            <p>PDF·Word·HWPX에서 추출한 원문 또는 직접 입력한 원문은 AI 초안 생성을 누를 때 외부 AI API로 전송됩니다. 파일 원본 자체는 AI에 전송하거나 자동 보관하지 않습니다. 개인정보·민감정보는 필요한 부분을 제거한 뒤 사용하세요.</p>
             <span className="shrink-0 tabular-nums">{sourceText.length.toLocaleString("ko-KR")} / 30,000자</span>
           </div>
         </div>
