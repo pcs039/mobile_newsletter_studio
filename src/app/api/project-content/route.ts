@@ -208,6 +208,7 @@ export async function POST(request: Request) {
     articleType: asText(payload.articleType),
     institutionPriority: asOptionalNumber(payload.institutionPriority),
     urgency: asText(payload.urgency),
+    publicationKind: asText(payload.publicationKind),
     validFrom: asText(payload.validFrom),
     validUntil: asText(payload.validUntil),
     publicInfo: asPlainObject(payload.publicInfo),

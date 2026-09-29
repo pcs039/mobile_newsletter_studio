@@ -6,6 +6,7 @@ import { PublicMobileArticleReader } from "@/components/public-mobile-article-re
 import { getValidExternalEbookUrl } from "@/lib/ebook-source";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import { getUsableEbookPages } from "@/lib/ebook-pages";
+import { isArticlePubliclyVisible } from "@/lib/article-publication";
 import {
   getProjectAudioFiles,
   getProjectContent,
@@ -119,7 +120,9 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     );
   }
 
-  const articles = contentData.articles.filter(hasPublicArticleTitle);
+  const articles = contentData.articles.filter(
+    (article) => hasPublicArticleTitle(article) && (isAdminPreview || isArticlePubliclyVisible(article)),
+  );
   const publicSurveyLinks = surveyData.surveys.filter((survey) => isProjectSurveyPubliclyActive(survey));
   console.info("[public-newsletter] article visibility", {
     rawArticleCount: contentData.articles.length,
