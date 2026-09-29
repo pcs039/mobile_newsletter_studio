@@ -68,7 +68,7 @@ const publicInfoFieldGroups: Record<string, ArticlePublicInfoFieldGroup> = {
     ],
   },
   local_news: {
-    cardTitle: "우리동네 핵심정보",
+    cardTitle: "지역 핵심정보",
     fields: [
       { key: "area", label: "지역" },
       { key: "dateTime", label: "일시" },
