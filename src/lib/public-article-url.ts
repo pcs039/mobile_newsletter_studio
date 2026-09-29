@@ -1,4 +1,4 @@
-const unclearLinkLabels = new Set(["", "자세히 보기", "URL", "url", "http", "https://"]);
+const unclearLinkLabels = new Set(["", "URL", "url", "http", "https://"]);
 
 type ArticleActionType = "url" | "phone" | "map" | "video" | "internal_page" | "download";
 type ValidArticleActionHref = {
@@ -86,8 +86,12 @@ export function getValidArticleActionHref(
   return phoneHref ? { actionType: "phone", href: phoneHref } : null;
 }
 
-export function getArticleLinkButtonLabel(rawLabel?: string | null) {
+export function getArticleLinkButtonLabel(rawLabel?: string | null, actionType?: ValidArticleActionHref["actionType"]) {
+  if (actionType === "phone") {
+    return "전화 연결";
+  }
+
   const label = rawLabel?.trim() ?? "";
 
-  return unclearLinkLabels.has(label) ? "관련 링크 보기" : label;
+  return unclearLinkLabels.has(label) ? "자세히 보기" : label;
 }
