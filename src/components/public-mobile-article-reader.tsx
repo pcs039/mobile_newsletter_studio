@@ -56,7 +56,12 @@ import type {
   ProjectContentBlock,
   ProjectSurveyItem,
 } from "@/lib/newsletter-repository";
-import { getArticleLinkButtonLabel, getValidArticleActionHref, getValidArticleUrl } from "@/lib/public-article-url";
+import {
+  getArticleLinkButtonLabel,
+  getValidArticleActionHref,
+  getValidArticlePhoneHref,
+  getValidArticleUrl,
+} from "@/lib/public-article-url";
 import { trackArticleEvent, type ArticleEventType } from "@/lib/public-article-analytics";
 
 type PublicMobileArticleReaderProps = {
@@ -1282,6 +1287,7 @@ function ArticleCard({
   const hasUploadedArticleAudio = article.audioFile?.sourceType === "uploaded" && Boolean(article.audioFile.previewHref);
   const hasAiArticleAudio = article.audioSource === "ai_tts" && article.audioFile?.sourceType === "ai_tts";
   const shouldShowArticleAudio = hasUploadedArticleAudio || hasAiArticleAudio;
+  const contactPhoneHref = getValidArticlePhoneHref(article.contactPhone);
   const surveyAvailabilityState = getSurveyAvailabilityState(survey);
   const hasPublicSurveyCta = surveyAvailabilityState === "active";
   const shouldShowSurveyStatus = Boolean(survey && (hasPublicSurveyCta || showSurveyConnectionStatus));
@@ -1541,6 +1547,17 @@ function ArticleCard({
           <p className="mt-1 font-bold">
             {[article.contactName, article.contactPhone].filter(Boolean).join(" · ")}
           </p>
+          {contactPhoneHref ? (
+            <a
+              href={contactPhoneHref}
+              className="dd-btn dd-btn-primary dd-btn-sm mt-3 rounded-full px-4"
+              data-action-type="phone"
+              data-article-action="button"
+              data-article-id={article.id}
+            >
+              전화 문의
+            </a>
+          ) : null}
         </div>
       ) : null}
       {shouldShowSurveyStatus && survey ? (
