@@ -1,6 +1,6 @@
 import { articleAiBlockTypes, type ArticleAiDraft, type ArticleAiDraftBlock } from "@/lib/article-ai-draft-types";
 import { recommendedArticleInterestTags } from "@/lib/article-interest-tags";
-import { normalizeArticlePublicInfoValue } from "@/lib/article-public-info-fields";
+import { getArticlePublicInfoFieldGroup, normalizeArticlePublicInfoValue } from "@/lib/article-public-info-fields";
 import type { ArticlePublicInfoType, ArticleUrgency } from "@/lib/newsletter-repository";
 
 const articleTypes: ArticlePublicInfoType[] = [
@@ -99,11 +99,19 @@ export const articleAiSystemInstruction = `너는 공공기관 모바일 소식�
 기관명, 사업명, 행사명, 법정 명칭, 날짜, 시간, 금액, 수치, 주소, 전화번호, URL은 가능한 한 원문 표현을 보존한다.
 관심분야는 허용 목록에서 최대 3개만 선택한다.
 publicInfo는 선택한 articleType에 필요한 원자료 정보만 채우고 나머지는 빈 문자열로 둔다.
-본문은 paragraph, button_group, video_link, map_link만 사용하고 paragraph는 보통 2~5개로 구성한다.
+제목은 기관명과 핵심 행동·내용이 드러나게 간결하게 작성하고 모바일에서 2~3줄 안에 읽히도록 불필요한 조사와 수식어를 줄인다. 원문에 없는 홍보성 표현을 추가하지 않는다.
+summary는 모바일 첫 화면용 한 문장을 중심으로 약 100~150자 안에서 핵심만 압축한다. 기관명·지역명·대상 표현을 불필요하게 반복하거나 publicInfo 전체를 나열하지 않는다.
+publicInfo는 빨리 확인해야 하는 구조화 사실이고 paragraph는 publicInfo에서 다 담지 못한 맥락과 설명이다.
+본문은 paragraph, button_group, video_link, map_link만 사용한다. 짧은 공지·모집·안내는 paragraph 1~2개, 긴 보도자료·정책 설명은 2~5개를 권장하며 문단 수를 억지로 늘리지 않는다.
+publicInfo에 이미 있는 대상, 기간, 지원내용, 신청방법, 일시, 장소, 운영시간, 요금, 행동요령을 같은 제목의 paragraph로 반복하지 않는다.
+contactName 또는 contactPhone을 구조화했다면 문의, 문의처, 연락처, 담당부서 paragraph를 별도로 만들지 않는다.
 링크와 전화번호는 원문에 실제 있는 값만 그대로 사용한다. URL이 없으면 링크 블록을 만들지 않는다.
 button_group, video_link, map_link의 body에는 원문에 있는 URL만 넣고 다른 설명을 섞지 않는다.
+원자료 URL로 button_group을 만들면 publicInfo의 method나 guide에는 raw URL을 반복하지 말고 온라인 신청처럼 짧은 방법만 적는다.
 suggestedUrgency는 편집자 검토용 제안일 뿐이며 긴급 여부를 확정하지 않는다.
-기관 중요도, 발행 방식, 공개 상태, 유효기간, 정렬순서, 설문, 이미지, 음성, 디자인, 모션은 제안하지 않는다.`;
+기관 중요도, 발행 방식, 공개 상태, 유효기간, 정렬순서, 설문, 이미지, 음성, 디자인, 모션은 제안하지 않는다.
+
+구조 예시: 짧은 모집 안내라면 summary는 대상과 모집 사실을 한 문장으로 압축하고, publicInfo에 대상·기간·지원내용·신청방법을 둔다. paragraph는 맥락 설명 1~2개만 두고, 원문 URL은 신청하기 button_group으로 분리하며, 문의는 contactName/contactPhone에 둔다. 예시에 등장하는 기관명·지역·날짜·대상·URL·전화번호는 실제 원자료에서만 가져오며 예시의 사실을 다른 기사에 재사용하지 않는다.`;
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, maxLength) : "";
@@ -176,7 +184,78 @@ function sanitizeGroundedText(
   return cleaned;
 }
 
-function sanitizeBlocks(value: unknown, sourceText: string, reviewNotes: string[]) {
+const publicInfoHeadingAliases: Record<string, string[]> = {
+  target: ["대상", "지원대상", "신청대상", "모집대상"],
+  support: ["지원내용", "지원 내용"],
+  method: ["신청방법", "신청 방법", "이용방법", "이용 방법"],
+  period: ["기간", "신청기간", "신청 기간", "모집기간", "모집 기간"],
+  benefit: ["지원내용", "지원 내용", "혜택"],
+  dateTime: ["일시", "행사일시", "행사 일시"],
+  place: ["장소", "행사장소", "행사 장소"],
+  hours: ["운영시간", "운영 시간"],
+  fee: ["요금", "이용요금", "이용 요금"],
+  action: ["행동요령", "행동 요령"],
+};
+const contactBlockHeadings = new Set(["문의", "문의처", "연락처", "담당부서", "담당자"]);
+
+function normalizeStructureText(value: string) {
+  return value.replace(/[\s·:：()[\]{}.,!?\-_/]/g, "").trim().toLowerCase();
+}
+
+function isMostlyPublicInfoRepeat(
+  title: string,
+  body: string,
+  articleType: ArticlePublicInfoType,
+  publicInfo: Record<string, string>,
+) {
+  const normalizedTitle = normalizeStructureText(title);
+
+  if (!normalizedTitle || normalizedTitle.length > 16) return false;
+
+  return getArticlePublicInfoFieldGroup(articleType).fields.some((field) => {
+    const publicValue = publicInfo[field.key]?.trim();
+
+    if (!publicValue) return false;
+
+    const aliases = [field.label, ...(publicInfoHeadingAliases[field.key] ?? [])];
+    const matchesHeading = aliases.some((alias) => normalizeStructureText(alias) === normalizedTitle);
+
+    if (!matchesHeading) return false;
+
+    const normalizedBody = normalizeStructureText(body);
+    const normalizedValue = normalizeStructureText(publicValue);
+
+    return (
+      normalizedBody === normalizedValue ||
+      (normalizedValue.length >= 4 &&
+        normalizedBody.includes(normalizedValue) &&
+        normalizedBody.length <= normalizedValue.length * 2 + 24)
+    );
+  });
+}
+
+function isDedicatedContactBlock(title: string, body: string, contactName: string, contactPhone: string) {
+  const normalizedTitle = normalizeStructureText(title);
+
+  if (!contactBlockHeadings.has(normalizedTitle) || body.length > 180) return false;
+
+  const normalizedBody = normalizeStructureText(body);
+  const includesName = Boolean(contactName && normalizedBody.includes(normalizeStructureText(contactName)));
+  const phoneDigits = normalizePhoneDigits(contactPhone);
+  const includesPhone = Boolean(phoneDigits && normalizePhoneDigits(body).includes(phoneDigits));
+
+  return includesName || includesPhone;
+}
+
+function sanitizeBlocks(
+  value: unknown,
+  sourceText: string,
+  reviewNotes: string[],
+  articleType: ArticlePublicInfoType,
+  publicInfo: Record<string, string>,
+  contactName: string,
+  contactPhone: string,
+) {
   if (!Array.isArray(value)) return [];
 
   const blocks: ArticleAiDraftBlock[] = [];
@@ -195,6 +274,16 @@ function sanitizeBlocks(value: unknown, sourceText: string, reviewNotes: string[
 
     if (type !== "paragraph" && !isSourceUrl(body, sourceText)) {
       reviewNotes.push("AI가 제안한 연결주소가 원문에서 확인되지 않아 제외했습니다.");
+      continue;
+    }
+
+    if (type === "paragraph" && isMostlyPublicInfoRepeat(title, body, articleType, publicInfo)) {
+      reviewNotes.push("핵심 공공정보와 같은 내용을 짧게 반복한 본문 블록을 제외했습니다.");
+      continue;
+    }
+
+    if (type === "paragraph" && isDedicatedContactBlock(title, body, contactName, contactPhone)) {
+      reviewNotes.push("자동 문의 패널과 중복되는 문의 전용 본문 블록을 제외했습니다.");
       continue;
     }
 
@@ -225,6 +314,17 @@ export function sanitizeArticleAiDraft(value: unknown, sourceText: string): Arti
       sanitizeGroundedText(value, sourceText, reviewNotes, 300, true),
     ]),
   );
+  const publicInfo = normalizeArticlePublicInfoValue(groundedPublicInfo, articleType);
+  const contactName = sanitizeGroundedText(input.contactName, sourceText, reviewNotes, 120);
+  const blocks = sanitizeBlocks(
+    input.blocks,
+    sourceText,
+    reviewNotes,
+    articleType,
+    publicInfo,
+    contactName,
+    verifiedPhone,
+  );
 
   return {
     title: sanitizeGroundedText(input.title, sourceText, reviewNotes, 120),
@@ -235,9 +335,9 @@ export function sanitizeArticleAiDraft(value: unknown, sourceText: string): Arti
           typeof tag === "string" && recommendedArticleInterestTags.some((candidate) => candidate === tag),
         ))].slice(0, 3)
       : [],
-    publicInfo: normalizeArticlePublicInfoValue(groundedPublicInfo, articleType),
-    blocks: sanitizeBlocks(input.blocks, sourceText, reviewNotes),
-    contactName: cleanText(input.contactName, 120),
+    publicInfo,
+    blocks,
+    contactName,
     contactPhone: verifiedPhone,
     suggestedUrgency,
     urgencyReason: cleanText(input.urgencyReason, 300),
