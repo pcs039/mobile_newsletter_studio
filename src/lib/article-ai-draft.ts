@@ -184,6 +184,21 @@ function sanitizeGroundedText(
   return cleaned;
 }
 
+function normalizeAiPublicInfoForArticleType(
+  publicInfo: Record<string, string>,
+  articleType: ArticlePublicInfoType,
+) {
+  if (articleType === "application_recruitment" && !publicInfo.benefit && publicInfo.support) {
+    return { ...publicInfo, benefit: publicInfo.support };
+  }
+
+  if (articleType === "welfare_health" && !publicInfo.support && publicInfo.benefit) {
+    return { ...publicInfo, support: publicInfo.benefit };
+  }
+
+  return publicInfo;
+}
+
 const publicInfoHeadingAliases: Record<string, string[]> = {
   target: ["대상", "지원대상", "신청대상", "모집대상"],
   support: ["지원내용", "지원 내용"],
@@ -477,7 +492,10 @@ export function sanitizeArticleAiDraft(value: unknown, sourceText: string): Arti
   );
   const verifiedButtonUrls = getVerifiedButtonUrls(groundedBlocks);
   const publicInfo = normalizePublicInfoForVerifiedActions(
-    normalizeArticlePublicInfoValue(groundedPublicInfo, articleType),
+    normalizeArticlePublicInfoValue(
+      normalizeAiPublicInfoForArticleType(groundedPublicInfo, articleType),
+      articleType,
+    ),
     articleType,
     verifiedButtonUrls,
   );
