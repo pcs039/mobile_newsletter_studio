@@ -1,4 +1,5 @@
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
+import { normalizeArticlePublicationKind, type ArticlePublicationKind } from "@/lib/article-publication";
 import { normalizeArticlePublicInfoValue, type ArticlePublicInfo as ArticlePublicInfoRecord } from "@/lib/article-public-info-fields";
 import { detectDeviceType } from "@/lib/device-type";
 import { normalizeEbookSource, type EbookSource } from "@/lib/ebook-source";
@@ -860,6 +861,7 @@ export type ArticlePublicInfoType =
   | "local_news"
   | "emergency";
 export type ArticleUrgency = "normal" | "time_sensitive" | "urgent";
+export type { ArticlePublicationKind };
 export type ArticlePublicInfo = ArticlePublicInfoRecord;
 export type ArticleElementMotionEffect =
   | "inherit"
@@ -891,6 +893,7 @@ type NewsletterArticleRow = {
   article_type: string | null;
   institution_priority: number | null;
   urgency: string | null;
+  publication_kind: string | null;
   valid_from: string | null;
   valid_until: string | null;
   public_info: Record<string, unknown> | null;
@@ -1209,6 +1212,7 @@ export type ProjectContentArticle = {
   articleType: ArticlePublicInfoType;
   institutionPriority: number;
   urgency: ArticleUrgency;
+  publicationKind: ArticlePublicationKind;
   validFrom: string | null;
   validUntil: string | null;
   publicInfo: ArticlePublicInfo;
@@ -1230,6 +1234,7 @@ export type ProjectContentArticle = {
   captionFontAssetId: string | null;
   buttonFontAssetId: string | null;
   status: string;
+  createdAt: string;
   updated: string;
   blocks: ProjectContentBlock[];
   links: ProjectLinkAction[];
@@ -1291,6 +1296,7 @@ export type UpsertProjectArticleInput = {
   articleType?: string;
   institutionPriority?: number;
   urgency?: string;
+  publicationKind?: string;
   validFrom?: string;
   validUntil?: string;
   publicInfo?: Record<string, unknown>;
@@ -2650,6 +2656,7 @@ function mapArticleRowToProjectContentArticle(
     articleType: normalizeArticlePublicInfoType(article.article_type),
     institutionPriority: normalizeInstitutionPriority(article.institution_priority),
     urgency: normalizeArticleUrgency(article.urgency),
+    publicationKind: normalizeArticlePublicationKind(article.publication_kind),
     validFrom: normalizeArticleValidityDate(article.valid_from),
     validUntil: normalizeArticleValidityDate(article.valid_until),
     publicInfo: normalizeArticlePublicInfoValue(article.public_info, article.article_type),
@@ -2671,6 +2678,7 @@ function mapArticleRowToProjectContentArticle(
     captionFontAssetId: article.caption_font_asset_id,
     buttonFontAssetId: article.button_font_asset_id,
     status: article.status,
+    createdAt: article.created_at,
     updated: formatCompactDateTime(article.updated_at),
     blocks: blocks.map(mapContentBlockRowToProjectBlock),
     links: links.map(mapLinkActionRowToProjectLink),
@@ -6268,7 +6276,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,interest_tags,article_type,institution_priority,urgency,valid_from,valid_until,public_info,survey_id,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,interest_tags,article_type,institution_priority,urgency,publication_kind,valid_from,valid_until,public_info,survey_id,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=sort_order.asc&order=updated_at.desc`,
   );
@@ -6679,9 +6687,24 @@ export async function upsertProjectArticle(
     }
 
     const requestedPageNumber = normalizeArticleSortOrder(input.sourcePageNumber);
-    const validFrom = normalizeArticleValidityDate(input.validFrom);
+    let validFrom = normalizeArticleValidityDate(input.validFrom);
     const validUntil = normalizeArticleValidityDate(input.validUntil);
     const articleType = normalizeArticlePublicInfoType(input.articleType);
+    const urgency = normalizeArticleUrgency(input.urgency);
+    const publicationKind = normalizeArticlePublicationKind(input.publicationKind);
+    const status = normalizeArticleStatus(input.status);
+
+    if (publicationKind === "rolling" && status === "published" && !validFrom) {
+      validFrom = new Date().toISOString();
+    }
+
+    if (publicationKind === "rolling" && (urgency === "urgent" || urgency === "time_sensitive") && !validUntil) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        message: "긴급 또는 시한성 수시 소식은 노출 종료 일시가 필요합니다.",
+      };
+    }
 
     if (validFrom && validUntil && Date.parse(validUntil) < Date.parse(validFrom)) {
       return {
@@ -6724,7 +6747,8 @@ export async function upsertProjectArticle(
       interest_tags: normalizeInterestTags(input.interestTags),
       article_type: articleType,
       institution_priority: normalizeInstitutionPriority(input.institutionPriority),
-      urgency: normalizeArticleUrgency(input.urgency),
+      urgency,
+      publication_kind: publicationKind,
       valid_from: validFrom,
       valid_until: validUntil,
       public_info: normalizeArticlePublicInfoValue(input.publicInfo, articleType),
@@ -6747,7 +6771,7 @@ export async function upsertProjectArticle(
       body_font_asset_id: nullableText(input.bodyFontAssetId),
       caption_font_asset_id: nullableText(input.captionFontAssetId),
       button_font_asset_id: nullableText(input.buttonFontAssetId),
-      status: normalizeArticleStatus(input.status),
+      status,
     };
 
     if (Object.prototype.hasOwnProperty.call(input, "displayTitle")) {

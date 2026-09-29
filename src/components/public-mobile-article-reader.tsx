@@ -37,7 +37,8 @@ import {
   type ArticlePublicPresentation,
 } from "@/lib/article-public-presentation";
 import { getArticlePublicInfoEntries, getArticlePublicInfoFieldGroup } from "@/lib/article-public-info-fields";
-import { getAvailableInterestTags, getInterestOrderedArticles } from "@/lib/article-interest-order";
+import { getAvailableInterestTags } from "@/lib/article-interest-order";
+import { getPublicOrderedArticles } from "@/lib/article-publication";
 import {
   enablePageTurnSoundWithPreview,
   playPageTurnSound,
@@ -1293,7 +1294,15 @@ function ArticleCard({
   const shouldShowSurveyStatus = Boolean(survey && (hasPublicSurveyCta || showSurveyConnectionStatus));
   const presentation = getArticlePublicPresentation(article.articleType);
   const shouldShowTypeCue = !presentation.isGeneral;
-  const shouldShowUrgencyCue = article.urgency !== "normal" && isArticleUrgencyCurrentlyRelevant(article);
+  const isRolling = article.publicationKind === "rolling";
+  const rollingLabel = isRolling
+    ? article.urgency === "urgent"
+      ? "긴급"
+      : article.urgency === "time_sensitive"
+        ? "시한성 소식"
+        : "수시 소식"
+    : "";
+  const shouldShowUrgencyCue = !isRolling && article.urgency !== "normal" && isArticleUrgencyCurrentlyRelevant(article);
   const urgencyLabel = shouldShowUrgencyCue ? getArticleUrgencyLabel(article.urgency) : "";
   const surveyStatusText =
     surveyAvailabilityState === "draft"
@@ -1402,8 +1411,21 @@ function ArticleCard({
           </Link>
         </div>
       ) : null}
-      {shouldShowTypeCue || urgencyLabel ? (
+      {shouldShowTypeCue || rollingLabel || urgencyLabel ? (
         <div className="mb-3 flex flex-wrap items-center gap-2">
+          {rollingLabel ? (
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-black ${
+                article.urgency === "urgent"
+                  ? "bg-rose-600 text-white shadow-sm"
+                  : article.urgency === "time_sensitive"
+                    ? "bg-amber-100 text-amber-900"
+                    : "bg-sky-100 text-sky-800"
+              }`}
+            >
+              {rollingLabel}
+            </span>
+          ) : null}
           {shouldShowTypeCue ? (
             <span className={presentation.typeBadgeClassName}>
               {presentation.typeLabel}
@@ -1624,11 +1646,11 @@ export function PublicMobileArticleReader({
     [availableInterestTags, selectedInterestSnapshot],
   );
   const orderedArticles = useMemo(
-    () => getInterestOrderedArticles(articles, selectedInterests),
+    () => getPublicOrderedArticles(articles, selectedInterests),
     [articles, selectedInterests],
   );
   const [currentArticleId, setCurrentArticleId] = useState(
-    () => articles[getInitialArticleIndex(articles, initialArticleId)]?.id ?? null,
+    () => orderedArticles[getInitialArticleIndex(orderedArticles, initialArticleId)]?.id ?? null,
   );
   const [isCoverView, setIsCoverView] = useState(() => Boolean(hasCoverPage && !initialArticleId));
   const [isIndexOpen, setIsIndexOpen] = useState(false);

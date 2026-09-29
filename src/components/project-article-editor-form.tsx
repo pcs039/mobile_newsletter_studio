@@ -8,6 +8,7 @@ import { ProjectFileDownloadLink } from "@/components/project-file-download-link
 import { StatusPill } from "@/components/status-pill";
 import { getArticlePublicInfoFieldGroup, normalizeArticlePublicInfoValue } from "@/lib/article-public-info-fields";
 import { getSelectableFontAssets } from "@/lib/font-css";
+import { toDatetimeLocalValue, toIsoFromDatetimeLocal } from "@/lib/datetime-local";
 import {
   detectLongKoreanTitleTokens,
   renderKoreanTitleWithBreaks,
@@ -138,6 +139,7 @@ type ArticlePayload = {
   urgency: string;
   validFrom: string;
   validUntil: string;
+  publicationKind: string;
 };
 
 const articleStatuses = [
@@ -422,32 +424,6 @@ function buildPublicInfo(formData: FormData, articleType: string) {
   });
 
   return normalizeArticlePublicInfoValue(rawInfo, articleType);
-}
-
-function toIsoFromDatetimeLocal(value: string) {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
-}
-
-function toDatetimeLocalValue(value: string | null | undefined) {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  const offsetMs = date.getTimezoneOffset() * 60_000;
-
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
 function makeBlockId(type: string) {
@@ -1229,6 +1205,7 @@ export function ProjectArticleEditorForm({
       articleType,
       institutionPriority: Number(getValue(formData, "institutionPriority")) || 3,
       urgency: getValue(formData, "urgency"),
+      publicationKind: getValue(formData, "publicationKind"),
       validFrom: toIsoFromDatetimeLocal(getValue(formData, "validFrom")),
       validUntil: toIsoFromDatetimeLocal(getValue(formData, "validUntil")),
       publicInfo: buildPublicInfo(formData, articleType),
@@ -1994,6 +1971,17 @@ export function ProjectArticleEditorForm({
 
           <DetailSection title="노출·우선순위" summary={`${prioritySummary} · ${urgencySummary} · ${validitySummary}`}>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <FieldLabel>발행 방식</FieldLabel>
+                <select
+                  name="publicationKind"
+                  defaultValue={article?.publicationKind ?? "regular"}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  <option value="regular">정기호 기사</option>
+                  <option value="rolling">수시 소식</option>
+                </select>
+              </div>
               <div>
                 <FieldLabel>기사 순서</FieldLabel>
                 <input

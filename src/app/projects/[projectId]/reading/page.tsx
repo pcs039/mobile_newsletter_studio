@@ -3,6 +3,7 @@ import { AdminMobilePreviewFrame } from "@/components/admin-mobile-preview-frame
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectArticleEditorForm } from "@/components/project-article-editor-form";
 import { StatusPill } from "@/components/status-pill";
+import { isRollingArticleExpired } from "@/lib/article-publication";
 import {
   getProjectAssetFiles,
   getProjectContent,
@@ -108,6 +109,12 @@ export default async function ReadingEditorPage({
       actions={
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
+            href={`/projects/${projectId}/quick-post`}
+            className="rounded-lg border border-[#2f73b7] bg-[#eaf3ff] px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-white"
+          >
+            + 빠른 소식 등록
+          </Link>
+          <Link
             href={`/projects/${projectId}/pages`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
@@ -141,6 +148,8 @@ export default async function ReadingEditorPage({
               <div className="max-h-[720px] space-y-3 overflow-y-auto pr-1">
                 {listArticles.map((article, index) => {
                   const isActive = selectedArticle?.id === article.id;
+                  const isRolling = article.publicationKind === "rolling";
+                  const isExpired = isRollingArticleExpired(article);
 
                   return (
                     <Link
@@ -154,7 +163,12 @@ export default async function ReadingEditorPage({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-xs font-black text-[#184a88]">{getArticleSourceLabel(article, index)}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="text-xs font-black text-[#184a88]">{getArticleSourceLabel(article, index)}</p>
+                            {isRolling ? <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-black text-sky-800">수시</span> : null}
+                            {isRolling && article.urgency === "urgent" ? <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-black text-rose-800">긴급</span> : null}
+                            {isExpired ? <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-700">만료</span> : null}
+                          </div>
                           <p className="mt-1 text-[11px] font-bold leading-4 text-slate-500">
                             {getArticleSortLabel(article)}
                           </p>
