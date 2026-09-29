@@ -802,6 +802,78 @@ function getBlockLink(article: ProjectContentArticle, block: ProjectContentBlock
   return null;
 }
 
+type InlinePublicInfoAction = {
+  actionType: "url";
+  blockId: string;
+  fieldKey: "method";
+  href: string;
+  label: string;
+  linkActionId?: string;
+};
+
+const publicPrimaryActionClassName =
+  "inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#092046] bg-[#092046] px-4 py-2 text-xs font-black text-white transition hover:bg-[#143a6b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] focus-visible:ring-offset-2";
+const publicSecondaryActionClassName =
+  "inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#b8d7ff] bg-white px-3.5 py-2 text-xs font-black text-[#092046] transition hover:bg-[#f4f8ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] focus-visible:ring-offset-2";
+
+function ArrowRightIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4 fill-none stroke-current" strokeWidth="1.8">
+      <path d="M4 10h11M11 6l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4 fill-none stroke-current" strokeWidth="1.7">
+      <path
+        d="M6.2 3.5 8 7.2 6.6 8.6a12 12 0 0 0 4.8 4.8l1.4-1.4 3.7 1.8v2a1.5 1.5 0 0 1-1.5 1.5A12.3 12.3 0 0 1 2.7 5a1.5 1.5 0 0 1 1.5-1.5h2Z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function isApplicationActionLabel(label: string) {
+  const normalized = label.replace(/\s+/g, "").trim();
+  return /(?:신청|접수|예약|등록|지원|참여)(?:하기)?$/u.test(normalized);
+}
+
+function getPublicInfoAttachedAction(
+  article: ProjectContentArticle,
+  visibleBlocks: ProjectContentBlock[],
+): InlinePublicInfoAction | null {
+  if (article.articleType !== "application_recruitment" || !article.publicInfo.method?.trim()) {
+    return null;
+  }
+
+  for (const block of visibleBlocks) {
+    if (block.type !== "button_group") continue;
+
+    const link = getBlockLink(article, block);
+    const actionHref = getValidArticleActionHref(link?.targetValue || block.body, link?.actionType);
+
+    if (!actionHref || actionHref.actionType === "phone") continue;
+
+    const label = getArticleLinkButtonLabel(block.title || link?.label, actionHref.actionType);
+
+    if (!isApplicationActionLabel(label)) continue;
+
+    return {
+      actionType: actionHref.actionType,
+      blockId: block.id,
+      fieldKey: "method",
+      href: actionHref.href,
+      label,
+      linkActionId: link?.id ?? undefined,
+    };
+  }
+
+  return null;
+}
+
 function getYoutubeId(value: string) {
   const trimmed = value.trim();
 
@@ -1191,9 +1263,11 @@ function renderContentBlock(
 }
 
 function ArticlePublicInfoCard({
+  action,
   article,
   presentation,
 }: {
+  action?: InlinePublicInfoAction | null;
   article: ProjectContentArticle;
   presentation: ArticlePublicPresentation;
 }) {
@@ -1220,19 +1294,40 @@ function ArticlePublicInfoCard({
         {fieldGroup.cardTitle || presentation.summaryLabel || "핵심정보"}
       </p>
       <dl className="mt-3 space-y-3">
-        {entries.map((entry) => (
-          <div key={entry.key} className="min-w-0">
-            <dt className={`text-xs font-black ${isEmergency ? "text-amber-800" : "text-[#184a88]"}`}>
-              {entry.label}
-            </dt>
-            <dd
-              data-public-text-scale-target="article-body"
-              className="mt-1 whitespace-pre-wrap break-words text-sm font-bold leading-6 text-slate-800 [overflow-wrap:anywhere] [word-break:keep-all]"
-            >
-              {entry.value}
-            </dd>
-          </div>
-        ))}
+        {entries.map((entry) => {
+          const entryAction = action?.fieldKey === entry.key ? action : null;
+
+          return (
+            <div key={entry.key} className="flex min-w-0 flex-wrap items-end justify-between gap-2">
+              <div className="min-w-0 flex-1 basis-40">
+                <dt className={`text-xs font-black ${isEmergency ? "text-amber-800" : "text-[#184a88]"}`}>
+                  {entry.label}
+                </dt>
+                <dd
+                  data-public-text-scale-target="article-body"
+                  className="mt-1 whitespace-pre-wrap break-words text-sm font-bold leading-6 text-slate-800 [overflow-wrap:anywhere] [word-break:keep-all]"
+                >
+                  {entry.value}
+                </dd>
+              </div>
+              {entryAction ? (
+                <a
+                  href={entryAction.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={publicPrimaryActionClassName}
+                  data-action-type={entryAction.actionType}
+                  data-article-action="button"
+                  data-article-id={article.id}
+                  data-link-action-id={entryAction.linkActionId}
+                >
+                  <span>{entryAction.label}</span>
+                  <ArrowRightIcon />
+                </a>
+              ) : null}
+            </div>
+          );
+        })}
       </dl>
     </section>
   );
@@ -1269,6 +1364,10 @@ function ArticleCard({
 }) {
   const articleRef = useRef<HTMLElement>(null);
   const visibleBlocks = getVisibleBlocks(article);
+  const publicInfoAction = getPublicInfoAttachedAction(article, visibleBlocks);
+  const visibleContentBlocks = publicInfoAction
+    ? visibleBlocks.filter((block) => block.id !== publicInfoAction.blockId)
+    : visibleBlocks;
   const articleTitle = getArticleTitle(article, index);
   const motionPreset = normalizeArticleMotionPreset(article.motionPreset);
   const motionSpeed = normalizeArticleMotionSpeed(article.motionSpeed);
@@ -1510,7 +1609,7 @@ function ArticleCard({
           </div>
         </ScrollMotionReveal>
       ) : null}
-      <ArticlePublicInfoCard article={article} presentation={presentation} />
+      <ArticlePublicInfoCard action={publicInfoAction} article={article} presentation={presentation} />
       {shouldShowArticleAudio && article.audioFile ? (
         <section className="mt-3 rounded-xl border border-[#d8e8ff] bg-[#f7fbff] px-2.5 py-2 shadow-sm shadow-blue-950/5">
           {hasAiArticleAudio ? (
@@ -1551,35 +1650,38 @@ function ArticleCard({
           ) : null}
         </section>
       ) : null}
-      {visibleBlocks.length > 0 ? (
+      {visibleContentBlocks.length > 0 ? (
         <div className="public-article-content mt-6 space-y-6">
-          {visibleBlocks.map((block) => renderContentBlock(article, block, motionSettings, onOpenArticleImage, presentation))}
+          {visibleContentBlocks.map((block) => renderContentBlock(article, block, motionSettings, onOpenArticleImage, presentation))}
         </div>
-      ) : (
+      ) : visibleBlocks.length === 0 ? (
         renderArticleBody(
           getPreviewBody(article),
           "mt-6",
           `article-${article.id}-body`,
           article.bodyAlignment || article.textAlignment,
         )
-      )}
+      ) : null}
       {article.contactName || article.contactPhone ? (
         <div className={presentation.contactPanelClassName}>
           <p className={presentation.contactLabelClassName}>문의</p>
-          <p className="mt-1 font-bold">
-            {[article.contactName, article.contactPhone].filter(Boolean).join(" · ")}
-          </p>
-          {contactPhoneHref ? (
-            <a
-              href={contactPhoneHref}
-              className="dd-btn dd-btn-primary dd-btn-sm mt-3 rounded-full px-4"
-              data-action-type="phone"
-              data-article-action="button"
-              data-article-id={article.id}
-            >
-              전화 연결
-            </a>
-          ) : null}
+          <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <p className="min-w-0 flex-1 basis-40 break-words font-bold [overflow-wrap:anywhere] [word-break:keep-all]">
+              {[article.contactName, article.contactPhone].filter(Boolean).join(" · ")}
+            </p>
+            {contactPhoneHref ? (
+              <a
+                href={contactPhoneHref}
+                className={publicSecondaryActionClassName}
+                data-action-type="phone"
+                data-article-action="button"
+                data-article-id={article.id}
+              >
+                <PhoneIcon />
+                <span>전화 연결</span>
+              </a>
+            ) : null}
+          </div>
         </div>
       ) : null}
       {shouldShowSurveyStatus && survey ? (
