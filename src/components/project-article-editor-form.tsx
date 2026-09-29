@@ -7,7 +7,7 @@ import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-ca
 import { ProjectArticleAiAssistant } from "@/components/project-article-ai-assistant";
 import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { StatusPill } from "@/components/status-pill";
-import type { ArticleAiDraft } from "@/lib/article-ai-draft-types";
+import type { ArticleAiDraft, ArticleAiPhotoApplyInput } from "@/lib/article-ai-draft-types";
 import { getArticleContactPhoneStatus } from "@/lib/article-contact-phone";
 import { recommendedArticleInterestTags } from "@/lib/article-interest-tags";
 import { getArticlePublicInfoFieldGroup, normalizeArticlePublicInfoValue } from "@/lib/article-public-info-fields";
@@ -1097,6 +1097,63 @@ export function ProjectArticleEditorForm({
     return true;
   }
 
+  function applyAiPhotoSuggestions(photos: ArticleAiPhotoApplyInput[]) {
+    const existingPaths = new Set(
+      blocks
+        .filter((block) => block.type === "image")
+        .map((block) => getMobileAssetPathFromPreviewHref(block.body))
+        .filter(Boolean),
+    );
+    const nextBlocks = [...blocks];
+    let addedCount = 0;
+
+    for (const photo of photos) {
+      if (!photo.storagePath || existingPaths.has(photo.storagePath)) continue;
+
+      const imageBlock: EditorBlock = {
+        id: makeBlockId(`ai-photo-${photo.sourceId}`),
+        type: "image",
+        title: photo.caption,
+        body: makePublicAssetPreviewHref(photo.storagePath),
+        textAlignment: "left",
+      };
+      let insertionIndex = nextBlocks.length;
+
+      if (photo.placement === "first_content") {
+        insertionIndex = 0;
+        while (nextBlocks[insertionIndex]?.id.startsWith("ai-photo-")) insertionIndex += 1;
+      } else {
+        const paragraphNumber = photo.placement === "after_paragraph_1" ? 1 : 2;
+        let seenParagraphs = 0;
+        const paragraphIndex = nextBlocks.findIndex((block) => {
+          if (block.type !== "paragraph") return false;
+          seenParagraphs += 1;
+          return seenParagraphs === paragraphNumber;
+        });
+
+        if (paragraphIndex >= 0) {
+          insertionIndex = paragraphIndex + 1;
+          while (nextBlocks[insertionIndex]?.id.startsWith("ai-photo-")) insertionIndex += 1;
+        }
+      }
+
+      nextBlocks.splice(insertionIndex, 0, imageBlock);
+      existingPaths.add(photo.storagePath);
+      addedCount += 1;
+    }
+
+    if (addedCount === 0) {
+      setError("선택한 사진은 이미 기사 이미지 블록에 적용되어 있습니다.");
+      setMessage("");
+      return false;
+    }
+
+    setBlocks(nextBlocks);
+    setError("");
+    setMessage(`선택한 사진 ${addedCount}장을 기사 이미지 블록에 배치했습니다. 저장 버튼을 눌러야 DB에 반영됩니다.`);
+    return true;
+  }
+
   function applyImportedWord(imported: ImportedWordArticle) {
     const hasTypedContent =
       getFormFieldValue("title") ||
@@ -1417,6 +1474,8 @@ export function ProjectArticleEditorForm({
             getCurrentContent={getCurrentContentForAi}
             onApplyDraft={applyAiDraft}
             onApplyImportedWord={applyImportedWord}
+            onApplyPhotoSuggestions={applyAiPhotoSuggestions}
+            projectSlug={projectSlug}
           />
         </div>
         <div className="mt-5 rounded-2xl border border-[#d8e8ff] bg-white px-4 py-3">

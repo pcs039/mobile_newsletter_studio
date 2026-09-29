@@ -1,6 +1,8 @@
 import type { ArticlePublicInfo, ArticlePublicInfoType, ArticleUrgency } from "@/lib/newsletter-repository";
 
 export const articleAiBlockTypes = ["paragraph", "button_group", "video_link", "map_link"] as const;
+export const articleAiPhotoRecommendations = ["representative", "supporting", "omit"] as const;
+export const articleAiPhotoPlacements = ["first_content", "after_paragraph_1", "after_paragraph_2"] as const;
 
 export type ArticleAiBlockType = (typeof articleAiBlockTypes)[number];
 
@@ -10,6 +12,32 @@ export type ArticleAiDraftBlock = {
   type: ArticleAiBlockType;
 };
 
+export type ArticleAiPhotoRecommendation = (typeof articleAiPhotoRecommendations)[number];
+export type ArticleAiPhotoPlacement = (typeof articleAiPhotoPlacements)[number];
+
+export type ArticleAiPhotoSuggestion = {
+  altText: string;
+  caption: string;
+  placement: ArticleAiPhotoPlacement;
+  reason: string;
+  recommendation: ArticleAiPhotoRecommendation;
+  sourceId: string;
+};
+
+export type ArticleAiPhotoAssetInput = {
+  fileName: string;
+  mimeType: string;
+  sourceId: string;
+  storagePath: string;
+};
+
+export type ArticleAiPhotoApplyInput = Pick<
+  ArticleAiPhotoSuggestion,
+  "caption" | "placement" | "sourceId"
+> & {
+  storagePath: string;
+};
+
 export type ArticleAiDraft = {
   articleType: ArticlePublicInfoType;
   blocks: ArticleAiDraftBlock[];
@@ -17,6 +45,7 @@ export type ArticleAiDraft = {
   contactPhone: string;
   interestTags: string[];
   missingFacts: string[];
+  photoSuggestions: ArticleAiPhotoSuggestion[];
   publicInfo: ArticlePublicInfo;
   reviewNotes: string[];
   suggestedUrgency: ArticleUrgency;
