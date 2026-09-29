@@ -102,16 +102,16 @@ publicInfo는 선택한 articleType에 필요한 원자료 정보만 채우고 �
 제목은 기관명과 핵심 행동·내용이 드러나게 간결하게 작성하고 모바일에서 2~3줄 안에 읽히도록 불필요한 조사와 수식어를 줄인다. 원문에 없는 홍보성 표현을 추가하지 않는다.
 summary는 모바일 첫 화면용 한 문장을 중심으로 약 100~150자 안에서 핵심만 압축한다. 기관명·지역명·대상 표현을 불필요하게 반복하거나 publicInfo 전체를 나열하지 않는다.
 publicInfo는 빨리 확인해야 하는 구조화 사실이고 paragraph는 publicInfo에서 다 담지 못한 맥락과 설명이다.
-본문은 paragraph, button_group, video_link, map_link만 사용한다. 짧은 공지·모집·안내는 paragraph 1~2개, 긴 보도자료·정책 설명은 2~5개를 권장하며 문단 수를 억지로 늘리지 않는다.
+본문은 paragraph, button_group, video_link, map_link만 사용한다. 짧은 공지·모집·생활안내는 paragraph 0~2개, 긴 보도자료·정책 설명은 2~5개를 권장하며 문단 수를 억지로 늘리지 않는다. summary와 publicInfo만으로 충분한 짧은 공지는 paragraph를 생성하지 않아도 된다.
 publicInfo에 이미 있는 대상, 기간, 지원내용, 신청방법, 일시, 장소, 운영시간, 요금, 행동요령을 같은 제목의 paragraph로 반복하지 않는다.
-contactName 또는 contactPhone을 구조화했다면 문의, 문의처, 연락처, 담당부서 paragraph를 별도로 만들지 않는다.
+contactName 또는 contactPhone을 구조화했다면 문의, 문의처, 연락처, 담당부서 paragraph를 별도로 만들지 않는다. 문의가 포함된 신청 및 문의 같은 복합 paragraph도 만들지 않는다.
 링크와 전화번호는 원문에 실제 있는 값만 그대로 사용한다. URL이 없으면 링크 블록을 만들지 않는다.
 button_group, video_link, map_link의 body에는 원문에 있는 URL만 넣고 다른 설명을 섞지 않는다.
-원자료 URL로 button_group을 만들면 publicInfo의 method나 guide에는 raw URL을 반복하지 말고 온라인 신청처럼 짧은 방법만 적는다.
+원자료 URL로 button_group을 만들면 publicInfo의 method나 guide에는 URL 자체를 반복하지 말고 온라인 신청처럼 신청 경로만 짧게 적는다.
 suggestedUrgency는 편집자 검토용 제안일 뿐이며 긴급 여부를 확정하지 않는다.
 기관 중요도, 발행 방식, 공개 상태, 유효기간, 정렬순서, 설문, 이미지, 음성, 디자인, 모션은 제안하지 않는다.
 
-구조 예시: 짧은 모집 안내라면 summary는 대상과 모집 사실을 한 문장으로 압축하고, publicInfo에 대상·기간·지원내용·신청방법을 둔다. paragraph는 맥락 설명 1~2개만 두고, 원문 URL은 신청하기 button_group으로 분리하며, 문의는 contactName/contactPhone에 둔다. 예시에 등장하는 기관명·지역·날짜·대상·URL·전화번호는 실제 원자료에서만 가져오며 예시의 사실을 다른 기사에 재사용하지 않는다.`;
+구조 예시: 짧은 모집 안내라면 summary는 대상과 모집 사실을 한 문장으로 압축하고, publicInfo에 대상·기간·지원내용·신청방법을 둔다. paragraph는 필요한 맥락 설명만 0~2개 두고, 원문 URL은 신청하기 button_group으로 분리하며, 문의는 contactName/contactPhone에 둔다. 예시에 등장하는 기관명·지역·날짜·대상·URL·전화번호는 실제 원자료에서만 가져오며 예시의 사실을 다른 기사에 재사용하지 않는다.`;
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, maxLength) : "";
@@ -196,10 +196,105 @@ const publicInfoHeadingAliases: Record<string, string[]> = {
   fee: ["요금", "이용요금", "이용 요금"],
   action: ["행동요령", "행동 요령"],
 };
-const contactBlockHeadings = new Set(["문의", "문의처", "연락처", "담당부서", "담당자"]);
+const genericStructuredHeadings = new Set([
+  "모집안내",
+  "추가모집안내",
+  "신청안내",
+  "지원안내",
+  "주요안내",
+  "안내",
+  "개요",
+  "주요내용",
+]);
+const comparableTokenStopWords = new Set(["관련", "대한", "위해", "통해", "합니다", "됩니다", "있습니다"]);
 
 function normalizeStructureText(value: string) {
   return value.replace(/[\s·:：()[\]{}.,!?\-_/]/g, "").trim().toLowerCase();
+}
+
+function tokenizeComparableText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2 && !comparableTokenStopWords.has(token));
+}
+
+function areComparableTokens(token: string, referenceToken: string) {
+  const minimumLength = Math.min(token.length, referenceToken.length);
+  return minimumLength >= 2 && (token.startsWith(referenceToken) || referenceToken.startsWith(token));
+}
+
+function getTokenCoverage(value: string, reference: string) {
+  const tokens = tokenizeComparableText(value);
+  const referenceTokens = tokenizeComparableText(reference);
+
+  if (tokens.length < 4 || referenceTokens.length === 0) return null;
+
+  const covered = tokens.filter((token) =>
+    referenceTokens.some((referenceToken) => areComparableTokens(token, referenceToken))
+  ).length;
+
+  return covered / tokens.length;
+}
+
+function isMostlyCoveredByStructuredContent(
+  title: string,
+  body: string,
+  summary: string,
+  publicInfo: Record<string, string>,
+) {
+  if (body.length > 350) return false;
+
+  const reference = [summary, ...Object.values(publicInfo)].filter(Boolean).join(" ");
+  const coverage = getTokenCoverage(body, reference);
+
+  if (coverage === null) return false;
+
+  const threshold = genericStructuredHeadings.has(normalizeStructureText(title)) ? 0.65 : 0.75;
+  return coverage >= threshold;
+}
+
+function isContactRelatedHeading(title: string) {
+  const normalizedTitle = normalizeStructureText(title);
+  return ["문의", "연락", "담당"].some((token) => normalizedTitle.includes(token));
+}
+
+function stripStructuredContactSegments(body: string, contactName: string, contactPhone: string) {
+  if (!contactName && !contactPhone) return { body, removed: false };
+
+  const phoneDigits = normalizePhoneDigits(contactPhone);
+  const normalizedName = normalizeStructureText(contactName);
+  let removed = false;
+  const segments = body.split(/(?<=[.!?])\s+|\n+/u);
+  const retained = segments.filter((segment) => {
+    const normalizedSegment = normalizeStructureText(segment);
+    const includesPhone = Boolean(phoneDigits && normalizePhoneDigits(segment).includes(phoneDigits));
+    const includesNamedContact = Boolean(
+      normalizedName &&
+      normalizedSegment.includes(normalizedName) &&
+      /문의|연락|담당/u.test(segment)
+    );
+    const isDuplicateContact = segment.length <= 180 && (includesPhone || includesNamedContact);
+
+    if (isDuplicateContact) removed = true;
+    return !isDuplicateContact;
+  });
+
+  return { body: retained.join(" ").replace(/\s+/g, " ").trim(), removed };
+}
+
+function normalizeHeadingAfterContactRemoval(title: string) {
+  if (!isContactRelatedHeading(title)) return title;
+
+  const withoutContact = title
+    .replace(/(?:문의처?|연락처|담당부서|담당자)\s*(?:및|·|\/|와|과)?/gu, " ")
+    .replace(/\s*(?:및|·|\/|와|과)\s*$/u, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return withoutContact ? `${withoutContact} 안내`.replace(/안내\s+안내$/u, "안내") : "";
 }
 
 function isMostlyPublicInfoRepeat(
@@ -234,27 +329,10 @@ function isMostlyPublicInfoRepeat(
   });
 }
 
-function isDedicatedContactBlock(title: string, body: string, contactName: string, contactPhone: string) {
-  const normalizedTitle = normalizeStructureText(title);
-
-  if (!contactBlockHeadings.has(normalizedTitle) || body.length > 180) return false;
-
-  const normalizedBody = normalizeStructureText(body);
-  const includesName = Boolean(contactName && normalizedBody.includes(normalizeStructureText(contactName)));
-  const phoneDigits = normalizePhoneDigits(contactPhone);
-  const includesPhone = Boolean(phoneDigits && normalizePhoneDigits(body).includes(phoneDigits));
-
-  return includesName || includesPhone;
-}
-
-function sanitizeBlocks(
+function sanitizeGroundedBlocks(
   value: unknown,
   sourceText: string,
   reviewNotes: string[],
-  articleType: ArticlePublicInfoType,
-  publicInfo: Record<string, string>,
-  contactName: string,
-  contactPhone: string,
 ) {
   if (!Array.isArray(value)) return [];
 
@@ -277,20 +355,96 @@ function sanitizeBlocks(
       continue;
     }
 
-    if (type === "paragraph" && isMostlyPublicInfoRepeat(title, body, articleType, publicInfo)) {
-      reviewNotes.push("핵심 공공정보와 같은 내용을 짧게 반복한 본문 블록을 제외했습니다.");
-      continue;
-    }
-
-    if (type === "paragraph" && isDedicatedContactBlock(title, body, contactName, contactPhone)) {
-      reviewNotes.push("자동 문의 패널과 중복되는 문의 전용 본문 블록을 제외했습니다.");
-      continue;
-    }
-
     blocks.push({ type, title, body });
   }
 
   return blocks;
+}
+
+function getVerifiedButtonUrls(blocks: ArticleAiDraftBlock[]) {
+  return blocks
+    .filter((block) => block.type === "button_group")
+    .map((block) => normalizeComparableUrl(block.body));
+}
+
+function normalizeApplicationMethodForVerifiedActions(method: string, verifiedButtonUrls: string[]) {
+  const matchingUrls = (method.match(sourceUrlPattern) ?? []).filter((url) =>
+    verifiedButtonUrls.includes(normalizeComparableUrl(url))
+  );
+
+  if (matchingUrls.length === 0) return method;
+
+  let cleaned = method;
+  for (const url of matchingUrls) cleaned = cleaned.replaceAll(url, " ");
+
+  cleaned = cleaned
+    .replace(/\s+/g, " ")
+    .replace(/^\s*(?:에서|으로)\s*/u, "")
+    .replace(/\s+([,.;!?])/g, "$1")
+    .trim()
+    .replace(/^[,.;!?]+|[,.;!?]+$/g, "")
+    .trim();
+
+  const normalized = normalizeStructureText(cleaned);
+  const incompleteMethods = new Set(["", "신청", "에서신청", "온라인", "온라인으로신청", "온라인으로에서신청"]);
+
+  return incompleteMethods.has(normalized) ? "온라인 신청" : cleaned;
+}
+
+function normalizePublicInfoForVerifiedActions(
+  publicInfo: Record<string, string>,
+  articleType: ArticlePublicInfoType,
+  verifiedButtonUrls: string[],
+) {
+  if (articleType !== "application_recruitment" || verifiedButtonUrls.length === 0) return publicInfo;
+
+  return {
+    ...publicInfo,
+    method: normalizeApplicationMethodForVerifiedActions(publicInfo.method ?? "", verifiedButtonUrls),
+  };
+}
+
+function cleanupParagraphBlocks(
+  blocks: ArticleAiDraftBlock[],
+  reviewNotes: string[],
+  articleType: ArticlePublicInfoType,
+  summary: string,
+  publicInfo: Record<string, string>,
+  contactName: string,
+  contactPhone: string,
+) {
+  const cleanedBlocks: ArticleAiDraftBlock[] = [];
+
+  for (const block of blocks) {
+    if (block.type !== "paragraph") {
+      cleanedBlocks.push(block);
+      continue;
+    }
+
+    const contactResult = stripStructuredContactSegments(block.body, contactName, contactPhone);
+    const title = contactResult.removed ? normalizeHeadingAfterContactRemoval(block.title) : block.title;
+    const body = contactResult.body;
+
+    if (contactResult.removed) {
+      reviewNotes.push("자동 문의 패널과 중복되는 문의 문장을 본문에서 제외했습니다.");
+    }
+
+    if (!body) continue;
+
+    if (isMostlyPublicInfoRepeat(title, body, articleType, publicInfo)) {
+      reviewNotes.push("핵심 공공정보와 같은 내용을 짧게 반복한 본문 블록을 제외했습니다.");
+      continue;
+    }
+
+    if (isMostlyCoveredByStructuredContent(title, body, summary, publicInfo)) {
+      reviewNotes.push("요약과 핵심 공공정보에서 충분히 다룬 짧은 본문 블록을 제외했습니다.");
+      continue;
+    }
+
+    cleanedBlocks.push({ ...block, title, body });
+  }
+
+  return cleanedBlocks;
 }
 
 export function sanitizeArticleAiDraft(value: unknown, sourceText: string): ArticleAiDraft {
@@ -298,6 +452,7 @@ export function sanitizeArticleAiDraft(value: unknown, sourceText: string): Arti
   const articleType = articleTypes.find((candidate) => candidate === input.articleType) ?? "general";
   const suggestedUrgency = urgencyValues.find((candidate) => candidate === input.suggestedUrgency) ?? "normal";
   const reviewNotes = cleanList(input.reviewNotes);
+  const summary = sanitizeGroundedText(input.summary, sourceText, reviewNotes, 300);
   const contactPhone = cleanText(input.contactPhone, 80);
   const verifiedPhone = contactPhone && isSourcePhone(contactPhone, sourceText) ? contactPhone : "";
 
@@ -314,13 +469,23 @@ export function sanitizeArticleAiDraft(value: unknown, sourceText: string): Arti
       sanitizeGroundedText(value, sourceText, reviewNotes, 300, true),
     ]),
   );
-  const publicInfo = normalizeArticlePublicInfoValue(groundedPublicInfo, articleType);
   const contactName = sanitizeGroundedText(input.contactName, sourceText, reviewNotes, 120);
-  const blocks = sanitizeBlocks(
+  const groundedBlocks = sanitizeGroundedBlocks(
     input.blocks,
     sourceText,
     reviewNotes,
+  );
+  const verifiedButtonUrls = getVerifiedButtonUrls(groundedBlocks);
+  const publicInfo = normalizePublicInfoForVerifiedActions(
+    normalizeArticlePublicInfoValue(groundedPublicInfo, articleType),
     articleType,
+    verifiedButtonUrls,
+  );
+  const blocks = cleanupParagraphBlocks(
+    groundedBlocks,
+    reviewNotes,
+    articleType,
+    summary,
     publicInfo,
     contactName,
     verifiedPhone,
@@ -328,7 +493,7 @@ export function sanitizeArticleAiDraft(value: unknown, sourceText: string): Arti
 
   return {
     title: sanitizeGroundedText(input.title, sourceText, reviewNotes, 120),
-    summary: sanitizeGroundedText(input.summary, sourceText, reviewNotes, 300),
+    summary,
     articleType,
     interestTags: Array.isArray(input.interestTags)
       ? [...new Set(input.interestTags.filter((tag): tag is string =>
