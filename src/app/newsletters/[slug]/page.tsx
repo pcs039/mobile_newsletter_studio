@@ -271,6 +271,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             </section>
           ) : useArticleReaderShell ? (
             <PublicMobileArticleReader
+              analyticsDisabled={isAdminPreview}
               articles={articles}
               cover={
                 showCoverSection

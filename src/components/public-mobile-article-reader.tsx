@@ -9,6 +9,7 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -56,9 +57,11 @@ import type {
   ProjectSurveyItem,
 } from "@/lib/newsletter-repository";
 import { getArticleLinkButtonLabel, getValidArticleActionHref, getValidArticleUrl } from "@/lib/public-article-url";
+import { trackArticleEvent, type ArticleEventType } from "@/lib/public-article-analytics";
 
 type PublicMobileArticleReaderProps = {
   articles: ProjectContentArticle[];
+  analyticsDisabled?: boolean;
   cover?: {
     coverFit: "contain" | "cover";
     coverImageSrc: string;
@@ -1230,6 +1233,7 @@ function ArticlePublicInfoCard({
 }
 
 function ArticleCard({
+  analyticsDisabled = false,
   article,
   className = "",
   fontAssets,
@@ -1243,6 +1247,7 @@ function ArticleCard({
   slug,
   survey,
 }: {
+  analyticsDisabled?: boolean;
   article: ProjectContentArticle;
   className?: string;
   fontAssets: FontAsset[];
@@ -1256,6 +1261,7 @@ function ArticleCard({
   slug: string;
   survey?: ProjectSurveyItem | null;
 }) {
+  const articleRef = useRef<HTMLElement>(null);
   const visibleBlocks = getVisibleBlocks(article);
   const articleTitle = getArticleTitle(article, index);
   const motionPreset = normalizeArticleMotionPreset(article.motionPreset);
@@ -1296,8 +1302,84 @@ function ArticleCard({
               ? "문항 없음 · 실제 공개화면에는 표시되지 않습니다."
               : "공개 전";
 
+  useEffect(() => {
+    if (analyticsDisabled) {
+      return;
+    }
+
+    const articleElement = articleRef.current;
+
+    if (!articleElement || typeof IntersectionObserver === "undefined") {
+      trackArticleEvent({ slug, articleId: article.id, eventType: "article_view" });
+      return;
+    }
+
+    let visibilityTimer: number | null = null;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const isVisible = entries.some((entry) => entry.isIntersecting);
+
+        if (!isVisible) {
+          if (visibilityTimer) window.clearTimeout(visibilityTimer);
+          visibilityTimer = null;
+          return;
+        }
+
+        if (!visibilityTimer) {
+          visibilityTimer = window.setTimeout(() => {
+            trackArticleEvent({ slug, articleId: article.id, eventType: "article_view" });
+            visibilityTimer = null;
+            observer.disconnect();
+          }, 350);
+        }
+      },
+      { rootMargin: "-18% 0px -42% 0px", threshold: 0 },
+    );
+
+    observer.observe(articleElement);
+
+    return () => {
+      observer.disconnect();
+      if (visibilityTimer) window.clearTimeout(visibilityTimer);
+    };
+  }, [analyticsDisabled, article.id, slug]);
+
+  function handleTrackedActionClick(event: ReactMouseEvent<HTMLElement>) {
+    if (analyticsDisabled || !(event.target instanceof Element)) {
+      return;
+    }
+
+    const actionElement = event.target.closest<HTMLElement>("[data-article-action]");
+
+    if (!actionElement || actionElement.dataset.articleId !== article.id) {
+      return;
+    }
+
+    const articleAction = actionElement.dataset.articleAction;
+    const actionType = actionElement.dataset.actionType;
+    let eventType: ArticleEventType | null = null;
+
+    if (articleAction === "map") eventType = "map_click";
+    if (articleAction === "button") eventType = actionType === "phone" ? "phone_click" : "cta_click";
+    if (articleAction === "survey") eventType = "survey_click";
+
+    if (!eventType) {
+      return;
+    }
+
+    trackArticleEvent({
+      slug,
+      articleId: article.id,
+      eventType,
+      linkActionId: actionElement.dataset.linkActionId,
+      surveyId: actionElement.dataset.surveyId,
+    });
+  }
+
   return (
     <article
+      ref={articleRef}
+      onClickCapture={handleTrackedActionClick}
       className={`public-card public-article-card ${articleMotionPresetClassNames[motionPreset]} ${articleMotionSpeedClassNames[motionSpeed]} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}
       data-article-text-alignment={article.textAlignment || "left"}
       data-motion-preset={motionPreset}
@@ -1417,6 +1499,11 @@ function ArticleCard({
                 ? `/api/public/newsletters/${encodeURIComponent(slug)}/articles/${encodeURIComponent(article.id)}/audio`
                 : undefined
             }
+            onPlaybackStart={() => {
+              if (!analyticsDisabled) {
+                trackArticleEvent({ slug, articleId: article.id, eventType: "audio_play" });
+              }
+            }}
             src={article.audioFile.previewHref}
           />
           {article.audioFile.transcriptText ? (
@@ -1467,6 +1554,10 @@ function ArticleCard({
             <Link
               href={`/newsletters/${slug}/survey/${survey.id}`}
               className="dd-btn dd-btn-primary dd-btn-sm mt-3 rounded-full px-4"
+              data-action-type="survey"
+              data-article-action="survey"
+              data-article-id={article.id}
+              data-survey-id={survey.id}
             >
               {survey.kindCode === "event" ? "이벤트 참여하기" : "설문 참여하기"}
             </Link>
@@ -1482,6 +1573,7 @@ function ArticleCard({
 }
 
 export function PublicMobileArticleReader({
+  analyticsDisabled = false,
   articles,
   cover,
   fontAssets = [],
@@ -2161,6 +2253,7 @@ export function PublicMobileArticleReader({
                   style={pageDragStyle}
                 >
                   <ArticleCard
+                    analyticsDisabled={analyticsDisabled}
                     article={currentArticle}
                     className="mx-5 my-5"
                     fontAssets={fontAssets}
@@ -2357,6 +2450,7 @@ export function PublicMobileArticleReader({
           {orderedArticles.map((article, index) => (
             <ArticleCard
               key={article.id}
+              analyticsDisabled={analyticsDisabled}
               article={article}
               fontAssets={fontAssets}
               index={index}

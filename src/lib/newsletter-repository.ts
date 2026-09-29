@@ -1,5 +1,6 @@
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { normalizeArticlePublicInfoValue, type ArticlePublicInfo as ArticlePublicInfoRecord } from "@/lib/article-public-info-fields";
+import { detectDeviceType } from "@/lib/device-type";
 import { normalizeEbookSource, type EbookSource } from "@/lib/ebook-source";
 import { hashProjectPassword, verifyProjectPasswordHash } from "@/lib/project-password";
 import type { DashboardProject } from "@/types/newsletter";
@@ -1811,20 +1812,6 @@ function makeEmptyStats(): ProjectViewStats {
   };
 }
 
-function detectDeviceType(userAgent: string | null | undefined) {
-  const normalized = userAgent?.toLowerCase() ?? "";
-
-  if (/ipad|tablet/.test(normalized)) {
-    return "tablet";
-  }
-
-  if (/mobi|iphone|android/.test(normalized)) {
-    return "mobile";
-  }
-
-  return "pc";
-}
-
 function getReferrerDomain(referrer: string | null | undefined) {
   if (!referrer) {
     return null;
@@ -1864,7 +1851,7 @@ function mapProjectRowToDashboardProject(
     actions: {
       editHref: `/projects/${project.slug}/pages`,
       previewHref: `/newsletters/${project.slug}?preview=admin`,
-      analyticsHref: "#analytics-preview",
+      analyticsHref: `/projects/${project.slug}/analytics`,
       duplicateHref: `/projects/new?copyFrom=${project.slug}`,
       archiveHref: "#archive-policy",
     },
