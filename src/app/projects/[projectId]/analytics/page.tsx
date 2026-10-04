@@ -8,6 +8,7 @@ import {
   type ArticleAnalyticsBreakdownRow,
   type ArticleAnalyticsDailyTrendRow,
   type ArticleAnalyticsRow,
+  type ChannelAnalytics,
   type ReferrerAnalytics,
   type SurveyConversionAnalytics,
 } from "@/lib/article-analytics-repository";
@@ -30,6 +31,18 @@ const publicationGroupLabels: Record<string, string> = {
   rolling: "수시",
   time_sensitive: "시한성",
   urgent: "긴급",
+};
+
+const channelLabels: Record<string, string> = {
+  email: "이메일",
+  facebook: "페이스북",
+  homepage: "홈페이지",
+  instagram: "인스타그램",
+  kakao: "카카오톡",
+  naver: "네이버",
+  newsletter: "뉴스레터",
+  qr: "QR",
+  sms: "문자",
 };
 
 const periodOptions: Array<{ label: string; value: AnalyticsPeriod }> = [
@@ -265,6 +278,133 @@ function ReferrerAnalyticsSection({ analytics }: { analytics: ReferrerAnalytics 
         ) : null}
         <p className={analytics.legacyExcludedCount > 0 ? "mt-1" : undefined}>보정 이후 수집된 데이터부터 유입경로 분석에 반영합니다.</p>
       </div>
+    </section>
+  );
+}
+
+function ChannelAnalyticsSection({ analytics }: { analytics: ChannelAnalytics }) {
+  const topCampaigns = analytics.campaigns.slice(0, 10);
+  const summaryCards = [
+    { count: analytics.attributed, label: "식별된 채널", rate: analytics.attributedRate },
+    { count: analytics.unattributed, label: "채널 미지정", rate: analytics.unattributedRate },
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-5 py-4">
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">유입 분석</p>
+        <h2 className="mt-1 text-lg font-black text-[#092046]">배포 채널</h2>
+        <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">UTM이 포함된 배포 링크를 기준으로 어떤 채널에서 접속했는지 확인합니다.</p>
+      </div>
+
+      {analytics.warning ? (
+        <p className="mx-4 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-900 sm:mx-5">
+          {analytics.warning}
+        </p>
+      ) : null}
+
+      {analytics.total === 0 ? (
+        <p className="px-5 py-10 text-center text-sm font-bold text-slate-500">선택한 기간에 배포 채널 데이터가 없습니다.</p>
+      ) : (
+        <>
+          <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5">
+            {summaryCards.map((item) => (
+              <article key={item.label} className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
+                <p className="text-xs font-black text-[#184a88]">{item.label}</p>
+                <div className="mt-2 flex items-end justify-between gap-3">
+                  <strong className="text-2xl font-black text-[#092046]">{item.count.toLocaleString("ko-KR")}</strong>
+                  <span className="text-sm font-black text-slate-600">{formatDeviceRate(item.rate)}</span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+                  <div className="h-full rounded-full bg-[#2f73b7]" style={{ width: `${item.rate ?? 0}%` }} />
+                </div>
+                <p className="mt-2 text-[11px] font-semibold text-slate-500">접속 수 · 전체 대비 비율</p>
+              </article>
+            ))}
+          </div>
+
+          {analytics.attributed === 0 ? (
+            <p className="mx-4 mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-slate-600 sm:mx-5">
+              선택한 기간에는 UTM이 포함된 배포 링크 접속이 없습니다.
+            </p>
+          ) : null}
+
+          <div className="border-t border-slate-200">
+            <div className="px-4 py-4 sm:px-5">
+              <h3 className="text-sm font-black text-[#092046]">채널별 접속</h3>
+            </div>
+
+            {analytics.rows.length === 0 ? (
+              <p className="border-t border-slate-200 px-5 py-8 text-center text-sm font-bold text-slate-500">식별된 배포 채널이 없습니다.</p>
+            ) : (
+              <>
+                <div className="space-y-2 border-t border-slate-200 p-4 md:hidden">
+                  {analytics.rows.map((row) => (
+                    <article key={row.source} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+                      <h4 className="font-black text-[#092046] [overflow-wrap:anywhere]">{channelLabels[row.source] ?? row.source}</h4>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                        <div><dt className="text-xs font-bold text-slate-500">접속</dt><dd className="mt-1 font-black text-[#092046]">{row.count.toLocaleString("ko-KR")}</dd></div>
+                        <div><dt className="text-xs font-bold text-slate-500">전체 대비 비율</dt><dd className="mt-1 font-black text-[#184a88]">{formatDeviceRate(row.rate)}</dd></div>
+                      </dl>
+                    </article>
+                  ))}
+                </div>
+
+                <div className="hidden overflow-x-auto border-t border-slate-200 md:block">
+                  <table className="w-full min-w-[600px] border-collapse text-left text-sm">
+                    <caption className="sr-only">배포 채널별 접속 수와 전체 대비 비율</caption>
+                    <thead className="bg-slate-50 text-xs font-black text-slate-600">
+                      <tr>
+                        <th scope="col" className="px-5 py-3">채널</th>
+                        <th scope="col" className="px-3 py-3 text-right">접속</th>
+                        <th scope="col" className="px-5 py-3 text-right">전체 대비 비율</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {analytics.rows.map((row) => (
+                        <tr key={row.source}>
+                          <th scope="row" className="max-w-[360px] px-5 py-4 font-black text-[#092046]">
+                            <span className="block [overflow-wrap:anywhere]">{channelLabels[row.source] ?? row.source}</span>
+                          </th>
+                          <td className="px-3 py-4 text-right font-bold">{row.count.toLocaleString("ko-KR")}</td>
+                          <td className="px-5 py-4 text-right font-black text-[#184a88]">{formatDeviceRate(row.rate)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="border-t border-slate-200">
+            <div className="px-4 py-4 sm:px-5">
+              <h3 className="text-sm font-black text-[#092046]">캠페인별 접속</h3>
+              <p className="mt-1 text-xs font-semibold text-slate-500">접속 수가 많은 상위 10개 캠페인을 표시합니다.</p>
+            </div>
+
+            {topCampaigns.length === 0 ? (
+              <p className="border-t border-slate-200 px-5 py-8 text-center text-sm font-bold text-slate-500">집계된 캠페인이 없습니다.</p>
+            ) : (
+              <div className="divide-y divide-slate-200 border-t border-slate-200">
+                {topCampaigns.map((row) => (
+                  <article key={row.campaign} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-4">
+                    <h4 className="min-w-0 font-black text-[#092046] [overflow-wrap:anywhere]">{row.campaign}</h4>
+                    <div className="text-right">
+                      <strong className="block text-sm font-black text-[#092046]">{row.count.toLocaleString("ko-KR")}</strong>
+                      <span className="text-[11px] font-bold text-[#184a88]">{formatDeviceRate(row.rate)}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <p className="border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold leading-5 text-slate-600">
+        배포 채널은 UTM이 포함된 링크로 접속한 경우에만 식별됩니다. UTM이 없는 접속은 &apos;채널 미지정&apos;으로 표시됩니다.
+      </p>
     </section>
   );
 }
@@ -573,6 +713,8 @@ export default async function ProjectAnalyticsPage({
         <AccessDeviceSection analytics={analytics.deviceAnalytics} />
 
         <ReferrerAnalyticsSection analytics={analytics.referrerAnalytics} />
+
+        <ChannelAnalyticsSection analytics={analytics.channelAnalytics} />
 
         {!hasArticleEvents && !needsMigration ? (
           <div className="rounded-lg border border-dashed border-[#b8d7ff] bg-[#f7fbff] px-5 py-8 text-center">
