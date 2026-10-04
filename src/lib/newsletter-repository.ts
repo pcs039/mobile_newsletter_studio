@@ -1359,6 +1359,9 @@ export type RecordNewsletterViewInput = {
   routePath?: string;
   referrer?: string | null;
   currentOrigin?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
   userAgent?: string | null;
 };
 
@@ -1369,7 +1372,7 @@ export type RecordNewsletterViewResult =
     }
   | {
       ok: false;
-      status: "not_configured" | "not_found" | "request_failed";
+      status: "not_configured" | "not_found" | "migration_required" | "request_failed";
       message: string;
       httpStatus?: number;
     };
@@ -1958,10 +1961,10 @@ async function insertViewEvent(
   const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_view_events");
 
   if (!endpoint) {
-    return;
+    return { ok: false as const, migrationRequired: false };
   }
 
-  await fetch(endpoint, {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       ...headers,
@@ -1973,9 +1976,27 @@ async function insertViewEvent(
       view_mode: input.viewMode,
       device_type: deviceType,
       referrer_domain: referrerDomain,
+      utm_source: input.utmSource || null,
+      utm_medium: input.utmMedium || null,
+      utm_campaign: input.utmCampaign || null,
     }),
     cache: "no-store",
   }).catch(() => null);
+
+  if (!response) {
+    return { ok: false as const, migrationRequired: false };
+  }
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as { code?: string } | null;
+
+    return {
+      ok: false as const,
+      migrationRequired: response.status === 404 || error?.code === "PGRST204" || error?.code === "PGRST205",
+    };
+  }
+
+  return { ok: true as const, migrationRequired: false };
 }
 
 async function incrementDailyStats(
@@ -5195,7 +5216,16 @@ export async function recordNewsletterView(input: RecordNewsletterViewInput): Pr
     const deviceType = detectDeviceType(input.userAgent);
     const referrerDomain = getReferrerDomain(input.referrer, input.currentOrigin);
 
-    await insertViewEvent(project.id, input, deviceType, referrerDomain, headers);
+    const viewEventResult = await insertViewEvent(project.id, input, deviceType, referrerDomain, headers);
+
+    if (!viewEventResult.ok && viewEventResult.migrationRequired) {
+      return {
+        ok: false,
+        status: "migration_required",
+        message: "UTM 유입 채널 저장을 위한 v1.19 migration 적용이 필요합니다.",
+        httpStatus: 503,
+      };
+    }
 
     const updated = await incrementDailyStats(project.id, deviceType, referrerDomain, headers);
 
