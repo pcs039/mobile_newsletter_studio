@@ -16,6 +16,7 @@ type ArticleEventRow = {
 type AnalyticsArticleRow = {
   article_type: string | null;
   id: string;
+  interest_tags: string[] | null;
   publication_kind: string | null;
   sort_order: number | null;
   title: string | null;
@@ -32,6 +33,7 @@ export type ArticleAnalyticsRow = {
   articleViews: number;
   audioPlays: number;
   ctaClicks: number;
+  interestTags: string[];
   mapClicks: number;
   phoneClicks: number;
   publicationKind: "regular" | "rolling";
@@ -41,6 +43,24 @@ export type ArticleAnalyticsRow = {
   surveyClicks: number;
   title: string;
   urgency: "normal" | "time_sensitive" | "urgent";
+};
+
+export type ArticleAnalyticsBreakdownRow = {
+  articleCount: number;
+  articleViews: number;
+  ctaClicks: number;
+  key: string;
+  mapClicks: number;
+  phoneClicks: number;
+  reactionCount: number;
+  reactionScore: number | null;
+  surveyClicks: number;
+};
+
+export type ArticleAnalyticsBreakdowns = {
+  articleTypes: ArticleAnalyticsBreakdownRow[];
+  interestTags: ArticleAnalyticsBreakdownRow[];
+  publicationGroups: ArticleAnalyticsBreakdownRow[];
 };
 
 export type ProjectArticleAnalyticsResult = {
@@ -61,6 +81,7 @@ export type GetProjectArticleAnalyticsOptions = {
 
 const EVENT_PAGE_SIZE = 5000;
 const MAX_EVENT_PAGES = 100;
+const PUBLICATION_GROUP_ORDER = ["regular", "rolling", "time_sensitive", "urgent"];
 
 export type RecordArticleEventInput = {
   articleId: string;
@@ -241,6 +262,12 @@ function makeEmptyAnalyticsRow(article: AnalyticsArticleRow): ArticleAnalyticsRo
     title: article.title?.trim() || "제목 없음 기사",
     sortOrder: Number(article.sort_order) || 0,
     articleType: article.article_type?.trim() || "general",
+    interestTags: Array.isArray(article.interest_tags)
+      ? [...new Set(article.interest_tags
+        .filter((tag): tag is string => typeof tag === "string")
+        .map((tag) => tag.trim())
+        .filter(Boolean))]
+      : [],
     publicationKind: article.publication_kind === "rolling" ? "rolling" : "regular",
     urgency:
       article.urgency === "urgent" || article.urgency === "time_sensitive"
@@ -254,6 +281,74 @@ function makeEmptyAnalyticsRow(article: AnalyticsArticleRow): ArticleAnalyticsRo
     audioPlays: 0,
     reactionCount: 0,
     reactionScore: null,
+  };
+}
+
+function getPublicationGroup(article: ArticleAnalyticsRow) {
+  if (article.publicationKind !== "rolling") return "regular";
+  if (article.urgency === "urgent") return "urgent";
+  if (article.urgency === "time_sensitive") return "time_sensitive";
+  return "rolling";
+}
+
+function addArticleToBreakdown(
+  groups: Map<string, ArticleAnalyticsBreakdownRow>,
+  key: string,
+  article: ArticleAnalyticsRow,
+) {
+  const current = groups.get(key) ?? {
+    articleCount: 0,
+    articleViews: 0,
+    ctaClicks: 0,
+    key,
+    mapClicks: 0,
+    phoneClicks: 0,
+    reactionCount: 0,
+    reactionScore: null,
+    surveyClicks: 0,
+  };
+
+  current.articleCount += 1;
+  current.articleViews += article.articleViews;
+  current.phoneClicks += article.phoneClicks;
+  current.mapClicks += article.mapClicks;
+  current.ctaClicks += article.ctaClicks;
+  current.surveyClicks += article.surveyClicks;
+  current.reactionCount += article.reactionCount;
+  current.reactionScore = current.articleViews > 0
+    ? (current.reactionCount / current.articleViews) * 100
+    : null;
+  groups.set(key, current);
+}
+
+function sortByReaction(rows: ArticleAnalyticsBreakdownRow[]) {
+  return rows.sort((left, right) => (
+    right.reactionCount - left.reactionCount ||
+    right.articleViews - left.articleViews ||
+    left.key.localeCompare(right.key, "ko")
+  ));
+}
+
+export function buildArticleAnalyticsBreakdowns(
+  articles: ArticleAnalyticsRow[],
+): ArticleAnalyticsBreakdowns {
+  const articleTypes = new Map<string, ArticleAnalyticsBreakdownRow>();
+  const interestTags = new Map<string, ArticleAnalyticsBreakdownRow>();
+  const publicationGroups = new Map<string, ArticleAnalyticsBreakdownRow>();
+
+  for (const article of articles) {
+    addArticleToBreakdown(articleTypes, article.articleType, article);
+    addArticleToBreakdown(publicationGroups, getPublicationGroup(article), article);
+    article.interestTags.forEach((tag) => addArticleToBreakdown(interestTags, tag, article));
+  }
+
+  return {
+    articleTypes: sortByReaction([...articleTypes.values()]),
+    interestTags: sortByReaction([...interestTags.values()]),
+    publicationGroups: PUBLICATION_GROUP_ORDER.flatMap((key) => {
+      const row = publicationGroups.get(key);
+      return row ? [row] : [];
+    }),
   };
 }
 
@@ -378,7 +473,7 @@ export async function getProjectArticleAnalytics(
     }
 
     const articleEndpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_articles?select=id,title,sort_order,article_type,publication_kind,urgency&project_id=eq.${encodeURIComponent(project.id)}&order=sort_order.asc`,
+      `/rest/v1/newsletter_articles?select=id,title,sort_order,article_type,interest_tags,publication_kind,urgency&project_id=eq.${encodeURIComponent(project.id)}&order=sort_order.asc`,
     );
 
     if (!articleEndpoint) {
