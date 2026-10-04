@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArticleAnalyticsDailyTrendChart } from "@/components/article-analytics-daily-trend-chart";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import {
-  buildArticleAnalyticsBreakdowns,
   getProjectArticleAnalytics,
   type AccessDeviceAnalytics,
   type ArticleAnalyticsBreakdownRow,
@@ -13,6 +12,10 @@ import {
   type SurveyConversionAnalytics,
 } from "@/lib/article-analytics-repository";
 import { normalizeAnalyticsPeriod, type AnalyticsPeriod } from "@/lib/article-analytics-types";
+import {
+  buildOperationsReportSummary,
+  type OperationsReportSummary,
+} from "@/lib/operations-report";
 
 const articleTypeLabels: Record<string, string> = {
   general: "일반 기사",
@@ -79,6 +82,78 @@ function getTopArticle(articles: ArticleAnalyticsRow[], getValue: (article: Arti
     const value = getValue(article);
     return value > 0 && (!top || value > top.value) ? { article, value } : top;
   }, null);
+}
+
+function OperationsReportSection({ report }: { report: OperationsReportSummary }) {
+  const insightStyles = {
+    attention: {
+      badge: "bg-amber-100 text-amber-900",
+      border: "border-amber-200",
+      label: "확인 필요",
+    },
+    information: {
+      badge: "bg-slate-100 text-slate-700",
+      border: "border-slate-200",
+      label: "정보",
+    },
+    positive: {
+      badge: "bg-[#dcecff] text-[#184a88]",
+      border: "border-[#b8d7ff]",
+      label: "운영 포인트",
+    },
+  };
+  const summaryItems = [
+    `전체 접속 ${report.totalVisits === null ? "확인 필요" : `${report.totalVisits.toLocaleString("ko-KR")}건`}`,
+    `기사 열람 ${report.articleViews.toLocaleString("ko-KR")}건`,
+    `후속 행동 ${report.reactionCount.toLocaleString("ko-KR")}건`,
+    `참여 제출 ${report.survey.totalSubmissions === null ? "확인 필요" : `${report.survey.totalSubmissions.toLocaleString("ko-KR")}건`}`,
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-[#b8d7ff] bg-white shadow-sm">
+      <div className="border-b border-[#d8e8fb] bg-[#f7fbff] px-5 py-4">
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">운영 인사이트</p>
+        <h2 className="mt-1 text-lg font-black text-[#092046]">운영 리포트</h2>
+        <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">
+          선택한 기간의 접속·기사 반응·참여·유입 데이터를 바탕으로 주요 운영 지표를 요약합니다.
+        </p>
+        <p className="mt-3 text-sm font-bold leading-6 text-[#092046] [word-break:keep-all]">
+          {report.periodLabel}: {summaryItems.join(" · ")}
+        </p>
+      </div>
+
+      <div className="p-4 sm:p-5">
+        <h3 className="text-sm font-black text-[#092046]">주요 인사이트</h3>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          {report.insights.map((insight) => {
+            const style = insightStyles[insight.type];
+
+            return (
+              <article key={insight.id} className={`min-w-0 rounded-lg border bg-white p-4 ${style.border}`}>
+                <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${style.badge}`}>{style.label}</span>
+                <h4 className="mt-3 text-sm font-black leading-6 text-[#092046] [overflow-wrap:anywhere] [word-break:keep-all]">{insight.title}</h4>
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-600 [overflow-wrap:anywhere] [word-break:keep-all]">{insight.description}</p>
+                <div className="mt-4 border-t border-slate-200 pt-3">
+                  <p className="text-[11px] font-black text-slate-500">근거</p>
+                  <ul className="mt-1.5 flex flex-wrap gap-2" aria-label={`${insight.title} 근거`}>
+                    {insight.evidence.map((evidence) => (
+                      <li key={evidence} className="max-w-full rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-bold leading-5 text-slate-700 [overflow-wrap:anywhere]">
+                        {evidence}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+
+      <p className="border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold leading-5 text-slate-600">
+        운영 리포트는 집계된 이벤트를 규칙에 따라 요약하며, 주민 만족도·정책 효과·개인별 행동을 추론하지 않습니다.
+      </p>
+    </section>
+  );
 }
 
 function DailyTrendSection({ rows }: { rows: ArticleAnalyticsDailyTrendRow[] }) {
@@ -600,7 +675,8 @@ export default async function ProjectAnalyticsPage({
   const periodParam = Array.isArray(resolvedSearchParams.period) ? resolvedSearchParams.period[0] : resolvedSearchParams.period;
   const period = normalizeAnalyticsPeriod(periodParam);
   const analytics = await getProjectArticleAnalytics(projectId, { period });
-  const breakdowns = buildArticleAnalyticsBreakdowns(analytics.articles);
+  const operationsReport = buildOperationsReportSummary(analytics);
+  const breakdowns = operationsReport.breakdowns;
   const totals = analytics.articles.reduce(
     (result, article) => ({
       views: result.views + article.articleViews,
@@ -707,6 +783,8 @@ export default async function ProjectAnalyticsPage({
             <span className="ml-2 text-xs font-semibold text-slate-500">기사 열람 100회당 후속 행동 건수</span>
           </div>
         </section>
+
+        <OperationsReportSection report={operationsReport} />
 
         <DailyTrendSection rows={analytics.dailyTrends} />
 
