@@ -89,7 +89,12 @@ export function AiOperationsCommentary({ period, projectId }: AiOperationsCommen
   const evidenceLabels = new Map(evidenceCatalog.map((item) => [item.id, item.label]));
 
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm" aria-labelledby="ai-operations-commentary-heading">
+    <section
+      className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+      aria-labelledby="ai-operations-commentary-heading"
+      data-ai-commentary
+      data-ai-commentary-status={status}
+    >
       <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">선택 생성</p>
@@ -101,6 +106,7 @@ export function AiOperationsCommentary({ period, projectId }: AiOperationsCommen
         <button
           type="button"
           className="dd-btn dd-btn-primary dd-btn-sm shrink-0 self-start sm:self-center"
+          data-print-control
           disabled={status === "loading"}
           onClick={() => void generateCommentary()}
         >

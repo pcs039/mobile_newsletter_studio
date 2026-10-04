@@ -105,6 +105,7 @@ export async function ProjectAdminShell({
   sidebarNote,
   sidebarNoteTitle,
   sidebarTitle,
+  printScope,
   title,
 }: {
   active: ProjectSection;
@@ -116,6 +117,7 @@ export async function ProjectAdminShell({
   sidebarNote: string;
   sidebarNoteTitle: string;
   sidebarTitle: ReactNode;
+  printScope?: "analytics-report";
   title: string;
 }) {
   const user = await requireAppUser(`/projects/${projectId}/${active}`);
@@ -175,9 +177,9 @@ export async function ProjectAdminShell({
   const isOperationToolActive = visibleOperationNavigation.some((item) => item.key === active);
 
   return (
-    <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
+    <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950" data-print-scope={printScope}>
       <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="bg-[#071f46] px-6 py-7 text-white">
+        <aside className="bg-[#071f46] px-6 py-7 text-white" data-admin-sidebar>
           <div className="mb-9">
             <DatadictionBrand theme="light" />
             <h1 className="mt-6 text-2xl font-bold leading-tight">{sidebarTitle}</h1>
@@ -203,8 +205,8 @@ export async function ProjectAdminShell({
           </div>
         </aside>
 
-        <section className="min-w-0 px-5 py-6 sm:px-8 lg:px-10">
-          <header className="mb-7 flex flex-col gap-5 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm xl:flex-row xl:items-start xl:justify-between">
+        <section className="min-w-0 px-5 py-6 sm:px-8 lg:px-10" data-admin-content>
+          <header className="mb-7 flex flex-col gap-5 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm xl:flex-row xl:items-start xl:justify-between" data-admin-page-header>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[#184a88]">{projectEyebrow}</p>
               <h2 className="mt-1 text-3xl font-black leading-tight tracking-tight text-[#092046] [word-break:keep-all]">
@@ -230,7 +232,7 @@ export async function ProjectAdminShell({
             </div>
           </header>
 
-          <section className="mb-7 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm">
+          <section className="mb-7 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm" data-admin-workflow>
             <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제작 흐름</p>
