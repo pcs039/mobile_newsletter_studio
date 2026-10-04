@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { canAccessProject, requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { extractResponseOutputText } from "@/lib/article-ai-draft";
 import { getProjectArticleAnalytics } from "@/lib/article-analytics-repository";
-import { normalizeAnalyticsPeriod } from "@/lib/article-analytics-types";
+import {
+  getAnalyticsPeriodRange,
+  getPreviousAnalyticsPeriodRange,
+  normalizeAnalyticsPeriod,
+} from "@/lib/article-analytics-types";
 import {
   aiOperationsCommentaryInstruction,
   aiOperationsCommentaryJsonSchema,
@@ -11,6 +15,7 @@ import {
 } from "@/lib/ai-operations-commentary";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 import { buildOperationsReportSummary } from "@/lib/operations-report";
+import { buildPeriodComparisonSummary } from "@/lib/period-comparison";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -66,9 +71,16 @@ export async function POST(
     return errorResponse("AI_COMMENTARY_FORBIDDEN", "이 프로젝트의 운영 리포트를 생성할 권한이 없습니다.", 403);
   }
 
-  const analytics = await getProjectArticleAnalytics(projectSlug, {
-    period: normalizeAnalyticsPeriod(requestedPeriod),
-  });
+  const period = normalizeAnalyticsPeriod(requestedPeriod);
+  const analyticsNow = new Date();
+  const currentRange = getAnalyticsPeriodRange(period, analyticsNow);
+  const previousRange = getPreviousAnalyticsPeriodRange(currentRange);
+  const [analytics, previousAnalytics] = await Promise.all([
+    getProjectArticleAnalytics(projectSlug, { now: analyticsNow, period }),
+    previousRange
+      ? getProjectArticleAnalytics(projectSlug, { period, rangeOverride: previousRange })
+      : Promise.resolve(null),
+  ]);
 
   if (analytics.source !== "supabase") {
     return errorResponse(
@@ -79,8 +91,10 @@ export async function POST(
   }
 
   const report = buildOperationsReportSummary(analytics);
+  const comparison = buildPeriodComparisonSummary(analytics, previousAnalytics);
   const input = buildAiOperationsReportInput(report, {
     channelAttributedRate: analytics.channelAnalytics.attributedRate,
+    comparison,
     referrerTotal: analytics.referrerAnalytics.total,
   });
   const apiKey = process.env.OPENAI_API_KEY?.trim();

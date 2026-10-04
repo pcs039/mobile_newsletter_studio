@@ -185,6 +185,7 @@ export type ProjectArticleAnalyticsResult = {
 export type GetProjectArticleAnalyticsOptions = {
   now?: Date;
   period?: AnalyticsPeriod | string;
+  rangeOverride?: AnalyticsPeriodRange;
 };
 
 const EVENT_PAGE_SIZE = 5000;
@@ -991,7 +992,7 @@ export async function getProjectArticleAnalytics(
   options: GetProjectArticleAnalyticsOptions = {},
 ): Promise<ProjectArticleAnalyticsResult> {
   const period = normalizeAnalyticsPeriod(options.period);
-  const periodRange = getAnalyticsPeriodRange(period, options.now);
+  const periodRange = options.rangeOverride ?? getAnalyticsPeriodRange(period, options.now);
   const headers = getServiceHeaders();
 
   if (!headers) {
