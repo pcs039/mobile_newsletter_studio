@@ -48,5 +48,24 @@ export function getAnalyticsPeriodRange(period: AnalyticsPeriod, now = new Date(
   };
 }
 
+export function getPreviousAnalyticsPeriodRange(
+  currentRange: AnalyticsPeriodRange,
+): AnalyticsPeriodRange | null {
+  if (currentRange.period === "all" || !currentRange.startDate) return null;
+
+  const dayCount = currentRange.period === "7d" ? 7 : 30;
+  const currentStartUtc = Date.parse(`${currentRange.startDate}T00:00:00Z`);
+  const startDate = new Date(currentStartUtc - dayCount * DAY_MS).toISOString().slice(0, 10);
+  const endDate = new Date(currentStartUtc - DAY_MS).toISOString().slice(0, 10);
+
+  return {
+    endDate,
+    label: currentRange.period === "7d" ? "직전 7일" : "직전 30일",
+    period: currentRange.period,
+    startDate,
+    startIso: new Date(`${startDate}T00:00:00+09:00`).toISOString(),
+  };
+}
+
 // Event meanings are intentionally narrow: views and audio are session-deduped,
 // while phone, map, CTA, and survey events represent actual click attempts.

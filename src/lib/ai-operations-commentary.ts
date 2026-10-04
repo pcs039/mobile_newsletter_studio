@@ -1,4 +1,5 @@
 import type { OperationsReportSummary } from "@/lib/operations-report";
+import type { PeriodComparisonSummary } from "@/lib/period-comparison";
 
 export type AiOperationsReportInput = {
   caveats: string[];
@@ -10,6 +11,7 @@ export type AiOperationsReportInput = {
       rate: number | null;
     } | null;
   };
+  comparison: PeriodComparisonSummary;
   deterministicInsights: Array<{
     description: string;
     evidence: string[];
@@ -72,6 +74,7 @@ export type AiOperationsCommentaryResponse =
 
 export type AiOperationsReportContext = {
   channelAttributedRate: number | null;
+  comparison: PeriodComparisonSummary;
   referrerTotal: number;
 };
 
@@ -128,6 +131,10 @@ export const aiOperationsCommentaryInstruction = `너는 공공기관 모바일 
 - 열람 수나 반응도가 콘텐츠 품질, 주민 만족도, 정책 효과, 정책 선호도, 주민 수요를 입증한다고 말하지 않는다.
 - 열람 표본이 적은 기사 반응도는 참고 수준으로만 설명한다.
 - UTM 식별 비중이 낮으면 특정 채널 결과를 전체 배포 성과로 일반화하지 않는다.
+- comparison 값은 애플리케이션이 계산한 값이므로 다시 계산하지 않는다.
+- 접속·열람·행동의 증감을 주민 관심, 정책 효과, 콘텐츠 품질 변화로 해석하지 않는다.
+- 비율 지표의 변화는 입력에 제공된 퍼센트포인트 값을 그대로 사용한다.
+- previous가 0인 new 상태를 퍼센트 증가로 환산하지 않는다.
 - 대성공, 폭발적, 반드시, 확실히 같은 과장 표현을 쓰지 않는다.
 - 관측됐습니다, 확인됩니다, 참고할 수 있습니다, 추가 관찰이 필요합니다, 다음 배포에서 검토할 수 있습니다 같은 보수적인 표현을 사용한다.
 
@@ -201,6 +208,7 @@ export function buildAiOperationsReportInput(
           }
         : null,
     },
+    comparison: context.comparison,
     deterministicInsights: report.insights.map((insight) => ({
       description: insight.description,
       evidence: [...insight.evidence],

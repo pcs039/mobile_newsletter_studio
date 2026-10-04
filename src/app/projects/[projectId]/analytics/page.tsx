@@ -12,11 +12,21 @@ import {
   type ReferrerAnalytics,
   type SurveyConversionAnalytics,
 } from "@/lib/article-analytics-repository";
-import { normalizeAnalyticsPeriod, type AnalyticsPeriod } from "@/lib/article-analytics-types";
+import {
+  getAnalyticsPeriodRange,
+  getPreviousAnalyticsPeriodRange,
+  normalizeAnalyticsPeriod,
+  type AnalyticsPeriod,
+} from "@/lib/article-analytics-types";
 import {
   buildOperationsReportSummary,
   type OperationsReportSummary,
 } from "@/lib/operations-report";
+import {
+  buildPeriodComparisonSummary,
+  type PeriodComparisonMetric,
+  type PeriodComparisonSummary,
+} from "@/lib/period-comparison";
 
 const articleTypeLabels: Record<string, string> = {
   general: "일반 기사",
@@ -152,6 +162,125 @@ function OperationsReportSection({ report }: { report: OperationsReportSummary }
 
       <p className="border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold leading-5 text-slate-600">
         운영 리포트는 집계된 이벤트를 규칙에 따라 요약하며, 주민 만족도·정책 효과·개인별 행동을 추론하지 않습니다.
+      </p>
+    </section>
+  );
+}
+
+function formatComparisonValue(value: number | null, unit: PeriodComparisonMetric["unit"]) {
+  if (value === null) return "-";
+  return unit === "percentage_point" ? `${value.toFixed(1)}%` : `${value.toLocaleString("ko-KR")}건`;
+}
+
+function getComparisonChange(metric: PeriodComparisonMetric) {
+  if (metric.direction === "unavailable" || metric.absoluteChange === null) {
+    return { detail: "-", label: "비교 불가" };
+  }
+
+  if (metric.direction === "same") {
+    return {
+      detail: metric.unit === "percentage_point" ? "0.0%p" : "0건",
+      label: "변화 없음",
+    };
+  }
+
+  const prefix = metric.absoluteChange > 0 ? "+" : "";
+
+  if (metric.unit === "percentage_point") {
+    const value = `${prefix}${metric.absoluteChange.toFixed(1)}%p`;
+    return {
+      detail: value,
+      label: `${Math.abs(metric.absoluteChange).toFixed(1)}%p ${metric.direction === "up" ? "증가" : "감소"}`,
+    };
+  }
+
+  const absolute = `${prefix}${metric.absoluteChange.toLocaleString("ko-KR")}건`;
+
+  if (metric.direction === "new") {
+    return { detail: absolute, label: "새로 관측" };
+  }
+
+  return {
+    detail: absolute,
+    label: metric.percentChange === null
+      ? "비교 불가"
+      : `${Math.abs(metric.percentChange).toFixed(1)}% ${metric.direction === "up" ? "증가" : "감소"}`,
+  };
+}
+
+function PeriodComparisonSection({ comparison }: { comparison: PeriodComparisonSummary }) {
+  if (!comparison.available || !comparison.metrics) {
+    const message = comparison.unavailableReason === "all"
+      ? "전체 기간은 직전 동일 길이 기간 비교를 제공하지 않습니다. 최근 7일 또는 최근 30일을 선택하면 직전 동일 기간과 비교할 수 있습니다."
+      : "이전 기간 데이터를 불러오지 못해 비교할 수 없습니다. 현재 기간의 나머지 운영 지표는 정상적으로 확인할 수 있습니다.";
+
+    return (
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">변화 분석</p>
+          <h2 className="mt-1 text-lg font-black text-[#092046]">이전 기간 대비</h2>
+          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">선택한 기간의 주요 운영 지표를 직전 동일 길이 기간과 비교합니다.</p>
+        </div>
+        <p className="px-5 py-8 text-center text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">{message}</p>
+      </section>
+    );
+  }
+
+  const metrics = [
+    comparison.metrics.totalVisits,
+    comparison.metrics.articleViews,
+    comparison.metrics.reactionCount,
+    comparison.metrics.surveySubmissions,
+    comparison.metrics.mobileRate,
+    comparison.metrics.channelAttributedRate,
+  ];
+  const currentRange = comparison.currentRange.startDate
+    ? `${formatDateLabel(comparison.currentRange.startDate)} ~ ${formatDateLabel(comparison.currentRange.endDate ?? "")}`
+    : comparison.currentLabel;
+  const previousRange = comparison.previousRange?.startDate
+    ? `${formatDateLabel(comparison.previousRange.startDate)} ~ ${formatDateLabel(comparison.previousRange.endDate ?? "")}`
+    : comparison.previousLabel;
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-5 py-4">
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">변화 분석</p>
+        <h2 className="mt-1 text-lg font-black text-[#092046]">이전 기간 대비</h2>
+        <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">선택한 기간의 주요 운영 지표를 직전 동일 길이 기간과 비교합니다.</p>
+        <div className="mt-3 flex flex-col gap-1 text-xs font-bold leading-5 text-slate-600 sm:flex-row sm:gap-4">
+          <span>현재: {currentRange}</span>
+          <span>이전: {previousRange}</span>
+        </div>
+      </div>
+
+      <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
+        {metrics.map((metric) => {
+          const change = getComparisonChange(metric);
+
+          return (
+            <article key={metric.key} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-sm font-black text-[#092046]">{metric.label}</h3>
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <dt className="font-bold text-slate-500">현재</dt>
+                  <dd className="mt-1 text-base font-black text-[#092046]">{formatComparisonValue(metric.current, metric.unit)}</dd>
+                </div>
+                <div>
+                  <dt className="font-bold text-slate-500">이전</dt>
+                  <dd className="mt-1 text-base font-black text-slate-700">{formatComparisonValue(metric.previous, metric.unit)}</dd>
+                </div>
+              </dl>
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
+                <strong className="text-sm font-black text-[#184a88]">{change.detail}</strong>
+                <span className="text-right text-xs font-bold text-slate-600">{change.label}</span>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <p className="border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold leading-5 text-slate-600">
+        증감은 이벤트 수와 집계 비중의 변화이며, 주민 관심도·정책 효과·콘텐츠 품질을 의미하지 않습니다. UTM 값은 식별 가능한 접속 비중의 변화입니다.
       </p>
     </section>
   );
@@ -675,8 +804,17 @@ export default async function ProjectAnalyticsPage({
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const periodParam = Array.isArray(resolvedSearchParams.period) ? resolvedSearchParams.period[0] : resolvedSearchParams.period;
   const period = normalizeAnalyticsPeriod(periodParam);
-  const analytics = await getProjectArticleAnalytics(projectId, { period });
+  const analyticsNow = new Date();
+  const currentRange = getAnalyticsPeriodRange(period, analyticsNow);
+  const previousRange = getPreviousAnalyticsPeriodRange(currentRange);
+  const [analytics, previousAnalytics] = await Promise.all([
+    getProjectArticleAnalytics(projectId, { now: analyticsNow, period }),
+    previousRange
+      ? getProjectArticleAnalytics(projectId, { period, rangeOverride: previousRange })
+      : Promise.resolve(null),
+  ]);
   const operationsReport = buildOperationsReportSummary(analytics);
+  const periodComparison = buildPeriodComparisonSummary(analytics, previousAnalytics);
   const breakdowns = operationsReport.breakdowns;
   const totals = analytics.articles.reduce(
     (result, article) => ({
@@ -788,6 +926,8 @@ export default async function ProjectAnalyticsPage({
         <OperationsReportSection report={operationsReport} />
 
         <AiOperationsCommentary key={`${projectId}-${period}`} period={period} projectId={projectId} />
+
+        <PeriodComparisonSection comparison={periodComparison} />
 
         <DailyTrendSection rows={analytics.dailyTrends} />
 
