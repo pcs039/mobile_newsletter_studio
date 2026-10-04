@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AnalyticsReportExportButton } from "@/components/analytics-report-export-button";
 import { AiOperationsCommentary } from "@/components/ai-operations-commentary";
 import { ArticleAnalyticsDailyTrendChart } from "@/components/article-analytics-daily-trend-chart";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
@@ -79,6 +80,21 @@ function formatDeviceRate(value: number | null) {
 
 function formatDateLabel(value: string) {
   return value.replaceAll("-", ".");
+}
+
+function formatKstDateTime(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+  }).formatToParts(value);
+  const getPart = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${getPart("year")}.${getPart("month")}.${getPart("day")} ${getPart("hour")}:${getPart("minute")} KST`;
 }
 
 function getPublicationBadge(article: ArticleAnalyticsRow) {
@@ -315,7 +331,7 @@ function DailyTrendSection({ rows }: { rows: ArticleAnalyticsDailyTrendRow[] }) 
       <div className="border-t border-slate-200 px-4 py-4 sm:px-5">
         <p className="mb-3 text-xs font-bold text-slate-500">정확한 수치는 아래 일별 표에서 확인할 수 있습니다.</p>
         <div className="max-h-72 overflow-auto rounded-lg border border-slate-200">
-          <table className="w-full min-w-[520px] border-collapse text-sm">
+          <table className="w-full min-w-[520px] border-collapse text-sm" data-daily-trend-table>
             <caption className="sr-only">날짜별 전체 접속, 기사 열람, 후속 행동 수치</caption>
             <thead className="sticky top-0 bg-slate-50 text-xs font-black text-slate-600">
               <tr>
@@ -834,6 +850,7 @@ export default async function ProjectAnalyticsPage({
   const periodDescription = analytics.periodRange.startDate
     ? `${analytics.periodRange.label} 기준 · ${formatDateLabel(analytics.periodRange.startDate)} ~ ${formatDateLabel(analytics.periodRange.endDate)}`
     : "전체 누적";
+  const reportGeneratedAt = formatKstDateTime(analyticsNow);
   const reactionSummaries = [
     { label: "가장 많이 읽힌 기사", suffix: "열람", result: getTopArticle(analytics.articles, (article) => article.articleViews) },
     { label: "반응 수가 가장 많은 기사", suffix: "반응", result: getTopArticle(analytics.articles, (article) => article.reactionCount) },
@@ -852,15 +869,33 @@ export default async function ProjectAnalyticsPage({
       sidebarDescription="공개 화면 접속과 기사별 열람·행동 이벤트를 운영 관점에서 집계합니다."
       sidebarNoteTitle="집계 기준"
       sidebarNote="수치는 개인 수가 아닌 이벤트 수입니다. 반응도는 기사 열람 100회당 후속 행동 건수이며 음성 재생은 제외합니다."
+      printScope="analytics-report"
       actions={
         <div className="flex flex-wrap gap-2">
           <Link href={`/newsletters/${projectId}`} target="_blank" rel="noreferrer" className="dd-btn dd-btn-secondary dd-btn-lg text-sm">공개 화면</Link>
           <Link href={`/projects/${projectId}/distribution`} className="dd-btn dd-btn-primary dd-btn-lg text-sm">배포 관리</Link>
+          <AnalyticsReportExportButton />
         </div>
       }
     >
-      <section className="space-y-5">
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="space-y-5" data-analytics-report>
+        <header className="analytics-report-print-only" aria-label="운영 리포트 출력 정보">
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">DataDiction</p>
+          <h1 className="mt-2 text-2xl font-black text-[#092046]">모바일 소식지 운영 리포트</h1>
+          <dl className="mt-5 grid grid-cols-[88px_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm leading-6">
+            <dt className="font-black text-slate-500">프로젝트</dt>
+            <dd className="font-bold text-[#092046]">{analytics.projectTitle}</dd>
+            <dt className="font-black text-slate-500">분석 기간</dt>
+            <dd className="font-bold text-slate-700">{periodDescription}</dd>
+            <dt className="font-black text-slate-500">출력 기준</dt>
+            <dd className="font-bold text-slate-700">{reportGeneratedAt}</dd>
+          </dl>
+          <p className="mt-4 border-t border-slate-300 pt-3 text-xs font-semibold leading-5 text-slate-600">
+            수치는 개인 수가 아닌 집계 이벤트 수입니다.
+          </p>
+        </header>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm" data-print-control>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기간</p>
@@ -1003,7 +1038,7 @@ export default async function ProjectAnalyticsPage({
             <p className="mt-1 text-xs font-semibold text-slate-500">현재 기사 배치순서로 표시합니다.</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1120px] border-collapse text-left text-sm" data-analytics-article-table>
               <thead className="bg-slate-50 text-xs font-black text-slate-600">
                 <tr>
                   <th className="px-5 py-3">기사</th><th className="px-3 py-3">구분</th>
@@ -1056,6 +1091,10 @@ export default async function ProjectAnalyticsPage({
             <li>행동 데이터는 주민 전체의 의견이나 정책 선호도를 의미하지 않습니다.</li>
           </ul>
         </section>
+
+        <footer className="analytics-report-print-only border-t border-slate-300 pt-4 text-xs font-semibold leading-5 text-slate-600">
+          본 리포트의 수치는 개인 수가 아닌 집계 이벤트 수입니다. 접속·열람·행동 변화만으로 주민 관심도, 콘텐츠 품질, 정책 효과를 판단하지 않습니다.
+        </footer>
       </section>
     </ProjectAdminShell>
   );
