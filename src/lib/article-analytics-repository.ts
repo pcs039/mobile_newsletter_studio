@@ -50,6 +50,12 @@ type ViewReferrerRow = {
   referrer_domain: string | null;
 };
 
+type ViewAttributionRow = ViewReferrerRow & {
+  utm_campaign: string | null;
+  utm_medium: string | null;
+  utm_source: string | null;
+};
+
 export type ArticleAnalyticsRow = {
   articleId: string;
   articleType: string;
@@ -137,8 +143,32 @@ export type ReferrerAnalytics = {
   warning: string;
 };
 
+export type ChannelAnalyticsRow = {
+  count: number;
+  rate: number | null;
+  source: string;
+};
+
+export type CampaignAnalyticsRow = {
+  campaign: string;
+  count: number;
+  rate: number | null;
+};
+
+export type ChannelAnalytics = {
+  attributed: number;
+  attributedRate: number | null;
+  campaigns: CampaignAnalyticsRow[];
+  rows: ChannelAnalyticsRow[];
+  total: number;
+  unattributed: number;
+  unattributedRate: number | null;
+  warning: string;
+};
+
 export type ProjectArticleAnalyticsResult = {
   articles: ArticleAnalyticsRow[];
+  channelAnalytics: ChannelAnalytics;
   dailyTrends: ArticleAnalyticsDailyTrendRow[];
   deviceAnalytics: AccessDeviceAnalytics;
   eventAggregationWarning: string;
@@ -212,6 +242,19 @@ function makeEmptyReferrerAnalytics(warning = ""): ReferrerAnalytics {
   };
 }
 
+function makeEmptyChannelAnalytics(warning = ""): ChannelAnalytics {
+  return {
+    attributed: 0,
+    attributedRate: null,
+    campaigns: [],
+    rows: [],
+    total: 0,
+    unattributed: 0,
+    unattributedRate: null,
+    warning,
+  };
+}
+
 function buildReferrerAnalytics(
   rows: ViewReferrerRow[],
   warning = "",
@@ -248,6 +291,57 @@ function buildReferrerAnalytics(
     externalRate: total > 0 ? (external / total) * 100 : null,
     legacyExcludedCount: rows.length - eligibleRows.length,
     total,
+    warning,
+  };
+}
+
+function buildChannelAnalytics(
+  rows: ViewAttributionRow[],
+  warning = "",
+): ChannelAnalytics {
+  const sources = new Map<string, number>();
+  const campaigns = new Map<string, number>();
+  let attributed = 0;
+  let campaignTotal = 0;
+
+  for (const row of rows) {
+    const source = row.utm_source ?? "";
+    const campaign = row.utm_campaign ?? "";
+
+    if (source.trim()) {
+      attributed += 1;
+      sources.set(source, (sources.get(source) ?? 0) + 1);
+    }
+
+    if (campaign.trim()) {
+      campaignTotal += 1;
+      campaigns.set(campaign, (campaigns.get(campaign) ?? 0) + 1);
+    }
+  }
+
+  const total = rows.length;
+  const unattributed = total - attributed;
+
+  return {
+    attributed,
+    attributedRate: total > 0 ? (attributed / total) * 100 : null,
+    campaigns: [...campaigns.entries()]
+      .map(([campaign, count]) => ({
+        campaign,
+        count,
+        rate: campaignTotal > 0 ? (count / campaignTotal) * 100 : null,
+      }))
+      .sort((left, right) => right.count - left.count || left.campaign.localeCompare(right.campaign)),
+    rows: [...sources.entries()]
+      .map(([source, count]) => ({
+        count,
+        rate: total > 0 ? (count / total) * 100 : null,
+        source,
+      }))
+      .sort((left, right) => right.count - left.count || left.source.localeCompare(right.source)),
+    total,
+    unattributed,
+    unattributedRate: total > 0 ? (unattributed / total) * 100 : null,
     warning,
   };
 }
@@ -651,12 +745,13 @@ async function fetchArticleEvents(
   return { ok: true as const, migrationRequired: false, rows, truncated: true };
 }
 
-async function fetchViewReferrers(
+async function fetchViewEventRows<Row>(
   projectId: string,
   periodRange: AnalyticsPeriodRange,
   headers: Record<string, string>,
+  selectColumns: string,
 ) {
-  const rows: ViewReferrerRow[] = [];
+  const rows: Row[] = [];
 
   try {
     for (let page = 0; page < MAX_EVENT_PAGES; page += 1) {
@@ -665,17 +760,17 @@ async function fetchViewReferrers(
         ? `&occurred_at=gte.${encodeURIComponent(periodRange.startIso)}`
         : "";
       const endpoint = getSupabaseRestEndpoint(
-        `/rest/v1/newsletter_view_events?select=referrer_domain,occurred_at&project_id=eq.${encodeURIComponent(
+        `/rest/v1/newsletter_view_events?select=${selectColumns}&project_id=eq.${encodeURIComponent(
           projectId,
         )}${periodFilter}&occurred_at=lt.${encodeURIComponent(getPeriodEndExclusiveIso(periodRange))}&order=occurred_at.asc,id.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
       );
 
-      if (!endpoint) return { ok: false as const, rows: [] as ViewReferrerRow[], truncated: false };
+      if (!endpoint) return { ok: false as const, rows: [] as Row[], truncated: false };
 
       const response = await fetch(endpoint, { headers, cache: "no-store" });
       if (!response.ok) return { ok: false as const, rows: [], truncated: false };
 
-      const pageRows = (await response.json()) as ViewReferrerRow[];
+      const pageRows = (await response.json()) as Row[];
       rows.push(...pageRows);
 
       if (pageRows.length < EVENT_PAGE_SIZE) {
@@ -687,6 +782,32 @@ async function fetchViewReferrers(
   } catch {
     return { ok: false as const, rows: [], truncated: false };
   }
+}
+
+function fetchViewAttributions(
+  projectId: string,
+  periodRange: AnalyticsPeriodRange,
+  headers: Record<string, string>,
+) {
+  return fetchViewEventRows<ViewAttributionRow>(
+    projectId,
+    periodRange,
+    headers,
+    "referrer_domain,utm_source,utm_medium,utm_campaign,occurred_at",
+  );
+}
+
+function fetchViewReferrers(
+  projectId: string,
+  periodRange: AnalyticsPeriodRange,
+  headers: Record<string, string>,
+) {
+  return fetchViewEventRows<ViewReferrerRow>(
+    projectId,
+    periodRange,
+    headers,
+    "referrer_domain,occurred_at",
+  );
 }
 
 async function fetchSurveyMetadata(projectId: string, headers: Record<string, string>) {
@@ -876,6 +997,7 @@ export async function getProjectArticleAnalytics(
   if (!headers) {
     return {
       articles: [],
+      channelAnalytics: makeEmptyChannelAnalytics(),
       dailyTrends: [],
       deviceAnalytics: buildAccessDeviceAnalytics([]),
       eventAggregationWarning: "",
@@ -896,6 +1018,7 @@ export async function getProjectArticleAnalytics(
     if (!project) {
       return {
         articles: [],
+        channelAnalytics: makeEmptyChannelAnalytics(),
         dailyTrends: [],
         deviceAnalytics: buildAccessDeviceAnalytics([]),
         eventAggregationWarning: "",
@@ -917,6 +1040,7 @@ export async function getProjectArticleAnalytics(
     if (!articleEndpoint) {
       return {
         articles: [],
+        channelAnalytics: makeEmptyChannelAnalytics(),
         dailyTrends: [],
         deviceAnalytics: buildAccessDeviceAnalytics([]),
         eventAggregationWarning: "",
@@ -936,6 +1060,7 @@ export async function getProjectArticleAnalytics(
     if (!articleResponse.ok) {
       return {
         articles: [],
+        channelAnalytics: makeEmptyChannelAnalytics(),
         dailyTrends: [],
         deviceAnalytics: buildAccessDeviceAnalytics([]),
         eventAggregationWarning: "",
@@ -952,12 +1077,12 @@ export async function getProjectArticleAnalytics(
 
     const articleRows = (await articleResponse.json()) as AnalyticsArticleRow[];
     const analyticsByArticleId = new Map(articleRows.map((article) => [article.id, makeEmptyAnalyticsRow(article)]));
-    const [eventResult, totalVisitsResult, surveyMetadataResult, surveyResponseResult, referrerResult] = await Promise.all([
+    const [eventResult, totalVisitsResult, surveyMetadataResult, surveyResponseResult, attributionResult] = await Promise.all([
       fetchArticleEvents(project.id, periodRange, headers),
       fetchTotalVisits(project.id, periodRange, headers),
       fetchSurveyMetadata(project.id, headers),
       fetchSurveyResponses(project.id, periodRange, headers),
-      fetchViewReferrers(project.id, periodRange, headers),
+      fetchViewAttributions(project.id, periodRange, headers),
     ]);
     const articleIds = new Set(analyticsByArticleId.keys());
     const dailyTrends = buildArticleAnalyticsDailyTrends({
@@ -967,12 +1092,21 @@ export async function getProjectArticleAnalytics(
       periodRange,
     });
     const deviceAnalytics = buildAccessDeviceAnalytics(totalVisitsResult.dailyStats);
+    const referrerResult = attributionResult.ok
+      ? attributionResult
+      : await fetchViewReferrers(project.id, periodRange, headers);
     const referrerAnalytics = referrerResult.ok
       ? buildReferrerAnalytics(
           referrerResult.rows,
           referrerResult.truncated ? "유입경로 데이터가 많아 일부 이벤트만 집계되었습니다." : "",
         )
       : makeEmptyReferrerAnalytics("유입경로 데이터를 조회하지 못했습니다.");
+    const channelAnalytics = attributionResult.ok
+      ? buildChannelAnalytics(
+          attributionResult.rows,
+          attributionResult.truncated ? "배포 채널 데이터가 많아 일부 이벤트만 집계되었습니다." : "",
+        )
+      : makeEmptyChannelAnalytics("배포 채널 데이터를 조회하지 못했습니다.");
     const surveyConversions = buildSurveyConversionAnalytics({
       articleIds,
       events: eventResult.rows,
@@ -983,6 +1117,7 @@ export async function getProjectArticleAnalytics(
     if (!eventResult.ok && eventResult.rows.length === 0) {
       return {
         articles: [...analyticsByArticleId.values()],
+        channelAnalytics,
         dailyTrends,
         deviceAnalytics,
         eventAggregationWarning: "",
@@ -1021,6 +1156,7 @@ export async function getProjectArticleAnalytics(
 
     return {
       articles: [...analyticsByArticleId.values()],
+      channelAnalytics,
       dailyTrends,
       deviceAnalytics,
       eventAggregationWarning: eventResult.truncated ? "일부 이벤트만 집계되었습니다." : "",
@@ -1036,6 +1172,7 @@ export async function getProjectArticleAnalytics(
   } catch {
     return {
       articles: [],
+      channelAnalytics: makeEmptyChannelAnalytics(),
       dailyTrends: [],
       deviceAnalytics: buildAccessDeviceAnalytics([]),
       eventAggregationWarning: "",
