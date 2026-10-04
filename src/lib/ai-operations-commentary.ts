@@ -261,11 +261,14 @@ export function sanitizeAiOperationsCommentary(
 
   if (!headline || !summary) return null;
 
+  const required = [...new Set(requiredCaveats.map((item) => cleanText(item, 400)).filter(Boolean))];
   const generatedCautions = uniqueTextList(record.cautions, 3, 400);
-  const cautions = [...new Set([
-    ...requiredCaveats.map((item) => cleanText(item, 400)).filter(Boolean),
-    ...generatedCautions,
-  ])].slice(0, 3);
+  const requiredSet = new Set(required);
+  const generated = generatedCautions.filter((item) => !requiredSet.has(item));
+  const cautions = [
+    ...required,
+    ...generated.slice(0, Math.max(0, 3 - required.length)),
+  ];
 
   return {
     cautions,
