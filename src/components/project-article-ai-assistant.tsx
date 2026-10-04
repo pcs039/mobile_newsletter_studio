@@ -487,15 +487,18 @@ export function ProjectArticleAiAssistant({
     <details className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 sm:p-5">
       <summary className="flex cursor-pointer list-none flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span>
-          <span className="block text-xs font-black uppercase tracking-wide text-[#184a88]">AI 작성 도우미</span>
-          <span className="mt-1 block text-base font-black text-[#092046]">원자료를 모바일 기사 초안으로 정리</span>
+          <span className="block text-xs font-black uppercase tracking-wide text-[#184a88]">1–2. 자료 가져오기 · AI 분석</span>
+          <span className="mt-1 block text-base font-black text-[#092046]">보도자료·기존 소식지·사진을 기사 초안으로 정리</span>
+          <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">
+            자료를 가져오면 AI가 기사 구조와 공공정보를 제안합니다.
+          </span>
         </span>
         <span className="self-start rounded-full bg-[#092046] px-3 py-1 text-xs font-black text-white">열기</span>
       </summary>
 
       <div className="mt-5 space-y-4 border-t border-[#d8e8ff] pt-5">
         <section className="rounded-lg border border-[#d8e8ff] bg-white p-4" aria-labelledby="article-source-import-heading">
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">1. 원자료 가져오기</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">자료 가져오기</p>
           <h3 id="article-source-import-heading" className="mt-1 text-base font-black text-[#092046]">PDF, Word 또는 HWPX 원고 선택</h3>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
@@ -540,7 +543,7 @@ export function ProjectArticleAiAssistant({
         </section>
 
         <section className="rounded-lg border border-[#d8e8ff] bg-white p-4" aria-labelledby="article-photo-import-heading">
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">2. 사진자료 추가 (선택)</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">보도사진 추가 (선택)</p>
           <h3 id="article-photo-import-heading" className="mt-1 text-base font-black text-[#092046]">
             AI가 함께 살펴볼 보도사진
           </h3>
@@ -631,7 +634,7 @@ export function ProjectArticleAiAssistant({
         </section>
 
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 원문 확인</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">원문 확인</p>
           <label htmlFor="article-ai-source" className="mt-1 block text-sm font-black text-[#092046]">추출된 원문 또는 직접 입력</label>
           <textarea
             id="article-ai-source"
@@ -666,7 +669,7 @@ export function ProjectArticleAiAssistant({
         </div>
 
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">4. 기사 초안 생성</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">AI 분석 및 기사 초안 생성</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" onClick={loadCurrentContent} disabled={isGenerating} className="dd-btn dd-btn-secondary dd-btn-sm">
               현재 입력 내용 가져오기
