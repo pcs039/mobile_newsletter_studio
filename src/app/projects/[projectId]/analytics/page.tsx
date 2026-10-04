@@ -4,6 +4,7 @@ import { ProjectAdminShell } from "@/components/project-admin-shell";
 import {
   buildArticleAnalyticsBreakdowns,
   getProjectArticleAnalytics,
+  type AccessDeviceAnalytics,
   type ArticleAnalyticsBreakdownRow,
   type ArticleAnalyticsDailyTrendRow,
   type ArticleAnalyticsRow,
@@ -41,6 +42,10 @@ function formatReactionScore(value: number | null) {
 }
 
 function formatSubmissionRate(value: number | null) {
+  return value === null ? "-" : `${value.toFixed(1)}%`;
+}
+
+function formatDeviceRate(value: number | null) {
   return value === null ? "-" : `${value.toFixed(1)}%`;
 }
 
@@ -114,6 +119,51 @@ function DailyTrendSection({ rows }: { rows: ArticleAnalyticsDailyTrendRow[] }) 
           </table>
         </div>
       </div>
+    </section>
+  );
+}
+
+function AccessDeviceSection({ analytics }: { analytics: AccessDeviceAnalytics }) {
+  const devices = [
+    { count: analytics.mobile, label: "모바일", rate: analytics.mobileRate },
+    { count: analytics.pc, label: "PC", rate: analytics.pcRate },
+    { count: analytics.tablet, label: "태블릿", rate: analytics.tabletRate },
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-5 py-4">
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">접속 환경</p>
+        <h2 className="mt-1 text-lg font-black text-[#092046]">접속 기기</h2>
+        <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">선택한 기간의 공개 화면 접속을 모바일·PC·태블릿 기준으로 비교합니다.</p>
+      </div>
+
+      {analytics.total === 0 ? (
+        <p className="px-5 py-10 text-center text-sm font-bold text-slate-500">선택한 기간에 집계된 기기별 접속 데이터가 없습니다.</p>
+      ) : (
+        <div className="grid gap-3 p-4 md:grid-cols-3 md:p-5">
+          {devices.map((device) => (
+            <article key={device.label} className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
+              <p className="text-xs font-black text-[#184a88]">{device.label}</p>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <strong className="text-2xl font-black text-[#092046]">{device.count.toLocaleString("ko-KR")}</strong>
+                <span className="text-sm font-black text-slate-600">{formatDeviceRate(device.rate)}</span>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+                <div
+                  className="h-full rounded-full bg-[#2f73b7]"
+                  style={{ width: `${device.rate ?? 0}%` }}
+                />
+              </div>
+              <p className="mt-2 text-[11px] font-semibold text-slate-500">접속 수 · 구성 비율</p>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <p className="border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold leading-5 text-slate-600">
+        기기별 수치는 고유 사용자 수가 아니라 공개 화면 접속 이벤트 기준입니다.
+      </p>
     </section>
   );
 }
@@ -418,6 +468,8 @@ export default async function ProjectAnalyticsPage({
         </section>
 
         <DailyTrendSection rows={analytics.dailyTrends} />
+
+        <AccessDeviceSection analytics={analytics.deviceAnalytics} />
 
         {!hasArticleEvents && !needsMigration ? (
           <div className="rounded-lg border border-dashed border-[#b8d7ff] bg-[#f7fbff] px-5 py-8 text-center">

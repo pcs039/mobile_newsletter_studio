@@ -26,7 +26,10 @@ type AnalyticsArticleRow = {
 };
 
 type DailyStatsRow = {
+  mobile_count: number | null;
+  pc_count: number | null;
   stat_date: string;
+  tablet_count: number | null;
   view_count: number | null;
 };
 
@@ -102,9 +105,20 @@ export type SurveyConversionAnalytics = {
   warning: string;
 };
 
+export type AccessDeviceAnalytics = {
+  mobile: number;
+  mobileRate: number | null;
+  pc: number;
+  pcRate: number | null;
+  tablet: number;
+  tabletRate: number | null;
+  total: number;
+};
+
 export type ProjectArticleAnalyticsResult = {
   articles: ArticleAnalyticsRow[];
   dailyTrends: ArticleAnalyticsDailyTrendRow[];
+  deviceAnalytics: AccessDeviceAnalytics;
   eventAggregationWarning: string;
   message: string;
   periodRange: AnalyticsPeriodRange;
@@ -139,6 +153,23 @@ function makeEmptySurveyConversions(warning = ""): SurveyConversionAnalytics {
     totalClicks: 0,
     totalSubmissions: null,
     warning,
+  };
+}
+
+function buildAccessDeviceAnalytics(rows: DailyStatsRow[]): AccessDeviceAnalytics {
+  const mobile = rows.reduce((sum, row) => sum + (Number(row.mobile_count) || 0), 0);
+  const pc = rows.reduce((sum, row) => sum + (Number(row.pc_count) || 0), 0);
+  const tablet = rows.reduce((sum, row) => sum + (Number(row.tablet_count) || 0), 0);
+  const total = mobile + pc + tablet;
+
+  return {
+    mobile,
+    mobileRate: total > 0 ? (mobile / total) * 100 : null,
+    pc,
+    pcRate: total > 0 ? (pc / total) * 100 : null,
+    tablet,
+    tabletRate: total > 0 ? (tablet / total) * 100 : null,
+    total,
   };
 }
 
@@ -690,7 +721,7 @@ async function fetchTotalVisits(
     const offset = page * EVENT_PAGE_SIZE;
     const periodFilter = periodRange.startDate ? `&stat_date=gte.${periodRange.startDate}` : "";
     const endpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_daily_stats?select=stat_date,view_count&project_id=eq.${encodeURIComponent(
+      `/rest/v1/newsletter_daily_stats?select=stat_date,view_count,mobile_count,pc_count,tablet_count&project_id=eq.${encodeURIComponent(
         projectId,
       )}${periodFilter}&stat_date=lte.${periodRange.endDate}&order=stat_date.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
     );
@@ -729,6 +760,7 @@ export async function getProjectArticleAnalytics(
     return {
       articles: [],
       dailyTrends: [],
+      deviceAnalytics: buildAccessDeviceAnalytics([]),
       eventAggregationWarning: "",
       periodRange,
       projectTitle: "",
@@ -747,6 +779,7 @@ export async function getProjectArticleAnalytics(
       return {
         articles: [],
         dailyTrends: [],
+        deviceAnalytics: buildAccessDeviceAnalytics([]),
         eventAggregationWarning: "",
         message: "프로젝트를 찾지 못했습니다.",
         periodRange,
@@ -766,6 +799,7 @@ export async function getProjectArticleAnalytics(
       return {
         articles: [],
         dailyTrends: [],
+        deviceAnalytics: buildAccessDeviceAnalytics([]),
         eventAggregationWarning: "",
         message: "기사 반응 통계 조회 주소를 만들지 못했습니다.",
         periodRange,
@@ -783,6 +817,7 @@ export async function getProjectArticleAnalytics(
       return {
         articles: [],
         dailyTrends: [],
+        deviceAnalytics: buildAccessDeviceAnalytics([]),
         eventAggregationWarning: "",
         message: "기사 목록을 조회하지 못했습니다.",
         periodRange,
@@ -809,6 +844,7 @@ export async function getProjectArticleAnalytics(
       events: eventResult.rows,
       periodRange,
     });
+    const deviceAnalytics = buildAccessDeviceAnalytics(totalVisitsResult.dailyStats);
     const surveyConversions = buildSurveyConversionAnalytics({
       articleIds,
       events: eventResult.rows,
@@ -820,6 +856,7 @@ export async function getProjectArticleAnalytics(
       return {
         articles: [...analyticsByArticleId.values()],
         dailyTrends,
+        deviceAnalytics,
         eventAggregationWarning: "",
         periodRange,
         projectTitle: project.title,
@@ -856,6 +893,7 @@ export async function getProjectArticleAnalytics(
     return {
       articles: [...analyticsByArticleId.values()],
       dailyTrends,
+      deviceAnalytics,
       eventAggregationWarning: eventResult.truncated ? "일부 이벤트만 집계되었습니다." : "",
       periodRange,
       projectTitle: project.title,
@@ -869,6 +907,7 @@ export async function getProjectArticleAnalytics(
     return {
       articles: [],
       dailyTrends: [],
+      deviceAnalytics: buildAccessDeviceAnalytics([]),
       eventAggregationWarning: "",
       message: "기사 반응 통계를 조회하는 중 오류가 발생했습니다.",
       periodRange,

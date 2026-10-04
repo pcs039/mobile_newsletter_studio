@@ -1358,6 +1358,7 @@ export type RecordNewsletterViewInput = {
   viewMode: "reading" | "ebook";
   routePath?: string;
   referrer?: string | null;
+  currentOrigin?: string | null;
   userAgent?: string | null;
 };
 
@@ -1818,13 +1819,18 @@ function makeEmptyStats(): ProjectViewStats {
   };
 }
 
-function getReferrerDomain(referrer: string | null | undefined) {
+function getReferrerDomain(referrer: string | null | undefined, currentOrigin?: string | null) {
   if (!referrer) {
     return null;
   }
 
   try {
-    return new URL(referrer).hostname.replace(/^www\./, "");
+    const referrerHost = new URL(referrer).hostname.replace(/^www\./, "");
+    const currentHost = currentOrigin
+      ? new URL(currentOrigin).hostname.replace(/^www\./, "")
+      : "";
+
+    return currentHost && referrerHost === currentHost ? null : referrerHost;
   } catch {
     return null;
   }
@@ -5187,7 +5193,7 @@ export async function recordNewsletterView(input: RecordNewsletterViewInput): Pr
     }
 
     const deviceType = detectDeviceType(input.userAgent);
-    const referrerDomain = getReferrerDomain(input.referrer);
+    const referrerDomain = getReferrerDomain(input.referrer, input.currentOrigin);
 
     await insertViewEvent(project.id, input, deviceType, referrerDomain, headers);
 

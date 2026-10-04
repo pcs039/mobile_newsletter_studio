@@ -24,6 +24,8 @@ export async function POST(request: Request) {
   const slug = asOptionalText(payload.slug);
   const routePath = asOptionalText(payload.routePath);
   const viewMode = payload.viewMode;
+  const hasExplicitReferrer = Object.prototype.hasOwnProperty.call(payload, "referrer");
+  const referrer = hasExplicitReferrer ? asOptionalText(payload.referrer) : request.headers.get("referer");
 
   if (!slug || !isViewMode(viewMode)) {
     return NextResponse.json(
@@ -36,7 +38,8 @@ export async function POST(request: Request) {
     slug,
     viewMode,
     routePath,
-    referrer: request.headers.get("referer"),
+    referrer,
+    currentOrigin: request.headers.get("origin") ?? new URL(request.url).origin,
     userAgent: request.headers.get("user-agent"),
   });
 

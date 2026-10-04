@@ -32,6 +32,7 @@ export function NewsletterViewTracker({ slug, viewMode, disabled = false }: News
         slug,
         viewMode,
         routePath: window.location.pathname,
+        referrer: document.referrer || "",
       }),
       keepalive: true,
     });
