@@ -1,5 +1,14 @@
 import type { OperationsReportSummary } from "@/lib/operations-report";
-import type { PeriodComparisonSummary } from "@/lib/period-comparison";
+import {
+  buildPeriodComparisonEvidence,
+  type AiComparisonEvidence,
+  type PeriodComparisonSummary,
+} from "@/lib/period-comparison";
+
+export type AiEvidenceCatalogItem = {
+  id: string;
+  label: string;
+};
 
 export type AiOperationsReportInput = {
   caveats: string[];
@@ -12,6 +21,7 @@ export type AiOperationsReportInput = {
     } | null;
   };
   comparison: PeriodComparisonSummary;
+  comparisonEvidence: AiComparisonEvidence[];
   deterministicInsights: Array<{
     description: string;
     evidence: string[];
@@ -69,7 +79,7 @@ export type AiOperationsCommentary = {
 };
 
 export type AiOperationsCommentaryResponse =
-  | { commentary: AiOperationsCommentary; ok: true }
+  | { commentary: AiOperationsCommentary; evidenceCatalog: AiEvidenceCatalogItem[]; ok: true }
   | { error?: string; message: string; ok: false };
 
 export type AiOperationsReportContext = {
@@ -123,7 +133,7 @@ export const aiOperationsCommentaryInstruction = `너는 공공기관 모바일 
 다음 원칙을 반드시 지킨다.
 - 숫자를 다시 계산하거나 입력에 없는 숫자, 비교 기간, 사실을 만들지 않는다.
 - 관측된 이벤트를 간결한 한국어 업무 문체로 정리한다.
-- 모든 관측사항과 운영 제안은 제공된 deterministicInsights의 evidence id에 연결한다. 존재하지 않는 id를 만들지 않는다.
+- 모든 관측사항과 운영 제안은 제공된 deterministicInsights 또는 comparisonEvidence의 id에 연결한다. 존재하지 않는 id를 만들지 않는다.
 - caveats를 우선 반영하고, 데이터 한계를 축소하거나 생략하지 않는다.
 - 접속 이벤트를 고유 방문자나 시민 전체 행동으로 표현하지 않는다.
 - 설문 이동 대비 제출 비율을 동일 사용자의 전환율로 표현하지 않는다.
@@ -132,6 +142,7 @@ export const aiOperationsCommentaryInstruction = `너는 공공기관 모바일 
 - 열람 표본이 적은 기사 반응도는 참고 수준으로만 설명한다.
 - UTM 식별 비중이 낮으면 특정 채널 결과를 전체 배포 성과로 일반화하지 않는다.
 - comparison 값은 애플리케이션이 계산한 값이므로 다시 계산하지 않는다.
+- 기간 비교를 설명할 때는 comparisonEvidence의 id를 우선 사용하고, comparisonEvidence에 없는 비교 수치를 만들지 않는다.
 - 접속·열람·행동의 증감을 주민 관심, 정책 효과, 콘텐츠 품질 변화로 해석하지 않는다.
 - 비율 지표의 변화는 입력에 제공된 퍼센트포인트 값을 그대로 사용한다.
 - previous가 0인 new 상태를 퍼센트 증가로 환산하지 않는다.
@@ -174,6 +185,61 @@ function sanitizeItems(value: unknown, allowedEvidenceIds: ReadonlySet<string>) 
   }).slice(0, 3);
 }
 
+const requiredCaveatTexts = {
+  channelCoverage: "UTM으로 식별된 접속 비중이 낮아 채널별 결과를 전체 배포 성과로 일반화할 수 없습니다.",
+  referrerCoverage: "유입경로 정보가 충분하지 않아 외부 유입을 일반화하지 않습니다.",
+  smallSampleReaction: "최고 반응 기사 지표는 열람 표본이 적어 참고 수준으로 해석해야 합니다.",
+  surveyConversion: "참여 콘텐츠 이동과 실제 제출은 동일 사용자의 연속 행동을 연결한 전환율이 아니며 직접 접근·반복 제출이 포함될 수 있습니다.",
+} as const;
+
+type RequiredCaveatTopic = keyof typeof requiredCaveatTexts;
+
+const operationEvidenceLabels: Record<string, string> = {
+  "article-data-insufficient": "기사 열람 데이터",
+  "channel-coverage-low": "배포 채널 식별 범위",
+  "mobile-majority": "모바일 이용 비중",
+  "no-insights": "운영 데이터 집계",
+  "survey-submissions": "참여 콘텐츠 제출",
+  "top-article": "최다 열람 기사",
+  "top-channel": "주요 배포 채널",
+  "top-reaction-article": "기사 후속 행동 반응",
+};
+
+function getRequiredCaveatTopics(requiredCaveats: string[]) {
+  const requiredSet = new Set(requiredCaveats);
+
+  return (Object.entries(requiredCaveatTexts) as Array<[RequiredCaveatTopic, string]>)
+    .flatMap(([topic, text]) => requiredSet.has(text) ? [topic] : []);
+}
+
+function isGeneratedCautionDuplicate(caution: string, topics: RequiredCaveatTopic[]) {
+  const includesAll = (...keywords: string[]) => keywords.every((keyword) => caution.includes(keyword));
+
+  return topics.some((topic) => {
+    switch (topic) {
+      case "channelCoverage":
+        return includesAll("UTM", "식별") && (caution.includes("전체") || caution.includes("일반화"));
+      case "smallSampleReaction":
+        return includesAll("표본", "열람", "참고");
+      case "surveyConversion":
+        return caution.includes("동일 사용자") && (caution.includes("전환") || caution.includes("제출"));
+      case "referrerCoverage":
+        return (caution.includes("유입경로") || caution.includes("외부 유입"))
+          && (caution.includes("부족") || caution.includes("일반화") || caution.includes("충분하지"));
+    }
+  });
+}
+
+export function buildAiEvidenceCatalog(input: AiOperationsReportInput): AiEvidenceCatalogItem[] {
+  return [
+    ...input.deterministicInsights.flatMap((insight) => {
+      const label = operationEvidenceLabels[insight.id];
+      return label ? [{ id: insight.id, label }] : [];
+    }),
+    ...input.comparisonEvidence.map((evidence) => ({ id: evidence.id, label: evidence.title })),
+  ];
+}
+
 export function buildAiOperationsReportInput(
   report: OperationsReportSummary,
   context: AiOperationsReportContext,
@@ -181,19 +247,19 @@ export function buildAiOperationsReportInput(
   const caveats: string[] = [];
 
   if (context.channelAttributedRate !== null && context.channelAttributedRate < 20) {
-    caveats.push("UTM으로 식별된 접속 비중이 낮아 채널별 결과를 전체 배포 성과로 일반화할 수 없습니다.");
+    caveats.push(requiredCaveatTexts.channelCoverage);
   }
 
   if (report.topReactionArticle && report.topReactionArticle.articleViews < 10) {
-    caveats.push("최고 반응 기사 지표는 열람 표본이 적어 참고 수준으로 해석해야 합니다.");
+    caveats.push(requiredCaveatTexts.smallSampleReaction);
   }
 
   if (report.survey.submissionRate !== null && report.survey.submissionRate > 100) {
-    caveats.push("참여 콘텐츠 이동과 실제 제출은 동일 사용자의 연속 행동을 연결한 전환율이 아니며 직접 접근·반복 제출이 포함될 수 있습니다.");
+    caveats.push(requiredCaveatTexts.surveyConversion);
   }
 
   if (!report.topReferrer || context.referrerTotal === 0) {
-    caveats.push("유입경로 정보가 충분하지 않아 외부 유입을 일반화하지 않습니다.");
+    caveats.push(requiredCaveatTexts.referrerCoverage);
   }
 
   return {
@@ -209,6 +275,7 @@ export function buildAiOperationsReportInput(
         : null,
     },
     comparison: context.comparison,
+    comparisonEvidence: buildPeriodComparisonEvidence(context.comparison),
     deterministicInsights: report.insights.map((insight) => ({
       description: insight.description,
       evidence: [...insight.evidence],
@@ -272,7 +339,10 @@ export function sanitizeAiOperationsCommentary(
   const required = [...new Set(requiredCaveats.map((item) => cleanText(item, 400)).filter(Boolean))];
   const generatedCautions = uniqueTextList(record.cautions, 3, 400);
   const requiredSet = new Set(required);
-  const generated = generatedCautions.filter((item) => !requiredSet.has(item));
+  const requiredTopics = getRequiredCaveatTopics(required);
+  const generated = generatedCautions.filter((item) => (
+    !requiredSet.has(item) && !isGeneratedCautionDuplicate(item, requiredTopics)
+  ));
   const cautions = [
     ...required,
     ...generated.slice(0, Math.max(0, 3 - required.length)),

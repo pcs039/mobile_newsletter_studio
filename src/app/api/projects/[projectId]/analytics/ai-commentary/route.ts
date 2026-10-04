@@ -10,6 +10,7 @@ import {
 import {
   aiOperationsCommentaryInstruction,
   aiOperationsCommentaryJsonSchema,
+  buildAiEvidenceCatalog,
   buildAiOperationsReportInput,
   sanitizeAiOperationsCommentary,
 } from "@/lib/ai-operations-commentary";
@@ -176,7 +177,10 @@ export async function POST(
 
     const commentary = sanitizeAiOperationsCommentary(
       parsed,
-      new Set(input.deterministicInsights.map((insight) => insight.id)),
+      new Set([
+        ...input.deterministicInsights.map((insight) => insight.id),
+        ...input.comparisonEvidence.map((evidence) => evidence.id),
+      ]),
       input.caveats,
     );
 
@@ -184,7 +188,11 @@ export async function POST(
       return errorResponse("AI_COMMENTARY_INVALID_RESPONSE", "AI 운영 해설 응답 형식을 확인하지 못했습니다.", 502);
     }
 
-    return NextResponse.json({ ok: true, commentary });
+    return NextResponse.json({
+      ok: true,
+      commentary,
+      evidenceCatalog: buildAiEvidenceCatalog(input),
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       return errorResponse("AI_COMMENTARY_TIMEOUT", "AI 운영 해설 생성 시간이 초과되었습니다. 다시 시도해 주세요.", 504);
