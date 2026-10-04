@@ -8,6 +8,18 @@ type NewsletterViewTrackerProps = {
   disabled?: boolean;
 };
 
+function getReferrerOrigin() {
+  if (!document.referrer) {
+    return "";
+  }
+
+  try {
+    return new URL(document.referrer).origin;
+  } catch {
+    return "";
+  }
+}
+
 export function NewsletterViewTracker({ slug, viewMode, disabled = false }: NewsletterViewTrackerProps) {
   useEffect(() => {
     if (disabled || !slug) {
@@ -32,6 +44,7 @@ export function NewsletterViewTracker({ slug, viewMode, disabled = false }: News
         slug,
         viewMode,
         routePath: window.location.pathname,
+        referrer: getReferrerOrigin(),
       }),
       keepalive: true,
     });
