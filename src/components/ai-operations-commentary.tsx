@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { AiOperationsCommentary as AiOperationsCommentaryResult, AiOperationsCommentaryResponse } from "@/lib/ai-operations-commentary";
+import type {
+  AiEvidenceCatalogItem,
+  AiOperationsCommentary as AiOperationsCommentaryResult,
+  AiOperationsCommentaryResponse,
+} from "@/lib/ai-operations-commentary";
 import type { AnalyticsPeriod } from "@/lib/article-analytics-types";
 
 type AiOperationsCommentaryProps = {
@@ -13,9 +17,11 @@ type CommentaryStatus = "idle" | "loading" | "success" | "error";
 
 function CommentaryItems({
   emptyMessage,
+  evidenceLabels,
   items,
 }: {
   emptyMessage: string;
+  evidenceLabels: ReadonlyMap<string, string>;
   items: AiOperationsCommentaryResult["observations"];
 }) {
   if (items.length === 0) {
@@ -29,8 +35,11 @@ function CommentaryItems({
           <h4 className="text-sm font-black leading-6 text-[#092046] [overflow-wrap:anywhere] [word-break:keep-all]">{item.title}</h4>
           <p className="mt-2 text-xs font-semibold leading-5 text-slate-600 [overflow-wrap:anywhere] [word-break:keep-all]">{item.description}</p>
           {item.evidenceIds.length > 0 ? (
-            <p className="mt-3 text-[11px] font-bold leading-5 text-[#184a88] [overflow-wrap:anywhere]">
-              근거: {item.evidenceIds.join(", ")}
+            <p
+              className="mt-3 text-[11px] font-bold leading-5 text-[#184a88] [overflow-wrap:anywhere]"
+              title={item.evidenceIds.join(", ")}
+            >
+              근거: {item.evidenceIds.map((id) => evidenceLabels.get(id) ?? "운영 지표 근거").join(", ")}
             </p>
           ) : null}
         </article>
@@ -42,6 +51,7 @@ function CommentaryItems({
 export function AiOperationsCommentary({ period, projectId }: AiOperationsCommentaryProps) {
   const [status, setStatus] = useState<CommentaryStatus>("idle");
   const [commentary, setCommentary] = useState<AiOperationsCommentaryResult | null>(null);
+  const [evidenceCatalog, setEvidenceCatalog] = useState<AiEvidenceCatalogItem[]>([]);
   const [error, setError] = useState("");
 
   async function generateCommentary() {
@@ -49,6 +59,7 @@ export function AiOperationsCommentary({ period, projectId }: AiOperationsCommen
 
     setStatus("loading");
     setCommentary(null);
+    setEvidenceCatalog([]);
     setError("");
 
     const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/analytics/ai-commentary`, {
@@ -71,8 +82,11 @@ export function AiOperationsCommentary({ period, projectId }: AiOperationsCommen
     }
 
     setCommentary(result.commentary);
+    setEvidenceCatalog(result.evidenceCatalog);
     setStatus("success");
   }
+
+  const evidenceLabels = new Map(evidenceCatalog.map((item) => [item.id, item.label]));
 
   return (
     <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm" aria-labelledby="ai-operations-commentary-heading">
@@ -117,7 +131,11 @@ export function AiOperationsCommentary({ period, projectId }: AiOperationsCommen
 
             <section>
               <h3 className="text-sm font-black text-[#092046]">관측사항</h3>
-              <CommentaryItems items={commentary.observations} emptyMessage="추가로 정리할 관측사항이 없습니다." />
+              <CommentaryItems
+                items={commentary.observations}
+                emptyMessage="추가로 정리할 관측사항이 없습니다."
+                evidenceLabels={evidenceLabels}
+              />
             </section>
 
             {commentary.cautions.length > 0 ? (
@@ -131,7 +149,11 @@ export function AiOperationsCommentary({ period, projectId }: AiOperationsCommen
 
             <section>
               <h3 className="text-sm font-black text-[#092046]">다음 운영 제안</h3>
-              <CommentaryItems items={commentary.nextActions} emptyMessage="현재 데이터에서 제안할 추가 운영 항목이 없습니다." />
+              <CommentaryItems
+                items={commentary.nextActions}
+                emptyMessage="현재 데이터에서 제안할 추가 운영 항목이 없습니다."
+                evidenceLabels={evidenceLabels}
+              />
             </section>
           </div>
         ) : null}
