@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { ArticleAnalyticsDailyTrendChart } from "@/components/article-analytics-daily-trend-chart";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import {
   buildArticleAnalyticsBreakdowns,
   getProjectArticleAnalytics,
   type ArticleAnalyticsBreakdownRow,
+  type ArticleAnalyticsDailyTrendRow,
   type ArticleAnalyticsRow,
 } from "@/lib/article-analytics-repository";
 import { normalizeAnalyticsPeriod, type AnalyticsPeriod } from "@/lib/article-analytics-types";
@@ -53,6 +55,62 @@ function getTopArticle(articles: ArticleAnalyticsRow[], getValue: (article: Arti
     const value = getValue(article);
     return value > 0 && (!top || value > top.value) ? { article, value } : top;
   }, null);
+}
+
+function DailyTrendSection({ rows }: { rows: ArticleAnalyticsDailyTrendRow[] }) {
+  const hasData = rows.some((row) => row.totalVisits + row.articleViews + row.reactionCount > 0);
+
+  if (!hasData) {
+    return (
+      <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기간 흐름</p>
+          <h2 className="mt-1 text-lg font-black text-[#092046]">일별 반응 추이</h2>
+          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">전체 접속, 기사 열람, 후속 행동의 날짜별 변화를 확인합니다.</p>
+        </div>
+        <p className="px-5 py-10 text-center text-sm font-bold text-slate-500">선택한 기간에 집계된 일별 반응 데이터가 없습니다.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-5 py-4">
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기간 흐름</p>
+        <h2 className="mt-1 text-lg font-black text-[#092046]">일별 반응 추이</h2>
+        <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">전체 접속, 기사 열람, 후속 행동의 날짜별 변화를 확인합니다.</p>
+      </div>
+
+      <ArticleAnalyticsDailyTrendChart key={`${rows[0]?.date}-${rows.at(-1)?.date}`} rows={rows} />
+
+      <div className="border-t border-slate-200 px-4 py-4 sm:px-5">
+        <p className="mb-3 text-xs font-bold text-slate-500">정확한 수치는 아래 일별 표에서 확인할 수 있습니다.</p>
+        <div className="max-h-72 overflow-auto rounded-lg border border-slate-200">
+          <table className="w-full min-w-[520px] border-collapse text-sm">
+            <caption className="sr-only">날짜별 전체 접속, 기사 열람, 후속 행동 수치</caption>
+            <thead className="sticky top-0 bg-slate-50 text-xs font-black text-slate-600">
+              <tr>
+                <th scope="col" className="px-4 py-3 text-left">날짜</th>
+                <th scope="col" className="px-3 py-3 text-right">전체 접속</th>
+                <th scope="col" className="px-3 py-3 text-right">기사 열람</th>
+                <th scope="col" className="px-4 py-3 text-right">후속 행동</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {rows.map((row) => (
+                <tr key={row.date}>
+                  <th scope="row" className="px-4 py-3 text-left font-bold text-[#092046]">{formatDateLabel(row.date)}</th>
+                  <td className="px-3 py-3 text-right font-bold">{row.totalVisits.toLocaleString("ko-KR")}</td>
+                  <td className="px-3 py-3 text-right font-bold">{row.articleViews.toLocaleString("ko-KR")}</td>
+                  <td className="px-4 py-3 text-right font-black text-[#184a88]">{row.reactionCount.toLocaleString("ko-KR")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function AnalyticsBreakdownSection({
@@ -262,6 +320,8 @@ export default async function ProjectAnalyticsPage({
             <span className="ml-2 text-xs font-semibold text-slate-500">기사 열람 100회당 후속 행동 건수</span>
           </div>
         </section>
+
+        <DailyTrendSection rows={analytics.dailyTrends} />
 
         {!hasArticleEvents && !needsMigration ? (
           <div className="rounded-lg border border-dashed border-[#b8d7ff] bg-[#f7fbff] px-5 py-8 text-center">
