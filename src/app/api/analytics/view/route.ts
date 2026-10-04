@@ -7,6 +7,20 @@ function asOptionalText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeUtmValue(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.replace(/[\u0000-\u001f\u007f]/g, "").trim().toLowerCase();
+
+  if (!normalized || /^[a-z][a-z\d+.-]*:\/\//i.test(normalized)) {
+    return null;
+  }
+
+  return normalized.slice(0, 100);
+}
+
 function isViewMode(value: unknown): value is RecordNewsletterViewInput["viewMode"] {
   return value === "reading" || value === "ebook";
 }
@@ -40,13 +54,16 @@ export async function POST(request: Request) {
     routePath,
     referrer,
     currentOrigin: request.headers.get("origin") ?? new URL(request.url).origin,
+    utmSource: normalizeUtmValue(payload.utmSource),
+    utmMedium: normalizeUtmValue(payload.utmMedium),
+    utmCampaign: normalizeUtmValue(payload.utmCampaign),
     userAgent: request.headers.get("user-agent"),
   });
 
   if (!result.ok) {
     return NextResponse.json(result, {
       status:
-        result.status === "not_configured"
+        result.status === "not_configured" || result.status === "migration_required"
           ? 503
           : result.status === "not_found"
             ? 404

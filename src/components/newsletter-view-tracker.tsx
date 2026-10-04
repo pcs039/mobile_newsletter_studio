@@ -20,6 +20,16 @@ function getReferrerOrigin() {
   }
 }
 
+function getUtmParameters() {
+  const parameters = new URLSearchParams(window.location.search);
+
+  return {
+    utmCampaign: parameters.get("utm_campaign") ?? "",
+    utmMedium: parameters.get("utm_medium") ?? "",
+    utmSource: parameters.get("utm_source") ?? "",
+  };
+}
+
 export function NewsletterViewTracker({ slug, viewMode, disabled = false }: NewsletterViewTrackerProps) {
   useEffect(() => {
     if (disabled || !slug) {
@@ -34,6 +44,7 @@ export function NewsletterViewTracker({ slug, viewMode, disabled = false }: News
     }
 
     window.sessionStorage.setItem(dedupeKey, "1");
+    const utmParameters = getUtmParameters();
 
     void fetch("/api/analytics/view", {
       method: "POST",
@@ -45,6 +56,7 @@ export function NewsletterViewTracker({ slug, viewMode, disabled = false }: News
         viewMode,
         routePath: window.location.pathname,
         referrer: getReferrerOrigin(),
+        ...utmParameters,
       }),
       keepalive: true,
     });
