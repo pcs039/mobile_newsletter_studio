@@ -327,6 +327,15 @@ const blockUseCases: Array<{ title: string; description: string }> = [
   { title: "유튜브 영상", description: "유튜브 블록에 영상 제목과 YouTube URL을 입력합니다." },
 ];
 
+const articleWorkflowSteps = [
+  "자료 가져오기",
+  "AI 분석",
+  "기사 편집",
+  "공공정보·행동 연결",
+  "모바일 검수",
+  "발행",
+];
+
 function FieldLabel({ children, required = false }: { children: string; required?: boolean }) {
   return (
     <label className="mb-2 block text-sm font-black text-[#092046]">
@@ -1438,15 +1447,54 @@ export function ProjectArticleEditorForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+      <section aria-labelledby="article-workflow-heading" className="rounded-lg border border-[#b8d7ff] bg-white p-4 sm:p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">AI 제작 워크스페이스</p>
+            <h2 id="article-workflow-heading" className="mt-1 text-lg font-black text-[#092046]">기사 제작 흐름</h2>
+          </div>
+          <p className="text-xs font-semibold leading-5 text-slate-500">현재 화면에서는 자료를 정리하고 기사를 작성합니다.</p>
+        </div>
+        <ol className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+          {articleWorkflowSteps.map((step, index) => {
+            const isCurrent = index === 2;
+
+            return (
+              <li
+                key={step}
+                aria-current={isCurrent ? "step" : undefined}
+                className={`min-w-0 rounded-lg border px-3 py-3 ${
+                  isCurrent
+                    ? "border-[#184a88] bg-[#092046] text-white shadow-sm"
+                    : "border-[#d8e8ff] bg-[#f7fbff] text-[#092046]"
+                }`}
+              >
+                <span className={`block text-[11px] font-black ${isCurrent ? "text-sky-200" : "text-[#184a88]"}`}>
+                  {index + 1}단계
+                </span>
+                <span className="mt-1 block text-xs font-black leading-5 [word-break:keep-all]">{step}</span>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
+      <ProjectArticleAiAssistant
+        getCurrentContent={getCurrentContentForAi}
+        onApplyDraft={applyAiDraft}
+        onApplyImportedWord={applyImportedWord}
+        projectSlug={projectSlug}
+      />
+
       <div className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">필수 입력</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 기사 편집</p>
             <h3 className="mt-1 text-lg font-black text-[#092046]">
               {article ? "선택 기사 수정" : "새 기사 작성"}
             </h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              제목과 요약을 먼저 입력한 뒤 본문 블록을 작성합니다. 세부 설정은 필요한 항목만 펼쳐서 조정하세요.
+              제목과 요약, 분류를 정한 뒤 이어지는 본문 블록에서 기사 내용을 구성합니다.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1457,17 +1505,9 @@ export function ProjectArticleEditorForm({
             ) : null}
           </div>
         </div>
-        <div className="mt-5">
-          <ProjectArticleAiAssistant
-            getCurrentContent={getCurrentContentForAi}
-            onApplyDraft={applyAiDraft}
-            onApplyImportedWord={applyImportedWord}
-            projectSlug={projectSlug}
-          />
-        </div>
         <div className="mt-5 rounded-2xl border border-[#d8e8ff] bg-white px-4 py-3">
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">1. 기사 기본내용</p>
-          <p className="mt-1 text-sm font-bold text-slate-600">제목, 요약, 관심분야와 기사 유형만 먼저 정합니다.</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3-1. 기본내용</p>
+          <p className="mt-1 text-sm font-bold text-slate-600">제목, 요약, 관심분야와 기사 유형을 정합니다.</p>
         </div>
 
         <div className="mt-4">
@@ -1564,7 +1604,7 @@ export function ProjectArticleEditorForm({
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">2. 본문 제작</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3-2. 본문 블록</p>
             <h3 className="mt-1 text-lg font-black text-[#092046]">본문 블록을 작성합니다.</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">이미지, URL, 영상, 지도는 필요한 경우에만 추가합니다.</p>
           </div>
@@ -1874,37 +1914,23 @@ export function ProjectArticleEditorForm({
           ))}
         </div>
 
-        <div className="mt-5 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">저장 전 구성 확인</p>
-              <h4 className="text-base font-black text-[#092046]">모바일 표시 순서</h4>
-            </div>
-            <p className="text-xs font-semibold text-slate-500">저장 후 미리보기 확인</p>
-          </div>
-          <div className="mt-4 space-y-2">
-            {blocks.map((block, index) => (
-              <div key={`preview-${block.id}`} className="rounded-lg bg-white px-4 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-[#eaf2ff] px-2.5 py-1 text-xs font-black text-[#184a88]">
-                    {index + 1}
-                  </span>
-                  <p className="text-sm font-black text-[#092046]">{blockTypeLabels[block.type]}</p>
-                  {block.title ? <p className="text-sm font-bold text-slate-700">{block.title}</p> : null}
-                </div>
-                <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{getBlockPreviewText(block)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-5">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">세부 설정</p>
-          <h3 className="mt-1 text-lg font-black text-[#092046]">필요한 항목만 펼쳐서 설정하세요.</h3>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">연결·고급 설정</p>
+          <h3 className="mt-1 text-lg font-black text-[#092046]">공개 행동과 화면 설정을 필요한 만큼 조정하세요.</h3>
         </div>
-        <div className="mt-5 space-y-3">
+        <div className="mt-5 space-y-5">
+          <section aria-labelledby="public-action-settings-heading" className="rounded-xl border border-[#b8d7ff] bg-[#eef6ff] p-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">필요한 주민 행동 설정</p>
+              <h4 id="public-action-settings-heading" className="mt-1 text-base font-black text-[#092046]">4. 공공정보·행동 연결</h4>
+              <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                전화, 지도, 신청, 설문 등 주민의 다음 행동으로 연결되는 정보를 설정합니다.
+              </p>
+            </div>
+            <div className="mt-4 space-y-3">
           <DetailSection title="핵심 공공정보" summary={publicInfoSummary}>
             <p className="text-sm font-semibold leading-6 text-slate-500">
               공개 화면의 핵심정보 카드에 표시할 내용을 입력합니다. 없는 정보는 비워두세요.
@@ -1935,6 +1961,111 @@ export function ProjectArticleEditorForm({
               </div>
             )}
           </DetailSection>
+
+          <DetailSection title="참여 콘텐츠" summary={selectedSurveySummary}>
+            <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-end">
+              <div>
+                <FieldLabel>연결할 설문·이벤트</FieldLabel>
+                <select
+                  name="surveyId"
+                  defaultValue={article?.surveyId ?? ""}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  <option value="">연결 없음</option>
+                  {surveys.map((survey) => (
+                    <option key={survey.id} value={survey.id}>
+                      [{survey.status}] {survey.kind} · {survey.title} · {survey.questionCount}문항
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
+                진행 중이고 문항이 있는 참여 콘텐츠만 실제 공개 화면에 버튼으로 표시됩니다.
+                {surveys.length === 0 ? " 먼저 참여 콘텐츠 화면에서 설문 또는 이벤트를 등록하세요." : ""}
+              </p>
+            </div>
+          </DetailSection>
+
+          <DetailSection title="원본 자료 연결" summary={sourcePageSummary}>
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_180px]">
+              <div>
+                <FieldLabel>연결 원본 페이지</FieldLabel>
+                <select
+                  name="pageId"
+                  defaultValue={article?.pageId ?? ""}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                >
+                  <option value="">페이지 미지정</option>
+                  {pages.map((page) => (
+                    <option key={page.id} value={page.id}>
+                      {page.pageNumber}쪽 · {page.title}
+                    </option>
+                  ))}
+                </select>
+                {pages.length === 0 ? (
+                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                    등록된 페이지 이미지가 없으면 오른쪽에 원본 PDF 쪽수를 직접 입력하세요.
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <FieldLabel>원본 PDF 쪽수 직접 입력</FieldLabel>
+                <input
+                  name="sourcePageNumber"
+                  type="number"
+                  min="1"
+                  max={projectPageCount > 0 ? projectPageCount : undefined}
+                  defaultValue={article?.pageNumber ?? ""}
+                  placeholder={projectPageCount > 0 ? `1~${projectPageCount}` : "예: 3"}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                />
+              </div>
+            </div>
+          </DetailSection>
+
+          <DetailSection title="기사 공통 연락처" summary={contactPhoneValue.trim() ? "연락처 입력됨" : "연락처 없음"}>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div>
+                <FieldLabel>담당 부서 또는 담당자</FieldLabel>
+                <input
+                  name="contactName"
+                  defaultValue={article?.contactName ?? ""}
+                  placeholder="예: 기획실 홍보팀"
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                />
+              </div>
+              <div>
+                <FieldLabel>전화번호</FieldLabel>
+                <input
+                  name="contactPhone"
+                  defaultValue={article?.contactPhone ?? ""}
+                  inputMode="tel"
+                  placeholder="예: 061-000-0000"
+                  onChange={(event) => setContactPhoneValue(event.target.value)}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
+                />
+                {contactPhoneStatus === "needs_area_code" ? (
+                  <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black leading-5 text-amber-900">
+                    지역번호 확인 필요 · 전체 전화번호를 확인해 수정해 주세요. 저장은 계속할 수 있습니다.
+                  </p>
+                ) : contactPhoneValue.trim() && contactPhoneStatus === "invalid" ? (
+                  <p className="mt-2 text-xs font-bold text-rose-700">전화번호 형식을 확인해 주세요. 저장은 계속할 수 있습니다.</p>
+                ) : null}
+              </div>
+            </div>
+          </DetailSection>
+            </div>
+          </section>
+
+          <section aria-labelledby="advanced-article-settings-heading" className="rounded-xl border border-slate-200 bg-white p-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">선택 설정</p>
+              <h4 id="advanced-article-settings-heading" className="mt-1 text-base font-black text-[#092046]">고급 설정</h4>
+              <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+                음성, 노출 우선순위, 화면 표시와 모션 등 필요한 항목만 펼쳐서 조정합니다.
+              </p>
+            </div>
+            <div className="mt-4 space-y-3">
 
           <DetailSection title="음성·TTS" summary={selectedAudioSourceLabel}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -2109,30 +2240,6 @@ export function ProjectArticleEditorForm({
             </div>
           </DetailSection>
 
-          <DetailSection title="참여 콘텐츠" summary={selectedSurveySummary}>
-            <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-end">
-              <div>
-                <FieldLabel>연결할 설문·이벤트</FieldLabel>
-                <select
-                  name="surveyId"
-                  defaultValue={article?.surveyId ?? ""}
-                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                >
-                  <option value="">연결 없음</option>
-                  {surveys.map((survey) => (
-                    <option key={survey.id} value={survey.id}>
-                      [{survey.status}] {survey.kind} · {survey.title} · {survey.questionCount}문항
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <p className="text-xs font-semibold leading-5 text-slate-500 [word-break:keep-all]">
-                진행 중이고 문항이 있는 참여 콘텐츠만 실제 공개 화면에 버튼으로 표시됩니다.
-                {surveys.length === 0 ? " 먼저 참여 콘텐츠 화면에서 설문 또는 이벤트를 등록하세요." : ""}
-              </p>
-            </div>
-          </DetailSection>
-
           <DetailSection title="제목·본문 표시" summary="기관 디자인 사용">
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -2240,43 +2347,6 @@ export function ProjectArticleEditorForm({
                   긴 제목은 의미 단위 줄바꿈 후보를 자동으로 보정합니다.
                 </p>
               )}
-            </div>
-          </DetailSection>
-
-          <DetailSection title="원본 자료 연결" summary={sourcePageSummary}>
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_180px]">
-              <div>
-                <FieldLabel>연결 원본 페이지</FieldLabel>
-                <select
-                  name="pageId"
-                  defaultValue={article?.pageId ?? ""}
-                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                >
-                  <option value="">페이지 미지정</option>
-                  {pages.map((page) => (
-                    <option key={page.id} value={page.id}>
-                      {page.pageNumber}쪽 · {page.title}
-                    </option>
-                  ))}
-                </select>
-                {pages.length === 0 ? (
-                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                    등록된 페이지 이미지가 없으면 오른쪽에 원본 PDF 쪽수를 직접 입력하세요.
-                  </p>
-                ) : null}
-              </div>
-              <div>
-                <FieldLabel>원본 PDF 쪽수 직접 입력</FieldLabel>
-                <input
-                  name="sourcePageNumber"
-                  type="number"
-                  min="1"
-                  max={projectPageCount > 0 ? projectPageCount : undefined}
-                  defaultValue={article?.pageNumber ?? ""}
-                  placeholder={projectPageCount > 0 ? `1~${projectPageCount}` : "예: 3"}
-                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                />
-              </div>
             </div>
           </DetailSection>
 
@@ -2424,42 +2494,41 @@ export function ProjectArticleEditorForm({
           </div>
         </div>
 
-        <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">보조 설정</p>
-          <h3 className="mt-1 text-lg font-black text-[#092046]">기사 공통 연락처</h3>
-          <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            <div>
-              <FieldLabel>담당 부서 또는 담당자</FieldLabel>
-              <input
-                name="contactName"
-                defaultValue={article?.contactName ?? ""}
-                placeholder="예: 기획실 홍보팀"
-                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-            </div>
-            <div>
-              <FieldLabel>전화번호</FieldLabel>
-              <input
-                name="contactPhone"
-                defaultValue={article?.contactPhone ?? ""}
-                inputMode="tel"
-                placeholder="예: 061-000-0000"
-                onChange={(event) => setContactPhoneValue(event.target.value)}
-                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-              />
-              {contactPhoneStatus === "needs_area_code" ? (
-                <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black leading-5 text-amber-900">
-                  지역번호 확인 필요 · 전체 전화번호를 확인해 수정해 주세요. 저장은 계속할 수 있습니다.
-                </p>
-              ) : contactPhoneValue.trim() && contactPhoneStatus === "invalid" ? (
-                <p className="mt-2 text-xs font-bold text-rose-700">전화번호 형식을 확인해 주세요. 저장은 계속할 수 있습니다.</p>
-              ) : null}
-            </div>
-          </div>
-        </div>
           </DetailSection>
+            </div>
+          </section>
         </div>
       </div>
+
+      <section aria-labelledby="mobile-review-check-heading" className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 sm:p-5">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">5. 모바일 검수 전 확인</p>
+            <h3 id="mobile-review-check-heading" className="mt-1 text-base font-black text-[#092046]">모바일 표시 순서</h3>
+          </div>
+          <p className="text-xs font-semibold text-slate-500">저장 후 모바일 검수에서 최종 확인합니다.</p>
+        </div>
+        <div className="mt-4 space-y-2">
+          {blocks.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-[#b8d7ff] bg-white px-4 py-4 text-sm font-bold text-slate-500">
+              아직 확인할 본문 블록이 없습니다.
+            </p>
+          ) : (
+            blocks.map((block, index) => (
+              <div key={`preview-${block.id}`} className="rounded-lg bg-white px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-[#eaf2ff] px-2.5 py-1 text-xs font-black text-[#184a88]">
+                    {index + 1}
+                  </span>
+                  <p className="text-sm font-black text-[#092046]">{blockTypeLabels[block.type]}</p>
+                  {block.title ? <p className="text-sm font-bold text-slate-700">{block.title}</p> : null}
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{getBlockPreviewText(block)}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
 
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
@@ -2509,14 +2578,14 @@ export function ProjectArticleEditorForm({
           onClick={() => router.push(`/projects/${projectSlug}/publish`)}
           className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
-          검수·발행으로 이동
+          모바일 검수·발행으로 이동
         </button>
         <button
           type="submit"
           disabled={isSaving}
           className="rounded-lg bg-[#092046] px-6 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#123a78] disabled:cursor-not-allowed disabled:bg-slate-400"
         >
-          {isSaving ? "저장 중..." : article ? "기사 수정 저장" : "기사 신규 저장"}
+          {isSaving ? "기사 저장 중..." : "기사 저장"}
         </button>
       </div>
     </form>
