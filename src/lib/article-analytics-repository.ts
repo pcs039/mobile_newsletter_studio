@@ -11,6 +11,7 @@ import {
 type ArticleEventRow = {
   article_id: string;
   event_type: ArticleEventType;
+  occurred_at: string;
 };
 
 type AnalyticsArticleRow = {
@@ -24,6 +25,7 @@ type AnalyticsArticleRow = {
 };
 
 type DailyStatsRow = {
+  stat_date: string;
   view_count: number | null;
 };
 
@@ -63,8 +65,16 @@ export type ArticleAnalyticsBreakdowns = {
   publicationGroups: ArticleAnalyticsBreakdownRow[];
 };
 
+export type ArticleAnalyticsDailyTrendRow = {
+  articleViews: number;
+  date: string;
+  reactionCount: number;
+  totalVisits: number;
+};
+
 export type ProjectArticleAnalyticsResult = {
   articles: ArticleAnalyticsRow[];
+  dailyTrends: ArticleAnalyticsDailyTrendRow[];
   eventAggregationWarning: string;
   message: string;
   periodRange: AnalyticsPeriodRange;
@@ -82,6 +92,14 @@ export type GetProjectArticleAnalyticsOptions = {
 const EVENT_PAGE_SIZE = 5000;
 const MAX_EVENT_PAGES = 100;
 const PUBLICATION_GROUP_ORDER = ["regular", "rolling", "time_sensitive", "urgent"];
+const KOREA_OFFSET_MS = 9 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const REACTION_EVENT_TYPES = new Set<ArticleEventType>([
+  "phone_click",
+  "map_click",
+  "cta_click",
+  "survey_click",
+]);
 
 export type RecordArticleEventInput = {
   articleId: string;
@@ -352,6 +370,85 @@ export function buildArticleAnalyticsBreakdowns(
   };
 }
 
+function getNextDate(date: string) {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + DAY_MS).toISOString().slice(0, 10);
+}
+
+function getKoreaDate(timestamp: string) {
+  const value = new Date(timestamp);
+
+  if (Number.isNaN(value.getTime())) {
+    return null;
+  }
+
+  return new Date(value.getTime() + KOREA_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+function isDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+}
+
+function buildDateRange(startDate: string, endDate: string) {
+  const dates: string[] = [];
+  let cursor = startDate;
+
+  while (cursor <= endDate) {
+    dates.push(cursor);
+    cursor = getNextDate(cursor);
+  }
+
+  return dates;
+}
+
+function buildArticleAnalyticsDailyTrends({
+  articleIds,
+  dailyStats,
+  events,
+  periodRange,
+}: {
+  articleIds: Set<string>;
+  dailyStats: DailyStatsRow[];
+  events: ArticleEventRow[];
+  periodRange: AnalyticsPeriodRange;
+}): ArticleAnalyticsDailyTrendRow[] {
+  const dailyStatDates = dailyStats
+    .map((row) => row.stat_date)
+    .filter((date) => isDateKey(date) && date <= periodRange.endDate);
+  const eventDates = events
+    .map((event) => getKoreaDate(event.occurred_at))
+    .filter((date): date is string => Boolean(date && date <= periodRange.endDate));
+  const startDate = periodRange.startDate ?? [...dailyStatDates, ...eventDates].sort()[0];
+
+  if (!startDate) {
+    return [];
+  }
+
+  const rowsByDate = new Map(
+    buildDateRange(startDate, periodRange.endDate).map((date) => [
+      date,
+      { articleViews: 0, date, reactionCount: 0, totalVisits: 0 },
+    ]),
+  );
+
+  for (const row of dailyStats) {
+    const trend = rowsByDate.get(row.stat_date);
+    if (trend) trend.totalVisits += Number(row.view_count) || 0;
+  }
+
+  for (const event of events) {
+    if (!articleIds.has(event.article_id)) continue;
+
+    const date = getKoreaDate(event.occurred_at);
+    const trend = date ? rowsByDate.get(date) : null;
+    if (!trend) continue;
+
+    if (event.event_type === "article_view") trend.articleViews += 1;
+    if (REACTION_EVENT_TYPES.has(event.event_type)) trend.reactionCount += 1;
+  }
+
+  return [...rowsByDate.values()];
+}
+
 async function fetchArticleEvents(
   projectId: string,
   periodRange: AnalyticsPeriodRange,
@@ -364,10 +461,11 @@ async function fetchArticleEvents(
     const periodFilter = periodRange.startIso
       ? `&occurred_at=gte.${encodeURIComponent(periodRange.startIso)}`
       : "";
+    const endExclusiveIso = new Date(`${getNextDate(periodRange.endDate)}T00:00:00+09:00`).toISOString();
     const endpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_article_events?select=article_id,event_type&project_id=eq.${encodeURIComponent(
+      `/rest/v1/newsletter_article_events?select=article_id,event_type,occurred_at&project_id=eq.${encodeURIComponent(
         projectId,
-      )}${periodFilter}&order=occurred_at.asc,id.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
+      )}${periodFilter}&occurred_at=lt.${encodeURIComponent(endExclusiveIso)}&order=occurred_at.asc,id.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
     );
 
     if (!endpoint) {
@@ -404,35 +502,37 @@ async function fetchTotalVisits(
   headers: Record<string, string>,
 ) {
   let total = 0;
+  const dailyStats: DailyStatsRow[] = [];
 
   for (let page = 0; page < 100; page += 1) {
     const offset = page * EVENT_PAGE_SIZE;
     const periodFilter = periodRange.startDate ? `&stat_date=gte.${periodRange.startDate}` : "";
     const endpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_daily_stats?select=view_count&project_id=eq.${encodeURIComponent(
+      `/rest/v1/newsletter_daily_stats?select=stat_date,view_count&project_id=eq.${encodeURIComponent(
         projectId,
-      )}${periodFilter}&order=stat_date.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
+      )}${periodFilter}&stat_date=lte.${periodRange.endDate}&order=stat_date.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
     );
 
     if (!endpoint) {
-      return { message: "전체 접속 집계 확인이 필요합니다.", value: null };
+      return { dailyStats: [], message: "전체 접속 집계 확인이 필요합니다.", value: null };
     }
 
     const response = await fetch(endpoint, { headers, cache: "no-store" });
 
     if (!response.ok) {
-      return { message: "전체 접속 집계 확인이 필요합니다.", value: null };
+      return { dailyStats: [], message: "전체 접속 집계 확인이 필요합니다.", value: null };
     }
 
     const rows = (await response.json()) as DailyStatsRow[];
+    dailyStats.push(...rows);
     total += rows.reduce((sum, row) => sum + (Number(row.view_count) || 0), 0);
 
     if (rows.length < EVENT_PAGE_SIZE) {
-      return { message: "", value: total };
+      return { dailyStats, message: "", value: total };
     }
   }
 
-  return { message: "전체 접속 데이터가 많아 집계 확인이 필요합니다.", value: null };
+  return { dailyStats: [], message: "전체 접속 데이터가 많아 집계 확인이 필요합니다.", value: null };
 }
 
 export async function getProjectArticleAnalytics(
@@ -446,6 +546,7 @@ export async function getProjectArticleAnalytics(
   if (!headers) {
     return {
       articles: [],
+      dailyTrends: [],
       eventAggregationWarning: "",
       periodRange,
       projectTitle: "",
@@ -462,6 +563,7 @@ export async function getProjectArticleAnalytics(
     if (!project) {
       return {
         articles: [],
+        dailyTrends: [],
         eventAggregationWarning: "",
         message: "프로젝트를 찾지 못했습니다.",
         periodRange,
@@ -479,6 +581,7 @@ export async function getProjectArticleAnalytics(
     if (!articleEndpoint) {
       return {
         articles: [],
+        dailyTrends: [],
         eventAggregationWarning: "",
         message: "기사 반응 통계 조회 주소를 만들지 못했습니다.",
         periodRange,
@@ -494,6 +597,7 @@ export async function getProjectArticleAnalytics(
     if (!articleResponse.ok) {
       return {
         articles: [],
+        dailyTrends: [],
         eventAggregationWarning: "",
         message: "기사 목록을 조회하지 못했습니다.",
         periodRange,
@@ -510,10 +614,17 @@ export async function getProjectArticleAnalytics(
       fetchArticleEvents(project.id, periodRange, headers),
       fetchTotalVisits(project.id, periodRange, headers),
     ]);
+    const dailyTrends = buildArticleAnalyticsDailyTrends({
+      articleIds: new Set(analyticsByArticleId.keys()),
+      dailyStats: totalVisitsResult.dailyStats,
+      events: eventResult.rows,
+      periodRange,
+    });
 
     if (!eventResult.ok && eventResult.rows.length === 0) {
       return {
         articles: [...analyticsByArticleId.values()],
+        dailyTrends,
         eventAggregationWarning: "",
         periodRange,
         projectTitle: project.title,
@@ -548,6 +659,7 @@ export async function getProjectArticleAnalytics(
 
     return {
       articles: [...analyticsByArticleId.values()],
+      dailyTrends,
       eventAggregationWarning: eventResult.truncated ? "일부 이벤트만 집계되었습니다." : "",
       periodRange,
       projectTitle: project.title,
@@ -559,6 +671,7 @@ export async function getProjectArticleAnalytics(
   } catch {
     return {
       articles: [],
+      dailyTrends: [],
       eventAggregationWarning: "",
       message: "기사 반응 통계를 조회하는 중 오류가 발생했습니다.",
       periodRange,
