@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
-import { getProjectArticleAnalytics, type ArticleAnalyticsRow } from "@/lib/article-analytics-repository";
+import {
+  buildArticleAnalyticsBreakdowns,
+  getProjectArticleAnalytics,
+  type ArticleAnalyticsBreakdownRow,
+  type ArticleAnalyticsRow,
+} from "@/lib/article-analytics-repository";
 import { normalizeAnalyticsPeriod, type AnalyticsPeriod } from "@/lib/article-analytics-types";
 
 const articleTypeLabels: Record<string, string> = {
@@ -13,6 +18,13 @@ const articleTypeLabels: Record<string, string> = {
   government_major: "주요 행정",
   local_news: "지역 소식",
   emergency: "긴급 안내",
+};
+
+const publicationGroupLabels: Record<string, string> = {
+  regular: "정기",
+  rolling: "수시",
+  time_sensitive: "시한성",
+  urgent: "긴급",
 };
 
 const periodOptions: Array<{ label: string; value: AnalyticsPeriod }> = [
@@ -43,6 +55,94 @@ function getTopArticle(articles: ArticleAnalyticsRow[], getValue: (article: Arti
   }, null);
 }
 
+function AnalyticsBreakdownSection({
+  description,
+  emptyMessage,
+  eyebrow,
+  getLabel,
+  rows,
+  title,
+}: {
+  description: string;
+  emptyMessage: string;
+  eyebrow: string;
+  getLabel: (row: ArticleAnalyticsBreakdownRow) => string;
+  rows: ArticleAnalyticsBreakdownRow[];
+  title: string;
+}) {
+  const maxReactionCount = Math.max(...rows.map((row) => row.reactionCount), 0);
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-5 py-4">
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">{eyebrow}</p>
+        <h2 className="mt-1 text-lg font-black text-[#092046]">{title}</h2>
+        <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{description}</p>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="px-5 py-8 text-center text-sm font-bold text-slate-500">{emptyMessage}</p>
+      ) : (
+        <>
+          <div className="space-y-3 p-4 md:hidden">
+            {rows.map((row) => (
+              <article key={row.key} className="min-w-0 rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
+                <h3 className="font-black leading-6 text-[#092046] [overflow-wrap:anywhere]">{getLabel(row)}</h3>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+                  <div
+                    className="h-full rounded-full bg-[#2f73b7]"
+                    style={{ width: `${maxReactionCount > 0 ? (row.reactionCount / maxReactionCount) * 100 : 0}%` }}
+                  />
+                </div>
+                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div><dt className="text-xs font-bold text-slate-500">기사 수</dt><dd className="mt-1 font-black text-[#092046]">{row.articleCount.toLocaleString("ko-KR")}</dd></div>
+                  <div><dt className="text-xs font-bold text-slate-500">열람</dt><dd className="mt-1 font-black text-[#092046]">{row.articleViews.toLocaleString("ko-KR")}</dd></div>
+                  <div><dt className="text-xs font-bold text-slate-500">반응</dt><dd className="mt-1 font-black text-[#092046]">{row.reactionCount.toLocaleString("ko-KR")}</dd></div>
+                  <div><dt className="text-xs font-bold text-slate-500">반응도</dt><dd className="mt-1 font-black text-[#184a88]">{formatReactionScore(row.reactionScore)}</dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+              <caption className="sr-only">{title}</caption>
+              <thead className="bg-slate-50 text-xs font-black text-slate-600">
+                <tr>
+                  <th scope="col" className="px-5 py-3">구분</th>
+                  <th scope="col" className="px-3 py-3 text-right">기사 수</th>
+                  <th scope="col" className="px-3 py-3 text-right">열람</th>
+                  <th scope="col" className="px-3 py-3 text-right">반응</th>
+                  <th scope="col" className="px-5 py-3 text-right">반응도<span className="block text-[10px] font-semibold">열람 100회당</span></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {rows.map((row) => (
+                  <tr key={row.key}>
+                    <th scope="row" className="min-w-[220px] px-5 py-4 font-black text-[#092046]">
+                      <span className="block [overflow-wrap:anywhere]">{getLabel(row)}</span>
+                      <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+                        <span
+                          className="block h-full rounded-full bg-[#2f73b7]"
+                          style={{ width: `${maxReactionCount > 0 ? (row.reactionCount / maxReactionCount) * 100 : 0}%` }}
+                        />
+                      </span>
+                    </th>
+                    <td className="px-3 py-4 text-right font-bold">{row.articleCount.toLocaleString("ko-KR")}</td>
+                    <td className="px-3 py-4 text-right font-bold">{row.articleViews.toLocaleString("ko-KR")}</td>
+                    <td className="px-3 py-4 text-right font-black text-[#092046]">{row.reactionCount.toLocaleString("ko-KR")}</td>
+                    <td className="px-5 py-4 text-right font-black text-[#184a88]">{formatReactionScore(row.reactionScore)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 export default async function ProjectAnalyticsPage({
   params,
   searchParams,
@@ -55,6 +155,7 @@ export default async function ProjectAnalyticsPage({
   const periodParam = Array.isArray(resolvedSearchParams.period) ? resolvedSearchParams.period[0] : resolvedSearchParams.period;
   const period = normalizeAnalyticsPeriod(periodParam);
   const analytics = await getProjectArticleAnalytics(projectId, { period });
+  const breakdowns = buildArticleAnalyticsBreakdowns(analytics.articles);
   const totals = analytics.articles.reduce(
     (result, article) => ({
       views: result.views + article.articleViews,
@@ -191,6 +292,34 @@ export default async function ProjectAnalyticsPage({
           </div>
         </section>
 
+        <div className="grid gap-5 xl:grid-cols-2">
+          <AnalyticsBreakdownSection
+            eyebrow="콘텐츠 구성 분석"
+            title="기사 유형별 성과"
+            description="기사 유형별 열람과 후속 행동을 비교합니다. 데이터가 있는 유형만 표시합니다."
+            emptyMessage="집계할 기사 유형 데이터가 없습니다."
+            rows={breakdowns.articleTypes}
+            getLabel={(row) => articleTypeLabels[row.key] ?? row.key}
+          />
+          <AnalyticsBreakdownSection
+            eyebrow="콘텐츠 관심 분야 분석"
+            title="관심분야별 성과"
+            description="한 기사가 여러 관심분야에 포함될 수 있어 관심분야 합계는 전체 기사 합계와 다를 수 있습니다."
+            emptyMessage="설정된 관심분야 데이터가 없습니다."
+            rows={breakdowns.interestTags}
+            getLabel={(row) => row.key}
+          />
+        </div>
+
+        <AnalyticsBreakdownSection
+          eyebrow="운영 방식 분석"
+          title="발행 성격별 성과"
+          description="정기·수시·시한성·긴급 기사별 열람과 후속 행동을 비교합니다."
+          emptyMessage="집계할 발행 성격 데이터가 없습니다."
+          rows={breakdowns.publicationGroups}
+          getLabel={(row) => publicationGroupLabels[row.key] ?? row.key}
+        />
+
         <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사별 반응</p>
@@ -247,6 +376,7 @@ export default async function ProjectAnalyticsPage({
             <li>전화·지도·CTA·설문은 실제 클릭 시도 횟수입니다.</li>
             <li>반응도는 기사 열람 100회당 후속 행동 건수이며 100을 넘을 수 있습니다.</li>
             <li>음성 재생은 반응도 계산에서 제외됩니다.</li>
+            <li>관심분야별 수치는 콘텐츠 분류 기준이며 개인의 선호도 분석을 의미하지 않습니다.</li>
             <li>행동 데이터는 주민 전체의 의견이나 정책 선호도를 의미하지 않습니다.</li>
           </ul>
         </section>
