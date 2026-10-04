@@ -7,6 +7,7 @@ import {
   type ArticleAnalyticsBreakdownRow,
   type ArticleAnalyticsDailyTrendRow,
   type ArticleAnalyticsRow,
+  type SurveyConversionAnalytics,
 } from "@/lib/article-analytics-repository";
 import { normalizeAnalyticsPeriod, type AnalyticsPeriod } from "@/lib/article-analytics-types";
 
@@ -37,6 +38,10 @@ const periodOptions: Array<{ label: string; value: AnalyticsPeriod }> = [
 
 function formatReactionScore(value: number | null) {
   return value === null ? "-" : value.toFixed(1);
+}
+
+function formatSubmissionRate(value: number | null) {
+  return value === null ? "-" : `${value.toFixed(1)}%`;
 }
 
 function formatDateLabel(value: string) {
@@ -201,6 +206,97 @@ function AnalyticsBreakdownSection({
   );
 }
 
+function SurveyConversionSection({ analytics }: { analytics: SurveyConversionAnalytics }) {
+  const isSubmissionRateAbove100 = analytics.submissionRate !== null && analytics.submissionRate > 100;
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-5 py-4">
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">참여 행동 참고 지표</p>
+        <h2 className="mt-1 text-lg font-black text-[#092046]">참여 콘텐츠 제출 현황</h2>
+        <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+          기사에서 참여 콘텐츠로 이동한 횟수와 실제 제출 건수를 비교합니다. 이동과 제출은 동일 사용자를 연결한 값이 아니므로 참고 지표로 확인하세요.
+        </p>
+      </div>
+
+      <div className="grid gap-3 p-4 sm:grid-cols-3 sm:p-5">
+        {[
+          { isReference: false, label: "참여 콘텐츠 이동", value: analytics.totalClicks.toLocaleString("ko-KR") },
+          { isReference: false, label: "실제 제출", value: analytics.totalSubmissions === null ? "-" : analytics.totalSubmissions.toLocaleString("ko-KR") },
+          { isReference: isSubmissionRateAbove100, label: "이동 대비 제출 비율", value: formatSubmissionRate(analytics.submissionRate) },
+        ].map((item) => (
+          <article key={item.label} className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
+            <p className="text-xs font-bold text-slate-500">{item.label}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <strong className="text-2xl font-black text-[#092046]">{item.value}</strong>
+              {item.isReference ? <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-600">참고</span> : null}
+            </div>
+            {item.isReference ? <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-500">직접 접근·반복 제출 포함 가능</p> : null}
+          </article>
+        ))}
+      </div>
+
+      {analytics.warning ? (
+        <p className="mx-4 mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-900 sm:mx-5">
+          {analytics.warning}
+        </p>
+      ) : null}
+
+      {analytics.rows.length === 0 ? (
+        <p className="border-t border-slate-200 px-5 py-8 text-center text-sm font-bold text-slate-500">선택한 기간에 표시할 참여 콘텐츠 이동·제출 데이터가 없습니다.</p>
+      ) : (
+        <>
+          <div className="space-y-3 border-t border-slate-200 p-4 md:hidden">
+            {analytics.rows.map((row) => (
+              <article key={row.surveyId} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <h3 className="min-w-0 font-black leading-6 text-[#092046] [overflow-wrap:anywhere]">{row.title}</h3>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-700">{row.kind === "event" ? "이벤트" : "설문"}</span>
+                </div>
+                <dl className="mt-4 grid grid-cols-3 gap-2 text-sm">
+                  <div><dt className="text-xs font-bold text-slate-500">이동</dt><dd className="mt-1 font-black text-[#092046]">{row.clickCount.toLocaleString("ko-KR")}</dd></div>
+                  <div><dt className="text-xs font-bold text-slate-500">제출</dt><dd className="mt-1 font-black text-[#092046]">{row.submissionCount.toLocaleString("ko-KR")}</dd></div>
+                  <div><dt className="text-xs font-bold text-slate-500">이동 대비 제출</dt><dd className="mt-1 font-black text-[#184a88]">{formatSubmissionRate(row.submissionRate)}</dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto border-t border-slate-200 md:block">
+            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+              <caption className="sr-only">참여 콘텐츠별 이동 및 실제 제출 현황</caption>
+              <thead className="bg-slate-50 text-xs font-black text-slate-600">
+                <tr>
+                  <th scope="col" className="px-5 py-3">참여 콘텐츠</th>
+                  <th scope="col" className="px-3 py-3">유형</th>
+                  <th scope="col" className="px-3 py-3 text-right">이동</th>
+                  <th scope="col" className="px-3 py-3 text-right">제출</th>
+                  <th scope="col" className="px-5 py-3 text-right">이동 대비 제출</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {analytics.rows.map((row) => (
+                  <tr key={row.surveyId}>
+                    <th scope="row" className="max-w-[360px] px-5 py-4 font-black text-[#092046] [overflow-wrap:anywhere]">{row.title}</th>
+                    <td className="px-3 py-4"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-700">{row.kind === "event" ? "이벤트" : "설문"}</span></td>
+                    <td className="px-3 py-4 text-right font-bold">{row.clickCount.toLocaleString("ko-KR")}</td>
+                    <td className="px-3 py-4 text-right font-bold">{row.submissionCount.toLocaleString("ko-KR")}</td>
+                    <td className="px-5 py-4 text-right font-black text-[#184a88]">{formatSubmissionRate(row.submissionRate)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <p className="border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold leading-5 text-slate-600">
+        이동과 제출은 동일 사용자를 연결한 값이 아니므로 직접 접근·반복 제출 등에 따라 이동 대비 제출 비율이 100%를 넘을 수 있습니다.
+      </p>
+    </section>
+  );
+}
+
 export default async function ProjectAnalyticsPage({
   params,
   searchParams,
@@ -351,6 +447,8 @@ export default async function ProjectAnalyticsPage({
             ))}
           </div>
         </section>
+
+        <SurveyConversionSection analytics={analytics.surveyConversions} />
 
         <div className="grid gap-5 xl:grid-cols-2">
           <AnalyticsBreakdownSection

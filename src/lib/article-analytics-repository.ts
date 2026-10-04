@@ -12,6 +12,7 @@ type ArticleEventRow = {
   article_id: string;
   event_type: ArticleEventType;
   occurred_at: string;
+  survey_id: string | null;
 };
 
 type AnalyticsArticleRow = {
@@ -27,6 +28,18 @@ type AnalyticsArticleRow = {
 type DailyStatsRow = {
   stat_date: string;
   view_count: number | null;
+};
+
+type SurveyMetadataRow = {
+  id: string;
+  status: string | null;
+  survey_kind: string | null;
+  title: string | null;
+};
+
+type SurveyResponseRow = {
+  submitted_at: string;
+  survey_id: string;
 };
 
 export type ArticleAnalyticsRow = {
@@ -72,6 +85,23 @@ export type ArticleAnalyticsDailyTrendRow = {
   totalVisits: number;
 };
 
+export type SurveyConversionAnalyticsRow = {
+  clickCount: number;
+  kind: "survey" | "event";
+  submissionCount: number;
+  submissionRate: number | null;
+  surveyId: string;
+  title: string;
+};
+
+export type SurveyConversionAnalytics = {
+  rows: SurveyConversionAnalyticsRow[];
+  submissionRate: number | null;
+  totalClicks: number;
+  totalSubmissions: number | null;
+  warning: string;
+};
+
 export type ProjectArticleAnalyticsResult = {
   articles: ArticleAnalyticsRow[];
   dailyTrends: ArticleAnalyticsDailyTrendRow[];
@@ -80,6 +110,7 @@ export type ProjectArticleAnalyticsResult = {
   periodRange: AnalyticsPeriodRange;
   projectTitle: string;
   source: "supabase" | "unconfigured" | "not_found" | "migration_required" | "error";
+  surveyConversions: SurveyConversionAnalytics;
   totalVisits: number | null;
   totalVisitsMessage: string;
 };
@@ -100,6 +131,16 @@ const REACTION_EVENT_TYPES = new Set<ArticleEventType>([
   "cta_click",
   "survey_click",
 ]);
+
+function makeEmptySurveyConversions(warning = ""): SurveyConversionAnalytics {
+  return {
+    rows: [],
+    submissionRate: null,
+    totalClicks: 0,
+    totalSubmissions: null,
+    warning,
+  };
+}
 
 export type RecordArticleEventInput = {
   articleId: string;
@@ -374,6 +415,10 @@ function getNextDate(date: string) {
   return new Date(Date.parse(`${date}T00:00:00Z`) + DAY_MS).toISOString().slice(0, 10);
 }
 
+function getPeriodEndExclusiveIso(periodRange: AnalyticsPeriodRange) {
+  return new Date(`${getNextDate(periodRange.endDate)}T00:00:00+09:00`).toISOString();
+}
+
 function getKoreaDate(timestamp: string) {
   const value = new Date(timestamp);
 
@@ -461,9 +506,9 @@ async function fetchArticleEvents(
     const periodFilter = periodRange.startIso
       ? `&occurred_at=gte.${encodeURIComponent(periodRange.startIso)}`
       : "";
-    const endExclusiveIso = new Date(`${getNextDate(periodRange.endDate)}T00:00:00+09:00`).toISOString();
+    const endExclusiveIso = getPeriodEndExclusiveIso(periodRange);
     const endpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_article_events?select=article_id,event_type,occurred_at&project_id=eq.${encodeURIComponent(
+      `/rest/v1/newsletter_article_events?select=article_id,event_type,occurred_at,survey_id&project_id=eq.${encodeURIComponent(
         projectId,
       )}${periodFilter}&occurred_at=lt.${encodeURIComponent(endExclusiveIso)}&order=occurred_at.asc,id.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
     );
@@ -494,6 +539,143 @@ async function fetchArticleEvents(
   }
 
   return { ok: true as const, migrationRequired: false, rows, truncated: true };
+}
+
+async function fetchSurveyMetadata(projectId: string, headers: Record<string, string>) {
+  try {
+    const endpoint = getSupabaseRestEndpoint(
+      `/rest/v1/newsletter_surveys?select=id,title,survey_kind,status&project_id=eq.${encodeURIComponent(projectId)}&order=title.asc`,
+    );
+
+    if (!endpoint) return { ok: false as const, rows: [] as SurveyMetadataRow[] };
+
+    const response = await fetch(endpoint, { headers, cache: "no-store" });
+    if (!response.ok) return { ok: false as const, rows: [] as SurveyMetadataRow[] };
+
+    return { ok: true as const, rows: (await response.json()) as SurveyMetadataRow[] };
+  } catch {
+    return { ok: false as const, rows: [] as SurveyMetadataRow[] };
+  }
+}
+
+async function fetchSurveyResponses(
+  projectId: string,
+  periodRange: AnalyticsPeriodRange,
+  headers: Record<string, string>,
+) {
+  const rows: SurveyResponseRow[] = [];
+
+  try {
+    for (let page = 0; page < MAX_EVENT_PAGES; page += 1) {
+      const offset = page * EVENT_PAGE_SIZE;
+      const periodFilter = periodRange.startIso
+        ? `&submitted_at=gte.${encodeURIComponent(periodRange.startIso)}`
+        : "";
+      const endpoint = getSupabaseRestEndpoint(
+        `/rest/v1/newsletter_survey_responses?select=survey_id,submitted_at&project_id=eq.${encodeURIComponent(
+          projectId,
+        )}${periodFilter}&submitted_at=lt.${encodeURIComponent(getPeriodEndExclusiveIso(periodRange))}&order=submitted_at.asc,id.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
+      );
+
+      if (!endpoint) return { ok: false as const, rows: [] as SurveyResponseRow[], truncated: false };
+
+      const response = await fetch(endpoint, { headers, cache: "no-store" });
+      if (!response.ok) return { ok: false as const, rows, truncated: rows.length > 0 };
+
+      const pageRows = (await response.json()) as SurveyResponseRow[];
+      rows.push(...pageRows);
+
+      if (pageRows.length < EVENT_PAGE_SIZE) {
+        return { ok: true as const, rows, truncated: false };
+      }
+    }
+
+    return { ok: true as const, rows, truncated: true };
+  } catch {
+    return { ok: false as const, rows, truncated: rows.length > 0 };
+  }
+}
+
+function buildSurveyConversionAnalytics({
+  articleIds,
+  events,
+  metadataResult,
+  responseResult,
+}: {
+  articleIds: Set<string>;
+  events: ArticleEventRow[];
+  metadataResult: Awaited<ReturnType<typeof fetchSurveyMetadata>>;
+  responseResult: Awaited<ReturnType<typeof fetchSurveyResponses>>;
+}): SurveyConversionAnalytics {
+  const surveyClickEvents = events.filter((event) => (
+    articleIds.has(event.article_id) && event.event_type === "survey_click"
+  ));
+  const totalClicks = surveyClickEvents.length;
+  const warnings: string[] = [];
+
+  if (!metadataResult.ok) {
+    warnings.push("참여 콘텐츠 정보를 조회하지 못해 개별 항목 분석을 표시할 수 없습니다.");
+  }
+
+  if (!responseResult.ok) {
+    warnings.push("실제 제출 데이터를 조회하지 못했습니다. 참여 콘텐츠 응답 테이블을 확인하세요.");
+  } else if (responseResult.truncated) {
+    warnings.push("제출 데이터가 많아 일부 응답만 집계되었습니다.");
+  }
+
+  const clicksBySurveyId = new Map<string, number>();
+  for (const event of surveyClickEvents) {
+    if (!event.survey_id) continue;
+    clicksBySurveyId.set(event.survey_id, (clicksBySurveyId.get(event.survey_id) ?? 0) + 1);
+  }
+
+  const submissionsBySurveyId = new Map<string, number>();
+  for (const response of responseResult.rows) {
+    submissionsBySurveyId.set(response.survey_id, (submissionsBySurveyId.get(response.survey_id) ?? 0) + 1);
+  }
+
+  const rows = metadataResult.ok && responseResult.ok
+    ? metadataResult.rows
+      .map<SurveyConversionAnalyticsRow>((survey) => {
+        const clickCount = clicksBySurveyId.get(survey.id) ?? 0;
+        const submissionCount = submissionsBySurveyId.get(survey.id) ?? 0;
+        return {
+          clickCount,
+          kind: survey.survey_kind === "event" ? "event" : "survey",
+          submissionCount,
+          submissionRate: clickCount > 0 ? (submissionCount / clickCount) * 100 : null,
+          surveyId: survey.id,
+          title: survey.title?.trim() || "제목 없는 참여 콘텐츠",
+        };
+      })
+      .filter((row) => row.clickCount > 0 || row.submissionCount > 0)
+      .sort((left, right) => (
+        right.submissionCount - left.submissionCount ||
+        right.clickCount - left.clickCount ||
+        left.title.localeCompare(right.title, "ko")
+      ))
+    : [];
+  const knownSurveyIds = new Set(metadataResult.rows.map((survey) => survey.id));
+  const assignedClickCount = [...clicksBySurveyId].reduce(
+    (sum, [surveyId, count]) => sum + (knownSurveyIds.has(surveyId) ? count : 0),
+    0,
+  );
+
+  if (metadataResult.ok && assignedClickCount < totalClicks) {
+    warnings.push("일부 과거 설문 이동 이벤트는 참여 콘텐츠 ID가 없어 개별 항목 분석에서 제외됩니다.");
+  }
+
+  const totalSubmissions = responseResult.ok ? responseResult.rows.length : null;
+
+  return {
+    rows,
+    submissionRate: totalClicks > 0 && totalSubmissions !== null
+      ? (totalSubmissions / totalClicks) * 100
+      : null,
+    totalClicks,
+    totalSubmissions,
+    warning: warnings.join(" "),
+  };
 }
 
 async function fetchTotalVisits(
@@ -551,6 +733,7 @@ export async function getProjectArticleAnalytics(
       periodRange,
       projectTitle: "",
       source: "unconfigured",
+      surveyConversions: makeEmptySurveyConversions(),
       message: "Supabase 환경변수와 서버 저장 키 설정 후 기사 반응 통계를 표시합니다.",
       totalVisits: null,
       totalVisitsMessage: "전체 접속 집계 확인이 필요합니다.",
@@ -569,6 +752,7 @@ export async function getProjectArticleAnalytics(
         periodRange,
         projectTitle: "",
         source: "not_found",
+        surveyConversions: makeEmptySurveyConversions(),
         totalVisits: null,
         totalVisitsMessage: "",
       };
@@ -587,6 +771,7 @@ export async function getProjectArticleAnalytics(
         periodRange,
         projectTitle: project.title,
         source: "error",
+        surveyConversions: makeEmptySurveyConversions(),
         totalVisits: null,
         totalVisitsMessage: "전체 접속 집계 확인이 필요합니다.",
       };
@@ -603,6 +788,7 @@ export async function getProjectArticleAnalytics(
         periodRange,
         projectTitle: project.title,
         source: "error",
+        surveyConversions: makeEmptySurveyConversions(),
         totalVisits: null,
         totalVisitsMessage: "전체 접속 집계 확인이 필요합니다.",
       };
@@ -610,15 +796,24 @@ export async function getProjectArticleAnalytics(
 
     const articleRows = (await articleResponse.json()) as AnalyticsArticleRow[];
     const analyticsByArticleId = new Map(articleRows.map((article) => [article.id, makeEmptyAnalyticsRow(article)]));
-    const [eventResult, totalVisitsResult] = await Promise.all([
+    const [eventResult, totalVisitsResult, surveyMetadataResult, surveyResponseResult] = await Promise.all([
       fetchArticleEvents(project.id, periodRange, headers),
       fetchTotalVisits(project.id, periodRange, headers),
+      fetchSurveyMetadata(project.id, headers),
+      fetchSurveyResponses(project.id, periodRange, headers),
     ]);
+    const articleIds = new Set(analyticsByArticleId.keys());
     const dailyTrends = buildArticleAnalyticsDailyTrends({
-      articleIds: new Set(analyticsByArticleId.keys()),
+      articleIds,
       dailyStats: totalVisitsResult.dailyStats,
       events: eventResult.rows,
       periodRange,
+    });
+    const surveyConversions = buildSurveyConversionAnalytics({
+      articleIds,
+      events: eventResult.rows,
+      metadataResult: surveyMetadataResult,
+      responseResult: surveyResponseResult,
     });
 
     if (!eventResult.ok && eventResult.rows.length === 0) {
@@ -632,6 +827,7 @@ export async function getProjectArticleAnalytics(
         message: eventResult.migrationRequired
           ? "반응 통계 DB 준비가 필요합니다. v1.17 migration을 적용하면 이벤트가 집계됩니다."
           : "기사 반응 이벤트를 조회하지 못했습니다.",
+        surveyConversions,
         totalVisits: totalVisitsResult.value,
         totalVisitsMessage: totalVisitsResult.message,
       };
@@ -664,6 +860,7 @@ export async function getProjectArticleAnalytics(
       periodRange,
       projectTitle: project.title,
       source: "supabase",
+      surveyConversions,
       message: eventResult.rows.length > 0 ? `${periodRange.label} 기사 반응 이벤트를 표시합니다.` : `${periodRange.label} 기사 반응 데이터가 없습니다.`,
       totalVisits: totalVisitsResult.value,
       totalVisitsMessage: totalVisitsResult.message,
@@ -677,6 +874,7 @@ export async function getProjectArticleAnalytics(
       periodRange,
       projectTitle: "",
       source: "error",
+      surveyConversions: makeEmptySurveyConversions(),
       totalVisits: null,
       totalVisitsMessage: "전체 접속 집계 확인이 필요합니다.",
     };
