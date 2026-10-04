@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AiOperationsCommentary } from "@/components/ai-operations-commentary";
 import { ArticleAnalyticsDailyTrendChart } from "@/components/article-analytics-daily-trend-chart";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import {
@@ -785,6 +786,8 @@ export default async function ProjectAnalyticsPage({
         </section>
 
         <OperationsReportSection report={operationsReport} />
+
+        <AiOperationsCommentary key={`${projectId}-${period}`} period={period} projectId={projectId} />
 
         <DailyTrendSection rows={analytics.dailyTrends} />
 
