@@ -95,7 +95,7 @@ function AnalyticsBreakdownSection({
                   />
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <div><dt className="text-xs font-bold text-slate-500">기사 수</dt><dd className="mt-1 font-black text-[#092046]">{row.articleCount.toLocaleString("ko-KR")}</dd></div>
+                  <div><dt className="text-xs font-bold text-slate-500">등록 기사</dt><dd className="mt-1 font-black text-[#092046]">{row.articleCount.toLocaleString("ko-KR")}</dd></div>
                   <div><dt className="text-xs font-bold text-slate-500">열람</dt><dd className="mt-1 font-black text-[#092046]">{row.articleViews.toLocaleString("ko-KR")}</dd></div>
                   <div><dt className="text-xs font-bold text-slate-500">반응</dt><dd className="mt-1 font-black text-[#092046]">{row.reactionCount.toLocaleString("ko-KR")}</dd></div>
                   <div><dt className="text-xs font-bold text-slate-500">반응도</dt><dd className="mt-1 font-black text-[#184a88]">{formatReactionScore(row.reactionScore)}</dd></div>
@@ -110,7 +110,7 @@ function AnalyticsBreakdownSection({
               <thead className="bg-slate-50 text-xs font-black text-slate-600">
                 <tr>
                   <th scope="col" className="px-5 py-3">구분</th>
-                  <th scope="col" className="px-3 py-3 text-right">기사 수</th>
+                  <th scope="col" className="px-3 py-3 text-right">등록 기사</th>
                   <th scope="col" className="px-3 py-3 text-right">열람</th>
                   <th scope="col" className="px-3 py-3 text-right">반응</th>
                   <th scope="col" className="px-5 py-3 text-right">반응도<span className="block text-[10px] font-semibold">열람 100회당</span></th>
