@@ -45,6 +45,11 @@ type SurveyResponseRow = {
   survey_id: string;
 };
 
+type ViewReferrerRow = {
+  occurred_at: string;
+  referrer_domain: string | null;
+};
+
 export type ArticleAnalyticsRow = {
   articleId: string;
   articleType: string;
@@ -115,6 +120,23 @@ export type AccessDeviceAnalytics = {
   total: number;
 };
 
+export type ReferrerDomainAnalyticsRow = {
+  count: number;
+  domain: string;
+  rate: number | null;
+};
+
+export type ReferrerAnalytics = {
+  directInternal: number;
+  directInternalRate: number | null;
+  domains: ReferrerDomainAnalyticsRow[];
+  external: number;
+  externalRate: number | null;
+  legacyExcludedCount: number;
+  total: number;
+  warning: string;
+};
+
 export type ProjectArticleAnalyticsResult = {
   articles: ArticleAnalyticsRow[];
   dailyTrends: ArticleAnalyticsDailyTrendRow[];
@@ -123,6 +145,7 @@ export type ProjectArticleAnalyticsResult = {
   message: string;
   periodRange: AnalyticsPeriodRange;
   projectTitle: string;
+  referrerAnalytics: ReferrerAnalytics;
   source: "supabase" | "unconfigured" | "not_found" | "migration_required" | "error";
   surveyConversions: SurveyConversionAnalytics;
   totalVisits: number | null;
@@ -139,6 +162,9 @@ const MAX_EVENT_PAGES = 100;
 const PUBLICATION_GROUP_ORDER = ["regular", "rolling", "time_sensitive", "urgent"];
 const KOREA_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+// 유입경로 수집 방식 보정 이후 신뢰 가능한 데이터 시작점입니다.
+const REFERRER_ANALYTICS_CUTOFF_ISO = "2026-10-05T01:30:00+09:00";
+const REFERRER_ANALYTICS_CUTOFF_MS = Date.parse(REFERRER_ANALYTICS_CUTOFF_ISO);
 const REACTION_EVENT_TYPES = new Set<ArticleEventType>([
   "phone_click",
   "map_click",
@@ -170,6 +196,59 @@ function buildAccessDeviceAnalytics(rows: DailyStatsRow[]): AccessDeviceAnalytic
     tablet,
     tabletRate: total > 0 ? (tablet / total) * 100 : null,
     total,
+  };
+}
+
+function makeEmptyReferrerAnalytics(warning = ""): ReferrerAnalytics {
+  return {
+    directInternal: 0,
+    directInternalRate: null,
+    domains: [],
+    external: 0,
+    externalRate: null,
+    legacyExcludedCount: 0,
+    total: 0,
+    warning,
+  };
+}
+
+function buildReferrerAnalytics(
+  rows: ViewReferrerRow[],
+  warning = "",
+): ReferrerAnalytics {
+  const domains = new Map<string, number>();
+  let directInternal = 0;
+  const eligibleRows = rows.filter((row) => Date.parse(row.occurred_at) >= REFERRER_ANALYTICS_CUTOFF_MS);
+
+  for (const row of eligibleRows) {
+    const domain = row.referrer_domain ?? "";
+
+    if (!domain.trim()) {
+      directInternal += 1;
+      continue;
+    }
+
+    domains.set(domain, (domains.get(domain) ?? 0) + 1);
+  }
+
+  const external = eligibleRows.length - directInternal;
+  const total = eligibleRows.length;
+
+  return {
+    directInternal,
+    directInternalRate: total > 0 ? (directInternal / total) * 100 : null,
+    domains: [...domains.entries()]
+      .map(([domain, count]) => ({
+        count,
+        domain,
+        rate: external > 0 ? (count / external) * 100 : null,
+      }))
+      .sort((left, right) => right.count - left.count || left.domain.localeCompare(right.domain)),
+    external,
+    externalRate: total > 0 ? (external / total) * 100 : null,
+    legacyExcludedCount: rows.length - eligibleRows.length,
+    total,
+    warning,
   };
 }
 
@@ -572,6 +651,44 @@ async function fetchArticleEvents(
   return { ok: true as const, migrationRequired: false, rows, truncated: true };
 }
 
+async function fetchViewReferrers(
+  projectId: string,
+  periodRange: AnalyticsPeriodRange,
+  headers: Record<string, string>,
+) {
+  const rows: ViewReferrerRow[] = [];
+
+  try {
+    for (let page = 0; page < MAX_EVENT_PAGES; page += 1) {
+      const offset = page * EVENT_PAGE_SIZE;
+      const periodFilter = periodRange.startIso
+        ? `&occurred_at=gte.${encodeURIComponent(periodRange.startIso)}`
+        : "";
+      const endpoint = getSupabaseRestEndpoint(
+        `/rest/v1/newsletter_view_events?select=referrer_domain,occurred_at&project_id=eq.${encodeURIComponent(
+          projectId,
+        )}${periodFilter}&occurred_at=lt.${encodeURIComponent(getPeriodEndExclusiveIso(periodRange))}&order=occurred_at.asc,id.asc&limit=${EVENT_PAGE_SIZE}&offset=${offset}`,
+      );
+
+      if (!endpoint) return { ok: false as const, rows: [] as ViewReferrerRow[], truncated: false };
+
+      const response = await fetch(endpoint, { headers, cache: "no-store" });
+      if (!response.ok) return { ok: false as const, rows: [], truncated: false };
+
+      const pageRows = (await response.json()) as ViewReferrerRow[];
+      rows.push(...pageRows);
+
+      if (pageRows.length < EVENT_PAGE_SIZE) {
+        return { ok: true as const, rows, truncated: false };
+      }
+    }
+
+    return { ok: true as const, rows, truncated: true };
+  } catch {
+    return { ok: false as const, rows: [], truncated: false };
+  }
+}
+
 async function fetchSurveyMetadata(projectId: string, headers: Record<string, string>) {
   try {
     const endpoint = getSupabaseRestEndpoint(
@@ -764,6 +881,7 @@ export async function getProjectArticleAnalytics(
       eventAggregationWarning: "",
       periodRange,
       projectTitle: "",
+      referrerAnalytics: makeEmptyReferrerAnalytics(),
       source: "unconfigured",
       surveyConversions: makeEmptySurveyConversions(),
       message: "Supabase 환경변수와 서버 저장 키 설정 후 기사 반응 통계를 표시합니다.",
@@ -784,6 +902,7 @@ export async function getProjectArticleAnalytics(
         message: "프로젝트를 찾지 못했습니다.",
         periodRange,
         projectTitle: "",
+        referrerAnalytics: makeEmptyReferrerAnalytics(),
         source: "not_found",
         surveyConversions: makeEmptySurveyConversions(),
         totalVisits: null,
@@ -804,6 +923,7 @@ export async function getProjectArticleAnalytics(
         message: "기사 반응 통계 조회 주소를 만들지 못했습니다.",
         periodRange,
         projectTitle: project.title,
+        referrerAnalytics: makeEmptyReferrerAnalytics(),
         source: "error",
         surveyConversions: makeEmptySurveyConversions(),
         totalVisits: null,
@@ -822,6 +942,7 @@ export async function getProjectArticleAnalytics(
         message: "기사 목록을 조회하지 못했습니다.",
         periodRange,
         projectTitle: project.title,
+        referrerAnalytics: makeEmptyReferrerAnalytics(),
         source: "error",
         surveyConversions: makeEmptySurveyConversions(),
         totalVisits: null,
@@ -831,11 +952,12 @@ export async function getProjectArticleAnalytics(
 
     const articleRows = (await articleResponse.json()) as AnalyticsArticleRow[];
     const analyticsByArticleId = new Map(articleRows.map((article) => [article.id, makeEmptyAnalyticsRow(article)]));
-    const [eventResult, totalVisitsResult, surveyMetadataResult, surveyResponseResult] = await Promise.all([
+    const [eventResult, totalVisitsResult, surveyMetadataResult, surveyResponseResult, referrerResult] = await Promise.all([
       fetchArticleEvents(project.id, periodRange, headers),
       fetchTotalVisits(project.id, periodRange, headers),
       fetchSurveyMetadata(project.id, headers),
       fetchSurveyResponses(project.id, periodRange, headers),
+      fetchViewReferrers(project.id, periodRange, headers),
     ]);
     const articleIds = new Set(analyticsByArticleId.keys());
     const dailyTrends = buildArticleAnalyticsDailyTrends({
@@ -845,6 +967,12 @@ export async function getProjectArticleAnalytics(
       periodRange,
     });
     const deviceAnalytics = buildAccessDeviceAnalytics(totalVisitsResult.dailyStats);
+    const referrerAnalytics = referrerResult.ok
+      ? buildReferrerAnalytics(
+          referrerResult.rows,
+          referrerResult.truncated ? "유입경로 데이터가 많아 일부 이벤트만 집계되었습니다." : "",
+        )
+      : makeEmptyReferrerAnalytics("유입경로 데이터를 조회하지 못했습니다.");
     const surveyConversions = buildSurveyConversionAnalytics({
       articleIds,
       events: eventResult.rows,
@@ -860,6 +988,7 @@ export async function getProjectArticleAnalytics(
         eventAggregationWarning: "",
         periodRange,
         projectTitle: project.title,
+        referrerAnalytics,
         source: eventResult.migrationRequired ? "migration_required" : "error",
         message: eventResult.migrationRequired
           ? "반응 통계 DB 준비가 필요합니다. v1.17 migration을 적용하면 이벤트가 집계됩니다."
@@ -897,6 +1026,7 @@ export async function getProjectArticleAnalytics(
       eventAggregationWarning: eventResult.truncated ? "일부 이벤트만 집계되었습니다." : "",
       periodRange,
       projectTitle: project.title,
+      referrerAnalytics,
       source: "supabase",
       surveyConversions,
       message: eventResult.rows.length > 0 ? `${periodRange.label} 기사 반응 이벤트를 표시합니다.` : `${periodRange.label} 기사 반응 데이터가 없습니다.`,
@@ -912,6 +1042,7 @@ export async function getProjectArticleAnalytics(
       message: "기사 반응 통계를 조회하는 중 오류가 발생했습니다.",
       periodRange,
       projectTitle: "",
+      referrerAnalytics: makeEmptyReferrerAnalytics(),
       source: "error",
       surveyConversions: makeEmptySurveyConversions(),
       totalVisits: null,
