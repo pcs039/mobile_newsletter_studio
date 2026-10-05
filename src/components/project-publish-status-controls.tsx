@@ -62,13 +62,18 @@ export function ProjectPublishStatusControls({
         projectId,
         status,
       }),
-    });
-    const result = (await response.json().catch(() => null)) as { ok: boolean; message?: string } | null;
+    }).catch(() => null);
+    const result = response
+      ? ((await response.json().catch(() => null)) as { ok: boolean; message?: string } | null)
+      : null;
 
-    if (!response.ok || !result?.ok) {
+    if (!response?.ok || !result?.ok) {
       setPendingStatus(null);
       setIsError(true);
-      setMessage(result?.message ?? "상태 저장에 실패했습니다.");
+      setMessage(
+        result?.message ??
+          (response ? "상태 저장에 실패했습니다." : "상태 저장 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요."),
+      );
       return;
     }
 

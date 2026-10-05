@@ -49,13 +49,17 @@ export function ProjectSurveyForm({ projectSlug, surveys }: ProjectSurveyFormPro
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
-    });
-    const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+    }).catch(() => null);
+    const result = response
+      ? ((await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null)
+      : null;
 
-    if (!response.ok || !result?.ok) {
+    if (!response?.ok || !result?.ok) {
       setSubmitState({
         target: null,
-        message: result?.message ?? "저장에 실패했습니다.",
+        message:
+          result?.message ??
+          (response ? "저장에 실패했습니다." : "저장 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요."),
         isError: true,
       });
       return false;

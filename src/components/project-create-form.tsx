@@ -233,55 +233,63 @@ export function ProjectCreateForm({
 
       setCoverUploadState({ status: "uploading", message: "표지 연결을 제거하는 중입니다." });
 
-      const response = await fetch("/api/projects", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          projectId: initialValues.projectId ?? initialValues.slug,
-          title: getFormText(formData, "title"),
-          issueLabel: getFormText(formData, "issueLabel"),
-          organizationName: getFormText(formData, "organizationName"),
-          assigneeName: getFormText(formData, "assigneeName"),
-          publishedDate: getFormText(formData, "publishedDate"),
-          slug: getFormText(formData, "slug"),
-          description: getFormText(formData, "description"),
-          primaryColor: getFormText(formData, "primaryColor"),
-          status: getFormText(formData, "status"),
-          packageTier: getFormText(formData, "packageTier"),
-          productionMode: getFormText(formData, "productionMode"),
-          projectType,
-          ebookSource,
-          externalEbookUrl,
-          estimatedHours: getFormText(formData, "estimatedHours"),
-          designerHoursCap: getFormText(formData, "designerHoursCap"),
-          titleFontAssetId: getFormText(formData, "titleFontAssetId"),
-          bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
-          articleTtsVoice: getFormText(formData, "articleTtsVoice"),
-          coverEnabled: false,
-          coverLayout,
-          coverImageUrl: "",
-          coverImagePath: "",
-          coverTitle: shouldClearText ? "" : getFormText(formData, "coverTitle"),
-          coverSubtitle: shouldClearText ? "" : getFormText(formData, "coverSubtitle"),
-          coverIssueText: shouldClearText ? "" : getFormText(formData, "coverIssueText"),
-          coverFit,
-          projectPassword: "",
-          clearProjectPassword: false,
-        }),
-      });
-      const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+      try {
+        const response = await fetch("/api/projects", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            projectId: initialValues.projectId ?? initialValues.slug,
+            title: getFormText(formData, "title"),
+            issueLabel: getFormText(formData, "issueLabel"),
+            organizationName: getFormText(formData, "organizationName"),
+            assigneeName: getFormText(formData, "assigneeName"),
+            publishedDate: getFormText(formData, "publishedDate"),
+            slug: getFormText(formData, "slug"),
+            description: getFormText(formData, "description"),
+            primaryColor: getFormText(formData, "primaryColor"),
+            status: getFormText(formData, "status"),
+            packageTier: getFormText(formData, "packageTier"),
+            productionMode: getFormText(formData, "productionMode"),
+            projectType,
+            ebookSource,
+            externalEbookUrl,
+            estimatedHours: getFormText(formData, "estimatedHours"),
+            designerHoursCap: getFormText(formData, "designerHoursCap"),
+            titleFontAssetId: getFormText(formData, "titleFontAssetId"),
+            bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
+            articleTtsVoice: getFormText(formData, "articleTtsVoice"),
+            coverEnabled: false,
+            coverLayout,
+            coverImageUrl: "",
+            coverImagePath: "",
+            coverTitle: shouldClearText ? "" : getFormText(formData, "coverTitle"),
+            coverSubtitle: shouldClearText ? "" : getFormText(formData, "coverSubtitle"),
+            coverIssueText: shouldClearText ? "" : getFormText(formData, "coverIssueText"),
+            coverFit,
+            projectPassword: "",
+            clearProjectPassword: false,
+          }),
+        });
+        const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
 
-      if (!response.ok || result?.ok !== true) {
+        if (!response.ok || result?.ok !== true) {
+          setCoverUploadState({
+            status: "error",
+            message: result?.message ?? "표지 제거를 저장하지 못했습니다.",
+          });
+          return;
+        }
+
+        router.refresh();
+      } catch {
         setCoverUploadState({
           status: "error",
-          message: result?.message ?? "표지 제거를 저장하지 못했습니다.",
+          message: "표지 제거 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.",
         });
         return;
       }
-
-      router.refresh();
     }
 
     setCoverUploadState({
@@ -317,96 +325,104 @@ export function ProjectCreateForm({
 
     setCoverUploadState({ status: "uploading", message: "표지 이미지 업로드 주소를 준비하는 중입니다." });
 
-    const prepareResponse = await fetch("/api/project-files", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "prepare",
-        fileName: file.name,
-        kind: "asset_image",
-        mimeType: file.type,
-        projectSlug: initialValues.slug,
-        size: file.size,
-      }),
-    });
-    const prepareResult = (await prepareResponse.json().catch(() => null)) as
-      | {
-          ok?: boolean;
-          bucket?: string;
-          fileName?: string;
-          message?: string;
-          mimeType?: string;
-          path?: string;
-          size?: number;
-          uploadUrl?: string;
-        }
-      | null;
-
-    if (!prepareResponse.ok || !prepareResult?.ok || !prepareResult.uploadUrl || !prepareResult.path) {
-      setCoverUploadState({
-        status: "error",
-        message: prepareResult?.message ?? "표지 이미지 업로드 주소를 준비하지 못했습니다.",
+    try {
+      const prepareResponse = await fetch("/api/project-files", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "prepare",
+          fileName: file.name,
+          kind: "asset_image",
+          mimeType: file.type,
+          projectSlug: initialValues.slug,
+          size: file.size,
+        }),
       });
-      event.target.value = "";
-      return;
-    }
+      const prepareResult = (await prepareResponse.json().catch(() => null)) as
+        | {
+            ok?: boolean;
+            bucket?: string;
+            fileName?: string;
+            message?: string;
+            mimeType?: string;
+            path?: string;
+            size?: number;
+            uploadUrl?: string;
+          }
+        | null;
 
-    setCoverUploadState({ status: "uploading", message: "표지 이미지를 Storage에 업로드하는 중입니다." });
+      if (!prepareResponse.ok || !prepareResult?.ok || !prepareResult.uploadUrl || !prepareResult.path) {
+        setCoverUploadState({
+          status: "error",
+          message: prepareResult?.message ?? "표지 이미지 업로드 주소를 준비하지 못했습니다.",
+        });
+        event.target.value = "";
+        return;
+      }
 
-    const uploadResponse = await fetch(prepareResult.uploadUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": prepareResult.mimeType || file.type || "image/png",
-      },
-      body: file,
-    });
+      setCoverUploadState({ status: "uploading", message: "표지 이미지를 Storage에 업로드하는 중입니다." });
 
-    if (!uploadResponse.ok) {
-      setCoverUploadState({
-        status: "error",
-        message: await readUploadError(uploadResponse, `Storage 업로드에 실패했습니다. (${uploadResponse.status})`),
+      const uploadResponse = await fetch(prepareResult.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": prepareResult.mimeType || file.type || "image/png",
+        },
+        body: file,
       });
-      event.target.value = "";
-      return;
-    }
 
-    setCoverUploadState({ status: "uploading", message: "업로드된 이미지를 프로젝트 자산에 연결하는 중입니다." });
+      if (!uploadResponse.ok) {
+        setCoverUploadState({
+          status: "error",
+          message: await readUploadError(uploadResponse, `Storage 업로드에 실패했습니다. (${uploadResponse.status})`),
+        });
+        event.target.value = "";
+        return;
+      }
 
-    const completeResponse = await fetch("/api/project-files", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "complete",
-        bucket: prepareResult.bucket,
-        fileName: prepareResult.fileName ?? file.name,
-        kind: "asset_image",
-        mimeType: prepareResult.mimeType ?? file.type,
-        path: prepareResult.path,
-        projectSlug: initialValues.slug,
-        size: prepareResult.size ?? file.size,
-      }),
-    });
-    const completeResult = (await completeResponse.json().catch(() => null)) as
+      setCoverUploadState({ status: "uploading", message: "업로드된 이미지를 프로젝트 자산에 연결하는 중입니다." });
+
+      const completeResponse = await fetch("/api/project-files", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "complete",
+          bucket: prepareResult.bucket,
+          fileName: prepareResult.fileName ?? file.name,
+          kind: "asset_image",
+          mimeType: prepareResult.mimeType ?? file.type,
+          path: prepareResult.path,
+          projectSlug: initialValues.slug,
+          size: prepareResult.size ?? file.size,
+        }),
+      });
+      const completeResult = (await completeResponse.json().catch(() => null)) as
       | { ok?: boolean; message?: string }
       | null;
 
-    if (!completeResponse.ok || !completeResult?.ok) {
+      if (!completeResponse.ok || !completeResult?.ok) {
+        setCoverUploadState({
+          status: "error",
+          message: completeResult?.message ?? "이미지는 올라갔지만 프로젝트 자산 연결에 실패했습니다.",
+        });
+        event.target.value = "";
+        return;
+      }
+
+      setCoverImagePath(prepareResult.path);
+      setCoverImageUrl(makePublicCoverPreviewHref(prepareResult.path));
+      setCoverEnabled(true);
       setCoverUploadState({
-        status: "error",
-        message: completeResult?.message ?? "이미지는 올라갔지만 프로젝트 자산 연결에 실패했습니다.",
+        status: "success",
+        message: "표지 이미지가 업로드됐습니다. 저장 버튼을 눌러 표지 설정을 반영하세요.",
       });
       event.target.value = "";
-      return;
+    } catch {
+      setCoverUploadState({
+        status: "error",
+        message: "표지 이미지 업로드 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.",
+      });
+      event.target.value = "";
     }
-
-    setCoverImagePath(prepareResult.path);
-    setCoverImageUrl(makePublicCoverPreviewHref(prepareResult.path));
-    setCoverEnabled(true);
-    setCoverUploadState({
-      status: "success",
-      message: "표지 이미지가 업로드됐습니다. 저장 버튼을 눌러 표지 설정을 반영하세요.",
-    });
-    event.target.value = "";
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -429,87 +445,94 @@ export function ProjectCreateForm({
       return;
     }
 
-    const response = await fetch("/api/projects", {
-      method: isEditMode ? "PATCH" : "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        projectId: initialValues.projectId ?? initialValues.slug,
-        title: getFormText(formData, "title"),
-        issueLabel: getFormText(formData, "issueLabel"),
-        organizationName: getFormText(formData, "organizationName"),
-        assigneeName: getFormText(formData, "assigneeName"),
-        publishedDate: getFormText(formData, "publishedDate"),
-        slug: getFormText(formData, "slug"),
-        description: getFormText(formData, "description"),
-        primaryColor: getFormText(formData, "primaryColor"),
-        status: getFormText(formData, "status"),
-        packageTier: getFormText(formData, "packageTier"),
-        productionMode: getFormText(formData, "productionMode"),
-        projectType,
-        ebookSource,
-        externalEbookUrl,
-        estimatedHours: getFormText(formData, "estimatedHours"),
-        designerHoursCap: getFormText(formData, "designerHoursCap"),
-        titleFontAssetId: getFormText(formData, "titleFontAssetId"),
-        bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
-        articleTtsVoice: getFormText(formData, "articleTtsVoice"),
-        coverEnabled,
-        coverLayout,
-        coverImageUrl: getFormText(formData, "coverImageUrl"),
-        coverImagePath: getFormText(formData, "coverImagePath"),
-        coverTitle: getFormText(formData, "coverTitle"),
-        coverSubtitle: getFormText(formData, "coverSubtitle"),
-        coverIssueText: getFormText(formData, "coverIssueText"),
-        coverFit,
-        projectPassword: getFormText(formData, "projectPassword"),
-        clearProjectPassword: formData.get("clearProjectPassword") === "on",
-      }),
-    });
-
-    const result = (await response.json().catch(() => null)) as
-      | { ok: true; project: { slug: string } }
-      | { ok: false; message?: string }
-      | null;
-
-    if (!result) {
-      setSubmitState({
-        status: "error",
-        message: isEditMode
-          ? "기본 정보 수정에 실패했습니다. Supabase 서버 키와 입력값을 확인하세요."
-          : "프로젝트 저장에 실패했습니다. Supabase 서버 키와 입력값을 확인하세요.",
+    try {
+      const response = await fetch("/api/projects", {
+        method: isEditMode ? "PATCH" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId: initialValues.projectId ?? initialValues.slug,
+          title: getFormText(formData, "title"),
+          issueLabel: getFormText(formData, "issueLabel"),
+          organizationName: getFormText(formData, "organizationName"),
+          assigneeName: getFormText(formData, "assigneeName"),
+          publishedDate: getFormText(formData, "publishedDate"),
+          slug: getFormText(formData, "slug"),
+          description: getFormText(formData, "description"),
+          primaryColor: getFormText(formData, "primaryColor"),
+          status: getFormText(formData, "status"),
+          packageTier: getFormText(formData, "packageTier"),
+          productionMode: getFormText(formData, "productionMode"),
+          projectType,
+          ebookSource,
+          externalEbookUrl,
+          estimatedHours: getFormText(formData, "estimatedHours"),
+          designerHoursCap: getFormText(formData, "designerHoursCap"),
+          titleFontAssetId: getFormText(formData, "titleFontAssetId"),
+          bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
+          articleTtsVoice: getFormText(formData, "articleTtsVoice"),
+          coverEnabled,
+          coverLayout,
+          coverImageUrl: getFormText(formData, "coverImageUrl"),
+          coverImagePath: getFormText(formData, "coverImagePath"),
+          coverTitle: getFormText(formData, "coverTitle"),
+          coverSubtitle: getFormText(formData, "coverSubtitle"),
+          coverIssueText: getFormText(formData, "coverIssueText"),
+          coverFit,
+          projectPassword: getFormText(formData, "projectPassword"),
+          clearProjectPassword: formData.get("clearProjectPassword") === "on",
+        }),
       });
-      return;
-    }
 
-    if (result.ok !== true) {
-      setSubmitState({
-        status: "error",
-        message:
-          result.message ??
-          (isEditMode
+      const result = (await response.json().catch(() => null)) as
+        | { ok: true; project: { slug: string } }
+        | { ok: false; message?: string }
+        | null;
+
+      if (!result) {
+        setSubmitState({
+          status: "error",
+          message: isEditMode
             ? "기본 정보 수정에 실패했습니다. Supabase 서버 키와 입력값을 확인하세요."
-            : "프로젝트 저장에 실패했습니다. Supabase 서버 키와 입력값을 확인하세요."),
+            : "프로젝트 저장에 실패했습니다. Supabase 서버 키와 입력값을 확인하세요.",
+        });
+        return;
+      }
+
+      if (result.ok !== true) {
+        setSubmitState({
+          status: "error",
+          message:
+            result.message ??
+            (isEditMode
+              ? "기본 정보 수정에 실패했습니다. Supabase 서버 키와 입력값을 확인하세요."
+              : "프로젝트 저장에 실패했습니다. Supabase 서버 키와 입력값을 확인하세요."),
+        });
+        return;
+      }
+
+      const nextAuthoringPath = getNextAuthoringPath(
+        result.project.slug,
+        getFormText(formData, "productionMode"),
+        projectType,
+      );
+
+      setSubmitState({
+        status: "success",
+        message: isEditMode
+          ? "수정되었습니다. 프로젝트 제작 화면으로 이동합니다."
+          : "저장되었습니다. 선택한 제작 방식에 맞는 다음 화면으로 이동합니다.",
       });
-      return;
+
+      router.refresh();
+      router.push(nextAuthoringPath);
+    } catch {
+      setSubmitState({
+        status: "error",
+        message: "프로젝트 저장 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.",
+      });
     }
-
-    const nextAuthoringPath = getNextAuthoringPath(
-      result.project.slug,
-      getFormText(formData, "productionMode"),
-      projectType,
-    );
-
-    setSubmitState({
-      status: "success",
-      message: isEditMode
-        ? "수정되었습니다. 프로젝트 제작 화면으로 이동합니다."
-        : "저장되었습니다. 선택한 제작 방식에 맞는 다음 화면으로 이동합니다.",
-    });
-
-    router.refresh();
-    router.push(nextAuthoringPath);
   }
 
   const isSaving = submitState.status === "saving";

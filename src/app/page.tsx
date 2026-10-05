@@ -8,7 +8,7 @@ import {
   projectOperationActions,
   workflowSteps,
 } from "@/lib/newsletter-data";
-import { canAccessProject, requireAppUser } from "@/lib/app-auth";
+import { canAccessProject, filterProjectsForUser, requireAppUser } from "@/lib/app-auth";
 import { getDashboardProjects } from "@/lib/newsletter-repository";
 import { getSupabaseConfigStatus } from "@/lib/supabase-config";
 
@@ -22,12 +22,12 @@ export default async function Home() {
   const dashboardData = await getDashboardProjects();
   const projects = dashboardData.projects;
   const isAdmin = user.role === "admin";
-  const statsProjects = isAdmin ? projects : projects.filter((project) => canAccessProject(user, project));
-  const totalTodayViews = statsProjects.reduce((sum, project) => sum + parseCount(project.views.today), 0);
-  const totalYesterdayViews = statsProjects.reduce((sum, project) => sum + parseCount(project.views.yesterday), 0);
-  const totalViews = statsProjects.reduce((sum, project) => sum + parseCount(project.views.total), 0);
+  const visibleProjects = filterProjectsForUser(projects, user);
+  const totalTodayViews = visibleProjects.reduce((sum, project) => sum + parseCount(project.views.today), 0);
+  const totalYesterdayViews = visibleProjects.reduce((sum, project) => sum + parseCount(project.views.yesterday), 0);
+  const totalViews = visibleProjects.reduce((sum, project) => sum + parseCount(project.views.total), 0);
   const hasAnyViewStats = totalTodayViews > 0 || totalYesterdayViews > 0 || totalViews > 0;
-  const rankedProjects = [...statsProjects]
+  const rankedProjects = [...visibleProjects]
     .sort((first, second) => {
       const totalDiff = parseCount(second.views.total) - parseCount(first.views.total);
 
@@ -39,18 +39,23 @@ export default async function Home() {
     })
     .slice(0, 5);
   const dashboardSummaryCards = [
-    { label: "전체 프로젝트", value: String(projects.length) },
+    { label: "전체 프로젝트", value: String(visibleProjects.length) },
     {
       label: isAdmin ? "제작 중" : "내 담당 프로젝트",
       value: String(
-        isAdmin ? projects.filter((project) => project.status === "제작 중").length : statsProjects.length,
+        isAdmin
+          ? visibleProjects.filter((project) => project.status === "제작 중").length
+          : visibleProjects.length,
       ),
     },
     {
       label: isAdmin ? "오늘 전체 접속" : "내 프로젝트 오늘 접속",
       value: totalTodayViews.toLocaleString("ko-KR"),
     },
-    { label: "발행 완료", value: String(projects.filter((project) => project.status === "발행 완료").length) },
+    {
+      label: "발행 완료",
+      value: String(visibleProjects.filter((project) => project.status === "발행 완료").length),
+    },
   ];
   const dashboardSummaryDetails: Record<string, string> = {
     "전체 프로젝트": dashboardData.source === "supabase" ? "DB 연동" : "연결 필요",
@@ -179,9 +184,9 @@ export default async function Home() {
 
           <section className="mb-7 grid gap-5 2xl:grid-cols-[minmax(0,1fr)_300px]">
             <DashboardProjectList
-              editableProjectIds={projects.filter((project) => canAccessProject(user, project)).map((project) => project.id)}
+              editableProjectIds={visibleProjects.filter((project) => canAccessProject(user, project)).map((project) => project.id)}
               message={dashboardData.message}
-              projects={projects}
+              projects={visibleProjects}
             />
 
             <aside className="space-y-5">

@@ -106,23 +106,30 @@ export function ProjectPublishCompletionPanel({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ projectId }),
-    });
-    const result = (await response.json().catch(() => null)) as
-      | {
-          ok: true;
-          ebookUrl: string;
-          ebookUrlAbsolute: string;
-          publicUrl: string;
-          publicUrlAbsolute: string;
-          publishedAt: string;
-        }
-      | { ok: false; message?: string }
-      | null;
+    }).catch(() => null);
+    const result = response
+      ? ((await response.json().catch(() => null)) as
+          | {
+              ok: true;
+              ebookUrl: string;
+              ebookUrlAbsolute: string;
+              publicUrl: string;
+              publicUrlAbsolute: string;
+              publishedAt: string;
+            }
+          | { ok: false; message?: string }
+          | null)
+      : null;
 
-    if (!response.ok || !result || result.ok !== true) {
+    if (!response?.ok || !result || result.ok !== true) {
       setState({
         status: "error",
-        message: result && result.ok === false ? result.message || "발행 처리에 실패했습니다." : "발행 처리에 실패했습니다.",
+        message:
+          result && result.ok === false
+            ? result.message || "발행 처리에 실패했습니다."
+            : response
+              ? "발행 처리에 실패했습니다."
+              : "발행 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.",
       });
       return;
     }
