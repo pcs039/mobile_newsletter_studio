@@ -190,8 +190,10 @@ export async function ProjectAdminShell({
             active={
               active === "publish"
                 ? "publish"
-                : active === "distribution" || active === "analytics"
+                : active === "distribution"
                   ? "distribution"
+                  : active === "analytics"
+                    ? "analytics"
                   : active === "survey"
                     ? "survey"
                     : "edit"
