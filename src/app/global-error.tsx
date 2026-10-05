@@ -1,6 +1,6 @@
 "use client";
 
-export default function GlobalError({ retry }: { error: Error & { digest?: string }; retry: () => void }) {
+export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="ko">
       <body style={{ margin: 0, background: "#f3f7fc", color: "#0f172a", fontFamily: "Arial, sans-serif" }}>
@@ -12,7 +12,7 @@ export default function GlobalError({ retry }: { error: Error & { digest?: strin
               잠시 후 다시 시도하거나 전체 프로젝트 화면으로 이동하세요.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 24 }}>
-              <button type="button" onClick={retry} style={{ minHeight: 44, border: 0, borderRadius: 8, background: "#092046", color: "white", padding: "0 18px", fontWeight: 800 }}>
+              <button type="button" onClick={reset} style={{ minHeight: 44, border: 0, borderRadius: 8, background: "#092046", color: "white", padding: "0 18px", fontWeight: 800 }}>
                 다시 시도
               </button>
               {/* The global boundary replaces the root layout, so use a document navigation. */}

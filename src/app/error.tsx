@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-export default function AppError({ retry }: { error: Error & { digest?: string }; retry: () => void }) {
+export default function AppError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f3f7fc] px-5 py-12 text-slate-950">
       <section className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -12,7 +12,7 @@ export default function AppError({ retry }: { error: Error & { digest?: string }
           잠시 후 다시 시도하거나 전체 프로젝트에서 작업을 이어가세요.
         </p>
         <div className="mt-6 flex flex-wrap gap-2">
-          <button type="button" onClick={retry} className="dd-btn dd-btn-primary dd-btn-lg text-sm">
+          <button type="button" onClick={reset} className="dd-btn dd-btn-primary dd-btn-lg text-sm">
             다시 시도
           </button>
           <Link href="/" className="dd-btn dd-btn-secondary dd-btn-lg text-sm">
