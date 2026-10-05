@@ -40,7 +40,7 @@ export function DashboardProjectList({ editableProjectIds, message, projects }: 
         <div>
           <h3 className="text-lg font-bold text-[#092046]">소식지 프로젝트</h3>
           <p className="mt-1 text-sm text-slate-500 [word-break:keep-all]">
-            {message} 전체 프로젝트를 표시하되, 일반 사용자는 담당 프로젝트만 작성·수정할 수 있습니다.
+            {message} 현재 계정이 접근할 수 있는 프로젝트만 표시합니다.
           </p>
         </div>
         <div className="flex flex-wrap gap-2" aria-label="프로젝트 상태 필터">

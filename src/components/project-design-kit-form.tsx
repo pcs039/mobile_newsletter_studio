@@ -261,11 +261,20 @@ export function ProjectDesignKitForm({
         projectId,
         ...draft,
       }),
-    });
-    const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+    }).catch(() => null);
+    const result = response
+      ? ((await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null)
+      : null;
 
-    if (!response.ok || !result?.ok) {
-      setSaveState({ status: "error", message: result?.message ?? "기관 Design Kit 저장에 실패했습니다." });
+    if (!response?.ok || !result?.ok) {
+      setSaveState({
+        status: "error",
+        message:
+          result?.message ??
+          (response
+            ? "기관 Design Kit 저장에 실패했습니다."
+            : "기관 Design Kit 저장 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요."),
+      });
       return;
     }
 
@@ -299,11 +308,18 @@ export function ProjectDesignKitForm({
     const response = await fetch("/api/project-design-kit/assets", {
       method: "POST",
       body: formData,
-    });
-    const result = (await response.json().catch(() => null)) as { ok?: boolean; assets?: ProjectDesignAsset[]; message?: string } | null;
+    }).catch(() => null);
+    const result = response
+      ? ((await response.json().catch(() => null)) as { ok?: boolean; assets?: ProjectDesignAsset[]; message?: string } | null)
+      : null;
 
-    if (!response.ok || !result?.ok) {
-      setLogoState({ status: "error", message: result?.message ?? "로고 업로드에 실패했습니다." });
+    if (!response?.ok || !result?.ok) {
+      setLogoState({
+        status: "error",
+        message:
+          result?.message ??
+          (response ? "로고 업로드에 실패했습니다." : "로고 업로드 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요."),
+      });
       return;
     }
 
@@ -329,11 +345,18 @@ export function ProjectDesignKitForm({
         assetId,
         ...payload,
       }),
-    });
-    const result = (await response.json().catch(() => null)) as { ok?: boolean; assets?: ProjectDesignAsset[]; message?: string } | null;
+    }).catch(() => null);
+    const result = response
+      ? ((await response.json().catch(() => null)) as { ok?: boolean; assets?: ProjectDesignAsset[]; message?: string } | null)
+      : null;
 
-    if (!response.ok || !result?.ok) {
-      setLogoState({ status: "error", message: result?.message ?? "로고 정보를 저장하지 못했습니다." });
+    if (!response?.ok || !result?.ok) {
+      setLogoState({
+        status: "error",
+        message:
+          result?.message ??
+          (response ? "로고 정보를 저장하지 못했습니다." : "로고 저장 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요."),
+      });
       return;
     }
 
@@ -353,11 +376,18 @@ export function ProjectDesignKitForm({
     const params = new URLSearchParams({ projectSlug: projectId, assetId: asset.id });
     const response = await fetch(`/api/project-design-kit/assets?${params.toString()}`, {
       method: "DELETE",
-    });
-    const result = (await response.json().catch(() => null)) as { ok?: boolean; assets?: ProjectDesignAsset[]; message?: string } | null;
+    }).catch(() => null);
+    const result = response
+      ? ((await response.json().catch(() => null)) as { ok?: boolean; assets?: ProjectDesignAsset[]; message?: string } | null)
+      : null;
 
-    if (!response.ok || !result?.ok) {
-      setLogoState({ status: "error", message: result?.message ?? "로고 삭제에 실패했습니다." });
+    if (!response?.ok || !result?.ok) {
+      setLogoState({
+        status: "error",
+        message:
+          result?.message ??
+          (response ? "로고 삭제에 실패했습니다." : "로고 삭제 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요."),
+      });
       return;
     }
 

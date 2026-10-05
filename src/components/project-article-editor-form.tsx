@@ -908,79 +908,81 @@ export function ProjectArticleEditorForm({
     setMessage("이미지를 Supabase에 업로드하는 중입니다.");
     setUploadingImageBlockId(blockId);
 
-    const prepareResponse = await fetch("/api/project-files", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        action: "prepare",
-        fileName: file.name,
-        kind: "asset_image",
-        mimeType: file.type,
-        projectSlug,
-        size: file.size,
-      }),
-    });
-    const prepareResult = (await prepareResponse.json().catch(() => null)) as ProjectFileUploadResponse | null;
+    try {
+      const prepareResponse = await fetch("/api/project-files", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "prepare",
+          fileName: file.name,
+          kind: "asset_image",
+          mimeType: file.type,
+          projectSlug,
+          size: file.size,
+        }),
+      });
+      const prepareResult = (await prepareResponse.json().catch(() => null)) as ProjectFileUploadResponse | null;
 
-    if (!prepareResponse.ok || !prepareResult?.ok || !prepareResult.uploadUrl) {
+      if (!prepareResponse.ok || !prepareResult?.ok || !prepareResult.uploadUrl) {
+        setError(readUploadMessage(prepareResult, "이미지 업로드 준비에 실패했습니다."));
+        return;
+      }
+
+      const uploadResponse = await fetch(prepareResult.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": prepareResult.mimeType || file.type || "application/octet-stream",
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        setError("이미지를 Supabase Storage에 업로드하지 못했습니다.");
+        return;
+      }
+
+      const completeResponse = await fetch("/api/project-files", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "complete",
+          bucket: prepareResult.bucket,
+          fileName: prepareResult.fileName ?? file.name,
+          kind: "asset_image",
+          mimeType: prepareResult.mimeType ?? file.type,
+          path: prepareResult.path,
+          projectSlug,
+          size: prepareResult.size ?? file.size,
+        }),
+      });
+      const completeResult = (await completeResponse.json().catch(() => null)) as ProjectFileUploadResponse | null;
+
+      if (!completeResponse.ok || !completeResult?.ok) {
+        setError(readUploadMessage(completeResult, "이미지는 올라갔지만 프로젝트 소재 기록 연결에 실패했습니다."));
+        return;
+      }
+
+      setBlocks((currentBlocks) =>
+        currentBlocks.map((block) =>
+          block.id === blockId
+            ? {
+                ...block,
+                title: block.title.trim() ? block.title : completeResult.fileName,
+                body: makePublicAssetPreviewHref(completeResult.path),
+              }
+            : block,
+        ),
+      );
+      setMessage("이미지를 업로드하고 현재 이미지 블록에 불러왔습니다. 저장 버튼을 눌러 기사에 반영하세요.");
+    } catch {
+      setError("이미지 업로드 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.");
+    } finally {
       setUploadingImageBlockId("");
-      setError(readUploadMessage(prepareResult, "이미지 업로드 준비에 실패했습니다."));
-      return;
     }
-
-    const uploadResponse = await fetch(prepareResult.uploadUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": prepareResult.mimeType || file.type || "application/octet-stream",
-      },
-      body: file,
-    });
-
-    if (!uploadResponse.ok) {
-      setUploadingImageBlockId("");
-      setError("이미지를 Supabase Storage에 업로드하지 못했습니다.");
-      return;
-    }
-
-    const completeResponse = await fetch("/api/project-files", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        action: "complete",
-        bucket: prepareResult.bucket,
-        fileName: prepareResult.fileName ?? file.name,
-        kind: "asset_image",
-        mimeType: prepareResult.mimeType ?? file.type,
-        path: prepareResult.path,
-        projectSlug,
-        size: prepareResult.size ?? file.size,
-      }),
-    });
-    const completeResult = (await completeResponse.json().catch(() => null)) as ProjectFileUploadResponse | null;
-
-    setUploadingImageBlockId("");
-
-    if (!completeResponse.ok || !completeResult?.ok) {
-      setError(readUploadMessage(completeResult, "이미지는 올라갔지만 프로젝트 소재 기록 연결에 실패했습니다."));
-      return;
-    }
-
-    setBlocks((currentBlocks) =>
-      currentBlocks.map((block) =>
-        block.id === blockId
-          ? {
-              ...block,
-              title: block.title.trim() ? block.title : completeResult.fileName,
-              body: makePublicAssetPreviewHref(completeResult.path),
-            }
-          : block,
-      ),
-    );
-    setMessage("이미지를 업로드하고 현재 이미지 블록에 불러왔습니다. 저장 버튼을 눌러 기사에 반영하세요.");
   }
 
   async function importTextFileToBlock(blockId: string, file: File | undefined) {
@@ -1299,24 +1301,29 @@ export function ProjectArticleEditorForm({
       return null;
     }
 
-    const response = await fetch("/api/project-content", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-    const result = (await response.json().catch(() => null)) as
-      | { ok: true; article: { id: string; title: string } }
-      | { ok: false; message?: string }
-      | null;
+    try {
+      const response = await fetch("/api/project-content", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = (await response.json().catch(() => null)) as
+        | { ok: true; article: { id: string; title: string } }
+        | { ok: false; message?: string }
+        | null;
 
-    if (!response.ok || !result || result.ok !== true) {
-      setError(result && result.ok === false ? result.message || "기사 저장에 실패했습니다." : "기사 저장에 실패했습니다.");
+      if (!response.ok || !result || result.ok !== true) {
+        setError(result && result.ok === false ? result.message || "기사 저장에 실패했습니다." : "기사 저장에 실패했습니다.");
+        return null;
+      }
+
+      return result.article;
+    } catch {
+      setError("기사 저장 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.");
       return null;
     }
-
-    return result.article;
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -1326,9 +1333,13 @@ export function ProjectArticleEditorForm({
     setIsSaving(true);
 
     const formData = new FormData(event.currentTarget);
-    const savedArticle = await persistArticle(buildArticlePayload(formData));
+    let savedArticle: { id: string; title: string } | null = null;
 
-    setIsSaving(false);
+    try {
+      savedArticle = await persistArticle(buildArticlePayload(formData));
+    } finally {
+      setIsSaving(false);
+    }
 
     if (!savedArticle) {
       return;
@@ -1356,25 +1367,29 @@ export function ProjectArticleEditorForm({
     setMessage("");
     setIsDeletingArticle(true);
 
-    const params = new URLSearchParams({
-      articleId: article.id,
-      projectSlug,
-    });
-    const response = await fetch(`/api/project-content?${params.toString()}`, {
-      method: "DELETE",
-    });
-    const result = (await response.json().catch(() => null)) as { message?: string } | null;
+    try {
+      const params = new URLSearchParams({
+        articleId: article.id,
+        projectSlug,
+      });
+      const response = await fetch(`/api/project-content?${params.toString()}`, {
+        method: "DELETE",
+      });
+      const result = (await response.json().catch(() => null)) as { message?: string } | null;
 
-    if (!response.ok) {
+      if (!response.ok) {
+        setError(result?.message ?? "기사 삭제에 실패했습니다.");
+        return;
+      }
+
+      setMessage("기사를 삭제했습니다.");
+      router.push(`/projects/${projectSlug}/reading`);
+      router.refresh();
+    } catch {
+      setError("기사 삭제 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.");
+    } finally {
       setIsDeletingArticle(false);
-      setError(result?.message ?? "기사 삭제에 실패했습니다.");
-      return;
     }
-
-    setIsDeletingArticle(false);
-    setMessage("기사를 삭제했습니다.");
-    router.push(`/projects/${projectSlug}/reading`);
-    router.refresh();
   }
 
   async function generateArticleTtsAudio() {
@@ -1387,62 +1402,66 @@ export function ProjectArticleEditorForm({
     setMessage("");
     setArticleTtsMessage("기사 저장 중...");
     setIsGeneratingArticleTts(true);
-    const formData = formRef.current ? new FormData(formRef.current) : null;
 
-    if (!formData) {
-      setIsGeneratingArticleTts(false);
-      setError("기사 입력 폼을 확인하지 못했습니다.");
-      return;
-    }
+    try {
+      const formData = formRef.current ? new FormData(formRef.current) : null;
 
-    const savedArticle = await persistArticle(
-      buildArticlePayload(formData, {
-        articleTtsVoice: selectedArticleTtsVoice,
-        audioSource: "ai_tts",
-      }),
-    );
+      if (!formData) {
+        setError("기사 입력 폼을 확인하지 못했습니다.");
+        return;
+      }
 
-    if (!savedArticle) {
-      setIsGeneratingArticleTts(false);
-      setArticleTtsMessage("");
-      return;
-    }
-
-    setArticleTtsMessage("AI 음성 생성 중...");
-
-    const response = await fetch(
-      `/api/projects/${encodeURIComponent(projectSlug)}/articles/${encodeURIComponent(savedArticle.id)}/tts/generate`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          force: true,
-          voice: selectedArticleTtsVoice,
+      const savedArticle = await persistArticle(
+        buildArticlePayload(formData, {
+          articleTtsVoice: selectedArticleTtsVoice,
+          audioSource: "ai_tts",
         }),
-      },
-    );
-    const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string; segments?: number } | null;
+      );
 
-    setIsGeneratingArticleTts(false);
+      if (!savedArticle) {
+        setArticleTtsMessage("");
+        return;
+      }
 
-    if (!response.ok || result?.ok !== true) {
-      setError(result?.message ?? "AI 음성 생성에 실패했습니다.");
+      setArticleTtsMessage("AI 음성 생성 중...");
+
+      const response = await fetch(
+        `/api/projects/${encodeURIComponent(projectSlug)}/articles/${encodeURIComponent(savedArticle.id)}/tts/generate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            force: true,
+            voice: selectedArticleTtsVoice,
+          }),
+        },
+      );
+      const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string; segments?: number } | null;
+
+      if (!response.ok || result?.ok !== true) {
+        setError(result?.message ?? "AI 음성 생성에 실패했습니다.");
+        setArticleTtsMessage("");
+        return;
+      }
+
+      setArticleTtsMessage(
+        result.segments && result.segments > 1
+          ? `AI 음성을 생성했습니다. (${result.segments}개 구간)`
+          : result.message ?? "AI 음성을 생성했습니다.",
+      );
+      setMessage("현재 입력한 기사 내용을 저장한 뒤 AI 음성을 생성했습니다.");
+      if (!article?.id || article.id !== savedArticle.id) {
+        router.push(`/projects/${projectSlug}/reading?articleId=${savedArticle.id}`);
+      }
+      router.refresh();
+    } catch {
+      setError("AI 음성 생성 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.");
       setArticleTtsMessage("");
-      return;
+    } finally {
+      setIsGeneratingArticleTts(false);
     }
-
-    setArticleTtsMessage(
-      result.segments && result.segments > 1
-        ? `AI 음성을 생성했습니다. (${result.segments}개 구간)`
-        : result.message ?? "AI 음성을 생성했습니다.",
-    );
-    setMessage("현재 입력한 기사 내용을 저장한 뒤 AI 음성을 생성했습니다.");
-    if (!article?.id || article.id !== savedArticle.id) {
-      router.push(`/projects/${projectSlug}/reading?articleId=${savedArticle.id}`);
-    }
-    router.refresh();
   }
 
   return (

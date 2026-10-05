@@ -114,24 +114,31 @@ export function FileUploadCard({
         projectSlug,
         size: file.size,
       }),
-    });
-    const prepareResult = (await prepareResponse.json().catch(() => null)) as
-      | {
-          ok?: boolean;
-          bucket?: string;
-          fileName?: string;
-          message?: string;
-          mimeType?: string;
-          pageNumber?: number;
-          path?: string;
-          size?: number;
-          uploadUrl?: string;
-        }
-      | null;
+    }).catch(() => null);
+    const prepareResult = prepareResponse
+      ? ((await prepareResponse.json().catch(() => null)) as
+          | {
+              ok?: boolean;
+              bucket?: string;
+              fileName?: string;
+              message?: string;
+              mimeType?: string;
+              pageNumber?: number;
+              path?: string;
+              size?: number;
+              uploadUrl?: string;
+            }
+          | null)
+      : null;
 
-    if (!prepareResponse.ok || !prepareResult?.ok || !prepareResult.uploadUrl) {
+    if (!prepareResponse?.ok || !prepareResult?.ok || !prepareResult.uploadUrl) {
       setStatus("error");
-      setMessage(prepareResult?.message ?? "Supabase Storage 업로드 주소를 준비하지 못했습니다.");
+      setMessage(
+        prepareResult?.message ??
+          (prepareResponse
+            ? "Supabase Storage 업로드 주소를 준비하지 못했습니다."
+            : "업로드 준비 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요."),
+      );
       return;
     }
 
@@ -143,16 +150,16 @@ export function FileUploadCard({
         "Content-Type": prepareResult.mimeType || file.type || "application/octet-stream",
       },
       body: file,
-    });
+    }).catch(() => null);
 
-    if (!uploadResponse.ok) {
+    if (!uploadResponse?.ok) {
       setStatus("error");
-      setMessage(
-        await readUploadError(
-          uploadResponse,
-          `Supabase Storage 직접 업로드에 실패했습니다. (${uploadResponse.status})`,
-        ),
-      );
+      setMessage(uploadResponse
+        ? await readUploadError(
+            uploadResponse,
+            `Supabase Storage 직접 업로드에 실패했습니다. (${uploadResponse.status})`,
+          )
+        : "파일 업로드 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.");
       return;
     }
 
@@ -174,14 +181,19 @@ export function FileUploadCard({
         projectSlug,
         size: prepareResult.size ?? file.size,
       }),
-    });
-    const completeResult = (await completeResponse.json().catch(() => null)) as
-      | { ok?: boolean; message?: string }
-      | null;
+    }).catch(() => null);
+    const completeResult = completeResponse
+      ? ((await completeResponse.json().catch(() => null)) as { ok?: boolean; message?: string } | null)
+      : null;
 
-    if (!completeResponse.ok || !completeResult?.ok) {
+    if (!completeResponse?.ok || !completeResult?.ok) {
       setStatus("error");
-      setMessage(completeResult?.message ?? "파일은 올라갔지만 프로젝트 기록 연결에 실패했습니다.");
+      setMessage(
+        completeResult?.message ??
+          (completeResponse
+            ? "파일은 올라갔지만 프로젝트 기록 연결에 실패했습니다."
+            : "파일 연결 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요."),
+      );
       return;
     }
 
