@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useOperationsReportSnapshot } from "@/components/operations-report-snapshot-manager";
 import type {
   AiEvidenceCatalogItem,
   AiOperationsCommentary as AiOperationsCommentaryResult,
@@ -49,6 +50,7 @@ function CommentaryItems({
 }
 
 export function AiOperationsCommentary({ period, projectId }: AiOperationsCommentaryProps) {
+  const snapshotContext = useOperationsReportSnapshot();
   const [status, setStatus] = useState<CommentaryStatus>("idle");
   const [commentary, setCommentary] = useState<AiOperationsCommentaryResult | null>(null);
   const [evidenceCatalog, setEvidenceCatalog] = useState<AiEvidenceCatalogItem[]>([]);
@@ -59,6 +61,7 @@ export function AiOperationsCommentary({ period, projectId }: AiOperationsCommen
 
     setStatus("loading");
     setCommentary(null);
+    snapshotContext?.setAiCommentary(null);
     setEvidenceCatalog([]);
     setError("");
 
@@ -82,6 +85,7 @@ export function AiOperationsCommentary({ period, projectId }: AiOperationsCommen
     }
 
     setCommentary(result.commentary);
+    snapshotContext?.setAiCommentary(result.commentary);
     setEvidenceCatalog(result.evidenceCatalog);
     setStatus("success");
   }

@@ -2,6 +2,11 @@ import Link from "next/link";
 import { AnalyticsReportExportButton } from "@/components/analytics-report-export-button";
 import { AiOperationsCommentary } from "@/components/ai-operations-commentary";
 import { ArticleAnalyticsDailyTrendChart } from "@/components/article-analytics-daily-trend-chart";
+import {
+  OperationsReportSnapshotList,
+  OperationsReportSnapshotProvider,
+  OperationsReportSnapshotSaveButton,
+} from "@/components/operations-report-snapshot-manager";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import {
   getProjectArticleAnalytics,
@@ -860,25 +865,27 @@ export default async function ProjectAnalyticsPage({
   ];
 
   return (
-    <ProjectAdminShell
-      active="analytics"
-      projectId={projectId}
-      title="반응 통계"
-      description="기간별 전체 접속과 기사 열람·후속 행동을 확인합니다."
-      sidebarTitle={<>반응<br />통계</>}
-      sidebarDescription="공개 화면 접속과 기사별 열람·행동 이벤트를 운영 관점에서 집계합니다."
-      sidebarNoteTitle="집계 기준"
-      sidebarNote="수치는 개인 수가 아닌 이벤트 수입니다. 반응도는 기사 열람 100회당 후속 행동 건수이며 음성 재생은 제외합니다."
-      printScope="analytics-report"
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Link href={`/newsletters/${projectId}`} target="_blank" rel="noreferrer" className="dd-btn dd-btn-secondary dd-btn-lg text-sm">공개 화면</Link>
-          <Link href={`/projects/${projectId}/distribution`} className="dd-btn dd-btn-primary dd-btn-lg text-sm">배포 관리</Link>
-          <AnalyticsReportExportButton />
-        </div>
-      }
-    >
-      <section className="space-y-5" data-analytics-report>
+    <OperationsReportSnapshotProvider key={`${projectId}-${period}`} period={period} projectId={projectId}>
+      <ProjectAdminShell
+        active="analytics"
+        projectId={projectId}
+        title="반응 통계"
+        description="기간별 전체 접속과 기사 열람·후속 행동을 확인합니다."
+        sidebarTitle={<>반응<br />통계</>}
+        sidebarDescription="공개 화면 접속과 기사별 열람·행동 이벤트를 운영 관점에서 집계합니다."
+        sidebarNoteTitle="집계 기준"
+        sidebarNote="수치는 개인 수가 아닌 이벤트 수입니다. 반응도는 기사 열람 100회당 후속 행동 건수이며 음성 재생은 제외합니다."
+        printScope="analytics-report"
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/newsletters/${projectId}`} target="_blank" rel="noreferrer" className="dd-btn dd-btn-secondary dd-btn-lg text-sm">공개 화면</Link>
+            <Link href={`/projects/${projectId}/distribution`} className="dd-btn dd-btn-primary dd-btn-lg text-sm">배포 관리</Link>
+            <AnalyticsReportExportButton />
+            <OperationsReportSnapshotSaveButton />
+          </div>
+        }
+      >
+        <section className="space-y-5" data-analytics-report>
         <header className="analytics-report-print-only" aria-label="운영 리포트 출력 정보">
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">DataDiction</p>
           <h1 className="mt-2 text-2xl font-black text-[#092046]">모바일 소식지 운영 리포트</h1>
@@ -1079,6 +1086,8 @@ export default async function ProjectAnalyticsPage({
           </div>
         </section>
 
+        <OperationsReportSnapshotList />
+
         <section className="rounded-lg border border-slate-200 bg-slate-50 px-5 py-4">
           <h2 className="text-sm font-black text-[#092046]">데이터 해석 기준</h2>
           <ul className="mt-2 grid gap-1 text-xs font-semibold leading-5 text-slate-600 md:grid-cols-2">
@@ -1095,7 +1104,8 @@ export default async function ProjectAnalyticsPage({
         <footer className="analytics-report-print-only border-t border-slate-300 pt-4 text-xs font-semibold leading-5 text-slate-600">
           본 리포트의 수치는 개인 수가 아닌 집계 이벤트 수입니다. 접속·열람·행동 변화만으로 주민 관심도, 콘텐츠 품질, 정책 효과를 판단하지 않습니다.
         </footer>
-      </section>
-    </ProjectAdminShell>
+        </section>
+      </ProjectAdminShell>
+    </OperationsReportSnapshotProvider>
   );
 }
