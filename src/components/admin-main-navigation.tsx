@@ -28,14 +28,24 @@ export async function AdminMainNavigation({ active, projectId }: AdminMainNaviga
             detail: "검수·URL·QR",
             href: `/projects/${projectId}/publish`,
           },
-          { key: "distribution" as const, label: "배포 관리", detail: "배포 기록", href: "/projects/distribution" },
+          {
+            key: "distribution" as const,
+            label: "배포 관리",
+            detail: "배포 기록",
+            href: `/projects/${projectId}/distribution`,
+          },
           {
             key: "analytics" as const,
             label: "반응 통계",
             detail: "기사·행동 분석",
             href: `/projects/${projectId}/analytics`,
           },
-          { key: "survey" as const, label: "참여 콘텐츠", detail: "설문·이벤트", href: "/projects/survey" },
+          {
+            key: "survey" as const,
+            label: "참여 콘텐츠",
+            detail: "설문·이벤트",
+            href: `/projects/${projectId}/survey`,
+          },
         ]
       : []),
   ];
