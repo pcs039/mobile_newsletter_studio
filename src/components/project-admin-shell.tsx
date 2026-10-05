@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DatadictionBrand } from "@/components/datadiction-brand";
-import { HomeButton } from "@/components/home-button";
 import { canAccessProject, hasProjectUnlock, requireAppUser } from "@/lib/app-auth";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
@@ -18,9 +17,12 @@ const contentToolNavigation: Array<{ key: ProjectSection; label: string; path: s
   { key: "audio", label: "음성 관리", path: "audio", guide: "음성 파일·대본", module: "newsletter" },
 ];
 
-const operationNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
+const publishingNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
   { key: "publish", label: "검수·발행", path: "publish", guide: "최종 확인·공개 URL", module: "common" },
   { key: "distribution", label: "배포 관리", path: "distribution", guide: "배포 기록", module: "common" },
+];
+
+const analyticsNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
   { key: "survey", label: "참여 콘텐츠", path: "survey", guide: "설문·이벤트", module: "engagement" },
   { key: "analytics", label: "반응 통계", path: "analytics", guide: "기사·행동 분석", module: "common" },
 ];
@@ -56,10 +58,16 @@ const workflowStages: Array<{
     sections: ["publish"],
   },
   {
-    label: "배포 관리",
-    detail: "기록·공유 문안",
+    label: "배포",
+    detail: "채널·공유·배포 기록",
     path: "distribution",
-    sections: ["distribution", "survey", "analytics"],
+    sections: ["distribution"],
+  },
+  {
+    label: "운영·분석",
+    detail: "참여·반응·리포트",
+    path: "analytics",
+    sections: ["survey", "analytics"],
   },
 ];
 
@@ -70,7 +78,8 @@ const nextSteps: Partial<Record<ProjectSection, { label: string; path: ProjectSe
   pages: { label: "검수·발행", path: "publish", detail: "페이지 이미지 상태를 확인합니다." },
   assets: { label: "검수·발행", path: "publish", detail: "소재 상태를 확인합니다." },
   audio: { label: "검수·발행", path: "publish", detail: "음성 상태를 확인합니다." },
-  publish: { label: "배포 관리", path: "distribution", detail: "배포 기록을 남깁니다." },
+  publish: { label: "배포", path: "distribution", detail: "채널별 공유와 배포 기록을 관리합니다." },
+  distribution: { label: "운영·분석", path: "analytics", detail: "배포 후 참여와 반응 데이터를 확인합니다." },
 };
 
 function isNavigationItemVisible(module: ProjectModule, capabilities: { hasNewsletter: boolean; hasEbook: boolean; hasEngagement: boolean }) {
@@ -136,10 +145,10 @@ export async function ProjectAdminShell({
             일반 사용자는 본인이 작업자로 지정된 프로젝트만 열 수 있습니다. 관리자에게 권한을 확인해 주세요.
           </p>
           <Link
-            href="/projects/edit"
+            href="/"
             className="dd-btn dd-btn-primary dd-btn-lg mt-6 text-sm"
           >
-            작업 목록으로 돌아가기
+            전체 프로젝트로 돌아가기
           </Link>
         </section>
       </main>
@@ -172,11 +181,15 @@ export async function ProjectAdminShell({
   const visibleContentToolNavigation = contentToolNavigation.filter(
     (item) => isNavigationItemVisible(item.module, capabilities) || item.key === active,
   );
-  const visibleOperationNavigation = operationNavigation.filter(
+  const visiblePublishingNavigation = publishingNavigation.filter(
+    (item) => isNavigationItemVisible(item.module, capabilities) || item.key === active,
+  );
+  const visibleAnalyticsNavigation = analyticsNavigation.filter(
     (item) => isNavigationItemVisible(item.module, capabilities) || item.key === active,
   );
   const isContentToolActive = visibleContentToolNavigation.some((item) => item.key === active);
-  const isOperationToolActive = visibleOperationNavigation.some((item) => item.key === active);
+  const isPublishingToolActive = visiblePublishingNavigation.some((item) => item.key === active);
+  const isAnalyticsToolActive = visibleAnalyticsNavigation.some((item) => item.key === active);
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950" data-print-scope={printScope}>
@@ -226,15 +239,9 @@ export async function ProjectAdminShell({
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
               {showDefaultHeaderActions ? (
-                <>
-                  <HomeButton />
-                  <Link
-                    href="/projects/edit"
-                    className="dd-btn dd-btn-secondary dd-btn-lg border-slate-300 text-sm"
-                  >
-                    작성/수정 목록
-                  </Link>
-                </>
+                <Link href="/" className="dd-btn dd-btn-secondary dd-btn-lg border-slate-300 text-sm">
+                  전체 프로젝트
+                </Link>
               ) : null}
               {actions}
             </div>
@@ -243,9 +250,9 @@ export async function ProjectAdminShell({
           <section className="mb-7 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm" data-admin-workflow>
             <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">제작 흐름</p>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프로젝트 운영</p>
                 <h3 className="mt-1 text-lg font-black text-[#092046]">
-                  {project?.projectTypeLabel ?? "통합 프로젝트"} 제작 흐름
+                  {project?.projectTypeLabel ?? "통합 프로젝트"} 운영 흐름
                 </h3>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -274,7 +281,7 @@ export async function ProjectAdminShell({
               </p>
             ) : null}
 
-            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+            <div className="mt-4 grid gap-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
               {workflowStages.map((stage, index) => {
                 const isActive = index === workflowStageActiveIndex;
                 const isDone = index < workflowStageActiveIndex;
@@ -312,7 +319,7 @@ export async function ProjectAdminShell({
             </div>
 
             <nav
-              className="mt-4 grid gap-3 border-t border-[#d8e8ff] pt-4 xl:grid-cols-2"
+              className="mt-4 grid gap-3 border-t border-[#d8e8ff] pt-4 lg:grid-cols-3"
               aria-label="프로젝트 하위 작업"
             >
               <details open={active === "settings" || isContentToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
@@ -340,10 +347,35 @@ export async function ProjectAdminShell({
                   })}
                 </div>
               </details>
-              <details open={isOperationToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
-                <summary className="cursor-pointer text-xs font-black text-slate-600">운영 도구</summary>
+              <details open={isPublishingToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
+                <summary className="cursor-pointer text-xs font-black text-slate-600">발행·배포</summary>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {visibleOperationNavigation.map((item) => {
+                  {visiblePublishingNavigation.map((item) => {
+                    const isActive = active === item.key;
+
+                    return (
+                      <Link
+                        key={item.key}
+                        href={`/projects/${projectId}/${item.path}`}
+                        className={`dd-btn dd-btn-sm rounded-full border px-3 py-2 text-xs ${
+                          isActive
+                            ? "border-[#092046] bg-[#092046] text-white"
+                            : "border-[#d8e8ff] bg-white text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                        }`}
+                      >
+                        {item.label}
+                        <span className={`ml-1 font-semibold ${isActive ? "text-sky-100" : "text-slate-400"}`}>
+                          {item.guide}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </details>
+              <details open={isAnalyticsToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
+                <summary className="cursor-pointer text-xs font-black text-slate-600">운영·분석</summary>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {visibleAnalyticsNavigation.map((item) => {
                     const isActive = active === item.key;
 
                     return (
