@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { articleTtsVoices, generateArticleTtsAudio } from "@/lib/article-tts-audio";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,13 +18,13 @@ type GenerateRequest = {
 };
 
 export async function POST(request: Request, { params }: ArticleTtsGenerateRouteProps) {
-  const user = await requireApiUser();
+  const { articleId, projectId } = await params;
+  const access = await requireProjectApiAccess({ projectSlug: projectId });
 
-  if (!user) {
-    return unauthorizedJsonResponse();
+  if (!access.ok) {
+    return access.response;
   }
 
-  const { articleId, projectId } = await params;
   const body = (await request.json().catch(() => ({}))) as GenerateRequest;
   const voice = body.voice?.trim() || null;
 

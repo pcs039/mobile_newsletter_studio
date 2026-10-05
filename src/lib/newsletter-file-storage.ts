@@ -391,6 +391,54 @@ async function deleteProjectFileRecord({
   return response.ok;
 }
 
+async function projectFileRecordExists({
+  kind,
+  path,
+  project,
+  recordId,
+  headers,
+}: {
+  kind: ProjectFileUploadKind;
+  path: string;
+  project: NewsletterProjectReference;
+  recordId?: string;
+  headers: Record<string, string>;
+}) {
+  if (kind === "pdf_original") {
+    return project.pdf_original_path === path;
+  }
+
+  if (!recordId) {
+    return false;
+  }
+
+  const table =
+    kind === "page_image"
+      ? "newsletter_pages"
+      : kind === "asset_image"
+        ? "newsletter_assets"
+        : "newsletter_audio_files";
+  const pathColumn = kind === "page_image" ? "image_path" : "file_path";
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/${table}?select=id&id=eq.${encodeURIComponent(recordId)}&project_id=eq.${encodeURIComponent(
+      project.id,
+    )}&${pathColumn}=eq.${encodeURIComponent(path)}&limit=1`,
+  );
+
+  if (!endpoint) {
+    return false;
+  }
+
+  const response = await fetch(endpoint, { headers, cache: "no-store" });
+
+  if (!response.ok) {
+    return false;
+  }
+
+  const rows = (await response.json().catch(() => [])) as Array<{ id: string }>;
+  return rows.length === 1;
+}
+
 async function patchProjectPdf(
   projectSlug: string,
   file: ProjectFileMetadata,
@@ -644,6 +692,14 @@ async function updateProjectFileRecord({
     };
   }
 
+  if (!path.startsWith(`${project.slug}/`)) {
+    return {
+      ok: false,
+      status: "invalid_file",
+      message: "업로드 경로가 현재 프로젝트 범위와 일치하지 않습니다.",
+    };
+  }
+
   if (!(await fileExistsInStorage(bucket, path, headers))) {
     return {
       ok: false,
@@ -861,11 +917,11 @@ export async function deleteProjectFile({
     };
   }
 
-  if (kind === "pdf_original" && project.pdf_original_path !== path) {
+  if (!(await projectFileRecordExists({ kind, path, project, recordId, headers }))) {
     return {
       ok: false,
       status: "not_found",
-      message: "현재 프로젝트에 연결된 PDF 원본 경로와 일치하지 않습니다.",
+      message: "현재 프로젝트에 연결된 파일 기록과 경로가 일치하지 않습니다.",
       httpStatus: 404,
     };
   }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { rebuildProjectEbookSearchIndex } from "@/lib/ebook-page-search";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,13 +16,13 @@ function getErrorStatus(status: string, httpStatus?: number) {
 }
 
 export async function POST(_request: Request, { params }: EbookSearchIndexRouteProps) {
-  const user = await requireApiUser();
+  const { projectId } = await params;
+  const access = await requireProjectApiAccess({ projectSlug: projectId });
 
-  if (!user) {
-    return unauthorizedJsonResponse();
+  if (!access.ok) {
+    return access.response;
   }
 
-  const { projectId } = await params;
   const result = await rebuildProjectEbookSearchIndex(projectId);
 
   if (!result.ok) {

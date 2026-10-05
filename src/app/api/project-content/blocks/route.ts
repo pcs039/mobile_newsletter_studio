@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
 
 export const dynamic = "force-dynamic";
@@ -22,36 +22,7 @@ function asText(value: string | null) {
   return value?.trim() ?? "";
 }
 
-async function findProjectId(projectSlug: string, headers: Record<string, string>) {
-  const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_projects?select=id&slug=eq.${encodeURIComponent(projectSlug)}&deleted_at=is.null&limit=1`,
-  );
-
-  if (!endpoint) {
-    return null;
-  }
-
-  const response = await fetch(endpoint, {
-    headers,
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const rows = (await response.json().catch(() => [])) as Array<{ id: string }>;
-
-  return rows[0]?.id ?? null;
-}
-
 export async function DELETE(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const { searchParams } = new URL(request.url);
   const projectSlug = asText(searchParams.get("projectSlug"));
   const articleId = asText(searchParams.get("articleId"));
@@ -62,6 +33,12 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: false, message: "삭제할 콘텐츠 블록 정보를 확인하세요." }, { status: 400 });
   }
 
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
+  }
+
   if (!headers) {
     return NextResponse.json(
       { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 콘텐츠 블록 삭제를 사용할 수 있습니다." },
@@ -69,7 +46,7 @@ export async function DELETE(request: Request) {
     );
   }
 
-  const projectId = await findProjectId(projectSlug, headers);
+  const projectId = access.project.id;
 
   if (!projectId) {
     return NextResponse.json({ ok: false, message: "프로젝트를 찾지 못했습니다." }, { status: 404 });

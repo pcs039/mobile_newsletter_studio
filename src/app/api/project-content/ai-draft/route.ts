@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { loadArticleAiPhotoAssets } from "@/lib/article-ai-photo-assets";
 import {
   articleAiDraftJsonSchema,
@@ -8,6 +7,7 @@ import {
   sanitizeArticleAiDraft,
 } from "@/lib/article-ai-draft";
 import type { ArticleAiPhotoAssetInput } from "@/lib/article-ai-draft-types";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,12 +25,6 @@ function errorResponse(error: string, message: string, status: number) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const input = (await request.json().catch(() => null)) as {
     photoAssets?: ArticleAiPhotoAssetInput[];
     projectSlug?: unknown;
@@ -39,18 +33,22 @@ export async function POST(request: Request) {
   const sourceText = typeof input?.sourceText === "string" ? input.sourceText.trim() : "";
   const projectSlug = typeof input?.projectSlug === "string" ? input.projectSlug.trim() : "";
 
+  if (!projectSlug) {
+    return errorResponse("AI_WRITING_PROJECT_REQUIRED", "프로젝트 정보를 확인해 주세요.", 400);
+  }
+
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
+  }
+
   if (!sourceText) {
     return errorResponse("AI_WRITING_SOURCE_REQUIRED", "원자료를 먼저 입력해 주세요.", 400);
   }
 
   if (sourceText.length > maxSourceLength) {
     return errorResponse("AI_WRITING_SOURCE_TOO_LONG", "원자료는 30,000자 이하로 입력해 주세요.", 400);
-  }
-
-  const hasPhotoAssets = Array.isArray(input?.photoAssets) && input.photoAssets.length > 0;
-
-  if (hasPhotoAssets && !projectSlug) {
-    return errorResponse("AI_PHOTO_PROJECT_REQUIRED", "사진 소재가 속한 프로젝트를 확인해 주세요.", 400);
   }
 
   const photoResult = await loadArticleAiPhotoAssets({

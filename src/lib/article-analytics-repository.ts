@@ -384,7 +384,7 @@ function getServiceHeaders() {
 
 async function getProjectBySlug(slug: string, headers: Record<string, string>) {
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_projects?select=id,title&slug=eq.${encodeURIComponent(slug)}&deleted_at=is.null&limit=1`,
+    `/rest/v1/newsletter_projects?select=id,title&slug=eq.${encodeURIComponent(slug)}&status=eq.published&deleted_at=is.null&limit=1`,
   );
 
   if (!endpoint) {

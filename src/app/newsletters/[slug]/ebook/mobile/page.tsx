@@ -2,6 +2,7 @@ import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicMobileEbookViewer } from "@/components/public-mobile-ebook-viewer";
 import { getUsableEbookPages } from "@/lib/ebook-pages";
 import { getProjectEbookSearchStatus } from "@/lib/ebook-page-search";
+import { requireProjectAdminPreviewAccess } from "@/lib/project-admin-preview-access";
 import {
   getProjectAudioFiles,
   getProjectOriginalPdf,
@@ -49,16 +50,8 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
   const pageParam = getSearchParamValue(resolvedSearchParams?.page);
   const isAdminPreview = hasSearchParamValue(previewMode, "admin");
   const isEmbeddedAdminPreview = hasSearchParamValue(embeddedMode, "adminPreview");
-  const [workspace, pageImageData, audioData, originalPdfData, ebookSearchStatus] = await Promise.all([
-    getProjectWorkspace(slug),
-    getProjectPageImages(slug),
-    getProjectAudioFiles(slug),
-    getProjectOriginalPdf(slug),
-    getProjectEbookSearchStatus(slug),
-  ]);
+  const workspace = await getProjectWorkspace(slug);
   const project = workspace.project;
-  const isPublished = project?.status === "발행 완료";
-  const isPubliclyVisible = isAdminPreview || isPublished;
 
   if (!project) {
     return (
@@ -68,6 +61,30 @@ export default async function PublicMobileEbookPage({ params, searchParams }: Pu
       />
     );
   }
+
+  if (
+    isAdminPreview &&
+    !(await requireProjectAdminPreviewAccess(
+      project,
+      `/newsletters/${slug}/ebook/mobile?preview=admin${isEmbeddedAdminPreview ? "&embedded=adminPreview" : ""}`,
+    ))
+  ) {
+    return (
+      <PublicUnavailablePage
+        title="관리자 미리보기 권한이 없습니다."
+        message="이 프로젝트를 담당하는 계정으로 로그인해 주세요."
+      />
+    );
+  }
+
+  const [pageImageData, audioData, originalPdfData, ebookSearchStatus] = await Promise.all([
+    getProjectPageImages(slug),
+    getProjectAudioFiles(slug),
+    getProjectOriginalPdf(slug),
+    getProjectEbookSearchStatus(slug),
+  ]);
+  const isPublished = project.status === "발행 완료";
+  const isPubliclyVisible = isAdminPreview || isPublished;
 
   if (!isPubliclyVisible) {
     return (

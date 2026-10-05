@@ -5030,6 +5030,14 @@ export async function submitProjectSurveyResponse(
       };
     }
 
+    if (project.status !== "published") {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "참여 가능한 설문을 찾지 못했습니다.",
+      };
+    }
+
     const encodedProjectId = encodeURIComponent(project.id);
     const encodedSurveyId = encodeURIComponent(surveyId);
     const surveyEndpoint = getSupabaseRestEndpoint(
@@ -5213,6 +5221,15 @@ export async function recordNewsletterView(input: RecordNewsletterViewInput): Pr
       };
     }
 
+    if (project.status !== "published") {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "접속 통계를 기록할 프로젝트를 찾지 못했습니다.",
+        httpStatus: 404,
+      };
+    }
+
     const deviceType = detectDeviceType(input.userAgent);
     const referrerDomain = getReferrerDomain(input.referrer, input.currentOrigin);
 
@@ -5265,11 +5282,14 @@ export async function getEditableProjects(): Promise<DashboardProjectsResult> {
   };
 }
 
-export async function getProjectWorkspace(projectSlug: string): Promise<ProjectWorkspaceResult> {
+async function getProjectWorkspaceByColumn(
+  column: "id" | "slug",
+  value: string,
+): Promise<ProjectWorkspaceResult> {
   const config = getSupabaseConfigStatus();
-  const encodedSlug = encodeURIComponent(projectSlug);
+  const encodedValue = encodeURIComponent(value);
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_projects?select=${projectSelectColumns}&slug=eq.${encodedSlug}&deleted_at=is.null&limit=1`,
+    `/rest/v1/newsletter_projects?select=${projectSelectColumns}&${column}=eq.${encodedValue}&deleted_at=is.null&limit=1`,
   );
   const headers = getRequestHeaders();
 
@@ -5306,7 +5326,7 @@ export async function getProjectWorkspace(projectSlug: string): Promise<ProjectW
         ok: false,
         project: null,
         source: "not_found",
-        message: "해당 slug의 프로젝트를 찾지 못했습니다.",
+        message: "해당 프로젝트를 찾지 못했습니다.",
         httpStatus: 404,
       };
     }
@@ -5325,6 +5345,14 @@ export async function getProjectWorkspace(projectSlug: string): Promise<ProjectW
       message: "Supabase 프로젝트 조회 중 오류가 발생했습니다.",
     };
   }
+}
+
+export async function getProjectWorkspace(projectSlug: string): Promise<ProjectWorkspaceResult> {
+  return getProjectWorkspaceByColumn("slug", projectSlug);
+}
+
+export async function getProjectWorkspaceById(projectId: string): Promise<ProjectWorkspaceResult> {
+  return getProjectWorkspaceByColumn("id", projectId);
 }
 
 export async function getProjectBasicInfo(projectSlug: string): Promise<ProjectBasicInfoResult> {

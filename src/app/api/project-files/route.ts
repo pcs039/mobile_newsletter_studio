@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import {
   completeSignedProjectFileUpload,
   deleteProjectFile,
@@ -7,6 +6,7 @@ import {
   uploadProjectFile,
   type ProjectFileUploadKind,
 } from "@/lib/newsletter-file-storage";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 
 export const dynamic = "force-dynamic";
 
@@ -45,12 +45,6 @@ function getErrorStatus(status: string, httpStatus?: number) {
 }
 
 export async function DELETE(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const { searchParams } = new URL(request.url);
   const kind = searchParams.get("kind");
   const projectSlug = searchParams.get("projectSlug")?.trim() ?? "";
@@ -62,6 +56,12 @@ export async function DELETE(request: Request) {
       { ok: false, message: "삭제할 프로젝트, 파일 종류, 파일 경로를 확인해야 합니다." },
       { status: 400 },
     );
+  }
+
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
   }
 
   const result = await deleteProjectFile({
@@ -79,12 +79,6 @@ export async function DELETE(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
@@ -119,6 +113,12 @@ export async function POST(request: Request) {
         { ok: false, message: "프로젝트, 파일명, 파일 크기를 모두 확인해야 합니다." },
         { status: 400 },
       );
+    }
+
+    const access = await requireProjectApiAccess({ projectSlug });
+
+    if (!access.ok) {
+      return access.response;
     }
 
     if (body.action === "prepare") {
@@ -188,6 +188,12 @@ export async function POST(request: Request) {
       { ok: false, message: "프로젝트, 업로드 종류, 파일을 모두 확인해야 합니다." },
       { status: 400 },
     );
+  }
+
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
   }
 
   const result = await uploadProjectFile({
