@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { canAccessProject, requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { getProjectArticleAnalytics } from "@/lib/article-analytics-repository";
 import {
   getAnalyticsPeriodRange,
@@ -11,7 +10,6 @@ import {
   buildAiOperationsReportInput,
   sanitizeAiOperationsCommentary,
 } from "@/lib/ai-operations-commentary";
-import { getProjectWorkspace } from "@/lib/newsletter-repository";
 import { buildOperationsReportSummary } from "@/lib/operations-report";
 import {
   createOperationsReportSnapshot,
@@ -19,6 +17,7 @@ import {
 } from "@/lib/operations-report-snapshot-repository";
 import { buildOperationsReportSnapshotPayload } from "@/lib/operations-report-snapshot";
 import { buildPeriodComparisonSummary } from "@/lib/period-comparison";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,31 +29,8 @@ function errorResponse(error: string, message: string, status: number) {
 }
 
 async function getAuthorizedProject(projectSlug: string) {
-  const user = await requireApiUser();
-  if (!user) return { response: unauthorizedJsonResponse() } as const;
-
-  const workspace = await getProjectWorkspace(projectSlug);
-  if (!workspace.ok) {
-    return {
-      response: errorResponse(
-        "OPERATIONS_SNAPSHOT_PROJECT_UNAVAILABLE",
-        workspace.message,
-        workspace.source === "not_found" ? 404 : workspace.source === "unconfigured" ? 503 : 500,
-      ),
-    } as const;
-  }
-
-  if (!canAccessProject(user, workspace.project)) {
-    return {
-      response: errorResponse(
-        "OPERATIONS_SNAPSHOT_FORBIDDEN",
-        "이 프로젝트의 운영 리포트 저장 이력을 확인할 권한이 없습니다.",
-        403,
-      ),
-    } as const;
-  }
-
-  return { project: workspace.project, user } as const;
+  const access = await requireProjectApiAccess({ projectSlug });
+  return access.ok ? { project: access.project, user: access.user } as const : { response: access.response } as const;
 }
 
 export async function GET(

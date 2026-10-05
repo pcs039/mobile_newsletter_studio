@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 import {
   createProjectSurvey,
   createProjectSurveyQuestion,
@@ -76,15 +76,14 @@ function makeResponsesCsv(responses: Awaited<ReturnType<typeof getProjectSurveyR
 }
 
 export async function GET(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const url = new URL(request.url);
   const projectSlug = asText(url.searchParams.get("projectSlug"));
   const format = asText(url.searchParams.get("format"));
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
+  }
 
   if (format !== "csv") {
     return NextResponse.json({ ok: false, message: "지원하지 않는 설문 조회 형식입니다." }, { status: 400 });
@@ -107,12 +106,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
   if (!payload) {
@@ -124,6 +117,11 @@ export async function POST(request: Request) {
 
   const action = asText(payload.action);
   const projectSlug = asText(payload.projectSlug);
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
+  }
 
   if (action === "createSurvey") {
     const kind = asText(payload.kind);

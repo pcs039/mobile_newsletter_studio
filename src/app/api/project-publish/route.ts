@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { updateNewsletterProjectStatus } from "@/lib/newsletter-repository";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 import { getAbsoluteSiteUrl, getCanonicalSiteOrigin } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
@@ -10,12 +10,6 @@ function asText(value: unknown) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const projectId = asText(payload?.projectId);
 
@@ -24,6 +18,12 @@ export async function POST(request: Request) {
       { ok: false, message: "발행할 프로젝트 ID가 필요합니다." },
       { status: 400 },
     );
+  }
+
+  const access = await requireProjectApiAccess({ projectId });
+
+  if (!access.ok) {
+    return access.response;
   }
 
   const result = await updateNewsletterProjectStatus(projectId, "published");

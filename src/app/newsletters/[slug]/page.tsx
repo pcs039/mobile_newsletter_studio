@@ -7,6 +7,7 @@ import { getValidExternalEbookUrl } from "@/lib/ebook-source";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import { getUsableEbookPages } from "@/lib/ebook-pages";
 import { isArticlePubliclyVisible } from "@/lib/article-publication";
+import { requireProjectAdminPreviewAccess } from "@/lib/project-admin-preview-access";
 import {
   getProjectAudioFiles,
   getProjectContent,
@@ -88,19 +89,8 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const backToEditorHref = previewArticleId
     ? `/projects/${slug}/reading?articleId=${previewArticleId}`
     : `/projects/${slug}/reading`;
-  const surveyDataPromise = isAdminPreview ? getProjectSurveys(slug) : getPublicProjectSurveys(slug);
-  const [workspace, contentData, pageImageData, hotspotData, surveyData, audioData, fontData] = await Promise.all([
-    getProjectWorkspace(slug),
-    getProjectContent(slug),
-    getProjectPageImages(slug),
-    getProjectPageHotspotLinks(slug),
-    surveyDataPromise,
-    getProjectAudioFiles(slug),
-    getFontAssets({ activeOnly: true }),
-  ]);
+  const workspace = await getProjectWorkspace(slug);
   const project = workspace.project;
-  const isPublished = project?.status === "발행 완료";
-  const isPubliclyVisible = isAdminPreview || isPublished;
 
   if (!project) {
     return (
@@ -110,6 +100,33 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
       />
     );
   }
+
+  if (
+    isAdminPreview &&
+    !(await requireProjectAdminPreviewAccess(
+      project,
+      `/newsletters/${slug}?preview=admin${isEmbeddedAdminPreview ? "&embedded=adminPreview" : ""}`,
+    ))
+  ) {
+    return (
+      <PublicUnavailablePage
+        title="관리자 미리보기 권한이 없습니다."
+        message="이 프로젝트를 담당하는 계정으로 로그인해 주세요."
+      />
+    );
+  }
+
+  const surveyDataPromise = isAdminPreview ? getProjectSurveys(slug) : getPublicProjectSurveys(slug);
+  const [contentData, pageImageData, hotspotData, surveyData, audioData, fontData] = await Promise.all([
+    getProjectContent(slug),
+    getProjectPageImages(slug),
+    getProjectPageHotspotLinks(slug),
+    surveyDataPromise,
+    getProjectAudioFiles(slug),
+    getFontAssets({ activeOnly: true }),
+  ]);
+  const isPublished = project.status === "발행 완료";
+  const isPubliclyVisible = isAdminPreview || isPublished;
 
   if (!isPubliclyVisible) {
     return (

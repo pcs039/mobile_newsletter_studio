@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { canAccessProject, requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import {
   getProjectDesignAssets,
   getProjectDesignKit,
@@ -8,6 +7,7 @@ import {
   type ProjectDesignAssetVariant,
 } from "@/lib/newsletter-repository";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 
 export const dynamic = "force-dynamic";
 
@@ -289,16 +289,16 @@ function getErrorStatus(status: string, httpStatus?: number) {
 }
 
 export async function GET(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const projectSlug = getProjectSlugFromRequest(request);
 
   if (!projectSlug) {
     return NextResponse.json({ ok: false, message: "프로젝트 ID를 확인하지 못했습니다." }, { status: 400 });
+  }
+
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
   }
 
   const result = await getProjectDesignAssets(projectSlug);
@@ -307,20 +307,10 @@ export async function GET(request: Request) {
     return NextResponse.json(result, { status: getErrorStatus(result.source, result.httpStatus) });
   }
 
-  if (!canAccessProject(user, result.project)) {
-    return NextResponse.json({ ok: false, message: "이 프로젝트의 로고 자산을 열 권한이 없습니다." }, { status: 403 });
-  }
-
   return NextResponse.json(result);
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const formData = await request.formData().catch(() => null);
 
   if (!formData) {
@@ -334,6 +324,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "프로젝트와 로고 파일을 모두 확인해야 합니다." }, { status: 400 });
   }
 
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
+  }
+
   if (!isAllowedLogoFile(file)) {
     return NextResponse.json({ ok: false, message: "PNG, JPG, WebP 로고 파일만 5MB까지 업로드할 수 있습니다." }, { status: 400 });
   }
@@ -342,10 +338,6 @@ export async function POST(request: Request) {
 
   if (!context.ok) {
     return NextResponse.json(context, { status: getErrorStatus(context.source, context.httpStatus) });
-  }
-
-  if (!canAccessProject(user, context.project)) {
-    return NextResponse.json({ ok: false, message: "이 프로젝트의 로고 자산을 등록할 권한이 없습니다." }, { status: 403 });
   }
 
   const headers = getServiceHeaders();
@@ -446,12 +438,6 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
   if (!payload) {
@@ -465,14 +451,16 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, message: "프로젝트와 로고 자산을 확인해야 합니다." }, { status: 400 });
   }
 
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
+  }
+
   const context = await getProjectContext(projectSlug);
 
   if (!context.ok) {
     return NextResponse.json(context, { status: getErrorStatus(context.source, context.httpStatus) });
-  }
-
-  if (!canAccessProject(user, context.project)) {
-    return NextResponse.json({ ok: false, message: "이 프로젝트의 로고 자산을 수정할 권한이 없습니다." }, { status: 403 });
   }
 
   const headers = getServiceHeaders();
@@ -553,12 +541,6 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const { searchParams } = new URL(request.url);
   const projectSlug = searchParams.get("projectSlug")?.trim() || searchParams.get("projectId")?.trim() || "";
   const assetId = searchParams.get("assetId")?.trim() ?? "";
@@ -567,14 +549,16 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: false, message: "삭제할 프로젝트와 로고 자산을 확인해야 합니다." }, { status: 400 });
   }
 
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
+  }
+
   const context = await getProjectContext(projectSlug);
 
   if (!context.ok) {
     return NextResponse.json(context, { status: getErrorStatus(context.source, context.httpStatus) });
-  }
-
-  if (!canAccessProject(user, context.project)) {
-    return NextResponse.json({ ok: false, message: "이 프로젝트의 로고 자산을 삭제할 권한이 없습니다." }, { status: 403 });
   }
 
   const headers = getServiceHeaders();

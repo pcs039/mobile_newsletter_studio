@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { updateProjectAudioArticleLink } from "@/lib/newsletter-repository";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 
 export const dynamic = "force-dynamic";
 
@@ -23,12 +23,6 @@ function getErrorStatus(status: string, httpStatus?: number) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const articleId = asText(payload?.articleId) || null;
   const audioId = asText(payload?.audioId);
@@ -44,6 +38,12 @@ export async function POST(request: Request) {
       { ok: false, message: "연결할 음성 파일과 프로젝트 정보를 확인하세요." },
       { status: 400 },
     );
+  }
+
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
   }
 
   const result = await updateProjectAudioArticleLink({

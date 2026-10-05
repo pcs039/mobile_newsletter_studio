@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 import {
   archiveProjectSendCampaign,
   createProjectRecipientGroup,
@@ -35,12 +35,6 @@ function getErrorStatus(status: string, httpStatus?: number) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
   if (!payload) {
@@ -52,6 +46,11 @@ export async function POST(request: Request) {
 
   const action = asText(payload.action);
   const projectSlug = asText(payload.projectSlug);
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
+  }
 
   if (action === "createGroup") {
     const result = await createProjectRecipientGroup({

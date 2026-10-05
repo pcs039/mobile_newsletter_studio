@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { canAccessProject, requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import {
   getProjectDesignKit,
   upsertProjectDesignKit,
   type ProjectDesignKit,
   type ProjectDesignKitInput,
 } from "@/lib/newsletter-repository";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 
 export const dynamic = "force-dynamic";
 
@@ -153,16 +153,16 @@ function readDesignKitInput(payload: Record<string, unknown>, current: ProjectDe
 }
 
 export async function GET(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const projectSlug = getProjectSlugFromUrl(request);
 
   if (!projectSlug) {
     return NextResponse.json({ ok: false, message: "프로젝트 ID를 확인하지 못했습니다." }, { status: 400 });
+  }
+
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
   }
 
   const result = await getProjectDesignKit(projectSlug);
@@ -173,20 +173,10 @@ export async function GET(request: Request) {
     });
   }
 
-  if (!canAccessProject(user, result.project)) {
-    return NextResponse.json({ ok: false, message: "이 프로젝트의 Design Kit을 열 권한이 없습니다." }, { status: 403 });
-  }
-
   return NextResponse.json(result);
 }
 
 export async function PATCH(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
   if (!payload) {
@@ -199,16 +189,18 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, message: "프로젝트 ID를 확인하지 못했습니다." }, { status: 400 });
   }
 
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
+  }
+
   const current = await getProjectDesignKit(projectSlug);
 
   if (!current.ok) {
     return NextResponse.json(current, {
       status: current.httpStatus ?? (current.source === "unconfigured" ? 503 : 500),
     });
-  }
-
-  if (!canAccessProject(user, current.project)) {
-    return NextResponse.json({ ok: false, message: "이 프로젝트의 Design Kit을 수정할 권한이 없습니다." }, { status: 403 });
   }
 
   const input = readDesignKitInput(payload, current.designKit);

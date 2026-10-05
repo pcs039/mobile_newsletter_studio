@@ -9,6 +9,7 @@ import {
   type CreateNewsletterProjectInput,
   type UpdateNewsletterProjectInput,
 } from "@/lib/newsletter-repository";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 
 export const dynamic = "force-dynamic";
 
@@ -186,14 +187,20 @@ export async function PATCH(request: Request) {
   const action = asOptionalText(payload.action);
   const requestedStatus = payload.status;
 
-  if (action === "updateStatus") {
-    if (!projectId) {
-      return NextResponse.json(
-        { ok: false, message: "상태를 변경할 프로젝트 ID가 필요합니다." },
-        { status: 400 },
-      );
-    }
+  if (!projectId) {
+    return NextResponse.json(
+      { ok: false, message: "수정할 프로젝트 ID가 필요합니다." },
+      { status: 400 },
+    );
+  }
 
+  const access = await requireProjectApiAccess({ projectId });
+
+  if (!access.ok) {
+    return access.response;
+  }
+
+  if (action === "updateStatus") {
     if (!isOneOf(requestedStatus, projectStatuses)) {
       return NextResponse.json(
         { ok: false, message: "변경할 공개 상태 값이 올바르지 않습니다." },
@@ -233,13 +240,6 @@ export async function PATCH(request: Request) {
 
   if (!ebookInput.ok) {
     return NextResponse.json({ ok: false, message: ebookInput.message }, { status: 400 });
-  }
-
-  if (!projectId) {
-    return NextResponse.json(
-      { ok: false, message: "수정할 프로젝트 ID가 필요합니다." },
-      { status: 400 },
-    );
   }
 
   if (!title || !organizationName || !assigneeName || !publishedDate || !slug) {
@@ -331,6 +331,12 @@ export async function DELETE(request: Request) {
       { ok: false, message: "삭제할 프로젝트 ID가 필요합니다." },
       { status: 400 },
     );
+  }
+
+  const access = await requireProjectApiAccess({ projectId });
+
+  if (!access.ok) {
+    return access.response;
   }
 
   const result = await archiveNewsletterProject(projectId);

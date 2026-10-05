@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
 export const dynamic = "force-dynamic";
@@ -416,12 +416,6 @@ function createPageImagesZipStream({
 }
 
 export async function GET(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const { searchParams } = new URL(request.url);
   const bucket = searchParams.get("bucket")?.trim() ?? "";
   const path = searchParams.get("path")?.trim() ?? "";
@@ -433,6 +427,12 @@ export async function GET(request: Request) {
 
   if (!downloadableBuckets.has(bucket) || !projectSlug || (!isZipRequest && !isSafeStoragePath(path))) {
     return NextResponse.json({ ok: false, message: "다운로드할 파일 정보를 확인하세요." }, { status: 400 });
+  }
+
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
   }
 
   if (!serviceHeaders || !storageHeaders) {

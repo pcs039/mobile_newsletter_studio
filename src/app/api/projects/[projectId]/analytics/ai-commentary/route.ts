@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { canAccessProject, requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { extractResponseOutputText } from "@/lib/article-ai-draft";
 import { getProjectArticleAnalytics } from "@/lib/article-analytics-repository";
 import {
@@ -14,9 +13,9 @@ import {
   buildAiOperationsReportInput,
   sanitizeAiOperationsCommentary,
 } from "@/lib/ai-operations-commentary";
-import { getProjectWorkspace } from "@/lib/newsletter-repository";
 import { buildOperationsReportSummary } from "@/lib/operations-report";
 import { buildPeriodComparisonSummary } from "@/lib/period-comparison";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,12 +38,6 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const { projectId } = await params;
   const projectSlug = projectId.trim();
   const body = (await request.json().catch(() => null)) as { period?: unknown } | null;
@@ -58,18 +51,10 @@ export async function POST(
     return errorResponse("AI_COMMENTARY_PERIOD_INVALID", "운영 리포트 기간을 확인해 주세요.", 400);
   }
 
-  const workspace = await getProjectWorkspace(projectSlug);
+  const access = await requireProjectApiAccess({ projectSlug });
 
-  if (!workspace.ok) {
-    return errorResponse(
-      "AI_COMMENTARY_PROJECT_UNAVAILABLE",
-      workspace.message,
-      workspace.source === "not_found" ? 404 : workspace.source === "unconfigured" ? 503 : 500,
-    );
-  }
-
-  if (!canAccessProject(user, workspace.project)) {
-    return errorResponse("AI_COMMENTARY_FORBIDDEN", "이 프로젝트의 운영 리포트를 생성할 권한이 없습니다.", 403);
+  if (!access.ok) {
+    return access.response;
   }
 
   const period = normalizeAnalyticsPeriod(requestedPeriod);

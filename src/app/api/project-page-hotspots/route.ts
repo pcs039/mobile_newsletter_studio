@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
+import { requireProjectApiAccess } from "@/lib/project-api-access";
 import {
   createProjectPageHotspotLink,
   deleteProjectPageHotspotLink,
@@ -37,20 +37,21 @@ function getErrorStatus(status: string, httpStatus?: number) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
-
-  if (!user) {
-    return unauthorizedJsonResponse();
-  }
-
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
   if (!payload) {
     return NextResponse.json({ ok: false, message: "이미지 클릭 영역 저장 데이터를 확인하지 못했습니다." }, { status: 400 });
   }
 
+  const projectSlug = asText(payload.projectSlug);
+  const access = await requireProjectApiAccess({ projectSlug });
+
+  if (!access.ok) {
+    return access.response;
+  }
+
   const result = await createProjectPageHotspotLink({
-    projectSlug: asText(payload.projectSlug),
+    projectSlug,
     pageId: asText(payload.pageId),
     label: asText(payload.label),
     type: asLinkType(payload.type),
@@ -70,15 +71,16 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const user = await requireApiUser();
+  const { searchParams } = new URL(request.url);
+  const projectSlug = searchParams.get("projectSlug") ?? "";
+  const access = await requireProjectApiAccess({ projectSlug });
 
-  if (!user) {
-    return unauthorizedJsonResponse();
+  if (!access.ok) {
+    return access.response;
   }
 
-  const { searchParams } = new URL(request.url);
   const result = await deleteProjectPageHotspotLink({
-    projectSlug: searchParams.get("projectSlug") ?? "",
+    projectSlug,
     linkId: searchParams.get("linkId") ?? "",
   });
 
