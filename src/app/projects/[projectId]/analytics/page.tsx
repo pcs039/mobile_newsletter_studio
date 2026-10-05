@@ -875,13 +875,19 @@ export default async function ProjectAnalyticsPage({
         sidebarDescription="공개 화면 접속과 기사별 열람·행동 이벤트를 운영 관점에서 집계합니다."
         sidebarNoteTitle="집계 기준"
         sidebarNote="수치는 개인 수가 아닌 이벤트 수입니다. 반응도는 기사 열람 100회당 후속 행동 건수이며 음성 재생은 제외합니다."
+        showDefaultHeaderActions={false}
         printScope="analytics-report"
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Link href={`/newsletters/${projectId}`} target="_blank" rel="noreferrer" className="dd-btn dd-btn-secondary dd-btn-lg text-sm">공개 화면</Link>
-            <Link href={`/projects/${projectId}/distribution`} className="dd-btn dd-btn-primary dd-btn-lg text-sm">배포 관리</Link>
-            <AnalyticsReportExportButton />
-            <OperationsReportSnapshotSaveButton />
+          <div className="flex flex-wrap items-start gap-3">
+            <Link href="/" className="dd-btn dd-btn-secondary dd-btn-lg border-slate-300 text-sm">
+              전체 프로젝트
+            </Link>
+            <span className="hidden h-11 w-px shrink-0 bg-slate-200 sm:block" aria-hidden="true" />
+            <div className="flex flex-wrap items-start gap-2">
+              <Link href={`/newsletters/${projectId}`} target="_blank" rel="noreferrer" className="dd-btn dd-btn-secondary dd-btn-lg text-sm">공개 화면</Link>
+              <OperationsReportSnapshotSaveButton />
+              <AnalyticsReportExportButton />
+            </div>
           </div>
         }
       >

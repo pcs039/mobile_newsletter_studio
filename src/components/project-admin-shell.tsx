@@ -105,6 +105,7 @@ export async function ProjectAdminShell({
   sidebarNote,
   sidebarNoteTitle,
   sidebarTitle,
+  showDefaultHeaderActions = true,
   printScope,
   title,
 }: {
@@ -117,6 +118,7 @@ export async function ProjectAdminShell({
   sidebarNote: string;
   sidebarNoteTitle: string;
   sidebarTitle: ReactNode;
+  showDefaultHeaderActions?: boolean;
   printScope?: "analytics-report";
   title: string;
 }) {
@@ -223,13 +225,17 @@ export async function ProjectAdminShell({
               <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-500 [word-break:keep-all]">{description}</p>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
-              <HomeButton />
-              <Link
-                href="/projects/edit"
-                className="dd-btn dd-btn-secondary dd-btn-lg border-slate-300 text-sm"
-              >
-                작성/수정 목록
-              </Link>
+              {showDefaultHeaderActions ? (
+                <>
+                  <HomeButton />
+                  <Link
+                    href="/projects/edit"
+                    className="dd-btn dd-btn-secondary dd-btn-lg border-slate-300 text-sm"
+                  >
+                    작성/수정 목록
+                  </Link>
+                </>
+              ) : null}
               {actions}
             </div>
           </header>
