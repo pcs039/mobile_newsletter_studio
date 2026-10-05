@@ -152,7 +152,7 @@ export function OperationsReportSnapshotSaveButton() {
     <div className="flex flex-col items-start gap-1" data-print-control>
       <button
         type="button"
-        className="dd-btn dd-btn-secondary dd-btn-lg text-sm"
+        className="dd-btn dd-btn-primary dd-btn-lg text-sm"
         disabled={context.saveStatus === "saving"}
         onClick={() => void context.saveSnapshot()}
       >

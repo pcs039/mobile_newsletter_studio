@@ -18,23 +18,26 @@ export async function AdminMainNavigation({ active, projectId }: AdminMainNaviga
     detail: string;
     href?: string;
   }> = [
-    { key: "dashboard", label: "프로젝트 현황", detail: "전체 목록", href: "/" },
-    { key: "edit", label: "작성/수정", detail: "작업 대상", href: "/projects/edit" },
+    { key: "dashboard", label: "전체 프로젝트", detail: "전체 목록", href: "/" },
     { key: "fonts", label: "폰트 관리", detail: "글꼴", href: "/projects/fonts" },
-    {
-      key: "publish",
-      label: "미리보기/발행",
-      detail: projectId ? "검수·URL·QR" : "프로젝트 선택",
-      href: projectId ? `/projects/${projectId}/publish` : "/projects/publish",
-    },
-    { key: "distribution", label: "배포 관리", detail: "배포 기록", href: "/projects/distribution" },
-    {
-      key: "analytics",
-      label: "반응 통계",
-      detail: projectId ? "기사·행동 분석" : "프로젝트 선택",
-      href: projectId ? `/projects/${projectId}/analytics` : "/projects/edit",
-    },
-    { key: "survey", label: "참여 콘텐츠", detail: "설문·이벤트", href: "/projects/survey" },
+    ...(projectId
+      ? [
+          {
+            key: "publish" as const,
+            label: "미리보기/발행",
+            detail: "검수·URL·QR",
+            href: `/projects/${projectId}/publish`,
+          },
+          { key: "distribution" as const, label: "배포 관리", detail: "배포 기록", href: "/projects/distribution" },
+          {
+            key: "analytics" as const,
+            label: "반응 통계",
+            detail: "기사·행동 분석",
+            href: `/projects/${projectId}/analytics`,
+          },
+          { key: "survey" as const, label: "참여 콘텐츠", detail: "설문·이벤트", href: "/projects/survey" },
+        ]
+      : []),
   ];
 
   return (
