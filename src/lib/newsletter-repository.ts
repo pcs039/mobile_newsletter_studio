@@ -116,10 +116,13 @@ type ProjectDesignAssetRow = {
   id: string;
   project_id: string;
   asset_type: ProjectDesignAssetType;
+  parent_source_asset_id: string | null;
   name: string;
   language: ProjectDesignAssetLanguage;
   variant: ProjectDesignAssetVariant;
   background_mode: ProjectDesignAssetBackgroundMode;
+  usage_role: ProjectDesignAssetUsageRole;
+  approval_status: ProjectDesignAssetApprovalStatus;
   storage_path: string | null;
   storage_bucket: string | null;
   original_file_name: string | null;
@@ -577,10 +580,20 @@ export type ProjectDesignKitButtonStyle = "solid" | "outline" | "soft";
 export type ProjectDesignKitIconStyle = "outline" | "filled" | "illustration";
 export type ProjectDesignKitImageStyle = "photo" | "illustration" | "mixed";
 export type ProjectDesignSourceMode = "source_available" | "reference_only" | null;
-export type ProjectDesignAssetType = "logo" | "source_design" | "reference";
+export type ProjectDesignProductionAssetType =
+  | "background"
+  | "illustration"
+  | "icon"
+  | "card_frame"
+  | "banner"
+  | "pattern"
+  | "decoration";
+export type ProjectDesignAssetType = "logo" | "source_design" | "reference" | ProjectDesignProductionAssetType;
 export type ProjectDesignAssetLanguage = "ko" | "en" | "mixed" | "other";
 export type ProjectDesignAssetVariant = "primary" | "compact" | "inverse" | "symbol" | "other";
 export type ProjectDesignAssetBackgroundMode = "light" | "dark" | "any";
+export type ProjectDesignAssetUsageRole = "header" | "section" | "card" | "article" | "footer" | "general";
+export type ProjectDesignAssetApprovalStatus = "draft" | "approved" | "archived";
 
 export type ProjectDesignKit = {
   id: string;
@@ -613,10 +626,13 @@ export type ProjectDesignAsset = {
   id: string;
   projectId: string;
   assetType: ProjectDesignAssetType;
+  parentSourceAssetId: string;
   name: string;
   language: ProjectDesignAssetLanguage;
   variant: ProjectDesignAssetVariant;
   backgroundMode: ProjectDesignAssetBackgroundMode;
+  usageRole: ProjectDesignAssetUsageRole;
+  approvalStatus: ProjectDesignAssetApprovalStatus;
   storagePath: string;
   storageBucket: string;
   originalFileName: string;
@@ -2225,10 +2241,13 @@ const designAssetSelectColumns = [
   "id",
   "project_id",
   "asset_type",
+  "parent_source_asset_id",
   "name",
   "language",
   "variant",
   "background_mode",
+  "usage_role",
+  "approval_status",
   "storage_path",
   "storage_bucket",
   "original_file_name",
@@ -2261,7 +2280,17 @@ function normalizeDesignSourceMode(value: string | null | undefined): ProjectDes
 }
 
 function normalizeDesignAssetType(value: string | null | undefined): ProjectDesignAssetType {
-  return value === "source_design" || value === "reference" ? value : "logo";
+  return value === "source_design" ||
+    value === "reference" ||
+    value === "background" ||
+    value === "illustration" ||
+    value === "icon" ||
+    value === "card_frame" ||
+    value === "banner" ||
+    value === "pattern" ||
+    value === "decoration"
+    ? value
+    : "logo";
 }
 
 function clampInteger(value: number | null | undefined, fallback: number, min: number, max: number) {
@@ -2282,6 +2311,16 @@ function normalizeDesignAssetVariant(value: string | null | undefined): ProjectD
 
 function normalizeDesignAssetBackgroundMode(value: string | null | undefined): ProjectDesignAssetBackgroundMode {
   return value === "light" || value === "dark" ? value : "any";
+}
+
+function normalizeDesignAssetUsageRole(value: string | null | undefined): ProjectDesignAssetUsageRole {
+  return value === "header" || value === "section" || value === "card" || value === "article" || value === "footer"
+    ? value
+    : "general";
+}
+
+function normalizeDesignAssetApprovalStatus(value: string | null | undefined): ProjectDesignAssetApprovalStatus {
+  return value === "approved" || value === "archived" ? value : "draft";
 }
 
 function makeDefaultProjectDesignKit(project: ProjectWorkspaceInfo): ProjectDesignKit {
@@ -2349,10 +2388,13 @@ function mapProjectDesignAssetRow(row: ProjectDesignAssetRow): ProjectDesignAsse
     id: row.id,
     projectId: row.project_id,
     assetType,
+    parentSourceAssetId: row.parent_source_asset_id || "",
     name: row.name || (assetType === "logo" ? "공식 로고" : "디자인 자료"),
     language: normalizeDesignAssetLanguage(row.language),
     variant: normalizeDesignAssetVariant(row.variant),
     backgroundMode: normalizeDesignAssetBackgroundMode(row.background_mode),
+    usageRole: normalizeDesignAssetUsageRole(row.usage_role),
+    approvalStatus: normalizeDesignAssetApprovalStatus(row.approval_status),
     storagePath: row.storage_path || "",
     storageBucket,
     originalFileName: row.original_file_name || "",
@@ -5705,7 +5747,7 @@ export async function getProjectDesignAssets(projectSlug: string): Promise<Proje
         assets: [],
         project: workspace.project,
         source: "error",
-        message: "기관 디자인 자산 테이블을 조회하지 못했습니다. Supabase migration v1.15와 v1.22 적용 여부를 확인하세요.",
+        message: "기관 디자인 자산 테이블을 조회하지 못했습니다. Supabase migration v1.15, v1.22, v1.23 적용 여부를 확인하세요.",
         httpStatus: response.status,
       };
     }
