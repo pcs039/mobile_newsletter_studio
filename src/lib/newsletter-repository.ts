@@ -1348,7 +1348,28 @@ export type UpsertProjectArticleResult =
     }
   | {
       ok: false;
-      status: "not_configured" | "not_found" | "request_failed" | "invalid_input";
+      status: "not_configured" | "not_found" | "migration_required" | "request_failed" | "invalid_input";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type DeleteProjectArticleResult =
+  | {
+      ok: true;
+      article: Pick<ProjectContentArticle, "id" | "title">;
+    }
+  | {
+      ok: false;
+      status: "not_configured" | "not_found" | "migration_required" | "request_failed";
+      message: string;
+      httpStatus?: number;
+    };
+
+export type DeleteProjectArticleBlockResult =
+  | { ok: true }
+  | {
+      ok: false;
+      status: "not_configured" | "not_found" | "migration_required" | "request_failed";
       message: string;
       httpStatus?: number;
     };
@@ -6407,146 +6428,59 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 }
 
-async function insertArticleLinkAction(
-  projectId: string,
-  articleId: string,
+type AtomicArticleBlock = {
+  block_type: ContentBlockType;
+  title: string | null;
+  body: string | null;
+  text_alignment: ArticleTextAlignment | null;
+  asset_id: string | null;
+  sort_order: number;
+  metadata: Record<string, unknown>;
   action: {
     label: string;
-    actionType: LinkActionType;
-    targetValue: string;
-    displayStyle: LinkDisplayStyle;
-    sortOrder: number;
-  },
-  headers: Record<string, string>,
-) {
-  const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_link_actions?select=id");
-
-  if (!endpoint) {
-    return null;
-  }
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      ...headers,
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify({
-      project_id: projectId,
-      article_id: articleId,
-      label: action.label,
-      action_type: action.actionType,
-      target_value: action.targetValue,
-      display_style: action.displayStyle,
-      sort_order: action.sortOrder,
-      is_visible: true,
-    }),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const rows = (await response.json()) as Array<{ id: string }>;
-
-  return rows[0]?.id ?? null;
-}
-
-async function replaceArticleBlocks(
-  projectId: string,
-  articleId: string,
-  input: UpsertProjectArticleInput,
-  headers: Record<string, string>,
-) {
-  const encodedArticleId = encodeURIComponent(articleId);
-  const blocksEndpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_content_blocks?article_id=eq.${encodedArticleId}`);
-  const linksEndpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_link_actions?article_id=eq.${encodedArticleId}`);
-
-  if (!blocksEndpoint || !linksEndpoint) {
-    return false;
-  }
-
-  const [deleteBlocksResponse, deleteLinksResponse] = await Promise.all([
-    fetch(blocksEndpoint, {
-      method: "DELETE",
-      headers,
-      cache: "no-store",
-    }),
-    fetch(linksEndpoint, {
-      method: "DELETE",
-      headers,
-      cache: "no-store",
-    }),
-  ]);
-
-  if (!deleteBlocksResponse.ok || !deleteLinksResponse.ok) {
-    return false;
-  }
-
-  const blocks: Array<{
-    block_type: ContentBlockType;
-    title: string | null;
-    body: string | null;
-    text_alignment?: ArticleTextAlignment;
-    asset_id?: string | null;
-    link_action_id?: string | null;
+    action_type: LinkActionType;
+    target_value: string;
+    display_style: LinkDisplayStyle;
     sort_order: number;
-    metadata?: Record<string, unknown>;
-  }> = [];
+  } | null;
+};
+
+function makeAtomicArticleBlocks(input: UpsertProjectArticleInput) {
+  const blocks: AtomicArticleBlock[] = [];
   const contentBlocks = normalizeContentBlocks(input.contentBlocks);
 
   if (contentBlocks.length > 0) {
-    for (const block of contentBlocks) {
-      let linkActionId: string | null = null;
+    contentBlocks.forEach((block) => {
+      let action: AtomicArticleBlock["action"] = null;
 
       if (block.type === "button_group" && block.body) {
-        linkActionId = await insertArticleLinkAction(
-          projectId,
-          articleId,
-          {
-            label: block.title || "바로가기",
-            actionType: detectLinkActionType(block.body, "url"),
-            targetValue: block.body,
-            displayStyle: "button",
-            sortOrder: block.sortOrder,
-          },
-          headers,
-        );
+        action = {
+          label: block.title || "바로가기",
+          action_type: detectLinkActionType(block.body, "url"),
+          target_value: block.body,
+          display_style: "button",
+          sort_order: block.sortOrder,
+        };
       }
 
       if (block.type === "video_link" && block.body) {
-        linkActionId = await insertArticleLinkAction(
-          projectId,
-          articleId,
-          {
-            label: block.title || "영상 보기",
-            actionType: "video",
-            targetValue: block.body,
-            displayStyle: "thumbnail_card",
-            sortOrder: block.sortOrder,
-          },
-          headers,
-        );
+        action = {
+          label: block.title || "영상 보기",
+          action_type: "video",
+          target_value: block.body,
+          display_style: "thumbnail_card",
+          sort_order: block.sortOrder,
+        };
       }
 
       if (block.type === "map_link" && block.body) {
-        linkActionId = await insertArticleLinkAction(
-          projectId,
-          articleId,
-          {
-            label: block.title || "지도 보기",
-            actionType: "map",
-            targetValue: block.body,
-            displayStyle: "map_card",
-            sortOrder: block.sortOrder,
-          },
-          headers,
-        );
-      }
-
-      if ((block.type === "button_group" || block.type === "video_link" || block.type === "map_link") && !linkActionId) {
-        return false;
+        action = {
+          label: block.title || "지도 보기",
+          action_type: "map",
+          target_value: block.body,
+          display_style: "map_card",
+          sort_order: block.sortOrder,
+        };
       }
 
       blocks.push({
@@ -6555,10 +6489,11 @@ async function replaceArticleBlocks(
         body: block.body,
         text_alignment: block.textAlignment,
         asset_id: block.assetId,
-        link_action_id: linkActionId,
         sort_order: block.sortOrder,
+        metadata: {},
+        action,
       });
-    }
+    });
   } else {
     const contentSections = normalizeContentSections(input.contentSections);
 
@@ -6569,7 +6504,10 @@ async function replaceArticleBlocks(
           title: section.title,
           body: section.body,
           text_alignment: normalizeArticleTextAlignment(section.textAlignment ?? input.bodyAlignment ?? input.textAlignment),
+          asset_id: null,
           sort_order: section.sortOrder || (index + 1) * 10,
+          metadata: {},
+          action: null,
         });
       });
     } else if (cleanText(input.body)) {
@@ -6578,7 +6516,10 @@ async function replaceArticleBlocks(
         title: null,
         body: cleanText(input.body),
         text_alignment: normalizeArticleTextAlignment(input.bodyAlignment ?? input.textAlignment),
+        asset_id: null,
         sort_order: 10,
+        metadata: {},
+        action: null,
       });
     }
 
@@ -6587,83 +6528,59 @@ async function replaceArticleBlocks(
     const mapUrl = cleanText(input.mapUrl);
 
     if (buttonTarget && cleanText(input.buttonLabel)) {
-      const linkActionId = await insertArticleLinkAction(
-        projectId,
-        articleId,
-        {
-          label: cleanText(input.buttonLabel),
-          actionType: detectLinkActionType(buttonTarget, "url"),
-          targetValue: buttonTarget,
-          displayStyle: "button",
-          sortOrder: 20,
-        },
-        headers,
-      );
-
-      if (!linkActionId) {
-        return false;
-      }
-
       blocks.push({
         block_type: "button_group",
         title: cleanText(input.buttonLabel),
         body: buttonTarget,
-        link_action_id: linkActionId,
+        text_alignment: null,
+        asset_id: null,
         sort_order: 20,
+        metadata: {},
+        action: {
+          label: cleanText(input.buttonLabel),
+          action_type: detectLinkActionType(buttonTarget, "url"),
+          target_value: buttonTarget,
+          display_style: "button",
+          sort_order: 20,
+        },
       });
     }
 
     if (videoUrl) {
-      const linkActionId = await insertArticleLinkAction(
-        projectId,
-        articleId,
-        {
-          label: cleanText(input.videoLabel) || "영상 보기",
-          actionType: "video",
-          targetValue: videoUrl,
-          displayStyle: "thumbnail_card",
-          sortOrder: 30,
-        },
-        headers,
-      );
-
-      if (!linkActionId) {
-        return false;
-      }
-
       blocks.push({
         block_type: "video_link",
         title: cleanText(input.videoLabel) || "영상 보기",
         body: videoUrl,
-        link_action_id: linkActionId,
+        text_alignment: null,
+        asset_id: null,
         sort_order: 30,
+        metadata: {},
+        action: {
+          label: cleanText(input.videoLabel) || "영상 보기",
+          action_type: "video",
+          target_value: videoUrl,
+          display_style: "thumbnail_card",
+          sort_order: 30,
+        },
       });
     }
 
     if (mapUrl) {
-      const linkActionId = await insertArticleLinkAction(
-        projectId,
-        articleId,
-        {
-          label: cleanText(input.mapLabel) || "지도 보기",
-          actionType: "map",
-          targetValue: mapUrl,
-          displayStyle: "map_card",
-          sortOrder: 40,
-        },
-        headers,
-      );
-
-      if (!linkActionId) {
-        return false;
-      }
-
       blocks.push({
         block_type: "map_link",
         title: cleanText(input.mapLabel) || "지도 보기",
         body: mapUrl,
-        link_action_id: linkActionId,
+        text_alignment: null,
+        asset_id: null,
         sort_order: 40,
+        metadata: {},
+        action: {
+          label: cleanText(input.mapLabel) || "지도 보기",
+          action_type: "map",
+          target_value: mapUrl,
+          display_style: "map_card",
+          sort_order: 40,
+        },
       });
     }
 
@@ -6672,46 +6589,16 @@ async function replaceArticleBlocks(
         block_type: "audio",
         title: "음성 대본",
         body: cleanText(input.audioScript),
+        text_alignment: null,
+        asset_id: null,
         sort_order: 50,
+        metadata: {},
+        action: null,
       });
     }
   }
 
-  if (blocks.length === 0) {
-    return true;
-  }
-
-  const createBlocksEndpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_content_blocks");
-
-  if (!createBlocksEndpoint) {
-    return false;
-  }
-
-  const createBlocksResponse = await fetch(createBlocksEndpoint, {
-    method: "POST",
-    headers: {
-      ...headers,
-      Prefer: "return=minimal",
-    },
-    body: JSON.stringify(
-      blocks.map((block) => ({
-        project_id: projectId,
-        article_id: articleId,
-        block_type: block.block_type,
-        title: block.title,
-        body: block.body,
-        text_alignment: block.text_alignment ?? null,
-        asset_id: block.asset_id ?? null,
-        link_action_id: block.link_action_id ?? null,
-        sort_order: block.sort_order,
-        metadata: block.metadata ?? {},
-        is_visible: true,
-      })),
-    ),
-    cache: "no-store",
-  });
-
-  return createBlocksResponse.ok;
+  return blocks;
 }
 
 export async function upsertProjectArticle(
@@ -6843,13 +6730,7 @@ export async function upsertProjectArticle(
     }
 
     const articleId = cleanText(input.articleId);
-    const endpoint = articleId
-      ? getSupabaseRestEndpoint(
-          `/rest/v1/newsletter_articles?id=eq.${encodeURIComponent(
-            articleId,
-          )}&project_id=eq.${encodeURIComponent(project.id)}&select=id,title`,
-        )
-      : getSupabaseRestEndpoint("/rest/v1/newsletter_articles?select=id,title");
+    const endpoint = getSupabaseRestEndpoint("/rest/v1/rpc/save_newsletter_article_atomic");
 
     if (!endpoint) {
       return {
@@ -6860,56 +6741,174 @@ export async function upsertProjectArticle(
     }
 
     const response = await fetch(endpoint, {
-      method: articleId ? "PATCH" : "POST",
-      headers: {
-        ...headers,
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify(articleBody),
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        p_project_id: project.id,
+        p_article_id: articleId || null,
+        p_article: articleBody,
+        p_blocks: makeAtomicArticleBlocks(input),
+      }),
       cache: "no-store",
     });
     const responseText = await response.text();
 
     if (!response.ok) {
+      const errorPayload = JSON.parse(responseText || "null") as { code?: string } | null;
+
+      const migrationRequired = errorPayload?.code === "PGRST202";
+
+      return {
+        ok: false,
+        status: migrationRequired ? "migration_required" : "request_failed",
+        message:
+          migrationRequired
+            ? "기사 저장 transaction RPC를 찾지 못했습니다. schema v1.21 적용 상태를 확인하세요."
+            : "기사 저장 transaction을 완료하지 못했습니다.",
+        httpStatus: migrationRequired ? 503 : response.status,
+      };
+    }
+
+    const result = JSON.parse(responseText || "null") as UpsertProjectArticleResult | null;
+
+    if (!result) {
       return {
         ok: false,
         status: "request_failed",
-        message: responseText || "기사 저장 요청에 실패했습니다.",
-        httpStatus: response.status,
+        message: "기사 저장 transaction 응답을 확인하지 못했습니다.",
       };
     }
 
-    const rows = JSON.parse(responseText || "[]") as Array<Pick<ProjectContentArticle, "id" | "title">>;
-    const savedArticle = rows[0];
-
-    if (!savedArticle) {
-      return {
-        ok: false,
-        status: "not_found",
-        message: "저장할 기사를 찾지 못했습니다.",
-        httpStatus: 404,
-      };
-    }
-
-    const blocksSaved = await replaceArticleBlocks(project.id, savedArticle.id, input, headers);
-
-    if (!blocksSaved) {
-      return {
-        ok: false,
-        status: "request_failed",
-        message: "기사는 저장됐지만 콘텐츠 블록 저장에 실패했습니다.",
-      };
-    }
-
-    return {
-      ok: true,
-      article: savedArticle,
-    };
+    return result;
   } catch {
     return {
       ok: false,
       status: "request_failed",
       message: "기사 저장 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function deleteProjectArticleAtomic(
+  projectId: string,
+  articleId: string,
+): Promise<DeleteProjectArticleResult> {
+  const headers = getRequestHeaders(true);
+  const endpoint = getSupabaseRestEndpoint("/rest/v1/rpc/delete_newsletter_article_atomic");
+
+  if (!headers || !endpoint) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY와 Supabase URL 설정 후 기사 삭제를 사용할 수 있습니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        p_project_id: projectId,
+        p_article_id: articleId,
+      }),
+      cache: "no-store",
+    });
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      const errorPayload = JSON.parse(responseText || "null") as { code?: string } | null;
+
+      const migrationRequired = errorPayload?.code === "PGRST202";
+
+      return {
+        ok: false,
+        status: migrationRequired ? "migration_required" : "request_failed",
+        message:
+          migrationRequired
+            ? "기사 삭제 transaction RPC를 찾지 못했습니다. schema v1.21 적용 상태를 확인하세요."
+            : "기사 삭제 transaction을 완료하지 못했습니다.",
+        httpStatus: migrationRequired ? 503 : response.status,
+      };
+    }
+
+    const result = JSON.parse(responseText || "null") as DeleteProjectArticleResult | null;
+
+    return (
+      result ?? {
+        ok: false,
+        status: "request_failed",
+        message: "기사 삭제 transaction 응답을 확인하지 못했습니다.",
+      }
+    );
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "기사 삭제 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function deleteProjectArticleBlockAtomic(
+  projectId: string,
+  articleId: string,
+  blockId: string,
+): Promise<DeleteProjectArticleBlockResult> {
+  const headers = getRequestHeaders(true);
+  const endpoint = getSupabaseRestEndpoint("/rest/v1/rpc/delete_newsletter_article_block_atomic");
+
+  if (!headers || !endpoint) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "SUPABASE_SERVICE_ROLE_KEY와 Supabase URL 설정 후 콘텐츠 블록 삭제를 사용할 수 있습니다.",
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        p_project_id: projectId,
+        p_article_id: articleId,
+        p_block_id: blockId,
+      }),
+      cache: "no-store",
+    });
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      const errorPayload = JSON.parse(responseText || "null") as { code?: string } | null;
+
+      const migrationRequired = errorPayload?.code === "PGRST202";
+
+      return {
+        ok: false,
+        status: migrationRequired ? "migration_required" : "request_failed",
+        message:
+          migrationRequired
+            ? "콘텐츠 블록 삭제 transaction RPC를 찾지 못했습니다. schema v1.21 적용 상태를 확인하세요."
+            : "콘텐츠 블록 삭제 transaction을 완료하지 못했습니다.",
+        httpStatus: migrationRequired ? 503 : response.status,
+      };
+    }
+
+    const result = JSON.parse(responseText || "null") as DeleteProjectArticleBlockResult | null;
+
+    return (
+      result ?? {
+        ok: false,
+        status: "request_failed",
+        message: "콘텐츠 블록 삭제 transaction 응답을 확인하지 못했습니다.",
+      }
+    );
+  } catch {
+    return {
+      ok: false,
+      status: "request_failed",
+      message: "콘텐츠 블록 삭제 중 오류가 발생했습니다.",
     };
   }
 }

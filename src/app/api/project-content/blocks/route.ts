@@ -1,22 +1,8 @@
 import { NextResponse } from "next/server";
+import { deleteProjectArticleBlockAtomic } from "@/lib/newsletter-repository";
 import { requireProjectApiAccess } from "@/lib/project-api-access";
-import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
 
 export const dynamic = "force-dynamic";
-
-function getServiceHeaders() {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-
-  if (!key) {
-    return null;
-  }
-
-  return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    "Content-Type": "application/json",
-  };
-}
 
 function asText(value: string | null) {
   return value?.trim() ?? "";
@@ -27,7 +13,6 @@ export async function DELETE(request: Request) {
   const projectSlug = asText(searchParams.get("projectSlug"));
   const articleId = asText(searchParams.get("articleId"));
   const blockId = asText(searchParams.get("blockId"));
-  const headers = getServiceHeaders();
 
   if (!projectSlug || !articleId || !blockId) {
     return NextResponse.json({ ok: false, message: "삭제할 콘텐츠 블록 정보를 확인하세요." }, { status: 400 });
@@ -39,70 +24,23 @@ export async function DELETE(request: Request) {
     return access.response;
   }
 
-  if (!headers) {
-    return NextResponse.json(
-      { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 콘텐츠 블록 삭제를 사용할 수 있습니다." },
-      { status: 503 },
-    );
-  }
-
   const projectId = access.project.id;
 
   if (!projectId) {
     return NextResponse.json({ ok: false, message: "프로젝트를 찾지 못했습니다." }, { status: 404 });
   }
 
-  const encodedBlockId = encodeURIComponent(blockId);
-  const encodedArticleId = encodeURIComponent(articleId);
-  const encodedProjectId = encodeURIComponent(projectId);
-  const blockEndpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_content_blocks?id=eq.${encodedBlockId}&article_id=eq.${encodedArticleId}&project_id=eq.${encodedProjectId}&select=id,link_action_id`,
-  );
+  const result = await deleteProjectArticleBlockAtomic(projectId, articleId, blockId);
 
-  if (!blockEndpoint) {
-    return NextResponse.json({ ok: false, message: "Supabase URL 설정을 확인하세요." }, { status: 503 });
-  }
-
-  const blockResponse = await fetch(blockEndpoint, {
-    method: "DELETE",
-    headers: {
-      ...headers,
-      Prefer: "return=representation",
-    },
-    cache: "no-store",
-  });
-
-  if (!blockResponse.ok) {
-    return NextResponse.json({ ok: false, message: "콘텐츠 블록을 삭제하지 못했습니다." }, { status: 500 });
-  }
-
-  const deletedRows = (await blockResponse.json().catch(() => [])) as Array<{
-    id: string;
-    link_action_id: string | null;
-  }>;
-  const deletedBlock = deletedRows[0] ?? null;
-
-  if (!deletedBlock) {
-    return NextResponse.json({ ok: false, message: "삭제할 콘텐츠 블록을 찾지 못했습니다." }, { status: 404 });
-  }
-
-  if (deletedBlock.link_action_id) {
-    const linkEndpoint = getSupabaseRestEndpoint(
-      `/rest/v1/newsletter_link_actions?id=eq.${encodeURIComponent(
-        deletedBlock.link_action_id,
-      )}&article_id=eq.${encodedArticleId}&project_id=eq.${encodedProjectId}`,
-    );
-
-    if (linkEndpoint) {
-      await fetch(linkEndpoint, {
-        method: "DELETE",
-        headers: {
-          ...headers,
-          Prefer: "return=minimal",
-        },
-        cache: "no-store",
-      });
-    }
+  if (!result.ok) {
+    return NextResponse.json(result, {
+      status:
+        result.status === "not_configured" || result.status === "migration_required"
+          ? 503
+          : result.status === "not_found"
+            ? 404
+            : result.httpStatus ?? 500,
+    });
   }
 
   return NextResponse.json({ ok: true, message: "콘텐츠 블록을 삭제했습니다." });
