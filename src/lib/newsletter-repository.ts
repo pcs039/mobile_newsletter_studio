@@ -91,6 +91,7 @@ type FontAssetRow = {
 type ProjectDesignKitRow = {
   id: string;
   project_id: string;
+  source_mode: ProjectDesignSourceMode;
   logo_url: string | null;
   logo_alt: string | null;
   primary_color: string;
@@ -120,6 +121,10 @@ type ProjectDesignAssetRow = {
   variant: ProjectDesignAssetVariant;
   background_mode: ProjectDesignAssetBackgroundMode;
   storage_path: string | null;
+  storage_bucket: string | null;
+  original_file_name: string | null;
+  mime_type: string | null;
+  file_size_bytes: number | null;
   external_url: string | null;
   alt_text: string | null;
   usage_note: string | null;
@@ -571,7 +576,8 @@ export type ProjectBasicInfo = {
 export type ProjectDesignKitButtonStyle = "solid" | "outline" | "soft";
 export type ProjectDesignKitIconStyle = "outline" | "filled" | "illustration";
 export type ProjectDesignKitImageStyle = "photo" | "illustration" | "mixed";
-export type ProjectDesignAssetType = "logo";
+export type ProjectDesignSourceMode = "source_available" | "reference_only" | null;
+export type ProjectDesignAssetType = "logo" | "source_design" | "reference";
 export type ProjectDesignAssetLanguage = "ko" | "en" | "mixed" | "other";
 export type ProjectDesignAssetVariant = "primary" | "compact" | "inverse" | "symbol" | "other";
 export type ProjectDesignAssetBackgroundMode = "light" | "dark" | "any";
@@ -579,6 +585,7 @@ export type ProjectDesignAssetBackgroundMode = "light" | "dark" | "any";
 export type ProjectDesignKit = {
   id: string;
   projectId: string;
+  sourceMode: ProjectDesignSourceMode;
   logoUrl: string;
   logoAlt: string;
   primaryColor: string;
@@ -611,6 +618,10 @@ export type ProjectDesignAsset = {
   variant: ProjectDesignAssetVariant;
   backgroundMode: ProjectDesignAssetBackgroundMode;
   storagePath: string;
+  storageBucket: string;
+  originalFileName: string;
+  mimeType: string;
+  fileSizeBytes: number;
   externalUrl: string;
   previewHref: string;
   altText: string;
@@ -2189,6 +2200,7 @@ function mapProjectRowToBasicInfo(project: NewsletterProjectRow): ProjectBasicIn
 const designKitSelectColumns = [
   "id",
   "project_id",
+  "source_mode",
   "logo_url",
   "logo_alt",
   "primary_color",
@@ -2218,6 +2230,10 @@ const designAssetSelectColumns = [
   "variant",
   "background_mode",
   "storage_path",
+  "storage_bucket",
+  "original_file_name",
+  "mime_type",
+  "file_size_bytes",
   "external_url",
   "alt_text",
   "usage_note",
@@ -2238,6 +2254,14 @@ function normalizeDesignKitIconStyle(value: string | null | undefined): ProjectD
 
 function normalizeDesignKitImageStyle(value: string | null | undefined): ProjectDesignKitImageStyle {
   return value === "photo" || value === "illustration" ? value : "mixed";
+}
+
+function normalizeDesignSourceMode(value: string | null | undefined): ProjectDesignSourceMode {
+  return value === "source_available" || value === "reference_only" ? value : null;
+}
+
+function normalizeDesignAssetType(value: string | null | undefined): ProjectDesignAssetType {
+  return value === "source_design" || value === "reference" ? value : "logo";
 }
 
 function clampInteger(value: number | null | undefined, fallback: number, min: number, max: number) {
@@ -2266,6 +2290,7 @@ function makeDefaultProjectDesignKit(project: ProjectWorkspaceInfo): ProjectDesi
   return {
     id: "",
     projectId: project.id,
+    sourceMode: null,
     logoUrl: "",
     logoAlt: project.organization,
     primaryColor,
@@ -2292,6 +2317,7 @@ function mapProjectDesignKitRow(row: ProjectDesignKitRow): ProjectDesignKit {
   return {
     id: row.id,
     projectId: row.project_id,
+    sourceMode: normalizeDesignSourceMode(row.source_mode),
     logoUrl: row.logo_url || "",
     logoAlt: row.logo_alt || "",
     primaryColor: normalizeHexColor(row.primary_color, "#092046"),
@@ -2315,17 +2341,23 @@ function mapProjectDesignKitRow(row: ProjectDesignKitRow): ProjectDesignKit {
 }
 
 function mapProjectDesignAssetRow(row: ProjectDesignAssetRow): ProjectDesignAsset {
-  const storagePreviewHref = makeStoragePreviewHref("brand-assets", row.storage_path);
+  const assetType = normalizeDesignAssetType(row.asset_type);
+  const storageBucket = row.storage_bucket || "brand-assets";
+  const storagePreviewHref = makeStoragePreviewHref(storageBucket, row.storage_path);
 
   return {
     id: row.id,
     projectId: row.project_id,
-    assetType: "logo",
-    name: row.name || "공식 로고",
+    assetType,
+    name: row.name || (assetType === "logo" ? "공식 로고" : "디자인 자료"),
     language: normalizeDesignAssetLanguage(row.language),
     variant: normalizeDesignAssetVariant(row.variant),
     backgroundMode: normalizeDesignAssetBackgroundMode(row.background_mode),
     storagePath: row.storage_path || "",
+    storageBucket,
+    originalFileName: row.original_file_name || "",
+    mimeType: row.mime_type || "",
+    fileSizeBytes: typeof row.file_size_bytes === "number" ? row.file_size_bytes : 0,
     externalUrl: row.external_url || "",
     previewHref: storagePreviewHref || row.external_url || "",
     altText: row.alt_text || "",
@@ -5552,6 +5584,7 @@ export async function upsertProjectDesignKit(
       },
       body: JSON.stringify({
         project_id: project.id,
+        source_mode: input.sourceMode,
         logo_url: nullableText(input.logoUrl),
         logo_alt: nullableText(input.logoAlt),
         primary_color: input.primaryColor,
@@ -5635,14 +5668,14 @@ export async function getProjectDesignAssets(projectSlug: string): Promise<Proje
       assets: [],
       project: workspace.project,
       source: "unconfigured",
-      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 기관 로고 자산을 조회할 수 있습니다.",
+      message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 기관 디자인 자산을 조회할 수 있습니다.",
     };
   }
 
   const endpoint = getSupabaseRestEndpoint(
     `/rest/v1/newsletter_project_design_assets?select=${designAssetSelectColumns}&project_id=eq.${encodeURIComponent(
       workspace.project.id,
-    )}&asset_type=eq.logo&order=is_primary.desc&order=sort_order.asc&order=created_at.asc`,
+    )}&order=asset_type.asc&order=is_primary.desc&order=sort_order.asc&order=created_at.asc`,
   );
 
   if (!endpoint) {
@@ -5672,7 +5705,7 @@ export async function getProjectDesignAssets(projectSlug: string): Promise<Proje
         assets: [],
         project: workspace.project,
         source: "error",
-        message: "기관 로고 자산 테이블을 조회하지 못했습니다. Supabase migration v1.15 적용 여부와 서버 설정을 확인하세요.",
+        message: "기관 디자인 자산 테이블을 조회하지 못했습니다. Supabase migration v1.15와 v1.22 적용 여부를 확인하세요.",
         httpStatus: response.status,
       };
     }
@@ -5684,7 +5717,7 @@ export async function getProjectDesignAssets(projectSlug: string): Promise<Proje
       assets: rows.map(mapProjectDesignAssetRow),
       project: workspace.project,
       source: "supabase",
-      message: rows.length > 0 ? "기관 로고 자산을 표시합니다." : "등록된 기관 로고 자산이 아직 없습니다.",
+      message: rows.length > 0 ? "기관 디자인 자산을 표시합니다." : "등록된 기관 디자인 자산이 아직 없습니다.",
     };
   } catch (error) {
     console.error("Failed to fetch project design assets", error);
@@ -5694,7 +5727,7 @@ export async function getProjectDesignAssets(projectSlug: string): Promise<Proje
       assets: [],
       project: workspace.project,
       source: "error",
-      message: "기관 로고 자산 조회 중 오류가 발생했습니다. 서버 설정과 Supabase migration 상태를 확인하세요.",
+      message: "기관 디자인 자산 조회 중 오류가 발생했습니다. 서버 설정과 Supabase migration 상태를 확인하세요.",
     };
   }
 }

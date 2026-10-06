@@ -5,7 +5,31 @@ import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supab
 
 export const dynamic = "force-dynamic";
 
-const allowedBuckets = new Set(["pdf-originals", "page-images", "mobile-assets", "audio-files", "brand-assets"]);
+const allowedBuckets = new Set([
+  "pdf-originals",
+  "page-images",
+  "mobile-assets",
+  "audio-files",
+  "brand-assets",
+  "design-intake-assets",
+]);
+const allowedDesignIntakeMimeTypes = new Set([
+  "application/pdf",
+  "application/postscript",
+  "application/octet-stream",
+  "image/svg+xml",
+  "image/vnd.adobe.photoshop",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
+const inlineDesignIntakeMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+type ProjectFileReference = {
+  projectId: string;
+  originalFileName: string;
+  mimeType: string;
+};
 
 function encodeStoragePath(path: string) {
   return path.split("/").map(encodeURIComponent).join("/");
@@ -28,6 +52,31 @@ function isSafeStoragePath(path: string) {
   return path.length > 0 && !path.includes("..") && !path.startsWith("/") && !path.endsWith("/");
 }
 
+function sanitizeDownloadFileName(fileName: string) {
+  const withoutControlCharacters = Array.from(fileName)
+    .filter((character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+
+      return codePoint >= 32 && codePoint !== 127;
+    })
+    .join("");
+
+  return withoutControlCharacters.replace(/[\\/"]/g, "_").trim().slice(0, 180) || "design-asset";
+}
+
+function encodeContentDispositionFileName(fileName: string) {
+  return encodeURIComponent(fileName).replace(/[!'()*]/g, (character) =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+}
+
+function makeAttachmentContentDisposition(fileName: string) {
+  const safeFileName = sanitizeDownloadFileName(fileName);
+  const asciiFileName = safeFileName.replace(/[^\x20-\x7e]/g, "_");
+
+  return `attachment; filename="${asciiFileName}"; filename*=UTF-8''${encodeContentDispositionFileName(safeFileName)}`;
+}
+
 async function findProjectIdByFile(bucket: string, path: string, headers: Record<string, string>) {
   const encodedPath = encodeURIComponent(path);
   const candidates =
@@ -37,8 +86,16 @@ async function findProjectIdByFile(bucket: string, path: string, headers: Record
         ? [{ table: "newsletter_pages", pathColumn: "image_path", projectColumn: "project_id" }]
         : bucket === "audio-files"
           ? [{ table: "newsletter_audio_files", pathColumn: "file_path", projectColumn: "project_id" }]
-          : bucket === "brand-assets"
-            ? [{ table: "newsletter_project_design_assets", pathColumn: "storage_path", projectColumn: "project_id" }]
+          : bucket === "brand-assets" || bucket === "design-intake-assets"
+            ? [
+                {
+                  table: "newsletter_project_design_assets",
+                  pathColumn: "storage_path",
+                  projectColumn: "project_id",
+                  metadataColumns: ",original_file_name,mime_type",
+                  extraFilter: `&storage_bucket=eq.${encodeURIComponent(bucket)}`,
+                },
+              ]
             : [
                 { table: "newsletter_projects", pathColumn: "cover_image_path", projectColumn: "id" },
                 { table: "newsletter_assets", pathColumn: "file_path", projectColumn: "project_id" },
@@ -46,7 +103,7 @@ async function findProjectIdByFile(bucket: string, path: string, headers: Record
 
   for (const candidate of candidates) {
     const endpoint = getSupabaseRestEndpoint(
-      `/rest/v1/${candidate.table}?select=${candidate.projectColumn}&${candidate.pathColumn}=eq.${encodedPath}&limit=1`,
+      `/rest/v1/${candidate.table}?select=${candidate.projectColumn}${"metadataColumns" in candidate ? candidate.metadataColumns : ""}&${candidate.pathColumn}=eq.${encodedPath}${"extraFilter" in candidate ? candidate.extraFilter : ""}&limit=1`,
     );
 
     if (!endpoint) {
@@ -60,10 +117,15 @@ async function findProjectIdByFile(bucket: string, path: string, headers: Record
     }
 
     const rows = (await response.json().catch(() => [])) as Array<Record<string, unknown>>;
-    const projectId = rows[0]?.[candidate.projectColumn];
+    const row = rows[0];
+    const projectId = row?.[candidate.projectColumn];
 
     if (typeof projectId === "string" && projectId) {
-      return projectId;
+      return {
+        projectId,
+        originalFileName: typeof row.original_file_name === "string" ? row.original_file_name : "",
+        mimeType: typeof row.mime_type === "string" ? row.mime_type.trim().toLowerCase() : "",
+      } satisfies ProjectFileReference;
     }
   }
 
@@ -93,13 +155,13 @@ export async function GET(request: Request) {
     );
   }
 
-  const projectId = await findProjectIdByFile(bucket, path, headers);
+  const fileReference = await findProjectIdByFile(bucket, path, headers);
 
-  if (!projectId) {
+  if (!fileReference) {
     return NextResponse.json({ ok: false, message: "프로젝트에 연결된 파일을 찾지 못했습니다." }, { status: 404 });
   }
 
-  const access = await requireProjectApiAccess({ projectId });
+  const access = await requireProjectApiAccess({ projectId: fileReference.projectId });
 
   if (!access.ok) {
     return access.response;
@@ -123,12 +185,23 @@ export async function GET(request: Request) {
     );
   }
 
+  const responseMimeType = response.headers.get("Content-Type")?.split(";")[0]?.trim().toLowerCase() || "application/octet-stream";
+  const isDesignIntakeAsset = bucket === "design-intake-assets";
+  const contentType = isDesignIntakeAsset
+    ? allowedDesignIntakeMimeTypes.has(fileReference.mimeType)
+      ? fileReference.mimeType
+      : "application/octet-stream"
+    : responseMimeType;
+  const canRenderInline = !isDesignIntakeAsset || inlineDesignIntakeMimeTypes.has(contentType);
+  const originalFileName = fileReference.originalFileName || path.split("/").pop() || "design-asset";
+
   return new NextResponse(response.body, {
     status: 200,
     headers: {
-      "Cache-Control": "private, max-age=300",
-      "Content-Disposition": "inline",
-      "Content-Type": response.headers.get("Content-Type") ?? "application/octet-stream",
+      "Cache-Control": isDesignIntakeAsset ? "private, no-store" : "private, max-age=300",
+      "Content-Disposition": canRenderInline ? "inline" : makeAttachmentContentDisposition(originalFileName),
+      "Content-Type": contentType,
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

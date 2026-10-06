@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getProjectDesignAssets,
   getProjectDesignKit,
+  type ProjectDesignAssetType,
   type ProjectDesignAssetBackgroundMode,
   type ProjectDesignAssetLanguage,
   type ProjectDesignAssetVariant,
@@ -12,9 +13,24 @@ import { requireProjectApiAccess } from "@/lib/project-api-access";
 export const dynamic = "force-dynamic";
 
 const brandAssetsBucket = "brand-assets";
+const designIntakeAssetsBucket = "design-intake-assets";
 const maxLogoBytes = 5 * 1024 * 1024;
-const allowedMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
-const allowedExtensions = new Set(["png", "jpg", "jpeg", "webp"]);
+const maxIntakeAssetBytes = 50 * 1024 * 1024;
+const logoMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+const logoExtensions = new Set(["png", "jpg", "jpeg", "webp"]);
+const sourceDesignExtensions = new Set(["ai", "svg", "eps", "psd", "pdf"]);
+const referenceExtensions = new Set(["pdf", "png", "jpg", "jpeg", "webp"]);
+const intakeMimeTypes = new Set([
+  "application/pdf",
+  "application/postscript",
+  "application/octet-stream",
+  "image/svg+xml",
+  "image/vnd.adobe.photoshop",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
+const assetTypes = ["logo", "source_design", "reference"] as const;
 const languages = ["ko", "en", "mixed", "other"] as const;
 const variants = ["primary", "compact", "inverse", "symbol", "other"] as const;
 const backgroundModes = ["light", "dark", "any"] as const;
@@ -23,6 +39,8 @@ type ProjectAssetRow = {
   id: string;
   project_id: string;
   storage_path: string | null;
+  storage_bucket: string | null;
+  asset_type: ProjectDesignAssetType;
   is_primary: boolean;
   is_active: boolean;
 };
@@ -72,36 +90,49 @@ function getExtension(fileName: string) {
 function normalizeMimeType(file: File) {
   const extension = getExtension(file.name);
 
-  if (file.type) {
-    return file.type;
-  }
-
   if (extension === "png") return "image/png";
   if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
   if (extension === "webp") return "image/webp";
+  if (extension === "svg") return "image/svg+xml";
+  if (extension === "ai" || extension === "eps") return "application/postscript";
+  if (extension === "psd") return "image/vnd.adobe.photoshop";
+  if (extension === "pdf") return "application/pdf";
 
-  return "";
+  return file.type || "application/octet-stream";
 }
 
-function isAllowedLogoFile(file: File) {
+function isAllowedAssetFile(file: File, assetType: ProjectDesignAssetType) {
   const extension = getExtension(file.name);
   const mimeType = normalizeMimeType(file);
 
-  return file.size > 0 && file.size <= maxLogoBytes && allowedExtensions.has(extension) && allowedMimeTypes.has(mimeType);
+  if (assetType === "logo") {
+    return file.size > 0 && file.size <= maxLogoBytes && logoExtensions.has(extension) && logoMimeTypes.has(mimeType);
+  }
+
+  const allowedExtensions = assetType === "source_design" ? sourceDesignExtensions : referenceExtensions;
+
+  return file.size > 0 && file.size <= maxIntakeAssetBytes && allowedExtensions.has(extension) && intakeMimeTypes.has(mimeType);
 }
 
-function makeStoragePath(projectId: string, fileName: string) {
+function makeStoragePath(projectId: string, assetType: ProjectDesignAssetType, fileName: string) {
   const extension = getExtension(fileName) || "png";
   const token =
     typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  return `projects/${projectId}/design-assets/${token}.${extension}`;
+  const directory = assetType === "logo" ? "logos" : assetType === "source_design" ? "source-design" : "references";
+
+  return `projects/${projectId}/${directory}/${token}.${extension}`;
 }
 
-async function ensureBrandAssetsBucket(headers: Record<string, string>) {
-  const bucketEndpoint = getSupabaseStorageEndpoint(`/bucket/${encodeURIComponent(brandAssetsBucket)}`);
+function getAssetBucket(assetType: ProjectDesignAssetType) {
+  return assetType === "logo" ? brandAssetsBucket : designIntakeAssetsBucket;
+}
+
+async function ensureAssetBucket(assetType: ProjectDesignAssetType, headers: Record<string, string>) {
+  const bucket = getAssetBucket(assetType);
+  const bucketEndpoint = getSupabaseStorageEndpoint(`/bucket/${encodeURIComponent(bucket)}`);
 
   if (!bucketEndpoint) {
     return false;
@@ -130,11 +161,11 @@ async function ensureBrandAssetsBucket(headers: Record<string, string>) {
     method: "POST",
     headers,
     body: JSON.stringify({
-      id: brandAssetsBucket,
-      name: brandAssetsBucket,
-      public: true,
-      file_size_limit: maxLogoBytes,
-      allowed_mime_types: Array.from(allowedMimeTypes),
+      id: bucket,
+      name: bucket,
+      public: assetType === "logo",
+      file_size_limit: assetType === "logo" ? maxLogoBytes : maxIntakeAssetBytes,
+      allowed_mime_types: Array.from(assetType === "logo" ? logoMimeTypes : intakeMimeTypes),
     }),
     cache: "no-store",
   });
@@ -222,11 +253,11 @@ async function promoteFirstActiveLogo(projectId: string, headers: Record<string,
   return patchResponse.ok;
 }
 
-async function findLogoAsset(projectId: string, assetId: string, headers: Record<string, string>) {
+async function findDesignAsset(projectId: string, assetId: string, headers: Record<string, string>) {
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_project_design_assets?select=id,project_id,storage_path,is_primary,is_active&id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_project_design_assets?select=id,project_id,asset_type,storage_bucket,storage_path,is_primary,is_active&id=eq.${encodeURIComponent(
       assetId,
-    )}&project_id=eq.${encodeURIComponent(projectId)}&asset_type=eq.logo&limit=1`,
+    )}&project_id=eq.${encodeURIComponent(projectId)}&limit=1`,
   );
 
   if (!endpoint) {
@@ -247,12 +278,16 @@ async function findLogoAsset(projectId: string, assetId: string, headers: Record
   return rows[0] ?? null;
 }
 
-async function deleteStorageObject(path: string, headers: Record<string, string>) {
+async function deleteStorageObject(bucket: string, path: string, headers: Record<string, string>) {
   if (!isSafeStoragePath(path)) {
     return true;
   }
 
-  const endpoint = getSupabaseStorageEndpoint(`/object/${encodeURIComponent(brandAssetsBucket)}`);
+  if (bucket !== brandAssetsBucket && bucket !== designIntakeAssetsBucket) {
+    return false;
+  }
+
+  const endpoint = getSupabaseStorageEndpoint(`/object/${encodeURIComponent(bucket)}`);
 
   if (!endpoint) {
     return false;
@@ -314,14 +349,20 @@ export async function POST(request: Request) {
   const formData = await request.formData().catch(() => null);
 
   if (!formData) {
-    return NextResponse.json({ ok: false, message: "로고 업로드 요청 데이터를 확인하지 못했습니다." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "디자인 자산 업로드 요청 데이터를 확인하지 못했습니다." }, { status: 400 });
   }
 
   const projectSlug = asText(formData.get("projectSlug")) || asText(formData.get("projectId"));
   const file = formData.get("file");
+  const requestedAssetType = formData.get("assetType");
+  const assetType = requestedAssetType === null ? "logo" : isOneOf(requestedAssetType, assetTypes) ? requestedAssetType : null;
 
   if (!projectSlug || !(file instanceof File)) {
-    return NextResponse.json({ ok: false, message: "프로젝트와 로고 파일을 모두 확인해야 합니다." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "프로젝트와 디자인 파일을 모두 확인해야 합니다." }, { status: 400 });
+  }
+
+  if (!assetType) {
+    return NextResponse.json({ ok: false, message: "디자인 자산 유형 값이 올바르지 않습니다." }, { status: 400 });
   }
 
   const access = await requireProjectApiAccess({ projectSlug });
@@ -330,8 +371,15 @@ export async function POST(request: Request) {
     return access.response;
   }
 
-  if (!isAllowedLogoFile(file)) {
-    return NextResponse.json({ ok: false, message: "PNG, JPG, WebP 로고 파일만 5MB까지 업로드할 수 있습니다." }, { status: 400 });
+  if (!isAllowedAssetFile(file, assetType)) {
+    const message =
+      assetType === "logo"
+        ? "PNG, JPG, WebP 로고 파일만 5MB까지 업로드할 수 있습니다."
+        : assetType === "source_design"
+          ? "AI, SVG, EPS, PSD, PDF 원본 파일만 50MB까지 업로드할 수 있습니다."
+          : "PDF, PNG, JPG, WebP 참고자료만 50MB까지 업로드할 수 있습니다.";
+
+    return NextResponse.json({ ok: false, message }, { status: 400 });
   }
 
   const context = await getProjectContext(projectSlug);
@@ -347,14 +395,17 @@ export async function POST(request: Request) {
   }
 
   const assets = await getProjectDesignAssets(projectSlug);
-  const hasPrimaryLogo = assets.ok ? assets.assets.some((asset) => asset.isPrimary && asset.isActive) : false;
-  const isPrimary = asText(formData.get("isPrimary")) === "true" || !hasPrimaryLogo;
-  const name = asText(formData.get("name")) || file.name.replace(/\.[^.]+$/, "") || "공식 로고";
-  const storagePath = makeStoragePath(context.project.id, file.name);
-  const storageEndpoint = getSupabaseStorageEndpoint(`/object/${brandAssetsBucket}/${encodeStoragePath(storagePath)}`);
+  const hasPrimaryLogo = assets.ok
+    ? assets.assets.some((asset) => asset.assetType === "logo" && asset.isPrimary && asset.isActive)
+    : false;
+  const isPrimary = assetType === "logo" && (asText(formData.get("isPrimary")) === "true" || !hasPrimaryLogo);
+  const name = asText(formData.get("name")) || file.name.replace(/\.[^.]+$/, "") || "디자인 자료";
+  const storageBucket = getAssetBucket(assetType);
+  const storagePath = makeStoragePath(context.project.id, assetType, file.name);
+  const storageEndpoint = getSupabaseStorageEndpoint(`/object/${storageBucket}/${encodeStoragePath(storagePath)}`);
   const storageHeaders = getServiceHeaders(normalizeMimeType(file));
 
-  if (!storageEndpoint || !storageHeaders || !(await ensureBrandAssetsBucket(headers))) {
+  if (!storageEndpoint || !storageHeaders || !(await ensureAssetBucket(assetType, headers))) {
     return NextResponse.json({ ok: false, message: "Supabase Storage 버킷을 준비하지 못했습니다." }, { status: 503 });
   }
 
@@ -369,16 +420,16 @@ export async function POST(request: Request) {
   });
 
   if (!uploadResponse.ok) {
-    console.error("Failed to upload design logo", {
+    console.error("Failed to upload design asset", {
       status: uploadResponse.status,
       body: await uploadResponse.text().catch(() => ""),
     });
 
-    return NextResponse.json({ ok: false, message: "로고 파일을 Storage에 업로드하지 못했습니다." }, { status: uploadResponse.status || 500 });
+    return NextResponse.json({ ok: false, message: "디자인 파일을 Storage에 업로드하지 못했습니다." }, { status: uploadResponse.status || 500 });
   }
 
   if (isPrimary && !(await unsetCurrentPrimaryLogo(context.project.id, headers))) {
-    await deleteStorageObject(storagePath, headers);
+    await deleteStorageObject(storageBucket, storagePath, headers);
 
     return NextResponse.json({ ok: false, message: "기존 대표 로고 상태를 정리하지 못했습니다." }, { status: 500 });
   }
@@ -386,6 +437,12 @@ export async function POST(request: Request) {
   const insertEndpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_project_design_assets?select=*");
 
   if (!insertEndpoint) {
+    const cleanedUp = await deleteStorageObject(storageBucket, storagePath, headers);
+
+    if (!cleanedUp) {
+      console.warn("Failed to clean up uploaded design asset after REST endpoint failure", { storageBucket, storagePath });
+    }
+
     return NextResponse.json({ ok: false, message: "Supabase REST 주소를 만들지 못했습니다." }, { status: 503 });
   }
 
@@ -397,13 +454,18 @@ export async function POST(request: Request) {
     },
     body: JSON.stringify({
       project_id: context.project.id,
-      asset_type: "logo",
+      asset_type: assetType,
       name,
       language: readLanguage(formData.get("language")),
       variant: readVariant(formData.get("variant")),
       background_mode: readBackgroundMode(formData.get("backgroundMode")),
       storage_path: storagePath,
-      alt_text: asText(formData.get("altText")) || `${context.project.organization} 로고`,
+      storage_bucket: storageBucket,
+      original_file_name: file.name,
+      mime_type: normalizeMimeType(file),
+      file_size_bytes: file.size,
+      alt_text:
+        asText(formData.get("altText")) || (assetType === "logo" ? `${context.project.organization} 로고` : null),
       usage_note: asText(formData.get("usageNote")) || null,
       is_primary: isPrimary,
       is_active: true,
@@ -413,16 +475,21 @@ export async function POST(request: Request) {
   });
 
   if (!insertResponse.ok) {
-    console.error("Failed to insert design logo", {
+    console.error("Failed to insert design asset", {
       status: insertResponse.status,
       body: await insertResponse.text().catch(() => ""),
     });
-    await deleteStorageObject(storagePath, headers);
+    const cleanedUp = await deleteStorageObject(storageBucket, storagePath, headers);
+
+    if (!cleanedUp) {
+      console.warn("Failed to clean up uploaded design asset after database insert failure", { storageBucket, storagePath });
+    }
+
     if (isPrimary) {
       await promoteFirstActiveLogo(context.project.id, headers);
     }
 
-    return NextResponse.json({ ok: false, message: "로고 파일은 업로드됐지만 자산 기록을 저장하지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ ok: false, message: "디자인 파일은 업로드됐지만 자산 기록을 저장하지 못했습니다." }, { status: 500 });
   }
 
   const updated = await getProjectDesignAssets(projectSlug);
@@ -431,7 +498,14 @@ export async function POST(request: Request) {
     {
       ok: true,
       assets: updated.ok ? updated.assets : [],
-      message: isPrimary ? "대표 로고를 등록했습니다." : "로고 자산을 등록했습니다.",
+      message:
+        assetType === "logo"
+          ? isPrimary
+            ? "대표 로고를 등록했습니다."
+            : "로고 자산을 등록했습니다."
+          : assetType === "source_design"
+            ? "디자인 원본을 등록했습니다."
+            : "참고 자료를 등록했습니다.",
     },
     { status: 201 },
   );
@@ -441,14 +515,14 @@ export async function PATCH(request: Request) {
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
 
   if (!payload) {
-    return NextResponse.json({ ok: false, message: "로고 수정 요청 데이터를 확인하지 못했습니다." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "디자인 자산 수정 요청 데이터를 확인하지 못했습니다." }, { status: 400 });
   }
 
   const projectSlug = asText(payload.projectSlug) || asText(payload.projectId);
   const assetId = asText(payload.assetId);
 
   if (!projectSlug || !assetId) {
-    return NextResponse.json({ ok: false, message: "프로젝트와 로고 자산을 확인해야 합니다." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "프로젝트와 디자인 자산을 확인해야 합니다." }, { status: 400 });
   }
 
   const access = await requireProjectApiAccess({ projectSlug });
@@ -466,16 +540,16 @@ export async function PATCH(request: Request) {
   const headers = getServiceHeaders();
 
   if (!headers) {
-    return NextResponse.json({ ok: false, message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 로고를 수정할 수 있습니다." }, { status: 503 });
+    return NextResponse.json({ ok: false, message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 디자인 자산을 수정할 수 있습니다." }, { status: 503 });
   }
 
-  const currentAsset = await findLogoAsset(context.project.id, assetId, headers);
+  const currentAsset = await findDesignAsset(context.project.id, assetId, headers);
 
   if (!currentAsset) {
-    return NextResponse.json({ ok: false, message: "수정할 로고 자산을 찾지 못했습니다." }, { status: 404 });
+    return NextResponse.json({ ok: false, message: "수정할 디자인 자산을 찾지 못했습니다." }, { status: 404 });
   }
 
-  const shouldSetPrimary = payload.isPrimary === true;
+  const shouldSetPrimary = currentAsset.asset_type === "logo" && payload.isPrimary === true;
 
   if (shouldSetPrimary && !(await unsetCurrentPrimaryLogo(context.project.id, headers))) {
     return NextResponse.json({ ok: false, message: "기존 대표 로고 상태를 정리하지 못했습니다." }, { status: 500 });
@@ -484,10 +558,10 @@ export async function PATCH(request: Request) {
   const patchBody: Record<string, unknown> = {};
 
   if ("name" in payload) patchBody.name = asText(payload.name) || "공식 로고";
-  if ("language" in payload) patchBody.language = readLanguage(payload.language);
-  if ("variant" in payload) patchBody.variant = readVariant(payload.variant);
-  if ("backgroundMode" in payload) patchBody.background_mode = readBackgroundMode(payload.backgroundMode);
-  if ("altText" in payload) patchBody.alt_text = asText(payload.altText) || null;
+  if (currentAsset.asset_type === "logo" && "language" in payload) patchBody.language = readLanguage(payload.language);
+  if (currentAsset.asset_type === "logo" && "variant" in payload) patchBody.variant = readVariant(payload.variant);
+  if (currentAsset.asset_type === "logo" && "backgroundMode" in payload) patchBody.background_mode = readBackgroundMode(payload.backgroundMode);
+  if (currentAsset.asset_type === "logo" && "altText" in payload) patchBody.alt_text = asText(payload.altText) || null;
   if ("usageNote" in payload) patchBody.usage_note = asText(payload.usageNote) || null;
   if ("isActive" in payload) patchBody.is_active = payload.isActive !== false;
   if (shouldSetPrimary) {
@@ -519,12 +593,12 @@ export async function PATCH(request: Request) {
   });
 
   if (!response.ok) {
-    console.error("Failed to update design logo", {
+    console.error("Failed to update design asset", {
       status: response.status,
       body: await response.text().catch(() => ""),
     });
 
-    return NextResponse.json({ ok: false, message: "로고 자산 수정에 실패했습니다." }, { status: response.status || 500 });
+    return NextResponse.json({ ok: false, message: "디자인 자산 수정에 실패했습니다." }, { status: response.status || 500 });
   }
 
   if (currentAsset.is_primary && patchBody.is_active === false) {
@@ -536,7 +610,7 @@ export async function PATCH(request: Request) {
   return NextResponse.json({
     ok: true,
     assets: updated.ok ? updated.assets : [],
-    message: shouldSetPrimary ? "대표 로고를 변경했습니다." : "로고 자산을 수정했습니다.",
+    message: shouldSetPrimary ? "대표 로고를 변경했습니다." : "디자인 자산을 수정했습니다.",
   });
 }
 
@@ -546,7 +620,7 @@ export async function DELETE(request: Request) {
   const assetId = searchParams.get("assetId")?.trim() ?? "";
 
   if (!projectSlug || !assetId) {
-    return NextResponse.json({ ok: false, message: "삭제할 프로젝트와 로고 자산을 확인해야 합니다." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "삭제할 프로젝트와 디자인 자산을 확인해야 합니다." }, { status: 400 });
   }
 
   const access = await requireProjectApiAccess({ projectSlug });
@@ -564,17 +638,20 @@ export async function DELETE(request: Request) {
   const headers = getServiceHeaders();
 
   if (!headers) {
-    return NextResponse.json({ ok: false, message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 로고를 삭제할 수 있습니다." }, { status: 503 });
+    return NextResponse.json({ ok: false, message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 디자인 자산을 삭제할 수 있습니다." }, { status: 503 });
   }
 
-  const currentAsset = await findLogoAsset(context.project.id, assetId, headers);
+  const currentAsset = await findDesignAsset(context.project.id, assetId, headers);
 
   if (!currentAsset) {
-    return NextResponse.json({ ok: false, message: "삭제할 로고 자산을 찾지 못했습니다." }, { status: 404 });
+    return NextResponse.json({ ok: false, message: "삭제할 디자인 자산을 찾지 못했습니다." }, { status: 404 });
   }
 
-  if (currentAsset.storage_path && !(await deleteStorageObject(currentAsset.storage_path, headers))) {
-    return NextResponse.json({ ok: false, message: "Storage 원본 로고 파일을 삭제하지 못했습니다." }, { status: 500 });
+  const storageBucket = currentAsset.storage_bucket || brandAssetsBucket;
+  const isLogoAsset = currentAsset.asset_type === "logo";
+
+  if (isLogoAsset && currentAsset.storage_path && !(await deleteStorageObject(storageBucket, currentAsset.storage_path, headers))) {
+    return NextResponse.json({ ok: false, message: "Storage 원본 디자인 파일을 삭제하지 못했습니다." }, { status: 500 });
   }
 
   const endpoint = getSupabaseRestEndpoint(
@@ -597,15 +674,29 @@ export async function DELETE(request: Request) {
   });
 
   if (!response.ok) {
-    console.error("Failed to delete design logo", {
+    console.error("Failed to delete design asset", {
       status: response.status,
       body: await response.text().catch(() => ""),
     });
 
-    return NextResponse.json({ ok: false, message: "로고 자산 삭제에 실패했습니다." }, { status: response.status || 500 });
+    return NextResponse.json({ ok: false, message: "디자인 자산 삭제에 실패했습니다." }, { status: response.status || 500 });
   }
 
-  if (currentAsset.is_primary) {
+  let storageCleanupFailed = false;
+
+  if (!isLogoAsset && currentAsset.storage_path) {
+    storageCleanupFailed = !(await deleteStorageObject(storageBucket, currentAsset.storage_path, headers));
+
+    if (storageCleanupFailed) {
+      console.warn("Failed to clean up deleted design intake asset from Storage", {
+        assetId: currentAsset.id,
+        storageBucket,
+        storagePath: currentAsset.storage_path,
+      });
+    }
+  }
+
+  if (isLogoAsset && currentAsset.is_primary) {
     await promoteFirstActiveLogo(context.project.id, headers);
   }
 
@@ -614,6 +705,9 @@ export async function DELETE(request: Request) {
   return NextResponse.json({
     ok: true,
     assets: updated.ok ? updated.assets : [],
-    message: "로고 자산을 삭제했습니다.",
+    warning: storageCleanupFailed ? "storage_cleanup_failed" : undefined,
+    message: storageCleanupFailed
+      ? "디자인 자료 기록은 삭제했지만 Storage 원본 정리에 실패했습니다. 관리자에게 원본 정리를 요청하세요."
+      : "디자인 자산을 삭제했습니다.",
   });
 }
