@@ -209,7 +209,12 @@ export function ProjectDesignIntakeSection({
     const params = new URLSearchParams({ projectSlug: projectId, assetId: asset.id });
     const response = await fetch(`/api/project-design-kit/assets?${params.toString()}`, { method: "DELETE" }).catch(() => null);
     const result = response
-      ? ((await response.json().catch(() => null)) as { ok?: boolean; assets?: ProjectDesignAsset[]; message?: string } | null)
+      ? ((await response.json().catch(() => null)) as {
+          ok?: boolean;
+          assets?: ProjectDesignAsset[];
+          message?: string;
+          warning?: string;
+        } | null)
       : null;
 
     if (!response?.ok || !result?.ok) {
@@ -218,7 +223,13 @@ export function ProjectDesignIntakeSection({
     }
 
     setDesignAssets((result.assets ?? []).filter((item) => item.assetType !== "logo"));
-    setAssetState({ status: "success", message: "디자인 자료를 삭제했습니다." });
+    setAssetState({
+      status: "success",
+      message:
+        result.warning === "storage_cleanup_failed"
+          ? result.message ?? "디자인 자료 기록은 삭제했지만 Storage 원본 정리에 실패했습니다. 관리자에게 원본 정리를 요청하세요."
+          : result.message ?? "디자인 자료를 삭제했습니다.",
+    });
     router.refresh();
   }
 
