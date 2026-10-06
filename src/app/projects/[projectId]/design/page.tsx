@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { ProjectDesignIntakeSection } from "@/components/project-design-intake-section";
 import { ProjectDesignKitForm } from "@/components/project-design-kit-form";
 import { getFontAssets, getProjectDesignAssets, getProjectDesignKit } from "@/lib/newsletter-repository";
 
@@ -16,7 +17,7 @@ export default async function ProjectDesignKitPage({ params }: { params: Promise
       active="design"
       projectId={projectId}
       title="기관 Design Kit"
-      description="기관의 로고, CI 색상, 글꼴, 카드·버튼·이미지 스타일을 한 번 등록해 이후 기사와 템플릿에 공통 적용하는 제작 기준입니다."
+      description="기관 디자인 원본과 참고자료를 접수하고 로고, CI 색상, 글꼴, 카드·버튼·이미지 스타일을 공통 제작 기준으로 관리합니다."
       sidebarTitle={
         <>
           기관 디자인
@@ -35,13 +36,20 @@ export default async function ProjectDesignKitPage({ params }: { params: Promise
       }
     >
       {designKitData.ok ? (
-        <ProjectDesignKitForm
-          assets={designAssetsData.ok ? designAssetsData.assets : []}
-          assetsMessage={designAssetsData.ok ? designAssetsData.message : designAssetsData.message}
-          designKit={designKitData.designKit}
-          fonts={fontData.fonts}
-          projectId={projectId}
-        />
+        <>
+          <ProjectDesignIntakeSection
+            assets={designAssetsData.ok ? designAssetsData.assets : []}
+            initialSourceMode={designKitData.designKit.sourceMode}
+            projectId={projectId}
+          />
+          <ProjectDesignKitForm
+            assets={designAssetsData.ok ? designAssetsData.assets.filter((asset) => asset.assetType === "logo") : []}
+            assetsMessage={designAssetsData.message}
+            designKit={designKitData.designKit}
+            fonts={fontData.fonts}
+            projectId={projectId}
+          />
+        </>
       ) : (
         <article className="rounded-lg border border-rose-200 bg-rose-50 p-5 text-rose-800">
           <h3 className="text-lg font-black">Design Kit을 열지 못했습니다.</h3>

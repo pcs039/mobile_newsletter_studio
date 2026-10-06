@@ -323,7 +323,7 @@ export function ProjectDesignKitForm({
       return;
     }
 
-    setLogoAssets(result.assets ?? []);
+    setLogoAssets((result.assets ?? []).filter((asset) => asset.assetType === "logo"));
     setLogoDraft(makeEmptyLogoUploadDraft());
     setShowLogoForm(false);
     if (fileInputRef.current) {
@@ -360,7 +360,7 @@ export function ProjectDesignKitForm({
       return;
     }
 
-    setLogoAssets(result.assets ?? []);
+    setLogoAssets((result.assets ?? []).filter((asset) => asset.assetType === "logo"));
     setLogoState({ status: "success", message: result.message ?? "로고 정보를 저장했습니다." });
     setLogoFailed(false);
     router.refresh();
@@ -391,7 +391,7 @@ export function ProjectDesignKitForm({
       return;
     }
 
-    setLogoAssets(result.assets ?? []);
+    setLogoAssets((result.assets ?? []).filter((asset) => asset.assetType === "logo"));
     setLogoState({ status: "success", message: result.message ?? "로고 자산을 삭제했습니다." });
     router.refresh();
   }

@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 const buttonStyles = ["solid", "outline", "soft"] as const;
 const iconStyles = ["outline", "filled", "illustration"] as const;
 const imageStyles = ["photo", "illustration", "mixed"] as const;
+const sourceModes = ["source_available", "reference_only"] as const;
 
 function asText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -129,9 +130,22 @@ function readDesignKitInput(payload: Record<string, unknown>, current: ProjectDe
   const imageStyle = readEnumValue(payload, "imageStyle", "이미지 스타일", imageStyles, current.imageStyle);
   if (isInputError(imageStyle)) return imageStyle;
 
+  const sourceMode = hasOwn(payload, "sourceMode")
+    ? payload.sourceMode === null || payload.sourceMode === ""
+      ? null
+      : isOneOf(payload.sourceMode, sourceModes)
+        ? payload.sourceMode
+        : undefined
+    : current.sourceMode;
+
+  if (sourceMode === undefined) {
+    return { ok: false, message: "디자인 자료 준비 방식 값이 올바르지 않습니다." };
+  }
+
   return {
     ok: true,
     input: {
+      sourceMode,
       logoUrl: readOptionalText(payload, "logoUrl", current.logoUrl),
       logoAlt: readOptionalText(payload, "logoAlt", current.logoAlt),
       primaryColor,
