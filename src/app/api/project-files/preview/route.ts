@@ -12,6 +12,7 @@ const allowedBuckets = new Set([
   "audio-files",
   "brand-assets",
   "design-intake-assets",
+  "design-production-assets",
 ]);
 const allowedDesignIntakeMimeTypes = new Set([
   "application/pdf",
@@ -24,6 +25,7 @@ const allowedDesignIntakeMimeTypes = new Set([
   "image/webp",
 ]);
 const inlineDesignIntakeMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+const allowedDesignProductionMimeTypes = new Set(["image/svg+xml", "image/png", "image/jpeg", "image/webp"]);
 
 type ProjectFileReference = {
   projectId: string;
@@ -86,7 +88,7 @@ async function findProjectIdByFile(bucket: string, path: string, headers: Record
         ? [{ table: "newsletter_pages", pathColumn: "image_path", projectColumn: "project_id" }]
         : bucket === "audio-files"
           ? [{ table: "newsletter_audio_files", pathColumn: "file_path", projectColumn: "project_id" }]
-          : bucket === "brand-assets" || bucket === "design-intake-assets"
+          : bucket === "brand-assets" || bucket === "design-intake-assets" || bucket === "design-production-assets"
             ? [
                 {
                   table: "newsletter_project_design_assets",
@@ -186,19 +188,20 @@ export async function GET(request: Request) {
   }
 
   const responseMimeType = response.headers.get("Content-Type")?.split(";")[0]?.trim().toLowerCase() || "application/octet-stream";
-  const isDesignIntakeAsset = bucket === "design-intake-assets";
-  const contentType = isDesignIntakeAsset
-    ? allowedDesignIntakeMimeTypes.has(fileReference.mimeType)
+  const isPrivateDesignAsset = bucket === "design-intake-assets" || bucket === "design-production-assets";
+  const allowedPrivateMimeTypes = bucket === "design-production-assets" ? allowedDesignProductionMimeTypes : allowedDesignIntakeMimeTypes;
+  const contentType = isPrivateDesignAsset
+    ? allowedPrivateMimeTypes.has(fileReference.mimeType)
       ? fileReference.mimeType
       : "application/octet-stream"
     : responseMimeType;
-  const canRenderInline = !isDesignIntakeAsset || inlineDesignIntakeMimeTypes.has(contentType);
+  const canRenderInline = !isPrivateDesignAsset || inlineDesignIntakeMimeTypes.has(contentType);
   const originalFileName = fileReference.originalFileName || path.split("/").pop() || "design-asset";
 
   return new NextResponse(response.body, {
     status: 200,
     headers: {
-      "Cache-Control": isDesignIntakeAsset ? "private, no-store" : "private, max-age=300",
+      "Cache-Control": isPrivateDesignAsset ? "private, no-store" : "private, max-age=300",
       "Content-Disposition": canRenderInline ? "inline" : makeAttachmentContentDisposition(originalFileName),
       "Content-Type": contentType,
       "X-Content-Type-Options": "nosniff",
