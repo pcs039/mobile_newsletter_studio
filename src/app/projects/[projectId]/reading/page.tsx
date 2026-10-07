@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { AdminMobilePreviewFrame } from "@/components/admin-mobile-preview-frame";
+import { ArticleCompositionEditor } from "@/components/design/article-composition-editor";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectArticleEditorForm } from "@/components/project-article-editor-form";
 import { StatusPill } from "@/components/status-pill";
 import { isRollingArticleExpired } from "@/lib/article-publication";
+import { getProjectArticleComposition } from "@/lib/article-composition-repository";
 import {
   getProjectAssetFiles,
   getProjectContent,
+  getProjectDesignAssets,
   getProjectOriginalPdf,
   getProjectPageImages,
   getProjectSurveys,
@@ -58,19 +61,23 @@ export default async function ReadingEditorPage({
 }) {
   const { projectId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const [workspace, originalPdfData, pageImageData, assetData, contentData, surveyData] = await Promise.all([
+  const [workspace, originalPdfData, pageImageData, assetData, contentData, surveyData, designAssetData] = await Promise.all([
     getProjectWorkspace(projectId),
     getProjectOriginalPdf(projectId),
     getProjectPageImages(projectId),
     getProjectAssetFiles(projectId),
     getProjectContent(projectId),
     getProjectSurveys(projectId),
+    getProjectDesignAssets(projectId),
   ]);
   const project = workspace.project;
   const articles = contentData.articles;
   const requestedArticleId = resolvedSearchParams.articleId;
   const selectedArticle = requestedArticleId
     ? articles.find((article) => article.id === requestedArticleId) ?? null
+    : null;
+  const compositionData = selectedArticle && project
+    ? await getProjectArticleComposition(project.id, selectedArticle.id)
     : null;
   const mobilePreviewHref = selectedArticle
     ? `/newsletters/${projectId}?preview=admin&articleId=${selectedArticle.id}`
@@ -131,8 +138,8 @@ export default async function ReadingEditorPage({
         </div>
       }
     >
-      <div className="grid gap-5 2xl:grid-cols-[300px_minmax(0,1fr)_minmax(400px,460px)]">
-        <aside className="space-y-5">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 2xl:grid-cols-[300px_minmax(0,1fr)_minmax(400px,460px)]">
+        <aside className="min-w-0 space-y-5">
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
@@ -220,7 +227,7 @@ export default async function ReadingEditorPage({
           </article>
         </aside>
 
-        <section className="space-y-5">
+        <section className="min-w-0 space-y-5">
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -259,6 +266,21 @@ export default async function ReadingEditorPage({
             projectSlug={projectId}
           />
 
+          {selectedArticle && compositionData ? (
+            <ArticleCompositionEditor
+              article={{
+                body: selectedArticle.body,
+                id: selectedArticle.id,
+                summary: selectedArticle.summary,
+                title: selectedArticle.title,
+              }}
+              assets={designAssetData.ok ? designAssetData.assets : []}
+              initialComposition={compositionData.data}
+              initialStatus={compositionData.status}
+              projectSlug={projectId}
+            />
+          ) : null}
+
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -290,7 +312,7 @@ export default async function ReadingEditorPage({
           </article>
         </section>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <div className="xl:sticky xl:top-6">
             <AdminMobilePreviewFrame previewHref={mobilePreviewHref} />
           </div>
