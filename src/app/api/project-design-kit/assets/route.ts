@@ -525,7 +525,16 @@ export async function POST(request: Request) {
       console.warn("Failed to clean up uploaded design asset after REST endpoint failure", { storageBucket, storagePath });
     }
 
-    return NextResponse.json({ ok: false, message: "Supabase REST 주소를 만들지 못했습니다." }, { status: 503 });
+    return NextResponse.json(
+      {
+        ok: false,
+        warning: cleanedUp ? undefined : "storage_cleanup_failed",
+        message: cleanedUp
+          ? "Supabase REST 주소를 만들지 못했습니다."
+          : "Supabase REST 주소를 만들지 못했고 Storage 원본 정리에도 실패했습니다. 관리자에게 원본 정리를 요청하세요.",
+      },
+      { status: 503 },
+    );
   }
 
   const insertResponse = await fetch(insertEndpoint, {
@@ -574,7 +583,16 @@ export async function POST(request: Request) {
       await promoteFirstActiveLogo(context.project.id, headers);
     }
 
-    return NextResponse.json({ ok: false, message: "디자인 파일은 업로드됐지만 자산 기록을 저장하지 못했습니다." }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        warning: cleanedUp ? undefined : "storage_cleanup_failed",
+        message: cleanedUp
+          ? "디자인 파일은 업로드됐지만 자산 기록을 저장하지 못했습니다."
+          : "자산 기록을 저장하지 못했고 Storage 원본 정리에도 실패했습니다. 관리자에게 원본 정리를 요청하세요.",
+      },
+      { status: 500 },
+    );
   }
 
   const updated = await getProjectDesignAssets(projectSlug);
