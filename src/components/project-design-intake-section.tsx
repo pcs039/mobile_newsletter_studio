@@ -625,14 +625,17 @@ function IntakeAssetCard({
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-400">등록 {asset.created || "날짜 정보 없음"}</p>
           {asset.assetType === "source_design" ? (
-            <button
-              type="button"
-              onClick={() => onShowDerived?.(asset.id)}
-              disabled={!onShowDerived}
-              className="mt-2 text-xs font-black text-[#184a88] underline decoration-[#80b5ed] underline-offset-4 disabled:no-underline"
-            >
-              파생 자산 {derivedCount.toLocaleString("ko-KR")}개
-            </button>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <button
+                type="button"
+                onClick={() => onShowDerived?.(asset.id)}
+                disabled={!onShowDerived}
+                className="text-xs font-black text-[#184a88] underline decoration-[#80b5ed] underline-offset-4 disabled:no-underline"
+              >
+                파생 자산 {derivedCount.toLocaleString("ko-KR")}개
+              </button>
+              <span className="text-xs font-bold text-slate-400">외부 디자인 도구 연동 준비 중</span>
+            </div>
           ) : null}
         </div>
       </div>
@@ -648,6 +651,16 @@ function IntakeAssetCard({
         <button type="button" onClick={() => onSaveNote(asset, usageNote)} className="dd-btn dd-btn-secondary dd-btn-sm border-slate-300">
           메모 저장
         </button>
+        {asset.assetType === "source_design" ? (
+          <button
+            type="button"
+            disabled
+            title="Adobe·Canva 등 외부 디자인 도구 연동을 준비하고 있습니다."
+            className="dd-btn dd-btn-secondary dd-btn-sm cursor-not-allowed border-slate-200 text-slate-400"
+          >
+            디자인 처리
+          </button>
+        ) : null}
         <button type="button" onClick={() => onDelete(asset)} className="dd-btn dd-btn-sm border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100">
           삭제
         </button>
