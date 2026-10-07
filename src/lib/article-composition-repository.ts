@@ -39,6 +39,7 @@ export type ArticleCompositionRepositoryStatus =
   | "not_configured"
   | "migration_required"
   | "not_found"
+  | "conflict"
   | "request_failed";
 
 export type ArticleCompositionRepositoryResult<T> = {
@@ -62,6 +63,10 @@ function getServiceRoleHeaders() {
 
 function isMigrationRequired(status: number, body: string) {
   return status === 404 || body.includes("PGRST205") || body.includes("42P01") || body.includes("Could not find the table");
+}
+
+function isConflict(status: number, body: string) {
+  return status === 409 || body.includes("23505");
 }
 
 function readSettings(value: unknown): ArticleCompositionSettings | null {
@@ -188,5 +193,200 @@ export async function getProjectArticleComposition(
   } catch (error) {
     console.error("Article composition lookup request failed", error);
     return { data: null, message: "기사 Composition 조회 중 오류가 발생했습니다.", status: "request_failed" };
+  }
+}
+
+export async function createProjectArticleComposition(
+  projectId: string,
+  articleId: string,
+): Promise<ArticleCompositionRepositoryResult<ProjectArticleComposition | null>> {
+  const existing = await getProjectArticleComposition(projectId, articleId);
+
+  if (existing.status === "ok") return existing;
+  if (existing.status !== "not_found") return existing;
+
+  const headers = getServiceRoleHeaders();
+  const endpoint = getSupabaseRestEndpoint("/rest/v1/newsletter_article_compositions?select=id");
+
+  if (!headers || !endpoint) {
+    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify({
+        project_id: projectId,
+        article_id: articleId,
+        layout_key: "standard",
+        status: "draft",
+        settings: {},
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      if (isConflict(response.status, body)) return getProjectArticleComposition(projectId, articleId);
+      console.error("Article composition create failed", response.status, body);
+      return isMigrationRequired(response.status, body)
+        ? { data: null, message: "기사 Composition을 위한 v1.25 migration 적용이 필요합니다.", status: "migration_required" }
+        : { data: null, message: "기사 화면 구성을 만들지 못했습니다.", status: "request_failed" };
+    }
+
+    return getProjectArticleComposition(projectId, articleId);
+  } catch (error) {
+    console.error("Article composition create request failed", error);
+    return { data: null, message: "기사 화면 구성 생성 중 오류가 발생했습니다.", status: "request_failed" };
+  }
+}
+
+export async function updateProjectArticleCompositionStatus(
+  projectId: string,
+  articleId: string,
+  status: "draft" | "ready",
+): Promise<ArticleCompositionRepositoryResult<ProjectArticleComposition | null>> {
+  const headers = getServiceRoleHeaders();
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_article_compositions?project_id=eq.${encodeURIComponent(projectId)}&article_id=eq.${encodeURIComponent(
+      articleId,
+    )}`,
+  );
+
+  if (!headers || !endpoint) {
+    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify({ status }),
+      cache: "no-store",
+    });
+    const body = await response.text();
+
+    if (!response.ok) {
+      console.error("Article composition status update failed", response.status, body);
+      return isMigrationRequired(response.status, body)
+        ? { data: null, message: "기사 Composition을 위한 v1.25 migration 적용이 필요합니다.", status: "migration_required" }
+        : { data: null, message: "기사 화면 구성 상태를 변경하지 못했습니다.", status: "request_failed" };
+    }
+
+    const rows = body ? (JSON.parse(body) as ArticleCompositionRow[]) : [];
+    if (!rows[0]) return { data: null, message: "변경할 기사 화면 구성을 찾지 못했습니다.", status: "not_found" };
+
+    return getProjectArticleComposition(projectId, articleId);
+  } catch (error) {
+    console.error("Article composition status update request failed", error);
+    return { data: null, message: "기사 화면 구성 상태 변경 중 오류가 발생했습니다.", status: "request_failed" };
+  }
+}
+
+export type SaveProjectArticleCompositionPlacementInput = {
+  articleId: string;
+  assetId: string;
+  compositionId: string;
+  isVisible: boolean;
+  placementId?: string;
+  projectId: string;
+  settings: ArticleCompositionSettings;
+  slot: string;
+  sortOrder: number;
+};
+
+export async function saveProjectArticleCompositionPlacement(
+  input: SaveProjectArticleCompositionPlacementInput,
+): Promise<ArticleCompositionRepositoryResult<ProjectArticleComposition | null>> {
+  const headers = getServiceRoleHeaders();
+  const endpoint = getSupabaseRestEndpoint(
+    input.placementId
+      ? `/rest/v1/newsletter_article_composition_assets?id=eq.${encodeURIComponent(
+          input.placementId,
+        )}&composition_id=eq.${encodeURIComponent(input.compositionId)}`
+      : "/rest/v1/newsletter_article_composition_assets",
+  );
+
+  if (!headers || !endpoint) {
+    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: input.placementId ? "PATCH" : "POST",
+      headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify({
+        ...(input.placementId ? {} : { composition_id: input.compositionId }),
+        asset_id: input.assetId,
+        slot: input.slot,
+        sort_order: input.sortOrder,
+        is_visible: input.isVisible,
+        settings: input.settings,
+      }),
+      cache: "no-store",
+    });
+    const body = await response.text();
+
+    if (!response.ok) {
+      console.error("Article composition placement save failed", response.status, body);
+      if (isMigrationRequired(response.status, body)) {
+        return { data: null, message: "기사 Composition을 위한 v1.25 migration 적용이 필요합니다.", status: "migration_required" };
+      }
+      if (isConflict(response.status, body)) {
+        return { data: null, message: "같은 위치와 순서를 사용하는 자산이 이미 있습니다.", status: "conflict" };
+      }
+      return { data: null, message: "기사 화면 구성 자산을 저장하지 못했습니다.", status: "request_failed" };
+    }
+
+    const rows = body ? (JSON.parse(body) as ArticleCompositionAssetRow[]) : [];
+    if (!rows[0]) return { data: null, message: "변경할 구성 자산을 찾지 못했습니다.", status: "not_found" };
+
+    return getProjectArticleComposition(input.projectId, input.articleId);
+  } catch (error) {
+    console.error("Article composition placement save request failed", error);
+    return { data: null, message: "기사 화면 구성 자산 저장 중 오류가 발생했습니다.", status: "request_failed" };
+  }
+}
+
+export async function deleteProjectArticleCompositionPlacement(input: {
+  articleId: string;
+  compositionId: string;
+  placementId: string;
+  projectId: string;
+}): Promise<ArticleCompositionRepositoryResult<ProjectArticleComposition | null>> {
+  const headers = getServiceRoleHeaders();
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_article_composition_assets?id=eq.${encodeURIComponent(
+      input.placementId,
+    )}&composition_id=eq.${encodeURIComponent(input.compositionId)}`,
+  );
+
+  if (!headers || !endpoint) {
+    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "DELETE",
+      headers: { ...headers, Prefer: "return=representation" },
+      cache: "no-store",
+    });
+    const body = await response.text();
+
+    if (!response.ok) {
+      console.error("Article composition placement delete failed", response.status, body);
+      return isMigrationRequired(response.status, body)
+        ? { data: null, message: "기사 Composition을 위한 v1.25 migration 적용이 필요합니다.", status: "migration_required" }
+        : { data: null, message: "기사 화면 구성 자산을 제거하지 못했습니다.", status: "request_failed" };
+    }
+
+    const rows = body ? (JSON.parse(body) as ArticleCompositionAssetRow[]) : [];
+    if (!rows[0]) return { data: null, message: "제거할 구성 자산을 찾지 못했습니다.", status: "not_found" };
+
+    return getProjectArticleComposition(input.projectId, input.articleId);
+  } catch (error) {
+    console.error("Article composition placement delete request failed", error);
+    return { data: null, message: "기사 화면 구성 자산 제거 중 오류가 발생했습니다.", status: "request_failed" };
   }
 }

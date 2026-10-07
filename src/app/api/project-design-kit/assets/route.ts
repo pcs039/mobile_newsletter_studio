@@ -390,6 +390,20 @@ function getErrorStatus(status: string, httpStatus?: number) {
       : httpStatus ?? 500;
 }
 
+function isCompositionAssetInUseError(body: string) {
+  try {
+    const error = JSON.parse(body) as { code?: string; details?: string; message?: string };
+    const description = `${error.message ?? ""} ${error.details ?? ""}`;
+
+    return (
+      error.code === "23503" &&
+      description.includes("newsletter_article_composition_assets_asset_id_fkey")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(request: Request) {
   const projectSlug = getProjectSlugFromRequest(request);
 
@@ -796,9 +810,22 @@ export async function DELETE(request: Request) {
   });
 
   if (!response.ok) {
+    const responseBody = await response.text().catch(() => "");
+
+    if (isCompositionAssetInUseError(responseBody)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "asset_in_use",
+          message: "이 자산은 기사 구성에서 사용 중입니다. 먼저 기사 구성에서 제거하거나 교체하세요.",
+        },
+        { status: 409 },
+      );
+    }
+
     console.error("Failed to delete design asset", {
       status: response.status,
-      body: await response.text().catch(() => ""),
+      body: responseBody,
     });
 
     return NextResponse.json({ ok: false, message: "디자인 자산 삭제에 실패했습니다." }, { status: response.status || 500 });
