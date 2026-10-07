@@ -45,6 +45,7 @@ type ProjectArticleEditorFormProps = {
   projectTitleFontAssetId?: string | null;
   projectPageCount?: number;
   article: ProjectContentArticle | null;
+  showReviewActions?: boolean;
 };
 
 type EditorBlockType = Extract<
@@ -730,6 +731,7 @@ export function ProjectArticleEditorForm({
   projectTitleFontAssetId,
   projectPageCount = 0,
   article,
+  showReviewActions = true,
 }: ProjectArticleEditorFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -2519,35 +2521,37 @@ export function ProjectArticleEditorForm({
         </div>
       </div>
 
-      <section aria-labelledby="mobile-review-check-heading" className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 sm:p-5">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">5. 모바일 검수 전 확인</p>
-            <h3 id="mobile-review-check-heading" className="mt-1 text-base font-black text-[#092046]">모바일 표시 순서</h3>
+      {showReviewActions ? (
+        <section aria-labelledby="mobile-review-check-heading" className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 sm:p-5">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">5. 모바일 검수 전 확인</p>
+              <h3 id="mobile-review-check-heading" className="mt-1 text-base font-black text-[#092046]">모바일 표시 순서</h3>
+            </div>
+            <p className="text-xs font-semibold text-slate-500">저장 후 모바일 검수에서 최종 확인합니다.</p>
           </div>
-          <p className="text-xs font-semibold text-slate-500">저장 후 모바일 검수에서 최종 확인합니다.</p>
-        </div>
-        <div className="mt-4 space-y-2">
-          {blocks.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-[#b8d7ff] bg-white px-4 py-4 text-sm font-bold text-slate-500">
-              아직 확인할 본문 블록이 없습니다.
-            </p>
-          ) : (
-            blocks.map((block, index) => (
-              <div key={`preview-${block.id}`} className="rounded-lg bg-white px-4 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-[#eaf2ff] px-2.5 py-1 text-xs font-black text-[#184a88]">
-                    {index + 1}
-                  </span>
-                  <p className="text-sm font-black text-[#092046]">{blockTypeLabels[block.type]}</p>
-                  {block.title ? <p className="text-sm font-bold text-slate-700">{block.title}</p> : null}
+          <div className="mt-4 space-y-2">
+            {blocks.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-[#b8d7ff] bg-white px-4 py-4 text-sm font-bold text-slate-500">
+                아직 확인할 본문 블록이 없습니다.
+              </p>
+            ) : (
+              blocks.map((block, index) => (
+                <div key={`preview-${block.id}`} className="rounded-lg bg-white px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-[#eaf2ff] px-2.5 py-1 text-xs font-black text-[#184a88]">
+                      {index + 1}
+                    </span>
+                    <p className="text-sm font-black text-[#092046]">{blockTypeLabels[block.type]}</p>
+                    {block.title ? <p className="text-sm font-bold text-slate-700">{block.title}</p> : null}
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{getBlockPreviewText(block)}</p>
                 </div>
-                <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{getBlockPreviewText(block)}</p>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
+              ))
+            )}
+          </div>
+        </section>
+      ) : null}
 
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
@@ -2592,13 +2596,15 @@ export function ProjectArticleEditorForm({
         >
           새 기사 입력
         </button>
-        <button
-          type="button"
-          onClick={() => router.push(`/projects/${projectSlug}/publish`)}
-          className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
-        >
-          모바일 검수·발행으로 이동
-        </button>
+        {showReviewActions ? (
+          <button
+            type="button"
+            onClick={() => router.push(`/projects/${projectSlug}/publish`)}
+            className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+          >
+            모바일 검수·발행으로 이동
+          </button>
+        ) : null}
         <button
           type="submit"
           disabled={isSaving}
