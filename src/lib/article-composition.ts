@@ -67,6 +67,9 @@ export const articleCompositionFits = ["contain", "cover"] as const;
 export type ArticleCompositionFit = (typeof articleCompositionFits)[number];
 
 export type ArticleCompositionPlacementSettings = {
+  titleColor?: string;
+  bodyColor?: string;
+  accentColor?: string;
   renderMode?: "image" | "fluid_frame";
   surfaceColor?: string;
   borderColor?: string;
@@ -141,6 +144,7 @@ export type ArticleCompositionSettingsValidationResult =
   | { ok: false; message: string };
 
 const placementSettingKeys = new Set([
+  "titleColor", "bodyColor", "accentColor",
   "renderMode", "surfaceColor", "borderColor", "borderWidth", "borderRadius",
   "anchor",
   "fit",
@@ -173,7 +177,7 @@ export function validateArticleCompositionPlacementSettings(
 
   const settings: ArticleCompositionPlacementSettings = {};
 
-  const frameKeys = ["renderMode", "surfaceColor", "borderColor", "borderWidth", "borderRadius"] as const;
+  const frameKeys = ["titleColor", "bodyColor", "accentColor", "renderMode", "surfaceColor", "borderColor", "borderWidth", "borderRadius"] as const;
   if (frameKeys.some((key) => key in input) && slot !== "hero_background") {
     return { ok: false, message: "프레임 설정은 배경판에서만 사용할 수 있습니다." };
   }
@@ -181,7 +185,7 @@ export function validateArticleCompositionPlacementSettings(
     if (input.renderMode !== "image" && input.renderMode !== "fluid_frame") return { ok: false, message: "배경판 표현 방식을 확인해 주세요." };
     settings.renderMode = input.renderMode;
   }
-  for (const key of ["surfaceColor", "borderColor"] as const) {
+  for (const key of ["surfaceColor", "borderColor", "titleColor", "bodyColor", "accentColor"] as const) {
     if (!(key in input)) continue;
     if (typeof input[key] !== "string" || !/^#[0-9a-f]{6}$/i.test(input[key])) return { ok: false, message: "색상은 #RRGGBB 형식으로 입력해 주세요." };
     settings[key] = input[key].toUpperCase();

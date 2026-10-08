@@ -10,6 +10,7 @@ import {
   type ProjectArticleCompositionAsset,
 } from "@/lib/article-composition";
 import type { ProjectDesignAsset } from "@/lib/newsletter-repository";
+import { articleTextColorStyle } from "@/lib/article-text-colors";
 import { ArticleHeroBackgroundLayer } from "@/components/article-hero-background-layer";
 import { validateArticleCompositionPlacementSettings } from "@/lib/article-composition";
 
@@ -125,20 +126,20 @@ export function CompositionMobilePreview({
     const illustration = heroIllustrations[0];
     const illustrationAsset = illustration ? assetById.get(illustration.assetId) : undefined;
     return (
-      <div className="mx-auto w-full max-w-[390px] rounded-lg border border-[#b8d7ff] bg-white p-4 shadow-lg">
+      <div data-article-title-color={frameSettings.settings.titleColor} data-article-body-color={frameSettings.settings.bodyColor} style={articleTextColorStyle(frameSettings.settings)} className="mx-auto w-full max-w-[390px] rounded-lg border border-[#b8d7ff] bg-white p-4 shadow-lg">
         <p className="mb-3 text-xs font-black text-[#184a88]">3. 모바일 즉시 미리보기</p>
         <ArticleHeroBackgroundLayer background={{ url: "", visible: true, settings: frameSettings.settings }}
           illustration={illustration && illustrationAsset ? { url: illustrationAsset.previewHref, visible: true, settings: getSettings(illustration) } : undefined}
-          body={<p className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}{article.body.length > 360 ? "…" : ""}</p>}>
-          <h3 className="break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
-          {article.summary ? <p className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
+          body={<p data-public-text-scale-target="article-body" className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}{article.body.length > 360 ? "…" : ""}</p>}>
+          <h3 className="public-article-title break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
+          {article.summary ? <p data-public-text-scale-target="article-summary" className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
         </ArticleHeroBackgroundLayer>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-lg border border-[#b8d7ff] bg-white shadow-lg">
+    <div data-article-title-color={frameSettings?.ok ? frameSettings.settings.titleColor : undefined} data-article-body-color={frameSettings?.ok ? frameSettings.settings.bodyColor : undefined} style={articleTextColorStyle(frameSettings?.ok ? frameSettings.settings : undefined)} className="mx-auto w-full max-w-[390px] overflow-hidden rounded-lg border border-[#b8d7ff] bg-white shadow-lg">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#d8e8ff] bg-[#092046] px-4 py-3 text-xs font-black text-white">
         <span>3. 모바일 즉시 미리보기</span>
         {selectedPlacement && selectedAsset ? (
@@ -169,8 +170,8 @@ export function CompositionMobilePreview({
 
         <div className="relative z-30 mx-auto max-w-[290px] text-center">
           <p className="text-[11px] font-black uppercase tracking-wide text-[#184a88]">Mobile Newsletter</p>
-          <h3 className="mt-3 break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
-          {article.summary ? <p className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
+          <h3 className="public-article-title mt-3 break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
+          {article.summary ? <p data-public-text-scale-target="article-summary" className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
         </div>
       </div>
 
@@ -182,7 +183,7 @@ export function CompositionMobilePreview({
           const asset = assetById.get(placement.assetId);
           return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-28 w-28" selected={placement.id === selectedPlacementId} /> : null;
         })}
-        <p className="relative z-30 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+        <p data-public-text-scale-target="article-body" className="relative z-30 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
           {article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}
           {article.body.length > 360 ? "…" : ""}
         </p>

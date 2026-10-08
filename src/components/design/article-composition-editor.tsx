@@ -1,5 +1,7 @@
 "use client";
 
+import { ArticleColorInput } from "@/components/design/article-color-input";
+import { articleTextColorDefaults } from "@/lib/article-text-colors";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CompositionAssetPicker } from "@/components/design/composition-asset-picker";
@@ -308,6 +310,15 @@ function PlacementControls({
               <option value="image">이미지 배경</option><option value="fluid_frame">반응형 프레임</option>
             </select>
           </label>
+          <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
+            {(["titleColor", "bodyColor", "accentColor"] as const).map((token) => (
+              <ArticleColorInput key={token} label={{ titleColor: "제목 글자색", bodyColor: "본문 글자색", accentColor: "강조색" }[token]}
+                value={settings[token] ?? articleTextColorDefaults[token]} disabled={disabled}
+                surface={settings.renderMode === "fluid_frame" && token !== "accentColor" ? settings.surfaceColor ?? "#F4F8FF" : undefined}
+                onChange={(color) => changeSettings({ [token]: color })} />
+            ))}
+            <p className="text-xs leading-5 text-slate-600">강조색은 앞으로 추가될 HTML 디자인 요소에서 사용됩니다. 대비 경고가 있어도 선택한 색상을 자동으로 바꾸지 않습니다.</p>
+          </div>
           {settings.renderMode === "fluid_frame" ? (
             <div className="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
               <label className="text-xs font-black text-slate-700">프레임 배경색

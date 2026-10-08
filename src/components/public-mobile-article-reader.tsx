@@ -1,5 +1,7 @@
 "use client";
 
+import { articleTextColorStyle } from "@/lib/article-text-colors";
+
 import Link from "next/link";
 import {
   Fragment,
@@ -1638,7 +1640,9 @@ function ArticleCard({
       data-article-text-alignment={article.textAlignment || "left"}
       data-motion-preset={motionPreset}
       data-motion-speed={motionSpeed}
-      style={fontStyle}
+      data-article-title-color={heroBackground?.settings.titleColor}
+      data-article-body-color={heroBackground?.settings.bodyColor}
+      style={{ ...fontStyle, ...articleTextColorStyle(heroBackground?.settings) }}
     >
       <ArticleHeroBackgroundLayer
         background={heroBackground?.settings.renderMode === "fluid_frame" || article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel ? heroBackground : undefined}
