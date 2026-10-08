@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-type ProjectPublishCompletionPanelProps = {
+export type ProjectPublishCompletionPanelProps = {
+  canPublish: boolean;
   currentStatus: string;
   ebookUrl: string;
   hasChecklistIssues: boolean;
   initialPublishedAt?: string;
   isPublished: boolean;
   projectId: string;
+  projectSlug: string;
   publicUrl: string;
   publicUrlAbsolute: string;
+  onPublishComplete?: () => void;
+  onPublishingChange?: (publishing: boolean) => void;
 };
 
 type PublishState =
@@ -62,14 +66,18 @@ function downloadBlob(blob: Blob, fileName: string) {
 }
 
 export function ProjectPublishCompletionPanel({
+  canPublish,
   currentStatus,
   ebookUrl,
   hasChecklistIssues,
   initialPublishedAt = "",
   isPublished,
   projectId,
+  projectSlug,
   publicUrl,
   publicUrlAbsolute,
+  onPublishComplete,
+  onPublishingChange,
 }: ProjectPublishCompletionPanelProps) {
   const [state, setState] = useState<PublishState>({
     status: "idle",
@@ -88,6 +96,7 @@ export function ProjectPublishCompletionPanel({
   const isPublishing = state.status === "publishing";
 
   async function publishProject() {
+    if (!canPublish || isPublishing) return;
     if (hasChecklistIssues) {
       const confirmed = window.confirm(
         "미완료 항목이 있습니다. 발행 후에도 수정할 수 있습니다. 그래도 발행할까요?",
@@ -99,6 +108,7 @@ export function ProjectPublishCompletionPanel({
     }
 
     setState({ status: "publishing", message: "발행 중..." });
+    onPublishingChange?.(true);
 
     const response = await fetch("/api/project-publish", {
       method: "POST",
@@ -131,6 +141,8 @@ export function ProjectPublishCompletionPanel({
               ? "발행 처리에 실패했습니다."
               : "발행 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.",
       });
+      onPublishingChange?.(false);
+      onPublishComplete?.();
       return;
     }
 
@@ -140,6 +152,8 @@ export function ProjectPublishCompletionPanel({
     setCurrentPublicUrlAbsolute(result.publicUrlAbsolute);
     setCurrentEbookUrl(ebookUrl || result.ebookUrl);
     setState({ status: "success", message: "발행 완료. 공개 URL과 QR코드가 활성화되었습니다." });
+    onPublishingChange?.(false);
+    onPublishComplete?.();
   }
 
   async function copyPublicUrl() {
@@ -214,19 +228,26 @@ export function ProjectPublishCompletionPanel({
             {hasChecklistIssues ? (
               <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-800">발행 전 확인 필요</span>
             ) : (
-              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">발행 가능 상태</span>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">자동 검수 완료</span>
             )}
           </div>
         </div>
         <button
           type="button"
           onClick={() => void publishProject()}
-          disabled={isPublishing}
+          disabled={isPublishing || !canPublish}
+          aria-describedby={!canPublish ? "client-review-publish-gate" : undefined}
           className="dd-btn dd-btn-primary dd-btn-lg shrink-0 rounded-xl px-6 py-4 text-base"
         >
-          {isPublishing ? "발행 중..." : published ? "다시 발행하기" : "발행하기"}
+          {isPublishing ? "발행 중..." : published ? "다시 발행하기" : "최종 발행"}
         </button>
       </div>
+
+      {!canPublish ? (
+        <p id="client-review-publish-gate" className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-800">
+          기관 승인 완료 후 최종 발행할 수 있습니다. 위 기관 검토 영역에서 최신 상태를 확인하세요.
+        </p>
+      ) : null}
 
       {state.message ? (
         <p
@@ -258,7 +279,7 @@ export function ProjectPublishCompletionPanel({
               <Link href={currentEbookUrl} target="_blank" className="dd-btn dd-btn-secondary dd-btn-sm">
                 PC e-book 보기
               </Link>
-              <Link href={`/projects/${projectId}/distribution`} className="dd-btn dd-btn-primary dd-btn-sm">
+              <Link href={`/projects/${projectSlug}/distribution`} className="dd-btn dd-btn-primary dd-btn-sm">
                 배포 관리로 이동
               </Link>
             </div>
