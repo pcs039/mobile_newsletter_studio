@@ -1058,6 +1058,7 @@ function renderContentBlock(
   motionSettings: ResolvedArticleMotionSettings,
   onOpenArticleImage: (image: PublicArticleLightboxImage) => void,
   presentation: ArticlePublicPresentation,
+  isImageOnly: boolean,
 ) {
   const link = getBlockLink(article, block);
   const rawHref = link?.targetValue || block.body;
@@ -1100,7 +1101,9 @@ function renderContentBlock(
         motionSpeed={motionSettings.image.speed}
       >
         <figure
-          className={`article-motion-image ${articleMotionSpeedClassNames[motionSettings.image.speed]} overflow-hidden rounded-2xl border border-slate-200 bg-slate-50`}
+          className={`article-motion-image ${articleMotionSpeedClassNames[motionSettings.image.speed]} overflow-hidden ${
+            isImageOnly ? "-mx-5 bg-white" : "rounded-2xl border border-slate-200 bg-slate-50"
+          }`}
           data-motion-effect={motionSettings.image.effect}
           data-motion-speed={motionSettings.image.speed}
         >
@@ -1118,12 +1121,18 @@ function renderContentBlock(
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageSrc} alt={imageAlt} className="w-full object-cover transition duration-200 group-hover:scale-[1.01]" />
+            <img
+              src={imageSrc}
+              alt={imageAlt}
+              className={`block h-auto w-full transition duration-200 group-hover:scale-[1.01] ${
+                isImageOnly ? "object-contain" : "object-cover"
+              }`}
+            />
             <span className="absolute right-3 top-3 rounded-full bg-slate-950/72 px-3 py-1 text-xs font-black text-white shadow-sm">
               확대
             </span>
           </button>
-          {block.title ? (
+          {block.title && !isImageOnly ? (
             <figcaption
               className={`article-motion-caption ${articleMotionSpeedClassNames[motionSettings.image.speed]} px-4 py-3 text-sm font-bold leading-6 text-slate-700`}
               data-motion-effect={motionSettings.image.effect}
@@ -1392,6 +1401,7 @@ function ArticleCard({
   const hasPublicSurveyCta = surveyAvailabilityState === "active";
   const shouldShowSurveyStatus = Boolean(survey && (hasPublicSurveyCta || showSurveyConnectionStatus));
   const presentation = getArticlePublicPresentation(article.articleType);
+  const isImageOnly = article.contentPresentation === "image";
   const shouldShowTypeCue = !presentation.isGeneral;
   const isRolling = article.publicationKind === "rolling";
   const rollingLabel = isRolling
@@ -1494,7 +1504,9 @@ function ArticleCard({
     <article
       ref={articleRef}
       onClickCapture={handleTrackedActionClick}
-      className={`public-card public-article-card ${articleMotionPresetClassNames[motionPreset]} ${articleMotionSpeedClassNames[motionSpeed]} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}
+      className={`public-card public-article-card ${articleMotionPresetClassNames[motionPreset]} ${articleMotionSpeedClassNames[motionSpeed]} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${
+        isImageOnly ? "overflow-hidden" : ""
+      } ${className}`}
       data-article-text-alignment={article.textAlignment || "left"}
       data-motion-preset={motionPreset}
       data-motion-speed={motionSpeed}
@@ -1539,7 +1551,11 @@ function ArticleCard({
       ) : null}
       <div
         key={`article-title-${article.id}-${motionPreset}-${motionSpeed}-${motionSettings.title.effect}-${motionSettings.title.speed}`}
-        className={`article-title-motion ${articleMotionSpeedClassNames[motionSettings.title.speed]}`}
+        className={
+          article.showPublicTitle
+            ? `article-title-motion ${articleMotionSpeedClassNames[motionSettings.title.speed]}`
+            : "sr-only"
+        }
         data-motion-effect={motionSettings.title.effect}
         data-motion-speed={motionSettings.title.speed}
       >
@@ -1578,7 +1594,7 @@ function ArticleCard({
             : renderKoreanTitleWithBreaks(articleTitle)}
         </h2>
       </div>
-      {showTextSizeControl ? (
+      {showTextSizeControl && !isImageOnly ? (
         <div className="mt-3">
           <PublicTextSizeToggle compact />
         </div>
@@ -1651,8 +1667,25 @@ function ArticleCard({
         </section>
       ) : null}
       {visibleContentBlocks.length > 0 ? (
-        <div className="public-article-content mt-6 space-y-6">
-          {visibleContentBlocks.map((block) => renderContentBlock(article, block, motionSettings, onOpenArticleImage, presentation))}
+        <div className={`public-article-content ${isImageOnly ? "mt-4 space-y-0" : "mt-6 space-y-6"}`}>
+          {visibleContentBlocks.map((block) => {
+            const content = renderContentBlock(
+              article,
+              block,
+              motionSettings,
+              onOpenArticleImage,
+              presentation,
+              isImageOnly,
+            );
+
+            return isImageOnly && block.type !== "image" ? (
+              <div key={`image-article-support-${block.id}`} className="py-4">
+                {content}
+              </div>
+            ) : (
+              content
+            );
+          })}
         </div>
       ) : visibleBlocks.length === 0 ? (
         renderArticleBody(
