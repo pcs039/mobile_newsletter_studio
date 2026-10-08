@@ -19,6 +19,7 @@ type CompositionMobilePreviewProps = {
   };
   assets: ProjectDesignAsset[];
   composition: ProjectArticleComposition;
+  selectedPlacementId: string | null;
 };
 
 const anchorPosition: Record<ArticleCompositionAnchor, CSSProperties> = {
@@ -69,10 +70,12 @@ function AssetLayer({
   asset,
   className,
   placement,
+  selected,
 }: {
   asset: ProjectDesignAsset;
   className: string;
   placement: ProjectArticleCompositionAsset;
+  selected: boolean;
 }) {
   return (
     <span
@@ -80,12 +83,29 @@ function AssetLayer({
       aria-label={asset.altText || undefined}
       aria-hidden={asset.altText ? undefined : true}
       className={`absolute pointer-events-none ${className}`}
-      style={layerStyle(placement, asset)}
+      style={{
+        ...layerStyle(placement, asset),
+        outline: selected ? "3px solid #2f73b7" : undefined,
+        outlineOffset: selected ? "-3px" : undefined,
+      }}
     />
   );
 }
 
-export function CompositionMobilePreview({ article, assets, composition }: CompositionMobilePreviewProps) {
+const slotLabels: Record<ArticleCompositionSlot, string> = {
+  hero_background: "배경판",
+  hero_illustration: "상단 이미지·장식",
+  title_icon: "제목 옆 아이콘",
+  body_decoration: "본문 주변 장식",
+  footer_banner: "하단 이미지·배너",
+};
+
+export function CompositionMobilePreview({
+  article,
+  assets,
+  composition,
+  selectedPlacementId,
+}: CompositionMobilePreviewProps) {
   const assetById = new Map(assets.map((asset) => [asset.id, asset]));
   const visiblePlacements = composition.assets.filter((placement) => placement.isVisible && assetById.has(placement.assetId));
   const placementsFor = (slot: ArticleCompositionSlot) =>
@@ -95,25 +115,37 @@ export function CompositionMobilePreview({ article, assets, composition }: Compo
   const titleIcons = placementsFor("title_icon");
   const bodyDecorations = placementsFor("body_decoration");
   const footerBanners = placementsFor("footer_banner");
+  const selectedPlacement = composition.assets.find((placement) => placement.id === selectedPlacementId);
+  const selectedAsset = selectedPlacement ? assetById.get(selectedPlacement.assetId) : undefined;
 
   return (
     <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-lg border border-[#b8d7ff] bg-white shadow-lg">
-      <div className="border-b border-[#d8e8ff] bg-[#092046] px-4 py-3 text-xs font-black text-white">
-        모바일 구성 미리보기
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#d8e8ff] bg-[#092046] px-4 py-3 text-xs font-black text-white">
+        <span>3. 모바일 즉시 미리보기</span>
+        {selectedPlacement && selectedAsset ? (
+          <span className="max-w-full truncate rounded-full bg-white/15 px-2 py-1 text-[10px] text-sky-50">
+            선택: {selectedAsset.name} · {slotLabels[selectedPlacement.slot]}
+          </span>
+        ) : (
+          <span className="text-[10px] text-sky-100">배치 요소를 선택하면 강조됩니다.</span>
+        )}
       </div>
 
       <div className="relative min-h-64 overflow-hidden bg-[#eef6ff] px-6 py-10">
+        <span className="absolute left-3 top-3 z-40 rounded bg-white/90 px-2 py-1 text-[10px] font-black text-[#184a88] shadow-sm">
+          기사 제목 영역
+        </span>
         {heroBackgrounds.map((placement) => {
           const asset = assetById.get(placement.assetId);
-          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-full w-full" /> : null;
+          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-full w-full" selected={placement.id === selectedPlacementId} /> : null;
         })}
         {heroIllustrations.map((placement) => {
           const asset = assetById.get(placement.assetId);
-          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-40 w-40" /> : null;
+          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-40 w-40" selected={placement.id === selectedPlacementId} /> : null;
         })}
         {titleIcons.map((placement) => {
           const asset = assetById.get(placement.assetId);
-          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-16 w-16" /> : null;
+          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-16 w-16" selected={placement.id === selectedPlacementId} /> : null;
         })}
 
         <div className="relative z-30 mx-auto max-w-[290px] text-center">
@@ -124,9 +156,12 @@ export function CompositionMobilePreview({ article, assets, composition }: Compo
       </div>
 
       <div className="relative overflow-hidden px-6 py-8">
+        <span className="absolute left-3 top-3 z-40 rounded bg-white/90 px-2 py-1 text-[10px] font-black text-[#184a88] shadow-sm">
+          기사 본문 영역
+        </span>
         {bodyDecorations.map((placement) => {
           const asset = assetById.get(placement.assetId);
-          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-28 w-28" /> : null;
+          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-28 w-28" selected={placement.id === selectedPlacementId} /> : null;
         })}
         <p className="relative z-30 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
           {article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}
@@ -138,7 +173,7 @@ export function CompositionMobilePreview({ article, assets, composition }: Compo
         <div className="relative min-h-28 overflow-hidden border-t border-slate-100 bg-slate-50">
           {footerBanners.map((placement) => {
             const asset = assetById.get(placement.assetId);
-            return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-24 w-[90%]" /> : null;
+            return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-24 w-[90%]" selected={placement.id === selectedPlacementId} /> : null;
           })}
         </div>
       ) : null}

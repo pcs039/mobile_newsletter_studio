@@ -43,12 +43,22 @@ const slotDefinitions: Array<{
   label: string;
   slot: ArticleCompositionSlot;
 }> = [
-  { slot: "hero_background", label: "상단 배경", description: "기사 제목 뒤의 배경이나 패턴을 선택합니다." },
-  { slot: "hero_illustration", label: "상단 일러스트", description: "기사 상단을 보조하는 일러스트나 장식을 선택합니다." },
-  { slot: "title_icon", label: "제목 아이콘", description: "제목 주변에 표시할 작은 아이콘을 선택합니다." },
-  { slot: "body_decoration", label: "본문 장식", description: "본문 주변 장식을 여러 개 배치할 수 있습니다." },
-  { slot: "footer_banner", label: "하단 배너", description: "기사 마지막에 표시할 배너나 프레임을 선택합니다." },
+  { slot: "hero_background", label: "배경판", description: "기사 제목 영역 뒤에 사용할 배경이나 패턴을 선택합니다." },
+  { slot: "hero_illustration", label: "상단 이미지·장식", description: "기사 상단을 보조하는 이미지나 장식을 선택합니다." },
+  { slot: "title_icon", label: "제목 옆 아이콘", description: "기사 제목 주변에 표시할 작은 아이콘을 선택합니다." },
+  { slot: "body_decoration", label: "본문 주변 장식", description: "본문 주변에 여러 개의 장식을 독립적으로 배치할 수 있습니다." },
+  { slot: "footer_banner", label: "하단 이미지·배너", description: "기사 마지막에 표시할 이미지, 배너 또는 프레임을 선택합니다." },
 ];
+
+const assetTypeLabels: Record<string, string> = {
+  background: "배경",
+  illustration: "이미지",
+  icon: "아이콘",
+  card_frame: "카드 프레임",
+  banner: "배너",
+  pattern: "패턴",
+  decoration: "장식",
+};
 
 const anchorOptions: Array<{ label: string; value: ArticleCompositionAnchor }> = [
   { value: "center", label: "가운데" },
@@ -166,19 +176,23 @@ function PlacementControls({
   disabled,
   onDelete,
   onPreview,
+  onSelect,
   onUpdate,
   placement,
+  selected,
 }: {
   asset: ProjectDesignAsset | undefined;
   disabled: boolean;
   onDelete: () => void;
   onPreview: (settings: ArticleCompositionPlacementSettings) => void;
+  onSelect: () => void;
   onUpdate: (patch: {
     isVisible?: boolean;
     settings?: ArticleCompositionPlacementSettings;
     sortOrder?: number;
   }) => void;
   placement: ProjectArticleCompositionAsset;
+  selected: boolean;
 }) {
   const initialSettings = readPlacementSettings(placement);
   const [settings, setSettings] = useState<ArticleCompositionPlacementSettings>(() => ({
@@ -231,12 +245,23 @@ function PlacementControls({
   }
 
   return (
-    <div className="border-t border-slate-200 py-4 first:border-t-0 first:pt-0 last:pb-0">
+    <div
+      onFocusCapture={onSelect}
+      onPointerDownCapture={onSelect}
+      className={`rounded-lg border p-4 transition ${
+        selected ? "border-[#2f73b7] bg-[#f4f9ff] shadow-sm" : "border-slate-200 bg-white"
+      }`}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="truncate text-sm font-black text-[#092046]">{asset?.name ?? "연결된 자산"}</p>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-black text-[#092046]">{asset?.name ?? "연결된 자산"}</p>
+            {selected ? (
+              <span className="rounded-full bg-[#184a88] px-2 py-1 text-[10px] font-black text-white">현재 선택</span>
+            ) : null}
+          </div>
           <p className="mt-1 text-xs font-semibold text-slate-500">
-            {asset?.approvalStatus === "approved" ? "승인 자산" : "검토 전 자산"} · {asset?.assetType ?? "asset"}
+            {asset?.approvalStatus === "approved" ? "승인 자산" : "검토 전 자산"} · {assetTypeLabels[asset?.assetType ?? ""] ?? "디자인 자산"}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -299,7 +324,7 @@ function PlacementControls({
 
       <details className="mt-4 rounded-lg border border-slate-200 bg-slate-50">
         <summary className="cursor-pointer px-4 py-3 text-sm font-black text-[#092046]">
-          세부 조정
+          필요할 때만 세부 조정
           <span className="ml-2 text-xs font-bold text-slate-500">위치·회전·크기·투명도·레이어</span>
         </summary>
         <div className="border-t border-slate-200 p-4">
@@ -392,8 +417,11 @@ function PlacementControls({
                 onClick={resetLayerSettings}
                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eef6ff] disabled:cursor-not-allowed disabled:text-slate-400"
               >
-                세부 조정 초기화
+                이 요소만 기본값으로
               </button>
+              <p className="text-xs font-semibold leading-5 text-slate-500">
+                현재 선택한 {asset?.name ?? "디자인 요소"}의 위치와 표현 값만 초기화합니다.
+              </p>
             </fieldset>
           </div>
         </div>
@@ -412,6 +440,8 @@ export function ArticleCompositionEditor({
   const [composition, setComposition] = useState(initialComposition);
   const [busyKey, setBusyKey] = useState("");
   const [notice, setNotice] = useState<Notice>(null);
+  const [activeSlot, setActiveSlot] = useState<ArticleCompositionSlot>("hero_background");
+  const [selectedPlacementId, setSelectedPlacementId] = useState<string | null>(null);
   const selectableAssets = useMemo(
     () => assets.filter((asset) => isProductionAsset(asset) && asset.isActive && asset.approvalStatus !== "archived"),
     [assets],
@@ -472,6 +502,14 @@ export function ArticleCompositionEditor({
       },
       `select:${slot}`,
     );
+  }
+
+  function selectSlot(slot: ArticleCompositionSlot) {
+    setActiveSlot(slot);
+    const placement = composition?.assets
+      .filter((candidate) => candidate.slot === slot)
+      .sort((first, second) => first.sortOrder - second.sortOrder)[0];
+    setSelectedPlacementId(placement?.id ?? null);
   }
 
   async function updatePlacement(
@@ -563,6 +601,19 @@ export function ArticleCompositionEditor({
     );
   }
 
+  const activeDefinition = slotDefinitions.find((definition) => definition.slot === activeSlot) ?? slotDefinitions[0];
+  const activePlacements = composition.assets
+    .filter((placement) => placement.slot === activeSlot)
+    .sort((first, second) => first.sortOrder - second.sortOrder);
+  const activeSelectedPlacementId = activePlacements.some((placement) => placement.id === selectedPlacementId)
+    ? selectedPlacementId
+    : activePlacements[0]?.id ?? null;
+  const compatibleTypes = articleCompositionSlotAssetTypes[activeSlot];
+  const compatibleAssets = selectableAssets.filter((asset) =>
+    compatibleTypes.includes(asset.assetType as ProjectDesignProductionAssetType),
+  );
+  const currentAssetId = isArticleCompositionSingleSlot(activeSlot) ? activePlacements[0]?.assetId : undefined;
+
   return (
     <section className="rounded-lg border border-[#b8d7ff] bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -596,76 +647,120 @@ export function ArticleCompositionEditor({
         </p>
       ) : null}
 
+      <div className="mt-6 rounded-lg border border-[#c9d7e8] bg-[#f7fbff] p-4">
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">디자인 작업 순서</p>
+        <ol className="mt-3 grid gap-2 text-xs font-bold text-slate-700 sm:grid-cols-2 xl:grid-cols-5">
+          {["자산 준비", "배경판·요소 배치", "텍스트 영역 확인", "모바일 미리보기", "필요 시 세부 조정"].map((label, index) => (
+            <li key={label} className="flex min-h-10 items-center gap-2 rounded-lg border border-[#d8e8ff] bg-white px-3 py-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#184a88] text-[10px] text-white">{index + 1}</span>
+              <span>{label}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
       <div className="mt-6 flex flex-col gap-3 border-y border-slate-200 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기본 디자인</p>
-          <p className="mt-1 text-sm font-bold text-[#092046]">기관 디자인의 공통 자산을 이 기사에 적용합니다.</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">1. 디자인 자산</p>
+          <p className="mt-1 text-sm font-bold text-[#092046]">이번 호에 준비된 자산을 선택해 이 기사에 배치합니다.</p>
+          <p className="mt-1 text-xs font-semibold text-slate-500">사용 가능 {selectableAssets.length}개 · 업로드와 승인 관리는 디자인 워크스페이스에서 합니다.</p>
         </div>
         <Link href={`/projects/${projectSlug}/design`} className="text-sm font-black text-[#184a88] underline decoration-sky-200 underline-offset-4">
-          기관 디자인 관리
+          자산 업로드·관리
         </Link>
       </div>
 
       <div className="mt-6">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">배경·이미지·장식</p>
-        <p className="mt-1 text-sm leading-6 text-slate-600">의미 있는 위치에 자산을 선택하고, 필요한 항목만 세부 조정합니다.</p>
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">2. 기본 배치</p>
+        <h4 className="mt-1 text-base font-black text-[#092046]">작업할 영역을 선택하세요</h4>
+        <p className="mt-1 text-sm leading-6 text-slate-600">한 번에 한 영역만 열어 자산을 선택하고 배치합니다. 제목과 본문은 HTML 텍스트로 유지되며 시각 요소보다 앞쪽에 보호됩니다.</p>
       </div>
 
-      <div className="mt-4 grid gap-6 2xl:grid-cols-[minmax(0,1fr)_390px]">
-        <div className="divide-y divide-slate-200 border-y border-slate-200">
-          {slotDefinitions.map((definition) => {
-            const placements = composition.assets
-              .filter((placement) => placement.slot === definition.slot)
-              .sort((first, second) => first.sortOrder - second.sortOrder);
-            const compatibleTypes = articleCompositionSlotAssetTypes[definition.slot];
-            const compatibleAssets = selectableAssets.filter((asset) =>
-              compatibleTypes.includes(asset.assetType as ProjectDesignProductionAssetType),
-            );
-            const currentAssetId = isArticleCompositionSingleSlot(definition.slot) ? placements[0]?.assetId : undefined;
+      <div role="tablist" aria-label="기사 디자인 배치 영역" className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+        {slotDefinitions.map((definition) => {
+          const count = composition.assets.filter((placement) => placement.slot === definition.slot).length;
+          const isActive = activeSlot === definition.slot;
 
-            return (
-              <div key={definition.slot} className="py-6 first:pt-0 last:pb-0">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h4 className="text-base font-black text-[#092046]">{definition.label}</h4>
-                    <p className="mt-1 text-sm leading-6 text-slate-500">{definition.description}</p>
-                  </div>
-                  <CompositionAssetPicker
-                    assets={compatibleAssets}
-                    buttonLabel={placements.length > 0 && isArticleCompositionSingleSlot(definition.slot) ? "자산 교체" : "자산 선택"}
-                    currentAssetId={currentAssetId}
-                    disabled={isBusy}
-                    onSelect={(assetId) => selectAsset(definition.slot, assetId)}
-                  />
-                </div>
+          return (
+            <button
+              key={definition.slot}
+              id={`composition-slot-tab-${definition.slot}`}
+              type="button"
+              role="tab"
+              aria-controls="composition-active-slot-panel"
+              aria-selected={isActive}
+              onClick={() => selectSlot(definition.slot)}
+              className={`min-h-14 rounded-lg border px-3 py-2 text-left transition ${
+                isActive
+                  ? "border-[#184a88] bg-[#092046] text-white shadow-sm"
+                  : "border-slate-200 bg-white text-[#184a88] hover:border-[#7fb5ed] hover:bg-[#f4f9ff]"
+              }`}
+            >
+              <span className="block text-xs font-black">{definition.label}</span>
+              <span className={`mt-1 block text-[10px] font-bold ${isActive ? "text-sky-100" : "text-slate-500"}`}>
+                {count > 0 ? `${count}개 배치됨` : "비어 있음"}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-                {placements.length > 0 ? (
-                  <div className="mt-5">
-                    {placements.map((placement) => (
-                      <PlacementControls
-                        key={`${placement.id}:${placement.updatedAt}`}
-                        asset={assetById.get(placement.assetId)}
-                        disabled={isBusy}
-                        placement={placement}
-                        onDelete={() => removePlacement(placement)}
-                        onPreview={(settings) => previewPlacementSettings(placement.id, settings)}
-                        onUpdate={(patch) => updatePlacement(placement, patch)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-4 text-xs font-bold text-slate-400">선택된 자산이 없습니다.</p>
-                )}
-              </div>
-            );
-          })}
+      <div className="mt-6 grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_390px] 2xl:items-start">
+        <div
+          id="composition-active-slot-panel"
+          role="tabpanel"
+          aria-labelledby={`composition-slot-tab-${activeSlot}`}
+          className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:p-5"
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">현재 작업 영역</p>
+              <h4 className="mt-1 text-lg font-black text-[#092046]">{activeDefinition.label}</h4>
+              <p className="mt-1 text-sm leading-6 text-slate-600">{activeDefinition.description}</p>
+            </div>
+            <CompositionAssetPicker
+              assets={compatibleAssets}
+              buttonLabel={activePlacements.length > 0 && isArticleCompositionSingleSlot(activeSlot) ? "자산 교체" : "자산 추가"}
+              currentAssetId={currentAssetId}
+              disabled={isBusy}
+              onSelect={(assetId) => selectAsset(activeSlot, assetId)}
+            />
+          </div>
+
+          {activePlacements.length > 0 ? (
+            <div className="mt-5 space-y-3">
+              {activePlacements.map((placement) => (
+                <PlacementControls
+                  key={`${placement.id}:${placement.updatedAt}`}
+                  asset={assetById.get(placement.assetId)}
+                  disabled={isBusy}
+                  placement={placement}
+                  selected={placement.id === activeSelectedPlacementId}
+                  onDelete={() => removePlacement(placement)}
+                  onPreview={(settings) => previewPlacementSettings(placement.id, settings)}
+                  onSelect={() => setSelectedPlacementId(placement.id)}
+                  onUpdate={(patch) => updatePlacement(placement, patch)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-6 text-center">
+              <p className="text-sm font-black text-slate-600">{activeDefinition.label}에 배치된 자산이 없습니다.</p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">위의 자산 추가 버튼에서 이번 호 디자인 자산을 선택하세요.</p>
+            </div>
+          )}
         </div>
 
-        <div>
-          <CompositionMobilePreview article={article} assets={assets} composition={composition} />
+        <div className="min-w-0 2xl:sticky 2xl:top-4">
+          <CompositionMobilePreview
+            article={article}
+            assets={assets}
+            composition={composition}
+            selectedPlacementId={activeSelectedPlacementId}
+          />
           {selectableAssets.length === 0 ? (
             <p className="mt-3 text-center text-xs font-bold leading-5 text-slate-500">
-              사용할 모바일 제작 자산이 없습니다. <Link href={`/projects/${projectSlug}/design`} className="text-[#184a88] underline">기관 디자인</Link>에서 먼저 등록하세요.
+              사용할 이번 호 디자인 자산이 없습니다. <Link href={`/projects/${projectSlug}/design`} className="text-[#184a88] underline">디자인 워크스페이스</Link>에서 먼저 등록하세요.
             </p>
           ) : null}
         </div>
