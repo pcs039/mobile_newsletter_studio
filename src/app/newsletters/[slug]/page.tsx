@@ -141,7 +141,10 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const articles = contentData.articles.filter(
     (article) => hasPublicArticleTitle(article) && (isAdminPreview || isArticlePubliclyVisible(article)),
   );
-  const heroBackgrounds = await getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), isAdminPreview ? "preview" : "public");
+  const [heroBackgrounds, topIllustrations] = await Promise.all([
+    getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), isAdminPreview ? "preview" : "public"),
+    getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), isAdminPreview ? "preview" : "public", "hero_illustration"),
+  ]);
   const publicSurveyLinks = surveyData.surveys.filter((survey) => isProjectSurveyPubliclyActive(survey));
   console.info("[public-newsletter] article visibility", {
     rawArticleCount: contentData.articles.length,
@@ -296,6 +299,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
               analyticsDisabled={isAdminPreview}
               articles={articles}
               heroBackgrounds={heroBackgrounds}
+              topIllustrations={topIllustrations}
               cover={
                 showCoverSection
                   ? {
