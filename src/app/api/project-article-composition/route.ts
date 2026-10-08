@@ -9,6 +9,7 @@ import {
 } from "@/lib/article-composition";
 import {
   copyProjectArticleComposition,
+  copyProjectArticleCompositionsBatch,
   createProjectArticleComposition,
   deleteProjectArticleCompositionPlacement,
   getProjectArticleComposition,
@@ -167,8 +168,29 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const projectSlug = asText(payload?.projectSlug) || asText(payload?.projectId);
-  const articleId = asText(payload?.articleId);
   const action = asText(payload?.action);
+  const articleId = asText(payload?.articleId);
+
+  if (action === "copy_compositions_batch") {
+    const access = await requireProjectApiAccess({ projectSlug });
+    if (!access.ok) return access.response;
+
+    const sourceArticleId = asText(payload?.sourceArticleId);
+    const targetArticleIds = Array.isArray(payload?.targetArticleIds)
+      ? payload.targetArticleIds.map(asText)
+      : [];
+    const batchResult = await copyProjectArticleCompositionsBatch({
+      projectId: access.project.id,
+      sourceArticleId,
+      targetArticleIds,
+    });
+
+    return NextResponse.json(
+      { ok: batchResult.status === "ok", result: batchResult.data, message: batchResult.message },
+      { status: batchResult.status === "ok" ? 200 : repositoryStatusCode(batchResult.status) },
+    );
+  }
+
   const result = await requireEditorContext(projectSlug, articleId);
 
   if (!result.ok) return result.response;
