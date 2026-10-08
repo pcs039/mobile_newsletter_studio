@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ClientReviewStatus, ClientReviewDecision } from "@/lib/client-review-repository";
+import { CLIENT_REVIEW_FEEDBACK_MAX_LENGTH, getClientReviewFeedbackLength, normalizeClientReviewFeedback } from "@/lib/client-review-feedback";
 
 type Props = {
   children: ReactNode;
@@ -11,11 +12,12 @@ type Props = {
   issue: string;
   expiresAt: string;
   initialStatus: ClientReviewStatus;
+  feedbackSupported: boolean;
 };
 
 const labels = { pending: "기관 검토 중", approved: "승인 완료", changes_requested: "수정 요청 완료", revoked: "취소됨" };
 
-export function ClientReviewScreen({ children, projectSlug, title, organization, issue, expiresAt, initialStatus }: Props) {
+export function ClientReviewScreen({ children, projectSlug, title, organization, issue, expiresAt, initialStatus, feedbackSupported }: Props) {
   const [status, setStatus] = useState(initialStatus);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -23,6 +25,10 @@ export function ClientReviewScreen({ children, projectSlug, title, organization,
   const [deadline, setDeadline] = useState(expiresAt);
   const submitting = useRef(false);
   const responseVersion = useRef(0);
+  const feedbackDialog = useRef<HTMLDialogElement>(null);
+  const [feedback, setFeedback] = useState("");
+  const feedbackLength = getClientReviewFeedbackLength(feedback);
+  const feedbackTooLong = feedbackLength > CLIENT_REVIEW_FEEDBACK_MAX_LENGTH;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -59,11 +65,14 @@ export function ClientReviewScreen({ children, projectSlug, title, organization,
     return () => clearInterval(timer);
   }, [deadline]);
 
-  async function respond(decision: ClientReviewDecision) {
+  useEffect(() => {
+    if (status !== "pending" || blocked) feedbackDialog.current?.close();
+  }, [status, blocked]);
+
+  async function respond(decision: ClientReviewDecision, note: string | null = null) {
     if (submitting.current || status !== "pending" || blocked || error) return;
-    if (!window.confirm(decision === "approved"
-      ? "소식지 내용을 확인하고 승인할까요? 승인 후에는 이 링크로 응답을 변경할 수 없습니다."
-      : "수정 요청을 전달할까요? 요청 후에는 이 링크로 응답을 변경할 수 없습니다.")) return;
+    // The correction dialog is its confirmation; approval keeps the existing confirmation.
+    if (decision === "approved" && !window.confirm("소식지 내용을 확인하고 승인할까요? 승인 후에는 이 링크로 응답을 변경할 수 없습니다.")) return;
     submitting.current = true;
     responseVersion.current += 1;
     setBusy(true);
@@ -71,7 +80,7 @@ export function ClientReviewScreen({ children, projectSlug, title, organization,
     try {
       const response = await fetch("/api/client-review/respond", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectSlug, decision }),
+        body: JSON.stringify({ projectSlug, decision, ...(note ? { feedback: note } : {}) }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) {
@@ -79,6 +88,8 @@ export function ClientReviewScreen({ children, projectSlug, title, organization,
         throw new Error(result.message || "응답을 저장하지 못했습니다. 화면을 새로고침해 처리 결과를 확인하세요.");
       }
       setStatus(result.decision);
+      setFeedback("");
+      feedbackDialog.current?.close();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "응답 결과를 확인하지 못했습니다. 화면을 새로고침해 처리 결과를 확인하세요.");
     } finally {
@@ -115,11 +126,34 @@ export function ClientReviewScreen({ children, projectSlug, title, organization,
           <p className="mb-2 text-center text-xs font-semibold text-slate-500">전체 내용을 확인한 뒤 선택해 주세요.</p>
           {error ? <p role="alert" className="mb-2 text-sm font-bold text-rose-700">{error}</p> : null}
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" disabled={busy || Boolean(error)} onClick={() => void respond("changes_requested")} className="dd-btn dd-btn-secondary min-h-12 justify-center rounded-xl">수정 요청</button>
+            <button type="button" disabled={busy || Boolean(error)} onClick={() => { setFeedback(""); feedbackDialog.current?.showModal(); }} className="dd-btn dd-btn-secondary min-h-12 justify-center rounded-xl">수정 요청</button>
             <button type="button" disabled={busy || Boolean(error)} onClick={() => void respond("approved")} className="dd-btn dd-btn-primary min-h-12 justify-center rounded-xl">{busy ? "응답 저장 중..." : "승인"}</button>
           </div>
         </footer>
       ) : null}
+      <dialog ref={feedbackDialog} aria-labelledby="client-review-feedback-title" className="fixed inset-0 m-auto max-h-[85dvh] w-[90vw] max-w-[520px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 text-slate-950 shadow-xl backdrop:bg-slate-950/50">
+        <form onSubmit={(event) => { event.preventDefault(); if (!feedbackTooLong) void respond("changes_requested", feedbackSupported ? normalizeClientReviewFeedback(feedback) : null); }}>
+          <h2 id="client-review-feedback-title" className="text-xl font-black text-[#092046]">수정 요청</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600">수정할 페이지와 내용을 알려 주세요. 의견 없이도 수정 요청을 보낼 수 있습니다. 전송 후에는 이 링크로 응답을 변경할 수 없습니다.</p>
+          {feedbackSupported ? (
+            <div className="mt-4">
+              <label htmlFor="client-review-feedback" className="text-sm font-bold">수정 의견 (선택)</label>
+              <textarea id="client-review-feedback" value={feedback} onChange={(event) => setFeedback(event.target.value)} disabled={busy} maxLength={CLIENT_REVIEW_FEEDBACK_MAX_LENGTH * 2} rows={5}
+                aria-describedby="client-review-feedback-limit" aria-invalid={feedbackTooLong}
+                placeholder="예: 2페이지 행사 일정을 10월 25일로 변경해 주세요."
+                className="mt-2 block w-full resize-y rounded-xl border border-slate-300 bg-white p-3 text-base leading-6" />
+              <p id="client-review-feedback-limit" className={`mt-2 text-xs font-semibold ${feedbackTooLong ? "text-rose-700" : "text-slate-500"}`}>
+                {feedbackLength.toLocaleString("ko-KR")} / 2,000자{feedbackTooLong ? " · 2000자 이하로 작성해 주세요." : " · 선택 입력"}
+              </p>
+            </div>
+          ) : <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">수정 의견 입력은 아직 준비 중입니다. 현재는 수정 요청만 전달할 수 있습니다.</p>}
+          {error ? <p role="alert" className="mt-3 text-sm font-bold text-rose-700">{error}</p> : null}
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <button type="button" disabled={busy} onClick={() => feedbackDialog.current?.close()} className="dd-btn dd-btn-secondary min-h-12 justify-center">취소</button>
+            <button type="submit" disabled={busy || Boolean(error) || feedbackTooLong} className="dd-btn dd-btn-primary min-h-12 justify-center">{busy ? "응답 저장 중..." : "수정 요청 보내기"}</button>
+          </div>
+        </form>
+      </dialog>
     </main>
   );
 }

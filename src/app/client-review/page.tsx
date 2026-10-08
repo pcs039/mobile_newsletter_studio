@@ -56,7 +56,7 @@ export default async function ClientReviewPage({ searchParams }: Props) {
   if (review.status !== "pending") {
     return (
       <ClientReviewScreen projectSlug={slug} title={identity.title} organization={identity.organizationName}
-        issue="" expiresAt={review.expiresAt} initialStatus={review.status}>
+        issue="" expiresAt={review.expiresAt} initialStatus={review.status} feedbackSupported={review.feedbackSupported}>
         {null}
       </ClientReviewScreen>
     );
@@ -133,7 +133,7 @@ export default async function ClientReviewPage({ searchParams }: Props) {
 
   return (
     <ClientReviewScreen key={`${slug}:${review.id}`} projectSlug={slug} title={project.title}
-      organization={project.organization} issue={project.issue} expiresAt={review.expiresAt} initialStatus={review.status}>
+      organization={project.organization} issue={project.issue} expiresAt={review.expiresAt} initialStatus={review.status} feedbackSupported={review.feedbackSupported}>
       <PublicFontFaceStyle fonts={fonts} />
       {!isEbook ? <EbookLinks mobileHref={mobileHref} desktopHref={desktopHref} external={externalEbook} /> : null}
       {content}

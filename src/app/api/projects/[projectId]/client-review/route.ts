@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClientReviewToken, hashClientReviewToken } from "@/lib/client-review";
 import {
-  getLatestClientReview,
+  getClientReviewHistory,
   requestClientReview,
   revokeClientReview,
   type ClientReviewRepositoryStatus,
@@ -33,10 +33,10 @@ export async function GET(
   const context = await requireProject(projectId.trim());
   if ("response" in context) return context.response;
 
-  const result = await getLatestClientReview(context.project.id);
+  const result = await getClientReviewHistory(context.project.id);
   return NextResponse.json(
-    { ok: result.status === "ok", message: result.message, review: result.data },
-    { status: result.status === "ok" ? 200 : statusCode(result.status) },
+    { ok: result.status === "ok", message: result.message, review: result.data?.[0] ?? null, history: result.data },
+    { status: result.status === "ok" ? 200 : statusCode(result.status), headers: { "Cache-Control": "private, no-store" } },
   );
 }
 

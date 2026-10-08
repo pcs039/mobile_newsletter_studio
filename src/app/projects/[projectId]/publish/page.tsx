@@ -2,7 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectClientReviewWorkflow } from "@/components/project-client-review-workflow";
-import { getLatestClientReview } from "@/lib/client-review-repository";
+import { getClientReviewHistory } from "@/lib/client-review-repository";
 import { StatusPill } from "@/components/status-pill";
 import { getValidExternalEbookUrl } from "@/lib/ebook-source";
 import {
@@ -93,7 +93,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
     getProjectAudioFiles(projectId),
   ]);
   const project = workspace.project;
-  const clientReview = project ? await getLatestClientReview(project.id) : null;
+  const clientReview = project ? await getClientReviewHistory(project.id) : null;
   const articles = contentData.articles;
   const firstArticle = articles[0] ?? null;
   const firstPages = pageImageData.pages.slice(0, 2);
@@ -385,7 +385,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">발행 상태 요약</p>
                 <h3 className="mt-1 text-xl font-black text-[#092046]">
-                  {project?.statusCode === "published" ? "발행 완료" : clientReview?.data?.status !== "approved" ? "기관 승인 대기" : hasBlockingChecklistIssues ? "발행 전 확인 필요" : "발행 가능 상태"}
+                  {project?.statusCode === "published" ? "발행 완료" : clientReview?.data?.[0]?.status !== "approved" ? "기관 승인 대기" : hasBlockingChecklistIssues ? "발행 전 확인 필요" : "발행 가능 상태"}
                 </h3>
                 <p className="mt-2 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">
                   자동 검수와 기관 승인을 확인한 뒤 최종 발행하면 공개 URL과 QR코드가 활성화됩니다.
@@ -400,7 +400,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
                       : "bg-emerald-100 text-emerald-800"
                 }`}
               >
-                {project?.statusCode === "published" ? "발행 완료" : clientReview?.data?.status !== "approved" ? "기관 승인 필요" : hasBlockingChecklistIssues ? "검수 필요" : "발행 가능"}
+                {project?.statusCode === "published" ? "발행 완료" : clientReview?.data?.[0]?.status !== "approved" ? "기관 승인 필요" : hasBlockingChecklistIssues ? "검수 필요" : "발행 가능"}
               </span>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -421,7 +421,8 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
 
           <ProjectClientReviewWorkflow
             key={projectId}
-            initialReview={clientReview?.data ?? null}
+            initialReview={clientReview?.data?.[0] ?? null}
+            initialReviewHistory={clientReview?.data ?? []}
             initialReviewError={clientReview && clientReview.status !== "ok" ? clientReview.message : ""}
             projectStatusCode={project?.statusCode ?? "draft"}
             currentStatus={project?.status ?? "작성 중"}
