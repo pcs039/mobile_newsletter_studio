@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireProjectApiAccess } from "@/lib/project-api-access";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
+import { getProjectWorkspace } from "@/lib/newsletter-repository";
+import { serveArticleHeroBackground } from "@/lib/article-hero-background-file";
 
 export const dynamic = "force-dynamic";
 
@@ -158,6 +160,20 @@ async function authorizePublicFile(
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  if (searchParams.has("heroArticle")) {
+    const slug = searchParams.get("project")?.trim() ?? "";
+    const articleId = searchParams.get("heroArticle") ?? "";
+    const workspace = await getProjectWorkspace(slug);
+    if (!workspace.ok) return NextResponse.json({ ok: false, message: "배경판을 찾지 못했습니다." }, { status: 404 });
+    const preview = searchParams.get("preview") === "admin";
+    if (preview || workspace.project.statusCode !== "published") {
+      // Non-public projects never turn an anonymous request into a preview.
+      if (!preview) return NextResponse.json({ ok: false, message: "배경판을 찾지 못했습니다." }, { status: 404 });
+      const access = await requireProjectApiAccess({ projectId: workspace.project.id });
+      if (!access.ok) return access.response;
+    }
+    return serveArticleHeroBackground(workspace.project.id, articleId, preview);
+  }
   const bucket = searchParams.get("bucket")?.trim() ?? "";
   const path = searchParams.get("path")?.trim() ?? "";
   const headers = getStorageHeaders();

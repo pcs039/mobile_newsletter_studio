@@ -783,7 +783,7 @@ export function ArticleCompositionEditor({
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 개별 기사 디자인</p>
           <h3 className="mt-1 text-xl font-black text-[#092046]">기사 디자인 조정</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">변경 내용은 항목별로 즉시 저장되며 공개 화면에는 아직 적용되지 않습니다.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">변경 내용은 항목별로 즉시 저장됩니다. 준비 완료 상태의 배경판은 승인된 자산만 모바일 미리보기·기관 검토·공개 화면에 표시됩니다. 다른 배치 요소는 아직 공개 화면에 반영되지 않습니다.</p>
         </div>
         <div className="flex rounded-lg border border-[#b8d7ff] bg-[#eef6ff] p-1">
           {(["draft", "ready"] as const).map((status) => (

@@ -14,6 +14,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
+import { ArticleHeroBackgroundLayer } from "@/components/article-hero-background-layer";
+import type { ArticleHeroBackground } from "@/lib/article-hero-background";
 import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
@@ -66,6 +68,7 @@ import {
 import { trackArticleEvent, type ArticleEventType } from "@/lib/public-article-analytics";
 
 type PublicMobileArticleReaderProps = {
+  heroBackgrounds?: Record<string, ArticleHeroBackground>;
   articles: ProjectContentArticle[];
   analyticsDisabled?: boolean;
   cover?: {
@@ -1343,6 +1346,7 @@ function ArticlePublicInfoCard({
 }
 
 function ArticleCard({
+  heroBackground,
   analyticsDisabled = false,
   article,
   className = "",
@@ -1357,6 +1361,7 @@ function ArticleCard({
   slug,
   survey,
 }: {
+  heroBackground?: ArticleHeroBackground;
   analyticsDisabled?: boolean;
   article: ProjectContentArticle;
   className?: string;
@@ -1512,6 +1517,7 @@ function ArticleCard({
       data-motion-speed={motionSpeed}
       style={fontStyle}
     >
+      <ArticleHeroBackgroundLayer background={article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel ? heroBackground : undefined}>
       {showAdminPreviewControls ? (
         <div className="flex justify-end">
           <Link
@@ -1625,6 +1631,7 @@ function ArticleCard({
           </div>
         </ScrollMotionReveal>
       ) : null}
+      </ArticleHeroBackgroundLayer>
       <ArticlePublicInfoCard action={publicInfoAction} article={article} presentation={presentation} />
       {shouldShowArticleAudio && article.audioFile ? (
         <section className="mt-3 rounded-xl border border-[#d8e8ff] bg-[#f7fbff] px-2.5 py-2 shadow-sm shadow-blue-950/5">
@@ -1747,6 +1754,7 @@ function ArticleCard({
 }
 
 export function PublicMobileArticleReader({
+  heroBackgrounds = {},
   analyticsDisabled = false,
   articles,
   cover,
@@ -2429,6 +2437,7 @@ export function PublicMobileArticleReader({
                   <ArticleCard
                     analyticsDisabled={analyticsDisabled}
                     article={currentArticle}
+                    heroBackground={heroBackgrounds[currentArticle.id]}
                     className="mx-5 my-5"
                     fontAssets={fontAssets}
                     index={safeCurrentIndex}
@@ -2626,6 +2635,7 @@ export function PublicMobileArticleReader({
               key={article.id}
               analyticsDisabled={analyticsDisabled}
               article={article}
+              heroBackground={heroBackgrounds[article.id]}
               fontAssets={fontAssets}
               index={index}
               onOpenArticleImage={setLightboxImage}
