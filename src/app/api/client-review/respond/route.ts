@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getClientReviewCookieToken } from "@/lib/client-review";
+import { CLIENT_REVIEW_FEEDBACK_MAX_LENGTH, getClientReviewFeedbackLength, normalizeClientReviewFeedback } from "@/lib/client-review-feedback";
 import {
   getClientReviewAccess,
   respondClientReview,
@@ -34,11 +35,20 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     decision?: unknown;
     projectSlug?: unknown;
+    feedback?: unknown;
   } | null;
   const projectSlug = typeof body?.projectSlug === "string" ? body.projectSlug.trim() : "";
 
   if (!projectSlug || !isDecision(body?.decision)) {
     return NextResponse.json({ ok: false, message: "기관 검토 응답 값을 확인해 주세요." }, { status: 400 });
+  }
+
+  if (body.feedback !== undefined && body.feedback !== null && typeof body.feedback !== "string") {
+    return NextResponse.json({ ok: false, message: "수정 의견은 텍스트로 입력해 주세요." }, { status: 400 });
+  }
+  const feedback = normalizeClientReviewFeedback(body.feedback as string | null | undefined);
+  if (feedback && (body.decision !== "changes_requested" || getClientReviewFeedbackLength(feedback) > CLIENT_REVIEW_FEEDBACK_MAX_LENGTH)) {
+    return NextResponse.json({ ok: false, message: "수정 의견은 수정 요청에만 포함할 수 있으며 2000자 이하여야 합니다." }, { status: 400 });
   }
 
   const token = await getClientReviewCookieToken(projectSlug);
@@ -54,7 +64,7 @@ export async function POST(request: Request) {
     });
   }
 
-  const result = await respondClientReview(token, body.decision);
+  const result = await respondClientReview(token, body.decision, feedback);
   return NextResponse.json(
     { ok: result.status === "ok", decision: result.data, message: result.message },
     {

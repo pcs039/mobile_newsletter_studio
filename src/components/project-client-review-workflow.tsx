@@ -7,20 +7,22 @@ import { ProjectPublishCompletionPanel, type ProjectPublishCompletionPanelProps 
 
 type Props = Omit<ProjectPublishCompletionPanelProps, "canPublish" | "onPublishComplete" | "onPublishingChange"> & {
   initialReview: ClientReview | null;
+  initialReviewHistory: ClientReview[];
   initialReviewError: string;
   projectStatusCode: string;
 };
 
-type ReviewResponse = { ok: boolean; message?: string; review?: ClientReview | null; reviewUrl?: string };
+type ReviewResponse = { ok: boolean; message?: string; review?: ClientReview | null; history?: ClientReview[]; reviewUrl?: string };
 
 function formatDate(value: string | null) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Seoul" }).format(new Date(value));
 }
 
-export function ProjectClientReviewWorkflow({ initialReview, initialReviewError, projectStatusCode, ...publishProps }: Props) {
+export function ProjectClientReviewWorkflow({ initialReview, initialReviewHistory, initialReviewError, projectStatusCode, ...publishProps }: Props) {
   const router = useRouter();
   const [review, setReview] = useState(initialReview);
+  const [history, setHistory] = useState(initialReviewHistory);
   const [error, setError] = useState(initialReviewError);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState<"request" | "cancel" | null>(null);
@@ -66,6 +68,7 @@ export function ProjectClientReviewWorkflow({ initialReview, initialReviewError,
         router.refresh();
       }
       setReview(result.review);
+      setHistory(result.history ?? []);
       setError("");
       setNow(Date.now());
     } catch (cause) {
@@ -160,7 +163,8 @@ export function ProjectClientReviewWorkflow({ initialReview, initialReviewError,
 
   const expired = review?.status === "pending" && new Date(review.expiresAt).getTime() <= now;
   const status = review?.revokedAt ? "revoked" : expired ? "expired" : review?.status ?? "none";
-  const labels = { none: "검토 요청 전", pending: "기관 검토 중", approved: "승인 완료", changes_requested: "수정 요청", revoked: "취소됨", expired: "만료됨" };
+  const labels = { none: "검토 요청 전", pending: "기관 검토 중", approved: "승인 완료", changes_requested: "기관 수정 요청", revoked: "취소됨", expired: "만료됨" };
+  const previousChanges = history.filter((item) => item.id !== review?.id && item.status === "changes_requested");
   const tone = status === "approved" ? "bg-emerald-100 text-emerald-800" : status === "pending" ? "bg-sky-100 text-sky-800" : status === "changes_requested" || status === "expired" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700";
   const disabled = Boolean(busy) || checking || publishing || projectStatusCode === "archived";
   const canPublish = !error && !busy && !checking && status === "approved" && ["in_review", "published"].includes(projectStatusCode);
@@ -182,9 +186,29 @@ export function ProjectClientReviewWorkflow({ initialReview, initialReviewError,
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             <div><dt className="text-xs font-bold text-slate-500">발급일 (한국 시간)</dt><dd className="mt-1 text-sm font-bold text-[#092046]">{formatDate(review.requestedAt)}</dd></div>
             <div><dt className="text-xs font-bold text-slate-500">만료일 (한국 시간)</dt><dd className="mt-1 text-sm font-bold text-[#092046]">{formatDate(review.expiresAt)}</dd></div>
-            {review.respondedAt ? <div><dt className="text-xs font-bold text-slate-500">{status === "approved" ? "승인 시각" : "응답 시각"}</dt><dd className="mt-1 text-sm font-bold text-[#092046]">{formatDate(review.respondedAt)}</dd></div> : null}
+            {review.respondedAt ? <div><dt className="text-xs font-bold text-slate-500">{status === "approved" ? "승인 시각" : status === "changes_requested" ? "수정 요청 시각" : "응답 시각"}</dt><dd className="mt-1 text-sm font-bold text-[#092046]">{formatDate(review.respondedAt)}</dd></div> : null}
             {review.revokedAt ? <div><dt className="text-xs font-bold text-slate-500">취소 시각</dt><dd className="mt-1 text-sm font-bold text-[#092046]">{formatDate(review.revokedAt)}</dd></div> : null}
           </dl>
+        ) : null}
+        {review?.status === "changes_requested" ? (
+          <section aria-label="기관 수정 의견" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <h4 className="text-sm font-black text-amber-900">수정 의견</h4>
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700 [overflow-wrap:anywhere]">{review.feedback || "별도 수정 의견이 없습니다."}</p>
+          </section>
+        ) : null}
+        {previousChanges.length ? (
+          <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <summary className="cursor-pointer text-sm font-bold text-[#092046]">이전 수정 요청 ({previousChanges.length}건)</summary>
+            <p className="mt-2 text-xs text-slate-500">최근 20회 검토에서 받은 수정 요청입니다. 새 링크를 발급해도 이전 의견은 보존됩니다.</p>
+            <ul className="mt-3 space-y-3">
+              {previousChanges.map((item) => (
+                <li key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-bold text-slate-500">수정 요청: {formatDate(item.respondedAt)} (한국 시간)</p>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700 [overflow-wrap:anywhere]">{item.feedback || "별도 수정 의견이 없습니다."}</p>
+                </li>
+              ))}
+            </ul>
+          </details>
         ) : null}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-xs font-bold text-slate-600">새 링크 유효기간

@@ -2,11 +2,14 @@ import "server-only";
 
 import { hashClientReviewToken, isClientReviewToken } from "@/lib/client-review";
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
+import { CLIENT_REVIEW_FEEDBACK_MAX_LENGTH, getClientReviewFeedbackLength, normalizeClientReviewFeedback } from "@/lib/client-review-feedback";
 
 export type ClientReviewStatus = "pending" | "approved" | "changes_requested" | "revoked";
 export type ClientReviewDecision = "approved" | "changes_requested";
 
 export type ClientReview = {
+  feedback: string | null;
+  feedbackSupported: boolean;
   expiresAt: string;
   id: string;
   projectId: string;
@@ -53,6 +56,7 @@ export type ClientReviewRepositoryResult<T> =
   | { data: null; httpStatus?: number; message: string; status: Exclude<ClientReviewRepositoryStatus, "ok"> };
 
 type ClientReviewRow = {
+  feedback?: string | null;
   expires_at: string;
   id: string;
   project_id: string;
@@ -113,6 +117,8 @@ function mapReview(row: ClientReviewRow): ClientReview | null {
   if (!isClientReviewStatus(row.status)) return null;
 
   return {
+    feedback: row.feedback ?? null,
+    feedbackSupported: Object.hasOwn(row, "feedback"),
     expiresAt: row.expires_at,
     id: row.id,
     projectId: row.project_id,
@@ -228,6 +234,8 @@ export async function requestClientReview(input: {
 
   return {
     data: {
+      feedback: null,
+      feedbackSupported: false,
       expiresAt: row.expires_at,
       id: row.review_id,
       projectId: row.project_id,
@@ -245,15 +253,25 @@ export async function requestClientReview(input: {
 export async function respondClientReview(
   token: string,
   decision: ClientReviewDecision,
+  feedback?: string | null,
 ): Promise<ClientReviewRepositoryResult<ClientReviewDecision>> {
   if (!isClientReviewToken(token)) {
     return { data: null, message: "기관 검토 링크를 확인해 주세요.", status: "invalid_input" };
   }
 
+  const note = normalizeClientReviewFeedback(feedback);
+  if (note && (decision !== "changes_requested" || getClientReviewFeedbackLength(note) > CLIENT_REVIEW_FEEDBACK_MAX_LENGTH)) {
+    return { data: null, message: "수정 의견은 수정 요청에만 포함할 수 있으며 2000자 이하여야 합니다.", status: "invalid_input" };
+  }
   const result = await callRpc("respond_client_review_atomic", {
     p_decision: decision,
     p_token_hash: hashClientReviewToken(token),
+    ...(note ? { p_feedback: note } : {}),
   });
+  // Never retry with the legacy RPC after a missing overload: that would lose the note.
+  if (note && result.status === "migration_required") {
+    return { ...result, message: "수정 의견 저장 기능이 아직 준비되지 않았습니다. 입력한 의견은 저장되지 않았습니다." };
+  }
   if (result.status !== "ok") return result;
 
   return result.data.status === decision
@@ -294,37 +312,51 @@ export async function publishProjectIfClientApproved(
   };
 }
 
+const reviewColumns = "id,project_id,status,expires_at,requested_by,requested_at,responded_at,revoked_at";
+
+async function fetchReviewRows(query: URLSearchParams, headers: Record<string, string>) {
+  query.set("select", `${reviewColumns},feedback`);
+  const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_project_client_reviews?${query}`)!;
+  let response = await fetch(endpoint, { headers, cache: "no-store" });
+  let body = await response.text();
+  // Code can deploy before the separately controlled Production migration.
+  // Fall back only for the known missing feedback column; do not mask other failures.
+  if (!response.ok && response.status === 400 && body.includes("feedback")
+    && (body.includes("42703") || body.includes("PGRST204"))) {
+    query.set("select", reviewColumns);
+    response = await fetch(getSupabaseRestEndpoint(`/rest/v1/newsletter_project_client_reviews?${query}`)!, { headers, cache: "no-store" });
+    body = await response.text();
+  }
+  return { response, body };
+}
+
+export async function getClientReviewHistory(
+  projectId: string,
+): Promise<ClientReviewRepositoryResult<ClientReview[]>> {
+  const headers = getServiceRoleHeaders();
+  if (!headers) return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
+  try {
+    const { response, body } = await fetchReviewRows(new URLSearchParams({
+      project_id: `eq.${projectId}`, order: "requested_at.desc,created_at.desc,id.desc", limit: "20",
+    }), headers);
+    if (!response.ok) return mapRpcFailure(response.status, body);
+    const rows = JSON.parse(body || "[]") as ClientReviewRow[];
+    const reviews = rows.map(mapReview);
+    if (reviews.some((review) => !review)) return { data: null, message: "기관 검토 상태 형식을 확인하지 못했습니다.", status: "request_failed" };
+    return { data: reviews as ClientReview[], message: "기관 검토 이력을 불러왔습니다.", status: "ok" };
+  } catch (error) {
+    console.error("Client review history lookup failed", error);
+    return { data: null, message: "기관 검토 상태 조회 중 오류가 발생했습니다.", status: "request_failed" };
+  }
+}
+
 export async function getLatestClientReview(
   projectId: string,
 ): Promise<ClientReviewRepositoryResult<ClientReview | null>> {
-  const headers = getServiceRoleHeaders();
-  const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_project_client_reviews?select=id,project_id,status,expires_at,requested_by,requested_at,responded_at,revoked_at&project_id=eq.${encodeURIComponent(
-      projectId,
-    )}&order=requested_at.desc,created_at.desc,id.desc&limit=1`,
-  );
-
-  if (!headers || !endpoint) {
-    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
-  }
-
-  try {
-    const response = await fetch(endpoint, { headers, cache: "no-store" });
-    const body = await response.text();
-
-    if (!response.ok) return mapRpcFailure(response.status, body);
-
-    const rows = JSON.parse(body || "[]") as ClientReviewRow[];
-    if (!rows[0]) return { data: null, message: "기관 검토 요청이 없습니다.", status: "ok" };
-
-    const review = mapReview(rows[0]);
-    return review
-      ? { data: review, message: "최근 기관 검토 상태를 불러왔습니다.", status: "ok" }
-      : { data: null, message: "기관 검토 상태 형식을 확인하지 못했습니다.", status: "request_failed" };
-  } catch (error) {
-    console.error("Latest client review lookup failed", error);
-    return { data: null, message: "기관 검토 상태 조회 중 오류가 발생했습니다.", status: "request_failed" };
-  }
+  const result = await getClientReviewHistory(projectId);
+  return result.status === "ok"
+    ? { data: result.data[0] ?? null, message: result.data.length ? "최근 기관 검토 상태를 불러왔습니다." : "기관 검토 요청이 없습니다.", status: "ok" }
+    : result;
 }
 
 export async function getClientReviewAccess(
@@ -337,18 +369,14 @@ export async function getClientReviewAccess(
 
   const headers = getServiceRoleHeaders();
   const tokenHash = hashClientReviewToken(token);
-  const reviewEndpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_project_client_reviews?select=id,project_id,status,expires_at,requested_by,requested_at,responded_at,revoked_at&token_hash=eq.${tokenHash}&limit=1`,
-  );
-
-  if (!headers || !reviewEndpoint) {
+  if (!headers) {
     return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
   }
 
   try {
-    const reviewResponse = await fetch(reviewEndpoint, { headers, cache: "no-store" });
-    const reviewBody = await reviewResponse.text();
-
+    const { response: reviewResponse, body: reviewBody } = await fetchReviewRows(
+      new URLSearchParams({ token_hash: `eq.${tokenHash}`, limit: "1" }), headers,
+    );
     if (!reviewResponse.ok) return mapRpcFailure(reviewResponse.status, reviewBody);
 
     const reviewRows = JSON.parse(reviewBody || "[]") as ClientReviewRow[];
