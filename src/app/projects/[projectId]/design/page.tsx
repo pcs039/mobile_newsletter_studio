@@ -1,16 +1,58 @@
 import Link from "next/link";
+import { IssueDesignBatchApply } from "@/components/design/issue-design-batch-apply";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectDesignIntakeSection } from "@/components/project-design-intake-section";
 import { ProjectDesignKitForm } from "@/components/project-design-kit-form";
-import { getFontAssets, getProjectDesignAssets, getProjectDesignKit } from "@/lib/newsletter-repository";
+import { getProjectArticleCompositionSources } from "@/lib/article-composition-repository";
+import {
+  getFontAssets,
+  getProjectContent,
+  getProjectDesignAssets,
+  getProjectDesignKit,
+  type ProjectContentArticle,
+} from "@/lib/newsletter-repository";
+
+const articleStatusLabels: Record<string, string> = {
+  draft: "작성 중",
+  editing: "작성 중",
+  review: "검수 요청",
+  approved: "검수 완료",
+  published: "발행 반영",
+  needs_revision: "수정 필요",
+};
+
+function getArticleOrderLabel(article: ProjectContentArticle) {
+  if (article.pageNumber) return `${article.pageNumber}쪽`;
+  return article.sortOrder > 0 ? `노출 ${article.sortOrder}` : "노출 순서 미정";
+}
 
 export default async function ProjectDesignKitPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const [designKitData, designAssetsData, fontData] = await Promise.all([
+  const [designKitData, designAssetsData, fontData, contentData] = await Promise.all([
     getProjectDesignKit(projectId),
     getProjectDesignAssets(projectId),
     getFontAssets(),
+    getProjectContent(projectId),
   ]);
+  const compositionSourceData = designKitData.ok
+    ? await getProjectArticleCompositionSources(designKitData.designKit.projectId)
+    : null;
+  const compositionArticleIds = new Set(compositionSourceData?.data.map((source) => source.articleId) ?? []);
+  const issueDesignArticles = [...contentData.articles]
+    .sort((first, second) => {
+      const firstPage = first.pageNumber ?? Number.MAX_SAFE_INTEGER;
+      const secondPage = second.pageNumber ?? Number.MAX_SAFE_INTEGER;
+      if (firstPage !== secondPage) return firstPage - secondPage;
+      if (first.sortOrder !== second.sortOrder) return first.sortOrder - second.sortOrder;
+      return first.title.localeCompare(second.title, "ko");
+    })
+    .map((article) => ({
+      hasComposition: compositionArticleIds.has(article.id),
+      id: article.id,
+      orderLabel: getArticleOrderLabel(article),
+      statusLabel: articleStatusLabels[article.status] ?? article.status,
+      title: article.title,
+    }));
 
   return (
     <ProjectAdminShell
@@ -83,6 +125,7 @@ export default async function ProjectDesignKitPage({ params }: { params: Promise
               initialSourceMode={designKitData.designKit.sourceMode}
               projectId={projectId}
             />
+            <IssueDesignBatchApply articles={issueDesignArticles} projectSlug={projectId} />
           </section>
 
           <section className="border-t border-[#c9d7e8] pt-6">
