@@ -297,8 +297,11 @@ function PlacementControls({
         ) : null}
       </div>
 
-      <details className="mt-4 rounded-lg border border-slate-200 bg-slate-50" open>
-        <summary className="cursor-pointer px-4 py-3 text-sm font-black text-[#092046]">세부 조정</summary>
+      <details className="mt-4 rounded-lg border border-slate-200 bg-slate-50">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-black text-[#092046]">
+          세부 조정
+          <span className="ml-2 text-xs font-bold text-slate-500">위치·회전·크기·투명도·레이어</span>
+        </summary>
         <div className="border-t border-slate-200 p-4">
           <div className="grid gap-5 xl:grid-cols-2">
             <fieldset className="min-w-0 space-y-4">
@@ -540,10 +543,10 @@ export function ArticleCompositionEditor({
   if (!composition) {
     return (
       <section className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사 화면 구성</p>
-        <h3 className="mt-2 text-xl font-black text-[#092046]">모바일 시각 구성을 시작합니다</h3>
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사·페이지 디자인</p>
+        <h3 className="mt-2 text-xl font-black text-[#092046]">디자인 조정을 시작합니다</h3>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          기관 디자인 자산을 상단 배경, 제목 아이콘, 본문 장식 같은 의미 있는 위치에 배치합니다. 기사 내용은 기존 편집 데이터가 기준입니다.
+          기관 디자인 자산을 기사 배경, 이미지, 장식에 배치합니다. 기사 내용은 기존 편집 데이터가 기준입니다.
         </p>
         {initialStatus !== "not_found" ? (
           <p className="mt-3 text-sm font-bold text-rose-700">기사 화면 구성 정보를 불러오지 못했습니다.</p>
@@ -554,7 +557,7 @@ export function ArticleCompositionEditor({
           onClick={createComposition}
           className="mt-5 rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white transition hover:bg-[#123a78] disabled:cursor-not-allowed disabled:bg-slate-400"
         >
-          {busyKey === "create" ? "구성 생성 중" : "기사 화면 구성 만들기"}
+          {busyKey === "create" ? "구성 생성 중" : "디자인 조정 시작"}
         </button>
       </section>
     );
@@ -564,8 +567,8 @@ export function ArticleCompositionEditor({
     <section className="rounded-lg border border-[#b8d7ff] bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사 화면 구성</p>
-          <h3 className="mt-1 text-xl font-black text-[#092046]">기관 디자인 자산 배치</h3>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사·페이지 디자인</p>
+          <h3 className="mt-1 text-xl font-black text-[#092046]">디자인 조정</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">변경 내용은 항목별로 즉시 저장되며 공개 화면에는 아직 적용되지 않습니다.</p>
         </div>
         <div className="flex rounded-lg border border-[#b8d7ff] bg-[#eef6ff] p-1">
@@ -593,7 +596,22 @@ export function ArticleCompositionEditor({
         </p>
       ) : null}
 
-      <div className="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1fr)_390px]">
+      <div className="mt-6 flex flex-col gap-3 border-y border-slate-200 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기본 디자인</p>
+          <p className="mt-1 text-sm font-bold text-[#092046]">기관 디자인의 공통 자산을 이 기사에 적용합니다.</p>
+        </div>
+        <Link href={`/projects/${projectSlug}/design`} className="text-sm font-black text-[#184a88] underline decoration-sky-200 underline-offset-4">
+          기관 디자인 관리
+        </Link>
+      </div>
+
+      <div className="mt-6">
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">배경·이미지·장식</p>
+        <p className="mt-1 text-sm leading-6 text-slate-600">의미 있는 위치에 자산을 선택하고, 필요한 항목만 세부 조정합니다.</p>
+      </div>
+
+      <div className="mt-4 grid gap-6 2xl:grid-cols-[minmax(0,1fr)_390px]">
         <div className="divide-y divide-slate-200 border-y border-slate-200">
           {slotDefinitions.map((definition) => {
             const placements = composition.assets

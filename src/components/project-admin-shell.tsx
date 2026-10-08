@@ -9,11 +9,14 @@ import { getProjectWorkspace } from "@/lib/newsletter-repository";
 type ProjectSection = "settings" | "design" | "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey" | "analytics";
 type ProjectModule = "newsletter" | "ebook" | "engagement" | "common";
 
-const contentToolNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
+const planningNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
   { key: "design", label: "기관 디자인", path: "design", guide: "CI·색상·스타일", module: "common" },
-  { key: "reading", label: "모바일 소식지", path: "reading", guide: "기사·문단·URL", module: "newsletter" },
-  { key: "pages", label: "eBook", path: "pages", guide: "페이지·클릭 영역", module: "ebook" },
   { key: "assets", label: "자산 관리", path: "assets", guide: "이미지·유튜브 소재", module: "common" },
+];
+
+const contentProductionNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
+  { key: "reading", label: "모바일 소식지", path: "reading", guide: "기사·미디어·배치", module: "newsletter" },
+  { key: "pages", label: "eBook", path: "pages", guide: "페이지·클릭 영역", module: "ebook" },
   { key: "audio", label: "음성 관리", path: "audio", guide: "음성 파일·대본", module: "newsletter" },
 ];
 
@@ -34,26 +37,26 @@ const workflowStages: Array<{
   sections: ProjectSection[];
 }> = [
   {
-    label: "기본정보",
-    detail: "기관·발행월·담당자 확인",
+    label: "기관·프로젝트 설정",
+    detail: "기관·발행호·담당자 확인",
     path: "settings",
     sections: ["settings"],
   },
   {
-    label: "기관 디자인",
-    detail: "CI·색상·스타일",
+    label: "자료·디자인 준비",
+    detail: "원본자료·CI·공통 자산",
     path: "design",
-    sections: ["design"],
+    sections: ["design", "assets"],
   },
   {
-    label: "콘텐츠 제작",
-    detail: "기사·이미지·음성",
+    label: "기사·페이지 제작",
+    detail: "기사·미디어·화면 배치",
     path: "reading",
-    sections: ["reading", "pages", "assets", "audio"],
+    sections: ["reading", "pages", "audio"],
   },
   {
-    label: "검수·발행",
-    detail: "화면·URL·QR",
+    label: "내부 검수·발행",
+    detail: "모바일 확인·가발행",
     path: "publish",
     sections: ["publish"],
   },
@@ -64,8 +67,8 @@ const workflowStages: Array<{
     sections: ["distribution"],
   },
   {
-    label: "운영·분석",
-    detail: "참여·반응·리포트",
+    label: "운영·성과 관리",
+    detail: "참여·반응·지난 결과",
     path: "analytics",
     sections: ["survey", "analytics"],
   },
@@ -178,7 +181,10 @@ export async function ProjectAdminShell({
           : active === "design" && !capabilities.hasNewsletter && capabilities.hasEngagement
             ? { label: "참여 콘텐츠", path: "survey" as const, detail: "설문·이벤트 구성으로 이동합니다." }
             : nextSteps[active];
-  const visibleContentToolNavigation = contentToolNavigation.filter(
+  const visiblePlanningNavigation = planningNavigation.filter(
+    (item) => isNavigationItemVisible(item.module, capabilities) || item.key === active,
+  );
+  const visibleContentProductionNavigation = contentProductionNavigation.filter(
     (item) => isNavigationItemVisible(item.module, capabilities) || item.key === active,
   );
   const visiblePublishingNavigation = publishingNavigation.filter(
@@ -187,7 +193,8 @@ export async function ProjectAdminShell({
   const visibleAnalyticsNavigation = analyticsNavigation.filter(
     (item) => isNavigationItemVisible(item.module, capabilities) || item.key === active,
   );
-  const isContentToolActive = visibleContentToolNavigation.some((item) => item.key === active);
+  const isPlanningToolActive = visiblePlanningNavigation.some((item) => item.key === active);
+  const isContentProductionToolActive = visibleContentProductionNavigation.some((item) => item.key === active);
   const isPublishingToolActive = visiblePublishingNavigation.some((item) => item.key === active);
   const isAnalyticsToolActive = visibleAnalyticsNavigation.some((item) => item.key === active);
 
@@ -250,7 +257,7 @@ export async function ProjectAdminShell({
           <section className="mb-7 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm" data-admin-workflow>
             <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프로젝트 운영</p>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프로젝트 운영 현황</p>
                 <h3 className="mt-1 text-lg font-black text-[#092046]">
                   {project?.projectTypeLabel ?? "통합 프로젝트"} 운영 흐름
                 </h3>
@@ -319,13 +326,38 @@ export async function ProjectAdminShell({
             </div>
 
             <nav
-              className="mt-4 grid gap-3 border-t border-[#d8e8ff] pt-4 lg:grid-cols-3"
+              className="mt-4 grid gap-3 border-t border-[#d8e8ff] pt-4 md:grid-cols-2 2xl:grid-cols-4"
               aria-label="프로젝트 하위 작업"
             >
-              <details open={active === "settings" || isContentToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
-                <summary className="cursor-pointer text-xs font-black text-slate-600">콘텐츠 제작 도구</summary>
+              <details open={isPlanningToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
+                <summary className="cursor-pointer text-xs font-black text-slate-600">자료·기획</summary>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {visibleContentToolNavigation.map((item) => {
+                  {visiblePlanningNavigation.map((item) => {
+                    const isActive = active === item.key;
+
+                    return (
+                      <Link
+                        key={item.key}
+                        href={`/projects/${projectId}/${item.path}`}
+                        className={`dd-btn dd-btn-sm rounded-full border px-3 py-2 text-xs ${
+                          isActive
+                            ? "border-[#092046] bg-[#092046] text-white"
+                            : "border-[#d8e8ff] bg-white text-[#092046] hover:border-[#2f73b7] hover:bg-[#eaf3ff]"
+                        }`}
+                      >
+                        {item.label}
+                        <span className={`ml-1 font-semibold ${isActive ? "text-sky-100" : "text-slate-400"}`}>
+                          {item.guide}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </details>
+              <details open={isContentProductionToolActive} className="rounded-lg border border-[#d8e8ff] bg-white px-3 py-3">
+                <summary className="cursor-pointer text-xs font-black text-slate-600">콘텐츠 제작</summary>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {visibleContentProductionNavigation.map((item) => {
                     const isActive = active === item.key;
 
                     return (

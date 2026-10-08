@@ -21,9 +21,9 @@ type ArticleWorkspaceTabsProps = {
 };
 
 const tabs: Array<{ description: string; label: string; value: ArticleWorkspaceTab }> = [
-  { value: "content", label: "내용 작성", description: "기사 내용과 연결 정보를 편집합니다." },
-  { value: "composition", label: "화면 구성", description: "기관 디자인 자산을 기사에 배치합니다." },
-  { value: "review", label: "검수·발행", description: "저장된 구성과 발행 상태를 확인합니다." },
+  { value: "content", label: "기사 내용", description: "원본자료, 기사 본문, 사진·미디어와 연결 기능을 편집합니다." },
+  { value: "composition", label: "디자인 조정", description: "기관 디자인 자산을 기사 배경과 장식에 배치합니다." },
+  { value: "review", label: "내부 검수", description: "저장된 기사와 모바일 표시 상태를 확인합니다." },
 ];
 
 function getTabFromLocation(articleId: string | null): ArticleWorkspaceTab {
@@ -74,7 +74,7 @@ export function ArticleWorkspaceTabs({
         <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사 작업</p>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">발행호 기사 작업</p>
               {articleId ? <StatusPill value={articleStatus} /> : <StatusPill value="신규 작성" />}
             </div>
             <h2 className="mt-2 break-words text-xl font-black leading-8 text-[#092046] sm:text-2xl">
@@ -111,7 +111,7 @@ export function ArticleWorkspaceTabs({
           </div>
         </div>
 
-        <div role="tablist" aria-label="기사 작업 단계" className="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+        <div role="tablist" aria-label="기사 제작 영역" className="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-4">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.value;
             const isDisabled = !articleId && tab.value !== "content";
