@@ -69,6 +69,7 @@ import { trackArticleEvent, type ArticleEventType } from "@/lib/public-article-a
 
 type PublicMobileArticleReaderProps = {
   heroBackgrounds?: Record<string, ArticleHeroBackground>;
+  topIllustrations?: Record<string, ArticleHeroBackground>;
   articles: ProjectContentArticle[];
   analyticsDisabled?: boolean;
   cover?: {
@@ -1347,6 +1348,7 @@ function ArticlePublicInfoCard({
 
 function ArticleCard({
   heroBackground,
+  topIllustration,
   analyticsDisabled = false,
   article,
   className = "",
@@ -1362,6 +1364,7 @@ function ArticleCard({
   survey,
 }: {
   heroBackground?: ArticleHeroBackground;
+  topIllustration?: ArticleHeroBackground;
   analyticsDisabled?: boolean;
   article: ProjectContentArticle;
   className?: string;
@@ -1517,7 +1520,11 @@ function ArticleCard({
       data-motion-speed={motionSpeed}
       style={fontStyle}
     >
-      <ArticleHeroBackgroundLayer background={article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel ? heroBackground : undefined}>
+      <ArticleHeroBackgroundLayer
+        background={article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel ? heroBackground : undefined}
+        illustration={topIllustration}
+        contentVisible={Boolean(article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel || showAdminPreviewControls)}
+      >
       {showAdminPreviewControls ? (
         <div className="flex justify-end">
           <Link
@@ -1755,6 +1762,7 @@ function ArticleCard({
 
 export function PublicMobileArticleReader({
   heroBackgrounds = {},
+  topIllustrations = {},
   analyticsDisabled = false,
   articles,
   cover,
@@ -2438,6 +2446,7 @@ export function PublicMobileArticleReader({
                     analyticsDisabled={analyticsDisabled}
                     article={currentArticle}
                     heroBackground={heroBackgrounds[currentArticle.id]}
+                    topIllustration={topIllustrations[currentArticle.id]}
                     className="mx-5 my-5"
                     fontAssets={fontAssets}
                     index={safeCurrentIndex}
@@ -2636,6 +2645,7 @@ export function PublicMobileArticleReader({
               analyticsDisabled={analyticsDisabled}
               article={article}
               heroBackground={heroBackgrounds[article.id]}
+              topIllustration={topIllustrations[article.id]}
               fontAssets={fontAssets}
               index={index}
               onOpenArticleImage={setLightboxImage}

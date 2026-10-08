@@ -160,9 +160,10 @@ async function authorizePublicFile(
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  if (searchParams.has("heroArticle")) {
+  if (searchParams.has("heroArticle") || searchParams.has("topArticle")) {
     const slug = searchParams.get("project")?.trim() ?? "";
-    const articleId = searchParams.get("heroArticle") ?? "";
+    const illustration = searchParams.has("topArticle");
+    const articleId = searchParams.get(illustration ? "topArticle" : "heroArticle") ?? "";
     const workspace = await getProjectWorkspace(slug);
     if (!workspace.ok) return NextResponse.json({ ok: false, message: "배경판을 찾지 못했습니다." }, { status: 404 });
     const preview = searchParams.get("preview") === "admin";
@@ -172,7 +173,7 @@ export async function GET(request: Request) {
       const access = await requireProjectApiAccess({ projectId: workspace.project.id });
       if (!access.ok) return access.response;
     }
-    return serveArticleHeroBackground(workspace.project.id, articleId, preview);
+    return serveArticleHeroBackground(workspace.project.id, articleId, preview, illustration ? "hero_illustration" : "hero_background");
   }
   const bucket = searchParams.get("bucket")?.trim() ?? "";
   const path = searchParams.get("path")?.trim() ?? "";

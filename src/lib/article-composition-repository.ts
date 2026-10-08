@@ -15,10 +15,11 @@ import type { ArticleHeroBackground } from "@/lib/article-hero-background";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type HeroReference = { path: string; settings: ArticleHeroBackground["settings"] };
+export type RenderedArticleHeroSlot = "hero_background" | "hero_illustration";
 
 // Private references stay on the server, including when authorizing a file request.
 export async function getArticleHeroBackgroundReferences(
-  projectId: string, articleIds: string[], includeDraftArticles = false,
+  projectId: string, articleIds: string[], includeDraftArticles = false, slot: RenderedArticleHeroSlot = "hero_background",
 ): Promise<Record<string, HeroReference>> {
   const headers = getServiceRoleHeaders();
   if (!headers || !uuidPattern.test(projectId) || !articleIds.length || articleIds.some((id) => !uuidPattern.test(id))) return {};
@@ -49,12 +50,12 @@ export async function getArticleHeroBackgroundReferences(
       if (!allowedCompositions.length) continue;
       const placements = await rows<{ composition_id: string; asset_id: string; settings: unknown }>("newsletter_article_composition_assets", {
         select: "composition_id,asset_id,settings", composition_id: `in.(${allowedCompositions.map((c) => c.id).join(",")})`,
-        slot: "eq.hero_background", is_visible: "eq.true", order: "sort_order.asc,created_at.asc", limit: "1000",
+        slot: `eq.${slot}`, is_visible: "eq.true", order: "sort_order.asc,created_at.asc", limit: "1000",
       });
       if (!placements.length) continue;
       const assets = await rows<{ id: string; storage_path: string }>("newsletter_project_design_assets", {
         select: "id,storage_path", project_id: `eq.${projectId}`, id: `in.(${[...new Set(placements.map((p) => p.asset_id))].join(",")})`,
-        asset_type: "in.(background,pattern)", storage_bucket: "eq.design-production-assets", is_active: "eq.true", approval_status: "eq.approved",
+        asset_type: slot === "hero_background" ? "in.(background,pattern)" : "in.(illustration,decoration)", storage_bucket: "eq.design-production-assets", is_active: "eq.true", approval_status: "eq.approved",
         mime_type: "in.(image/png,image/jpeg,image/webp,image/svg+xml)", limit: "1000",
       });
       const assetById = new Map(assets.map((asset) => [asset.id, asset]));
@@ -76,12 +77,12 @@ export async function getArticleHeroBackgroundReferences(
 }
 
 export async function getArticleHeroBackgrounds(
-  projectId: string, slug: string, articleIds: string[], mode: "public" | "preview" | "review",
+  projectId: string, slug: string, articleIds: string[], mode: "public" | "preview" | "review", slot: RenderedArticleHeroSlot = "hero_background",
 ): Promise<Record<string, ArticleHeroBackground>> {
-  const references = await getArticleHeroBackgroundReferences(projectId, articleIds, mode === "preview");
+  const references = await getArticleHeroBackgroundReferences(projectId, articleIds, mode === "preview", slot);
   return Object.fromEntries(Object.entries(references).map(([id, reference]) => [id, {
     url: `${mode === "review" ? "/api/client-review/files" : "/api/public-files/preview"}?${new URLSearchParams({
-      project: slug, heroArticle: id, ...(mode === "preview" ? { preview: "admin" } : {}),
+      project: slug, [slot === "hero_background" ? "heroArticle" : "topArticle"]: id, ...(mode === "preview" ? { preview: "admin" } : {}),
     })}`,
     settings: reference.settings, visible: true,
   }]));

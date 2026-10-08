@@ -1,13 +1,13 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { getArticleHeroBackgroundReferences } from "@/lib/article-composition-repository";
+import { getArticleHeroBackgroundReferences, type RenderedArticleHeroSlot } from "@/lib/article-composition-repository";
 import { getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
 // Call only after checking public project visibility or the authenticated preview/review session.
-export async function serveArticleHeroBackground(projectId: string, articleId: string, includeDraftArticles = false) {
+export async function serveArticleHeroBackground(projectId: string, articleId: string, includeDraftArticles = false, slot: RenderedArticleHeroSlot = "hero_background") {
   const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" };
   const failure = () => NextResponse.json({ ok: false, message: "배경판을 찾지 못했습니다." }, { status: 404, headers });
-  const reference = (await getArticleHeroBackgroundReferences(projectId, [articleId], includeDraftArticles))[articleId];
+  const reference = (await getArticleHeroBackgroundReferences(projectId, [articleId], includeDraftArticles, slot))[articleId];
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!reference || !key) return failure();
   const endpoint = getSupabaseStorageEndpoint(`/object/design-production-assets/${reference.path.split("/").map(encodeURIComponent).join("/")}`);

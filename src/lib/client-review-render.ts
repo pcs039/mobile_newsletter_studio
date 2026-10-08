@@ -89,6 +89,9 @@ export async function getClientReviewRenderData(slug: string) {
   const publicAudio = audio.files[0]?.filePath
     ? { src: register("audio-files", audio.files[0].filePath), title: audio.files[0].title }
     : undefined;
-  const heroBackgrounds = await getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review");
-  return { project, articles, pages, coverImageSrc, publicAudio, files, fonts: fonts.fonts, hotspots: hotspots.links, heroBackgrounds };
+  const [heroBackgrounds, topIllustrations] = await Promise.all([
+    getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review"),
+    getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review", "hero_illustration"),
+  ]);
+  return { project, articles, pages, coverImageSrc, publicAudio, files, fonts: fonts.fonts, hotspots: hotspots.links, heroBackgrounds, topIllustrations };
 }
