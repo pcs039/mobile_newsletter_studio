@@ -26,6 +26,7 @@ type MobileEbookPage = {
 };
 
 type PublicMobileEbookViewerProps = {
+  ebookHrefBase?: string;
   desktopEbookHref: string;
   initialPageNumber: number;
   isAdminPreview: boolean;
@@ -81,6 +82,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export function PublicMobileEbookViewer({
+  ebookHrefBase,
   desktopEbookHref,
   initialPageNumber,
   isAdminPreview,
@@ -131,8 +133,8 @@ export function PublicMobileEbookViewer({
   const canGoNext = currentIndex < pages.length - 1;
   const canFollowPages = Boolean(publicAudio) && pages.length > 0 && audioDuration > 0;
   const currentHref = useMemo(
-    () => makeMobileEbookHref(slug, currentPage?.pageNumber ?? 1, isAdminPreview, isEmbeddedAdminPreview),
-    [currentPage?.pageNumber, isAdminPreview, isEmbeddedAdminPreview, slug],
+    () => ebookHrefBase ? `${ebookHrefBase}&page=${currentPage?.pageNumber ?? 1}` : makeMobileEbookHref(slug, currentPage?.pageNumber ?? 1, isAdminPreview, isEmbeddedAdminPreview),
+    [currentPage?.pageNumber, ebookHrefBase, isAdminPreview, isEmbeddedAdminPreview, slug],
   );
 
   const goToIndex = useCallback((nextIndex: number, withSound = false) => {

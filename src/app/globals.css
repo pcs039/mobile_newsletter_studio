@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+.client-review-screen.public-newsletter-screen {
+  /* A transformed page would anchor fixed review actions to the page, not the viewport. */
+  animation: none;
+}
+
+.client-review-screen nav[aria-label="기사 이동"] {
+  bottom: calc(6.5rem + env(safe-area-inset-bottom)) !important;
+}
+
+.client-review-screen .public-audio-player.fixed {
+  bottom: calc(6.5rem + env(safe-area-inset-bottom));
+}
+
 :root {
   --background: #e4edf7;
   --foreground: #0f172a;
