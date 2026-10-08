@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ProjectClientReviewRecipient } from "@/components/project-client-review-recipient";
 import type { ClientReview } from "@/lib/client-review-repository";
 import { ProjectPublishCompletionPanel, type ProjectPublishCompletionPanelProps } from "@/components/project-publish-completion-panel";
 
@@ -182,6 +183,7 @@ export function ProjectClientReviewWorkflow({ initialReview, initialReviewHistor
         <p className="mt-3 text-sm font-bold leading-6 text-slate-700">
           {status === "approved" ? "기관 승인 완료. 최종 발행할 수 있습니다." : status === "changes_requested" ? "기관에서 수정 요청했습니다. 기사 작성/편집 화면에서 수정 후 새 검토를 요청하세요." : status === "revoked" ? "검토 요청이 취소되었습니다. 필요하면 새 검토 링크를 생성하세요." : status === "expired" ? "검토 링크가 만료되었습니다. 재발급 후 새 링크를 전달하세요." : status === "pending" ? "기관 검토 중입니다. 응답 상태는 30초마다, 화면으로 돌아올 때 갱신됩니다." : "검토 요청을 생성하면 프로젝트가 검수 중으로 전환됩니다."}
         </p>
+        <ProjectClientReviewRecipient key={publishProps.projectSlug} projectSlug={publishProps.projectSlug} readOnly />
         {review ? (
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             <div><dt className="text-xs font-bold text-slate-500">발급일 (한국 시간)</dt><dd className="mt-1 text-sm font-bold text-[#092046]">{formatDate(review.requestedAt)}</dd></div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProjectClientReviewRecipient } from "@/components/project-client-review-recipient";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectCreateForm } from "@/components/project-create-form";
 import { getProjectBasicInfo } from "@/lib/newsletter-repository";
@@ -35,6 +36,7 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
           <ProjectCreateForm mode="edit" initialValues={basicInfoData.project} />
 
           <aside className="space-y-5">
+            <ProjectClientReviewRecipient key={projectId} projectSlug={projectId} />
             <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">수정 가능 항목</p>
               <h3 className="mt-1 text-lg font-bold text-[#092046]">프로젝트 기준 정보</h3>

@@ -202,7 +202,10 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const access = await requireProjectApiAccess({ projectId });
+  const access = await requireProjectApiAccess(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)
+      ? { projectId } : { projectSlug: projectId },
+  );
 
   if (!access.ok) {
     return access.response;
@@ -235,7 +238,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ ok: true, project: publishResult.data });
     }
 
-    const result = await updateNewsletterProjectStatus(projectId, requestedStatus);
+    const result = await updateNewsletterProjectStatus(access.project.slug, requestedStatus);
     if (!result.ok) {
       return NextResponse.json(result, {
         status:
@@ -301,7 +304,7 @@ export async function PATCH(request: Request) {
   }
 
   const input: UpdateNewsletterProjectInput = {
-    projectId,
+    projectId: access.project.slug,
     title,
     issueLabel: asOptionalText(payload.issueLabel),
     organizationName,
@@ -366,13 +369,16 @@ export async function DELETE(request: Request) {
     );
   }
 
-  const access = await requireProjectApiAccess({ projectId });
+  const access = await requireProjectApiAccess(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)
+      ? { projectId } : { projectSlug: projectId },
+  );
 
   if (!access.ok) {
     return access.response;
   }
 
-  const result = await archiveNewsletterProject(projectId);
+  const result = await archiveNewsletterProject(access.project.id);
 
   if (!result.ok) {
     return NextResponse.json(result, {
