@@ -10,6 +10,8 @@ import {
   type ProjectArticleCompositionAsset,
 } from "@/lib/article-composition";
 import type { ProjectDesignAsset } from "@/lib/newsletter-repository";
+import { ArticleHeroBackgroundLayer } from "@/components/article-hero-background-layer";
+import { validateArticleCompositionPlacementSettings } from "@/lib/article-composition";
 
 type CompositionMobilePreviewProps = {
   article: {
@@ -117,6 +119,23 @@ export function CompositionMobilePreview({
   const footerBanners = placementsFor("footer_banner");
   const selectedPlacement = composition.assets.find((placement) => placement.id === selectedPlacementId);
   const selectedAsset = selectedPlacement ? assetById.get(selectedPlacement.assetId) : undefined;
+  const framePlacement = heroBackgrounds[0];
+  const frameSettings = framePlacement ? validateArticleCompositionPlacementSettings(framePlacement.settings, "hero_background") : null;
+  if (framePlacement && frameSettings?.ok && frameSettings.settings.renderMode === "fluid_frame") {
+    const illustration = heroIllustrations[0];
+    const illustrationAsset = illustration ? assetById.get(illustration.assetId) : undefined;
+    return (
+      <div className="mx-auto w-full max-w-[390px] rounded-lg border border-[#b8d7ff] bg-white p-4 shadow-lg">
+        <p className="mb-3 text-xs font-black text-[#184a88]">3. 모바일 즉시 미리보기</p>
+        <ArticleHeroBackgroundLayer background={{ url: "", visible: true, settings: frameSettings.settings }}
+          illustration={illustration && illustrationAsset ? { url: illustrationAsset.previewHref, visible: true, settings: getSettings(illustration) } : undefined}
+          body={<p className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}{article.body.length > 360 ? "…" : ""}</p>}>
+          <h3 className="break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
+          {article.summary ? <p className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
+        </ArticleHeroBackgroundLayer>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-lg border border-[#b8d7ff] bg-white shadow-lg">

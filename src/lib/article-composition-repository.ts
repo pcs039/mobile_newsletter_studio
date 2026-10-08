@@ -63,7 +63,7 @@ export async function getArticleHeroBackgroundReferences(
       for (const placement of placements) {
         const articleId = articleByComposition.get(placement.composition_id);
         const asset = assetById.get(placement.asset_id);
-        const validation = validateArticleCompositionPlacementSettings(placement.settings);
+        const validation = validateArticleCompositionPlacementSettings(placement.settings, slot);
         const path = asset?.storage_path;
         if (!articleId || result[articleId] || !validation.ok || !path || path.includes("..") || path.startsWith("/") || path.endsWith("/")) continue;
         result[articleId] = { path, settings: validation.settings };

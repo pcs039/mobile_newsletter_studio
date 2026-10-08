@@ -1508,137 +1508,7 @@ function ArticleCard({
     });
   }
 
-  return (
-    <article
-      ref={articleRef}
-      onClickCapture={handleTrackedActionClick}
-      className={`public-card public-article-card ${articleMotionPresetClassNames[motionPreset]} ${articleMotionSpeedClassNames[motionSpeed]} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${
-        isImageOnly ? "overflow-hidden" : ""
-      } ${className}`}
-      data-article-text-alignment={article.textAlignment || "left"}
-      data-motion-preset={motionPreset}
-      data-motion-speed={motionSpeed}
-      style={fontStyle}
-    >
-      <ArticleHeroBackgroundLayer
-        background={article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel ? heroBackground : undefined}
-        illustration={topIllustration}
-        contentVisible={Boolean(article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel || showAdminPreviewControls)}
-      >
-      {showAdminPreviewControls ? (
-        <div className="flex justify-end">
-          <Link
-            href={`/projects/${slug}/reading?articleId=${article.id}`}
-            className="dd-btn dd-btn-secondary dd-btn-sm rounded-full text-xs"
-          >
-            수정
-          </Link>
-        </div>
-      ) : null}
-      {shouldShowTypeCue || rollingLabel || urgencyLabel ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          {rollingLabel ? (
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-black ${
-                article.urgency === "urgent"
-                  ? "bg-rose-600 text-white shadow-sm"
-                  : article.urgency === "time_sensitive"
-                    ? "bg-amber-100 text-amber-900"
-                    : "bg-sky-100 text-sky-800"
-              }`}
-            >
-              {rollingLabel}
-            </span>
-          ) : null}
-          {shouldShowTypeCue ? (
-            <span className={presentation.typeBadgeClassName}>
-              {presentation.typeLabel}
-            </span>
-          ) : null}
-          {urgencyLabel ? (
-            <span className={presentation.urgencyBadgeClassName}>
-              {urgencyLabel}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-      <div
-        key={`article-title-${article.id}-${motionPreset}-${motionSpeed}-${motionSettings.title.effect}-${motionSettings.title.speed}`}
-        className={
-          article.showPublicTitle
-            ? `article-title-motion ${articleMotionSpeedClassNames[motionSettings.title.speed]}`
-            : "sr-only"
-        }
-        data-motion-effect={motionSettings.title.effect}
-        data-motion-speed={motionSettings.title.speed}
-      >
-        <h2
-          aria-label={articleTitle}
-          data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
-          data-text-alignment={article.titleAlignment || "left"}
-          title={articleTitle}
-          className="public-article-title public-audio-sync-segment text-2xl font-black leading-tight text-[#092046]"
-        >
-          {shouldRenderCharacterTitleMotion
-            ? titleMotionTokens.map((token, tokenIndex) => {
-                if (token.kind === "space") {
-                  return token.value;
-                }
-
-                return (
-                  <span key={`${token.value}-${tokenIndex}`} className="article-title-motion-token" aria-hidden="true">
-                    {token.segments.map((segment, segmentIndex) => (
-                      <Fragment key={`${token.value}-${tokenIndex}-${segmentIndex}`}>
-                        {segment.map(({ character, delay }, characterIndex) => (
-                          <span
-                            key={`${character}-${tokenIndex}-${segmentIndex}-${characterIndex}`}
-                            className="article-title-motion-char"
-                            style={{ animationDelay: `${delay}ms` }}
-                          >
-                            {character}
-                          </span>
-                        ))}
-                        {segmentIndex < token.segments.length - 1 ? <wbr /> : null}
-                      </Fragment>
-                    ))}
-                  </span>
-                );
-              })
-            : renderKoreanTitleWithBreaks(articleTitle)}
-        </h2>
-      </div>
-      {showTextSizeControl && !isImageOnly ? (
-        <div className="mt-3">
-          <PublicTextSizeToggle compact />
-        </div>
-      ) : null}
-      {article.summary ? (
-        <ScrollMotionReveal
-          motionEffect={motionSettings.textBox.effect}
-          motionSpeed={motionSettings.textBox.speed}
-        >
-          <div
-            className={`article-motion-summary ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} ${presentation.summaryClassName}`}
-            data-motion-effect={motionSettings.textBox.effect}
-            data-motion-speed={motionSettings.textBox.speed}
-          >
-            {presentation.summaryLabel ? (
-              <p className={`${presentation.summaryLabelClassName} mb-1`}>
-                {presentation.summaryLabel}
-              </p>
-            ) : null}
-            <p
-              data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
-              data-public-text-scale-target="article-summary"
-              data-text-alignment={article.summaryAlignment || article.textAlignment || "left"}
-              className="public-audio-sync-segment"
-            >
-              {article.summary}
-            </p>
-          </div>
-        </ScrollMotionReveal>
-      ) : null}
-      </ArticleHeroBackgroundLayer>
+  const articleBody = (<>
       <ArticlePublicInfoCard action={publicInfoAction} article={article} presentation={presentation} />
       {shouldShowArticleAudio && article.audioFile ? (
         <section className="mt-3 rounded-xl border border-[#d8e8ff] bg-[#f7fbff] px-2.5 py-2 shadow-sm shadow-blue-950/5">
@@ -1756,6 +1626,140 @@ function ArticleCard({
           )}
         </div>
       ) : null}
+  </>);
+
+  return (
+    <article
+      ref={articleRef}
+      onClickCapture={handleTrackedActionClick}
+      className={`public-card public-article-card ${articleMotionPresetClassNames[motionPreset]} ${articleMotionSpeedClassNames[motionSpeed]} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${
+        isImageOnly ? "overflow-hidden" : ""
+      } ${className}`}
+      data-article-text-alignment={article.textAlignment || "left"}
+      data-motion-preset={motionPreset}
+      data-motion-speed={motionSpeed}
+      style={fontStyle}
+    >
+      <ArticleHeroBackgroundLayer
+        background={heroBackground?.settings.renderMode === "fluid_frame" || article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel ? heroBackground : undefined}
+        body={articleBody}
+        illustration={topIllustration}
+        contentVisible={Boolean(article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel || showAdminPreviewControls)}
+      >
+      {showAdminPreviewControls ? (
+        <div className="flex justify-end">
+          <Link
+            href={`/projects/${slug}/reading?articleId=${article.id}`}
+            className="dd-btn dd-btn-secondary dd-btn-sm rounded-full text-xs"
+          >
+            수정
+          </Link>
+        </div>
+      ) : null}
+      {shouldShowTypeCue || rollingLabel || urgencyLabel ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {rollingLabel ? (
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-black ${
+                article.urgency === "urgent"
+                  ? "bg-rose-600 text-white shadow-sm"
+                  : article.urgency === "time_sensitive"
+                    ? "bg-amber-100 text-amber-900"
+                    : "bg-sky-100 text-sky-800"
+              }`}
+            >
+              {rollingLabel}
+            </span>
+          ) : null}
+          {shouldShowTypeCue ? (
+            <span className={presentation.typeBadgeClassName}>
+              {presentation.typeLabel}
+            </span>
+          ) : null}
+          {urgencyLabel ? (
+            <span className={presentation.urgencyBadgeClassName}>
+              {urgencyLabel}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      <div
+        key={`article-title-${article.id}-${motionPreset}-${motionSpeed}-${motionSettings.title.effect}-${motionSettings.title.speed}`}
+        className={
+          article.showPublicTitle
+            ? `article-title-motion ${articleMotionSpeedClassNames[motionSettings.title.speed]}`
+            : "sr-only"
+        }
+        data-motion-effect={motionSettings.title.effect}
+        data-motion-speed={motionSettings.title.speed}
+      >
+        <h2
+          aria-label={articleTitle}
+          data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
+          data-text-alignment={article.titleAlignment || "left"}
+          title={articleTitle}
+          className="public-article-title public-audio-sync-segment text-2xl font-black leading-tight text-[#092046]"
+        >
+          {shouldRenderCharacterTitleMotion
+            ? titleMotionTokens.map((token, tokenIndex) => {
+                if (token.kind === "space") {
+                  return token.value;
+                }
+
+                return (
+                  <span key={`${token.value}-${tokenIndex}`} className="article-title-motion-token" aria-hidden="true">
+                    {token.segments.map((segment, segmentIndex) => (
+                      <Fragment key={`${token.value}-${tokenIndex}-${segmentIndex}`}>
+                        {segment.map(({ character, delay }, characterIndex) => (
+                          <span
+                            key={`${character}-${tokenIndex}-${segmentIndex}-${characterIndex}`}
+                            className="article-title-motion-char"
+                            style={{ animationDelay: `${delay}ms` }}
+                          >
+                            {character}
+                          </span>
+                        ))}
+                        {segmentIndex < token.segments.length - 1 ? <wbr /> : null}
+                      </Fragment>
+                    ))}
+                  </span>
+                );
+              })
+            : renderKoreanTitleWithBreaks(articleTitle)}
+        </h2>
+      </div>
+      {showTextSizeControl && !isImageOnly ? (
+        <div className="mt-3">
+          <PublicTextSizeToggle compact />
+        </div>
+      ) : null}
+      {article.summary ? (
+        <ScrollMotionReveal
+          motionEffect={motionSettings.textBox.effect}
+          motionSpeed={motionSettings.textBox.speed}
+        >
+          <div
+            className={`article-motion-summary ${articleMotionSpeedClassNames[motionSettings.textBox.speed]} ${presentation.summaryClassName}`}
+            data-motion-effect={motionSettings.textBox.effect}
+            data-motion-speed={motionSettings.textBox.speed}
+          >
+            {presentation.summaryLabel ? (
+              <p className={`${presentation.summaryLabelClassName} mb-1`}>
+                {presentation.summaryLabel}
+              </p>
+            ) : null}
+            <p
+              data-audio-segment-id={makeArticleSummarySegmentId(article.id)}
+              data-public-text-scale-target="article-summary"
+              data-text-alignment={article.summaryAlignment || article.textAlignment || "left"}
+              className="public-audio-sync-segment"
+            >
+              {article.summary}
+            </p>
+          </div>
+        </ScrollMotionReveal>
+      ) : null}
+      </ArticleHeroBackgroundLayer>
     </article>
   );
 }
