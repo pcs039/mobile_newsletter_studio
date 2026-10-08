@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { updateNewsletterProjectStatus } from "@/lib/newsletter-repository";
+import { publishProjectIfClientApproved } from "@/lib/client-review-repository";
 import { requireProjectApiAccess } from "@/lib/project-api-access";
 import { getAbsoluteSiteUrl, getCanonicalSiteOrigin } from "@/lib/site-url";
 
@@ -26,32 +26,33 @@ export async function POST(request: Request) {
     return access.response;
   }
 
-  const result = await updateNewsletterProjectStatus(projectId, "published");
+  const result = await publishProjectIfClientApproved(access.project.id);
 
-  if (!result.ok) {
-    return NextResponse.json(result, {
+  if (result.status !== "ok") {
+    return NextResponse.json({ ok: false, message: result.message }, {
       status:
-        result.status === "not_configured"
+        result.status === "not_configured" || result.status === "migration_required"
           ? 503
           : result.status === "not_found"
             ? 404
-            : result.httpStatus ?? 500,
+            : result.status === "approval_required" || result.status === "conflict"
+              ? 409
+              : result.httpStatus ?? 500,
     });
   }
 
   const requestOrigin = new URL(request.url).origin;
   const origin = getCanonicalSiteOrigin(requestOrigin);
-  const publicUrl = `/newsletters/${result.project.slug}`;
-  const ebookUrl = `/newsletters/${result.project.slug}/ebook`;
-  const publishedAt = new Date().toISOString();
+  const publicUrl = `/newsletters/${result.data.slug}`;
+  const ebookUrl = `/newsletters/${result.data.slug}/ebook`;
 
   return NextResponse.json({
     ok: true,
     ebookUrl,
     ebookUrlAbsolute: getAbsoluteSiteUrl(ebookUrl, origin),
-    project: result.project,
+    project: result.data,
     publicUrl,
     publicUrlAbsolute: getAbsoluteSiteUrl(publicUrl, origin),
-    publishedAt,
+    publishedAt: result.data.publishedAt,
   });
 }

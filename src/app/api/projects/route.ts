@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
+import { publishProjectIfClientApproved } from "@/lib/client-review-repository";
 import { getValidExternalEbookUrl, normalizeEbookSource } from "@/lib/ebook-source";
 import {
   archiveNewsletterProject,
@@ -125,6 +126,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (payload.status === "published") {
+    return NextResponse.json(
+      { ok: false, message: "새 프로젝트는 작성 또는 검수 상태로 만든 뒤 기관 승인 후 발행해 주세요." },
+      { status: 409 },
+    );
+  }
+
   const input: CreateNewsletterProjectInput = {
     title,
     issueLabel: asOptionalText(payload.issueLabel),
@@ -208,8 +216,26 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const result = await updateNewsletterProjectStatus(projectId, requestedStatus);
+    if (requestedStatus === "published") {
+      const publishResult = await publishProjectIfClientApproved(access.project.id);
 
+      if (publishResult.status !== "ok") {
+        return NextResponse.json({ ok: false, message: publishResult.message }, {
+          status:
+            publishResult.status === "not_configured" || publishResult.status === "migration_required"
+              ? 503
+              : publishResult.status === "not_found"
+                ? 404
+                : publishResult.status === "approval_required" || publishResult.status === "conflict"
+                  ? 409
+                  : publishResult.httpStatus ?? 500,
+        });
+      }
+
+      return NextResponse.json({ ok: true, project: publishResult.data });
+    }
+
+    const result = await updateNewsletterProjectStatus(projectId, requestedStatus);
     if (!result.ok) {
       return NextResponse.json(result, {
         status:
@@ -264,6 +290,13 @@ export async function PATCH(request: Request) {
     return NextResponse.json(
       { ok: false, message: "상품 옵션, 제작 방식 또는 상태 값이 올바르지 않습니다." },
       { status: 400 },
+    );
+  }
+
+  if (payload.status === "published" && access.project.statusCode !== "published") {
+    return NextResponse.json(
+      { ok: false, message: "기관 승인 완료 후 발행 관리 화면에서 최종 발행해 주세요." },
+      { status: 409 },
     );
   }
 
