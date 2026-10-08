@@ -42,6 +42,14 @@ export const articleCompositionSingleSlots = [
   "footer_banner",
 ] as const satisfies readonly ArticleCompositionSlot[];
 
+export const articleCompositionSlotDefaultZIndex: Record<ArticleCompositionSlot, number> = {
+  hero_background: 0,
+  hero_illustration: 10,
+  title_icon: 20,
+  body_decoration: 10,
+  footer_banner: 10,
+};
+
 export const articleCompositionAnchors = [
   "center",
   "top",

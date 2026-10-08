@@ -1,12 +1,13 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type {
-  ArticleCompositionAnchor,
-  ArticleCompositionPlacementSettings,
-  ArticleCompositionSlot,
-  ProjectArticleComposition,
-  ProjectArticleCompositionAsset,
+import {
+  articleCompositionSlotDefaultZIndex,
+  type ArticleCompositionAnchor,
+  type ArticleCompositionPlacementSettings,
+  type ArticleCompositionSlot,
+  type ProjectArticleComposition,
+  type ProjectArticleCompositionAsset,
 } from "@/lib/article-composition";
 import type { ProjectDesignAsset } from "@/lib/newsletter-repository";
 
@@ -18,14 +19,6 @@ type CompositionMobilePreviewProps = {
   };
   assets: ProjectDesignAsset[];
   composition: ProjectArticleComposition;
-};
-
-const defaultZIndex: Record<ArticleCompositionSlot, number> = {
-  hero_background: 0,
-  hero_illustration: 10,
-  title_icon: 20,
-  body_decoration: 10,
-  footer_banner: 10,
 };
 
 const anchorPosition: Record<ArticleCompositionAnchor, CSSProperties> = {
@@ -68,7 +61,7 @@ function layerStyle(placement: ProjectArticleCompositionAsset, asset: ProjectDes
     opacity: settings.opacity ?? 1,
     transform: getTransform(anchor, settings),
     transformOrigin: "center",
-    zIndex: Math.min(settings.zIndex ?? defaultZIndex[placement.slot], 25),
+    zIndex: Math.min(settings.zIndex ?? articleCompositionSlotDefaultZIndex[placement.slot], 25),
   };
 }
 
