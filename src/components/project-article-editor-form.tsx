@@ -328,13 +328,12 @@ const blockUseCases: Array<{ title: string; description: string }> = [
   { title: "유튜브 영상", description: "유튜브 블록에 영상 제목과 YouTube URL을 입력합니다." },
 ];
 
-const articleWorkflowSteps = [
-  "자료 가져오기",
-  "AI 분석",
-  "기사 편집",
-  "공공정보·행동 연결",
-  "모바일 검수",
-  "발행",
+const articleWorkflowAreas = [
+  "기사 내용",
+  "사진·미디어",
+  "디자인 조정",
+  "연결 기능",
+  "고급 설정",
 ];
 
 function FieldLabel({ children, required = false }: { children: string; required?: boolean }) {
@@ -1471,14 +1470,14 @@ export function ProjectArticleEditorForm({
       <section aria-labelledby="article-workflow-heading" className="rounded-lg border border-[#b8d7ff] bg-white p-4 sm:p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">AI 제작 워크스페이스</p>
-            <h2 id="article-workflow-heading" className="mt-1 text-lg font-black text-[#092046]">기사 제작 흐름</h2>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사 제작 워크스페이스</p>
+            <h2 id="article-workflow-heading" className="mt-1 text-lg font-black text-[#092046]">기사 제작 영역</h2>
           </div>
-          <p className="text-xs font-semibold leading-5 text-slate-500">현재 화면에서는 자료를 정리하고 기사를 작성합니다.</p>
+          <p className="text-xs font-semibold leading-5 text-slate-500">필요한 영역만 펼쳐 기사와 모바일 화면을 완성합니다.</p>
         </div>
-        <ol className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-          {articleWorkflowSteps.map((step, index) => {
-            const isCurrent = index === 2;
+        <ol className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
+          {articleWorkflowAreas.map((step, index) => {
+            const isCurrent = index === 0;
 
             return (
               <li
@@ -1491,7 +1490,7 @@ export function ProjectArticleEditorForm({
                 }`}
               >
                 <span className={`block text-[11px] font-black ${isCurrent ? "text-sky-200" : "text-[#184a88]"}`}>
-                  {index + 1}단계
+                  {index + 1}영역
                 </span>
                 <span className="mt-1 block text-xs font-black leading-5 [word-break:keep-all]">{step}</span>
               </li>
@@ -1510,7 +1509,7 @@ export function ProjectArticleEditorForm({
       <div className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 기사 편집</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사 내용</p>
             <h3 className="mt-1 text-lg font-black text-[#092046]">
               {article ? "선택 기사 수정" : "새 기사 작성"}
             </h3>
@@ -1527,7 +1526,7 @@ export function ProjectArticleEditorForm({
           </div>
         </div>
         <div className="mt-5 rounded-2xl border border-[#d8e8ff] bg-white px-4 py-3">
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3-1. 기본내용</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기본 정보</p>
           <p className="mt-1 text-sm font-bold text-slate-600">제목, 요약, 관심분야와 기사 유형을 정합니다.</p>
         </div>
 
@@ -1625,9 +1624,9 @@ export function ProjectArticleEditorForm({
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3-2. 본문 블록</p>
-            <h3 className="mt-1 text-lg font-black text-[#092046]">본문 블록을 작성합니다.</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">이미지, URL, 영상, 지도는 필요한 경우에만 추가합니다.</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">사진·미디어</p>
+            <h3 className="mt-1 text-lg font-black text-[#092046]">본문과 미디어 블록</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">문단을 중심으로 사진, URL, 영상, 지도를 필요한 만큼 추가합니다.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -1939,14 +1938,14 @@ export function ProjectArticleEditorForm({
 
       <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-5">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">연결·고급 설정</p>
-          <h3 className="mt-1 text-lg font-black text-[#092046]">공개 행동과 화면 설정을 필요한 만큼 조정하세요.</h3>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">선택 설정</p>
+          <h3 className="mt-1 text-lg font-black text-[#092046]">연결 기능과 고급 설정</h3>
         </div>
         <div className="mt-5 space-y-5">
           <section aria-labelledby="public-action-settings-heading" className="rounded-xl border border-[#b8d7ff] bg-[#eef6ff] p-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">필요한 주민 행동 설정</p>
-              <h4 id="public-action-settings-heading" className="mt-1 text-base font-black text-[#092046]">4. 공공정보·행동 연결</h4>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">연결 기능</p>
+              <h4 id="public-action-settings-heading" className="mt-1 text-base font-black text-[#092046]">공공정보·행동 연결</h4>
               <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
                 전화, 지도, 신청, 설문 등 주민의 다음 행동으로 연결되는 정보를 설정합니다.
               </p>
@@ -2525,7 +2524,7 @@ export function ProjectArticleEditorForm({
         <section aria-labelledby="mobile-review-check-heading" className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 sm:p-5">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">5. 모바일 검수 전 확인</p>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">내부 검수 전 확인</p>
               <h3 id="mobile-review-check-heading" className="mt-1 text-base font-black text-[#092046]">모바일 표시 순서</h3>
             </div>
             <p className="text-xs font-semibold text-slate-500">저장 후 모바일 검수에서 최종 확인합니다.</p>

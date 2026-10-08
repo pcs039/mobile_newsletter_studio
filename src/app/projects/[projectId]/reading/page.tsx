@@ -105,16 +105,16 @@ export default async function ReadingEditorPage({
     <ProjectAdminShell
       active="reading"
       projectId={projectId}
-      title="기사 작성/편집"
-      description="기사 제목, 본문, 이미지, 버튼을 작성합니다."
+      title="기사 제작·배치"
+      description="원본자료를 바탕으로 기사 내용과 미디어를 만들고 모바일 디자인을 조정합니다."
       sidebarTitle={
         <>
-          기사 작성
+          콘텐츠
           <br />
-          편집
+          제작
         </>
       }
-      sidebarDescription="기사와 콘텐츠 블록을 작성합니다."
+      sidebarDescription="발행호의 기사, 미디어와 화면 구성을 제작합니다."
       sidebarNoteTitle="작성 기준"
       sidebarNote="공개 화면은 저장된 기사 블록 기준입니다."
       actions={
@@ -129,7 +129,7 @@ export default async function ReadingEditorPage({
             href={`/projects/${projectId}/pages`}
             className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-center text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
           >
-            이미지 페이지 편집
+            페이지형 콘텐츠 편집
           </Link>
         </div>
       }
@@ -139,8 +139,8 @@ export default async function ReadingEditorPage({
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사 목록</p>
-                <h3 className="mt-1 text-lg font-bold text-[#092046]">모바일 산출물</h3>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">발행호 구성</p>
+                <h3 className="mt-1 text-lg font-bold text-[#092046]">기사 목록</h3>
               </div>
               <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-bold text-[#184a88]">
                 {articles.length}개
@@ -213,8 +213,8 @@ export default async function ReadingEditorPage({
           </article>
 
           <article className="rounded-lg border border-slate-200 bg-[#eef6ff] p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">상태</p>
-            <h3 className="mt-1 text-lg font-bold text-[#092046]">제작 자료 상태</h3>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">자료·기획</p>
+            <h3 className="mt-1 text-lg font-bold text-[#092046]">원본자료 상태</h3>
             <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
               <p>{originalPdfData.pdf ? `PDF 등록: ${originalPdfData.pdf.fileName}` : "PDF 원본이 아직 없습니다."}</p>
               <p>페이지 이미지 {pageImageData.pages.length}개</p>
@@ -272,7 +272,7 @@ export default async function ReadingEditorPage({
                 <article className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm sm:p-5">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">검수·발행</p>
+                      <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">내부 검수</p>
                       <h3 className="mt-1 text-lg font-black text-[#092046]">저장된 기사 상태 확인</h3>
                       <p className="mt-2 text-sm leading-6 text-slate-600">
                         현재 저장본의 표시 순서를 확인한 뒤 프로젝트 검수·발행 화면으로 이동합니다.

@@ -25,26 +25,26 @@ export async function AdminMainNavigation({ active, projectId }: AdminMainNaviga
     ? [
         {
           key: "publish",
-          label: "미리보기/발행",
-          detail: "검수·URL·QR",
+          label: "검수·발행",
+          detail: "내부검수·가발행",
           href: `/projects/${projectId}/publish`,
         },
         {
           key: "distribution",
           label: "배포 관리",
-          detail: "배포 기록",
+          detail: "최종발행·채널",
           href: `/projects/${projectId}/distribution`,
         },
         {
           key: "survey",
           label: "참여 콘텐츠",
-          detail: "설문·이벤트",
+          detail: "검토·설문·이벤트",
           href: `/projects/${projectId}/survey`,
         },
         {
           key: "analytics",
           label: "반응 통계",
-          detail: "기사·행동 분석",
+          detail: "운영·성과 분석",
           href: `/projects/${projectId}/analytics`,
         },
       ]
