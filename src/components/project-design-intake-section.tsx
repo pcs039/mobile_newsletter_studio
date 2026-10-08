@@ -380,8 +380,8 @@ export function ProjectDesignIntakeSection({
   return (
     <div className="mb-5 space-y-5">
       <section className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5 shadow-sm">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">1. 디자인 자료 준비</p>
-        <h3 className="mt-1 text-xl font-black text-[#092046]">기관이 보유한 디자인 자료를 확인합니다.</h3>
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이번 호 자료 준비</p>
+        <h3 className="mt-1 text-xl font-black text-[#092046]">이번 발행호에 사용할 디자인 자료를 확인합니다.</h3>
         <p className="mt-2 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">
           원본 보유 여부에 따라 접수할 자료와 이후 제작 흐름이 달라집니다. 아직 선택하지 않은 기존 프로젝트는 언제든 여기서 시작할 수 있습니다.
         </p>
@@ -436,8 +436,8 @@ export function ProjectDesignIntakeSection({
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">디자인 원본·참고자료</p>
-        <h3 className="mt-1 text-xl font-black text-[#092046]">기관 디자인 자료 접수</h3>
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이번 호 원본·참고자료</p>
+        <h3 className="mt-1 text-xl font-black text-[#092046]">발행호 디자인 자료 접수</h3>
         <p className="mt-2 text-sm font-semibold leading-6 text-slate-500 [word-break:keep-all]">
           편집 가능한 원본과 제작 방향을 참고할 자료를 구분해 등록합니다. Adobe 또는 Canva 연동은 아직 제공하지 않습니다.
         </p>
@@ -680,8 +680,8 @@ function ProductionAssetLibrary({
     <section id="design-asset-library" className="scroll-mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">디자인 자산 라이브러리</p>
-          <h3 className="mt-1 text-xl font-black text-[#092046]">모바일 제작에 사용할 자산</h3>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이번 호 디자인 자산</p>
+          <h3 className="mt-1 text-xl font-black text-[#092046]">기사 제작에 재사용할 자산</h3>
           <p className="mt-2 text-sm font-semibold leading-6 text-slate-500 [word-break:keep-all]">
             배경, 일러스트, 아이콘 등 웹용 제작 자산을 원본과 연결해 관리합니다. 이 단계에서는 공개 화면에 자동 적용하지 않습니다.
           </p>

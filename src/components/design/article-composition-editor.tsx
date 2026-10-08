@@ -543,8 +543,8 @@ export function ArticleCompositionEditor({
   if (!composition) {
     return (
       <section className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사·페이지 디자인</p>
-        <h3 className="mt-2 text-xl font-black text-[#092046]">디자인 조정을 시작합니다</h3>
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 개별 기사 디자인</p>
+        <h3 className="mt-2 text-xl font-black text-[#092046]">기사 디자인 조정을 시작합니다</h3>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
           기관 디자인 자산을 기사 배경, 이미지, 장식에 배치합니다. 기사 내용은 기존 편집 데이터가 기준입니다.
         </p>
@@ -567,8 +567,8 @@ export function ArticleCompositionEditor({
     <section className="rounded-lg border border-[#b8d7ff] bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사·페이지 디자인</p>
-          <h3 className="mt-1 text-xl font-black text-[#092046]">디자인 조정</h3>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 개별 기사 디자인</p>
+          <h3 className="mt-1 text-xl font-black text-[#092046]">기사 디자인 조정</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">변경 내용은 항목별로 즉시 저장되며 공개 화면에는 아직 적용되지 않습니다.</p>
         </div>
         <div className="flex rounded-lg border border-[#b8d7ff] bg-[#eef6ff] p-1">
