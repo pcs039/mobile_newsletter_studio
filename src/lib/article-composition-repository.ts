@@ -4,11 +4,88 @@ import {
   isArticleCompositionLayoutKey,
   isArticleCompositionSlot,
   isArticleCompositionStatus,
+  validateArticleCompositionPlacementSettings,
   type ArticleCompositionSettings,
   type ProjectArticleComposition,
   type ProjectArticleCompositionAsset,
 } from "@/lib/article-composition";
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
+import { isArticlePubliclyVisible, normalizeArticlePublicationKind } from "@/lib/article-publication";
+import type { ArticleHeroBackground } from "@/lib/article-hero-background";
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+type HeroReference = { path: string; settings: ArticleHeroBackground["settings"] };
+
+// Private references stay on the server, including when authorizing a file request.
+export async function getArticleHeroBackgroundReferences(
+  projectId: string, articleIds: string[], includeDraftArticles = false,
+): Promise<Record<string, HeroReference>> {
+  const headers = getServiceRoleHeaders();
+  if (!headers || !uuidPattern.test(projectId) || !articleIds.length || articleIds.some((id) => !uuidPattern.test(id))) return {};
+  const result: Record<string, HeroReference> = {};
+  const ids = [...new Set(articleIds)];
+  async function rows<T>(table: string, query: Record<string, string>): Promise<T[]> {
+    const endpoint = getSupabaseRestEndpoint(`/rest/v1/${table}?${new URLSearchParams(query)}`);
+    if (!endpoint) throw new Error("unconfigured");
+    const response = await fetch(endpoint, { headers: headers!, cache: "no-store" });
+    if (!response.ok) throw new Error("unavailable");
+    return response.json();
+  }
+  try {
+    for (let start = 0; start < ids.length; start += 100) {
+      const filter = `in.(${ids.slice(start, start + 100).join(",")})`;
+      const [articles, compositions] = await Promise.all([
+        rows<{ id: string; status: string; publication_kind: string; valid_from: string | null; valid_until: string | null }>("newsletter_articles", {
+          select: "id,status,publication_kind,valid_from,valid_until", project_id: `eq.${projectId}`, id: filter, limit: "100",
+        }),
+        rows<{ id: string; article_id: string }>("newsletter_article_compositions", {
+          select: "id,article_id", project_id: `eq.${projectId}`, article_id: filter, status: "eq.ready", limit: "100",
+        }),
+      ]);
+      const allowedArticles = new Set(articles.filter((article) => includeDraftArticles || isArticlePubliclyVisible({
+        id: article.id, status: article.status, publicationKind: normalizeArticlePublicationKind(article.publication_kind), validFrom: article.valid_from, validUntil: article.valid_until,
+      })).map((article) => article.id));
+      const allowedCompositions = compositions.filter((composition) => allowedArticles.has(composition.article_id));
+      if (!allowedCompositions.length) continue;
+      const placements = await rows<{ composition_id: string; asset_id: string; settings: unknown }>("newsletter_article_composition_assets", {
+        select: "composition_id,asset_id,settings", composition_id: `in.(${allowedCompositions.map((c) => c.id).join(",")})`,
+        slot: "eq.hero_background", is_visible: "eq.true", order: "sort_order.asc,created_at.asc", limit: "1000",
+      });
+      if (!placements.length) continue;
+      const assets = await rows<{ id: string; storage_path: string }>("newsletter_project_design_assets", {
+        select: "id,storage_path", project_id: `eq.${projectId}`, id: `in.(${[...new Set(placements.map((p) => p.asset_id))].join(",")})`,
+        asset_type: "in.(background,pattern)", storage_bucket: "eq.design-production-assets", is_active: "eq.true", approval_status: "eq.approved",
+        mime_type: "in.(image/png,image/jpeg,image/webp,image/svg+xml)", limit: "1000",
+      });
+      const assetById = new Map(assets.map((asset) => [asset.id, asset]));
+      const articleByComposition = new Map(allowedCompositions.map((c) => [c.id, c.article_id]));
+      for (const placement of placements) {
+        const articleId = articleByComposition.get(placement.composition_id);
+        const asset = assetById.get(placement.asset_id);
+        const validation = validateArticleCompositionPlacementSettings(placement.settings);
+        const path = asset?.storage_path;
+        if (!articleId || result[articleId] || !validation.ok || !path || path.includes("..") || path.startsWith("/") || path.endsWith("/")) continue;
+        result[articleId] = { path, settings: validation.settings };
+      }
+    }
+    return result;
+  } catch {
+    // Missing schema, unavailable assets, or service outages preserve the existing renderer.
+    return {};
+  }
+}
+
+export async function getArticleHeroBackgrounds(
+  projectId: string, slug: string, articleIds: string[], mode: "public" | "preview" | "review",
+): Promise<Record<string, ArticleHeroBackground>> {
+  const references = await getArticleHeroBackgroundReferences(projectId, articleIds, mode === "preview");
+  return Object.fromEntries(Object.entries(references).map(([id, reference]) => [id, {
+    url: `${mode === "review" ? "/api/client-review/files" : "/api/public-files/preview"}?${new URLSearchParams({
+      project: slug, heroArticle: id, ...(mode === "preview" ? { preview: "admin" } : {}),
+    })}`,
+    settings: reference.settings, visible: true,
+  }]));
+}
 
 type ArticleCompositionRow = {
   article_id: string;

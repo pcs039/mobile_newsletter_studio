@@ -3,6 +3,7 @@ import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
+import { getArticleHeroBackgrounds } from "@/lib/article-composition-repository";
 import { getValidExternalEbookUrl } from "@/lib/ebook-source";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import { getUsableEbookPages } from "@/lib/ebook-pages";
@@ -140,6 +141,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
   const articles = contentData.articles.filter(
     (article) => hasPublicArticleTitle(article) && (isAdminPreview || isArticlePubliclyVisible(article)),
   );
+  const heroBackgrounds = await getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), isAdminPreview ? "preview" : "public");
   const publicSurveyLinks = surveyData.surveys.filter((survey) => isProjectSurveyPubliclyActive(survey));
   console.info("[public-newsletter] article visibility", {
     rawArticleCount: contentData.articles.length,
@@ -293,6 +295,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             <PublicMobileArticleReader
               analyticsDisabled={isAdminPreview}
               articles={articles}
+              heroBackgrounds={heroBackgrounds}
               cover={
                 showCoverSection
                   ? {

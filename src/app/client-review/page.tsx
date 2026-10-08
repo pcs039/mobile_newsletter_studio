@@ -65,7 +65,7 @@ export default async function ClientReviewPage({ searchParams }: Props) {
   if (!data || data.project.id !== identity.id) {
     return <ReviewNotice message="소식지 내용을 불러오지 못했습니다. 잠시 후 다시 접속해 주세요." />;
   }
-  const { project, articles, pages, coverImageSrc, publicAudio, fonts, hotspots } = data;
+  const { project, articles, pages, coverImageSrc, publicAudio, fonts, hotspots, heroBackgrounds } = data;
   const readingHref = `/client-review?${new URLSearchParams({ project: slug })}`;
   const mobileHref = `${readingHref}&view=ebook`;
   const desktopHref = `${readingHref}&view=ebookDesktop`;
@@ -115,7 +115,7 @@ export default async function ClientReviewPage({ searchParams }: Props) {
   } else {
     content = articles.length || hasCover ? (
       <div className="public-newsletter-swipe-shell mx-auto max-w-[520px] bg-white">
-        <PublicMobileArticleReader analyticsDisabled articles={articles}
+        <PublicMobileArticleReader analyticsDisabled articles={articles} heroBackgrounds={heroBackgrounds}
           cover={hasCover ? {
             coverFit: project.coverFit, coverImageSrc, coverIssueText: project.coverIssueText || project.issue,
             coverLayout: project.coverLayout, coverSubtitle: project.coverSubtitle,
