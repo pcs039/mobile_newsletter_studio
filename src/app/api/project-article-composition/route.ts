@@ -8,6 +8,7 @@ import {
   type ArticleCompositionSlot,
 } from "@/lib/article-composition";
 import {
+  copyProjectArticleComposition,
   createProjectArticleComposition,
   deleteProjectArticleCompositionPlacement,
   getProjectArticleComposition,
@@ -175,6 +176,24 @@ export async function POST(request: Request) {
 
   if (action === "create_composition") {
     return repositoryResponse(await createProjectArticleComposition(context.projectId, articleId), 201);
+  }
+  if (action === "copy_composition") {
+    const sourceArticleId = asText(payload?.sourceArticleId);
+
+    if (!sourceArticleId || sourceArticleId === articleId) {
+      return NextResponse.json(
+        { ok: false, message: "원본 기사와 적용할 기사를 다르게 선택해 주세요." },
+        { status: 400 },
+      );
+    }
+
+    return repositoryResponse(
+      await copyProjectArticleComposition({
+        projectId: context.projectId,
+        sourceArticleId,
+        targetArticleId: articleId,
+      }),
+    );
   }
   if (action !== "add_placement") {
     return NextResponse.json({ ok: false, message: "기사 화면 구성 작업을 확인해 주세요." }, { status: 400 });
