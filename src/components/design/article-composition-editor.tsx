@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CompositionAssetPicker } from "@/components/design/composition-asset-picker";
 import { CompositionMobilePreview } from "@/components/design/composition-mobile-preview";
 import {
   articleCompositionSlotAssetTypes,
+  articleCompositionSlotDefaultZIndex,
   isArticleCompositionSingleSlot,
   type ArticleCompositionAnchor,
   type ArticleCompositionPlacementSettings,
@@ -81,8 +82,12 @@ function defaultSettingsForSlot(slot: ArticleCompositionSlot): ArticleCompositio
   return {
     anchor: "center",
     fit: slot === "hero_background" ? "cover" : "contain",
+    offsetX: 0,
+    offsetY: 0,
     opacity: 1,
+    rotation: 0,
     scale: 1,
+    zIndex: articleCompositionSlotDefaultZIndex[slot],
   };
 }
 
@@ -90,16 +95,84 @@ function readPlacementSettings(placement: ProjectArticleCompositionAsset) {
   return placement.settings as ArticleCompositionPlacementSettings;
 }
 
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function RangeNumberControl({
+  disabled,
+  label,
+  max,
+  min,
+  onChange,
+  onCommit,
+  step,
+  unit,
+  value,
+}: {
+  disabled: boolean;
+  label: string;
+  max: number;
+  min: number;
+  onChange: (value: number) => void;
+  onCommit: () => void;
+  step: number;
+  unit?: string;
+  value: number;
+}) {
+  function updateValue(nextValue: number) {
+    if (!Number.isFinite(nextValue)) return;
+    onChange(clampNumber(nextValue, min, max));
+  }
+
+  return (
+    <div className="block min-w-0 text-xs font-black text-slate-700">
+      <span className="flex items-center justify-between gap-3">
+        <span>{label}</span>
+        <span className="font-bold text-slate-500">{value}{unit ?? ""}</span>
+      </span>
+      <span className="mt-2 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_84px] sm:items-center">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={disabled}
+          onChange={(event) => updateValue(Number(event.currentTarget.value))}
+          onPointerUp={onCommit}
+          className="h-10 w-full min-w-0 accent-[#184a88]"
+          aria-label={`${label} 슬라이더`}
+        />
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={disabled}
+          onChange={(event) => updateValue(Number(event.currentTarget.value))}
+          onBlur={onCommit}
+          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
+          aria-label={`${label} 값`}
+        />
+      </span>
+    </div>
+  );
+}
+
 function PlacementControls({
   asset,
   disabled,
   onDelete,
+  onPreview,
   onUpdate,
   placement,
 }: {
   asset: ProjectDesignAsset | undefined;
   disabled: boolean;
   onDelete: () => void;
+  onPreview: (settings: ArticleCompositionPlacementSettings) => void;
   onUpdate: (patch: {
     isVisible?: boolean;
     settings?: ArticleCompositionPlacementSettings;
@@ -108,13 +181,53 @@ function PlacementControls({
   placement: ProjectArticleCompositionAsset;
 }) {
   const initialSettings = readPlacementSettings(placement);
-  const [anchor, setAnchor] = useState<ArticleCompositionAnchor>(initialSettings.anchor ?? "center");
-  const [scale, setScale] = useState(initialSettings.scale ?? 1);
-  const [opacity, setOpacity] = useState(initialSettings.opacity ?? 1);
+  const [settings, setSettings] = useState<ArticleCompositionPlacementSettings>(() => ({
+    ...defaultSettingsForSlot(placement.slot),
+    ...initialSettings,
+  }));
   const [sortOrder, setSortOrder] = useState(placement.sortOrder);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settingsRef = useRef(settings);
 
-  function nextSettings(patch: Partial<ArticleCompositionPlacementSettings>) {
-    return { ...initialSettings, anchor, scale, opacity, ...patch };
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
+
+  function commitSettings(nextSettings = settingsRef.current) {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = null;
+    onUpdate({ settings: nextSettings });
+  }
+
+  function changeSettings(patch: Partial<ArticleCompositionPlacementSettings>, saveImmediately = false) {
+    const nextSettings = { ...settingsRef.current, ...patch };
+    settingsRef.current = nextSettings;
+    setSettings(nextSettings);
+    onPreview(nextSettings);
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    if (saveImmediately) {
+      saveTimerRef.current = null;
+      onUpdate({ settings: nextSettings });
+      return;
+    }
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      onUpdate({ settings: nextSettings });
+    }, 450);
+  }
+
+  function resetLayerSettings() {
+    changeSettings({
+      offsetX: 0,
+      offsetY: 0,
+      opacity: 1,
+      rotation: 0,
+      scale: 1,
+      zIndex: articleCompositionSlotDefaultZIndex[placement.slot],
+    }, true);
   }
 
   return (
@@ -152,12 +265,11 @@ function PlacementControls({
         <label className="text-xs font-black text-slate-700">
           기준 위치
           <select
-            value={anchor}
+            value={settings.anchor ?? "center"}
             disabled={disabled}
             onChange={(event) => {
               const value = event.currentTarget.value as ArticleCompositionAnchor;
-              setAnchor(value);
-              onUpdate({ settings: nextSettings({ anchor: value }) });
+              changeSettings({ anchor: value }, true);
             }}
             className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
           >
@@ -165,36 +277,6 @@ function PlacementControls({
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
-        </label>
-
-        <label className="text-xs font-black text-slate-700">
-          크기
-          <input
-            type="number"
-            min="0.25"
-            max="3"
-            step="0.05"
-            value={scale}
-            disabled={disabled}
-            onChange={(event) => setScale(Number(event.currentTarget.value))}
-            onBlur={() => onUpdate({ settings: nextSettings({ scale }) })}
-            className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
-          />
-        </label>
-
-        <label className="text-xs font-black text-slate-700">
-          투명도
-          <input
-            type="number"
-            min="0"
-            max="1"
-            step="0.05"
-            value={opacity}
-            disabled={disabled}
-            onChange={(event) => setOpacity(Number(event.currentTarget.value))}
-            onBlur={() => onUpdate({ settings: nextSettings({ opacity }) })}
-            className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
-          />
         </label>
 
         {placement.slot === "body_decoration" ? (
@@ -214,6 +296,105 @@ function PlacementControls({
           </label>
         ) : null}
       </div>
+
+      <details className="mt-4 rounded-lg border border-slate-200 bg-slate-50" open>
+        <summary className="cursor-pointer px-4 py-3 text-sm font-black text-[#092046]">세부 조정</summary>
+        <div className="border-t border-slate-200 p-4">
+          <div className="grid gap-5 xl:grid-cols-2">
+            <fieldset className="min-w-0 space-y-4">
+              <legend className="text-xs font-black uppercase tracking-wide text-[#184a88]">위치</legend>
+              <RangeNumberControl
+                disabled={disabled}
+                label="X 이동"
+                min={-200}
+                max={200}
+                step={1}
+                unit="px"
+                value={settings.offsetX ?? 0}
+                onChange={(value) => changeSettings({ offsetX: value })}
+                onCommit={() => commitSettings()}
+              />
+              <RangeNumberControl
+                disabled={disabled}
+                label="Y 이동"
+                min={-200}
+                max={200}
+                step={1}
+                unit="px"
+                value={settings.offsetY ?? 0}
+                onChange={(value) => changeSettings({ offsetY: value })}
+                onCommit={() => commitSettings()}
+              />
+            </fieldset>
+
+            <fieldset className="min-w-0 space-y-4">
+              <legend className="text-xs font-black uppercase tracking-wide text-[#184a88]">변형</legend>
+              <RangeNumberControl
+                disabled={disabled}
+                label="크기"
+                min={0.25}
+                max={3}
+                step={0.05}
+                value={settings.scale ?? 1}
+                onChange={(value) => changeSettings({ scale: value })}
+                onCommit={() => commitSettings()}
+              />
+              <RangeNumberControl
+                disabled={disabled}
+                label="회전"
+                min={-180}
+                max={180}
+                step={1}
+                unit="°"
+                value={settings.rotation ?? 0}
+                onChange={(value) => changeSettings({ rotation: value })}
+                onCommit={() => commitSettings()}
+              />
+            </fieldset>
+
+            <fieldset className="min-w-0 space-y-4">
+              <legend className="text-xs font-black uppercase tracking-wide text-[#184a88]">레이어</legend>
+              <RangeNumberControl
+                disabled={disabled}
+                label="z-index"
+                min={0}
+                max={20}
+                step={1}
+                value={settings.zIndex ?? articleCompositionSlotDefaultZIndex[placement.slot]}
+                onChange={(value) => changeSettings({ zIndex: value })}
+                onCommit={() => commitSettings()}
+              />
+              {placement.slot === "body_decoration" ? (
+                <p className="text-xs font-semibold leading-5 text-slate-500">
+                  표시 순서는 목록 순서이며, z-index는 장식이 서로 겹칠 때의 앞뒤 순서입니다.
+                </p>
+              ) : null}
+            </fieldset>
+
+            <fieldset className="min-w-0 space-y-4">
+              <legend className="text-xs font-black uppercase tracking-wide text-[#184a88]">표현</legend>
+              <RangeNumberControl
+                disabled={disabled}
+                label="투명도"
+                min={0}
+                max={1}
+                step={0.05}
+                value={settings.opacity ?? 1}
+                onChange={(value) => changeSettings({ opacity: value })}
+                onCommit={() => commitSettings()}
+              />
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={resetLayerSettings}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eef6ff] disabled:cursor-not-allowed disabled:text-slate-400"
+              >
+                세부 조정 초기화
+              </button>
+            </fieldset>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
@@ -310,6 +491,18 @@ export function ArticleCompositionEditor({
       },
       `placement:${placement.id}`,
     );
+  }
+
+  function previewPlacementSettings(
+    placementId: string,
+    settings: ArticleCompositionPlacementSettings,
+  ) {
+    setComposition((currentComposition) => currentComposition ? {
+      ...currentComposition,
+      assets: currentComposition.assets.map((candidate) =>
+        candidate.id === placementId ? { ...candidate, settings } : candidate,
+      ),
+    } : currentComposition);
   }
 
   async function removePlacement(placement: ProjectArticleCompositionAsset) {
@@ -437,6 +630,7 @@ export function ArticleCompositionEditor({
                         disabled={isBusy}
                         placement={placement}
                         onDelete={() => removePlacement(placement)}
+                        onPreview={(settings) => previewPlacementSettings(placement.id, settings)}
                         onUpdate={(patch) => updatePlacement(placement, patch)}
                       />
                     ))}

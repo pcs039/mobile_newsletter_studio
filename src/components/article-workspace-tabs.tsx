@@ -85,7 +85,7 @@ export function ArticleWorkspaceTabs({
             </p>
           </div>
 
-          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center 2xl:justify-end">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center 2xl:justify-end">
             <div className="grid w-full grid-cols-3 gap-2 text-center text-xs font-bold text-slate-600 sm:min-w-[240px] sm:flex-1">
               <div className="rounded-lg bg-[#eef6ff] px-3 py-2">
                 기사
@@ -104,7 +104,7 @@ export function ArticleWorkspaceTabs({
               type="button"
               disabled={!articleId}
               onClick={() => setIsPreviewOpen(true)}
-              className="h-12 shrink-0 rounded-lg border border-[#2f73b7] bg-white px-4 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+              className="h-12 max-w-full shrink-0 rounded-lg border border-[#2f73b7] bg-white px-4 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
             >
               모바일 미리보기
             </button>
