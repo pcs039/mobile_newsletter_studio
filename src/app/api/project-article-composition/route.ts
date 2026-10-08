@@ -238,7 +238,7 @@ export async function POST(request: Request) {
   const assetResult = findSelectableAsset(context, assetId, slotValue);
   if (!assetResult.ok) return NextResponse.json({ ok: false, message: assetResult.message }, { status: 400 });
 
-  const settingsResult = validateArticleCompositionPlacementSettings(payload?.settings ?? {});
+  const settingsResult = validateArticleCompositionPlacementSettings(payload?.settings ?? {}, slotValue);
   if (!settingsResult.ok) return NextResponse.json({ ok: false, message: settingsResult.message }, { status: 400 });
 
   const existingPlacement = isArticleCompositionSingleSlot(slotValue)
@@ -306,7 +306,7 @@ export async function PATCH(request: Request) {
   const assetResult = findSelectableAsset(context, assetId, placement.slot);
   if (!assetResult.ok) return NextResponse.json({ ok: false, message: assetResult.message }, { status: 400 });
 
-  const settingsResult = validateArticleCompositionPlacementSettings(payload?.settings ?? placement.settings);
+  const settingsResult = validateArticleCompositionPlacementSettings(payload?.settings ?? placement.settings, placement.slot);
   if (!settingsResult.ok) return NextResponse.json({ ok: false, message: settingsResult.message }, { status: 400 });
 
   const requestedSortOrder = readSortOrder(payload?.sortOrder ?? placement.sortOrder);

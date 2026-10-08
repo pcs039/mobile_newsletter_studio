@@ -67,6 +67,11 @@ export const articleCompositionFits = ["contain", "cover"] as const;
 export type ArticleCompositionFit = (typeof articleCompositionFits)[number];
 
 export type ArticleCompositionPlacementSettings = {
+  renderMode?: "image" | "fluid_frame";
+  surfaceColor?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  borderRadius?: number;
   anchor?: ArticleCompositionAnchor;
   fit?: ArticleCompositionFit;
   offsetX?: number;
@@ -136,6 +141,7 @@ export type ArticleCompositionSettingsValidationResult =
   | { ok: false; message: string };
 
 const placementSettingKeys = new Set([
+  "renderMode", "surfaceColor", "borderColor", "borderWidth", "borderRadius",
   "anchor",
   "fit",
   "offsetX",
@@ -152,6 +158,7 @@ function isFiniteNumberInRange(value: unknown, min: number, max: number) {
 
 export function validateArticleCompositionPlacementSettings(
   value: unknown,
+  slot?: ArticleCompositionSlot,
 ): ArticleCompositionSettingsValidationResult {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return { ok: false, message: "레이어 설정은 객체 형식이어야 합니다." };
@@ -165,6 +172,25 @@ export function validateArticleCompositionPlacementSettings(
   }
 
   const settings: ArticleCompositionPlacementSettings = {};
+
+  const frameKeys = ["renderMode", "surfaceColor", "borderColor", "borderWidth", "borderRadius"] as const;
+  if (frameKeys.some((key) => key in input) && slot !== "hero_background") {
+    return { ok: false, message: "프레임 설정은 배경판에서만 사용할 수 있습니다." };
+  }
+  if ("renderMode" in input) {
+    if (input.renderMode !== "image" && input.renderMode !== "fluid_frame") return { ok: false, message: "배경판 표현 방식을 확인해 주세요." };
+    settings.renderMode = input.renderMode;
+  }
+  for (const key of ["surfaceColor", "borderColor"] as const) {
+    if (!(key in input)) continue;
+    if (typeof input[key] !== "string" || !/^#[0-9a-f]{6}$/i.test(input[key])) return { ok: false, message: "색상은 #RRGGBB 형식으로 입력해 주세요." };
+    settings[key] = input[key].toUpperCase();
+  }
+  for (const [key, max] of [["borderWidth", 8], ["borderRadius", 48]] as const) {
+    if (!(key in input)) continue;
+    if (!isFiniteNumberInRange(input[key], 0, max) || !Number.isInteger(input[key])) return { ok: false, message: "프레임 두께와 둥글기는 허용 범위의 정수여야 합니다." };
+    settings[key] = input[key] as number;
+  }
 
   if ("anchor" in input) {
     if (!articleCompositionAnchors.includes(input.anchor as ArticleCompositionAnchor)) {

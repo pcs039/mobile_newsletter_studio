@@ -299,6 +299,38 @@ function PlacementControls({
         </div>
       </div>
 
+      {placement.slot === "hero_background" ? (
+        <div className="mt-4 space-y-3">
+          <label className="block text-xs font-black text-slate-700">표현 방식
+            <select aria-label="표현 방식" value={settings.renderMode ?? "image"} disabled={disabled}
+              onChange={(event) => changeSettings({ renderMode: event.currentTarget.value as "image" | "fluid_frame" }, true)}
+              className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900">
+              <option value="image">이미지 배경</option><option value="fluid_frame">반응형 프레임</option>
+            </select>
+          </label>
+          {settings.renderMode === "fluid_frame" ? (
+            <div className="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+              <label className="text-xs font-black text-slate-700">프레임 배경색
+                <input type="color" aria-label="프레임 배경색" value={settings.surfaceColor ?? "#F4F8FF"} disabled={disabled}
+                  onChange={(event) => changeSettings({ surfaceColor: event.currentTarget.value })} onBlur={() => commitSettings()}
+                  className="mt-2 block h-10 w-full rounded border border-slate-300 bg-white" />
+              </label>
+              <label className="text-xs font-black text-slate-700">테두리 색
+                <input type="color" aria-label="테두리 색" value={settings.borderColor ?? "#B8D7FF"} disabled={disabled}
+                  onChange={(event) => changeSettings({ borderColor: event.currentTarget.value })} onBlur={() => commitSettings()}
+                  className="mt-2 block h-10 w-full rounded border border-slate-300 bg-white" />
+              </label>
+              <RangeNumberControl disabled={disabled} label="테두리 두께" min={0} max={8} step={1} unit="px"
+                value={settings.borderWidth ?? 2} onChange={(value) => changeSettings({ borderWidth: value })} onCommit={() => commitSettings()} />
+              <RangeNumberControl disabled={disabled} label="모서리 둥글기" min={0} max={48} step={1} unit="px"
+                value={settings.borderRadius ?? 16} onChange={(value) => changeSettings({ borderRadius: value })} onCommit={() => commitSettings()} />
+              <p className="text-xs font-semibold leading-5 text-slate-600 sm:col-span-2">글자가 커지거나 내용이 길어져도 프레임이 함께 늘어납니다. 선택한 배경 이미지는 사용하지 않으며 상단 장식은 별도로 유지됩니다.</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {placement.slot !== "hero_background" || settings.renderMode !== "fluid_frame" ? <>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs font-black text-slate-700">
           기준 위치
@@ -439,6 +471,7 @@ function PlacementControls({
           </div>
         </div>
       </details>
+      </> : null}
     </div>
   );
 }
