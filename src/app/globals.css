@@ -1451,3 +1451,17 @@ select {
     transition: none;
   }
 }
+
+/* Article-scoped opt-in tokens. Unconfigured articles retain their existing colors. */
+[data-article-title-color] .public-article-title {
+  color: var(--article-title-color);
+}
+[data-article-body-color] [data-public-text-scale-target="article-summary"],
+[data-article-body-color] [data-public-text-scale-target="article-body"] {
+  color: var(--article-body-color);
+}
+/* Custom text uses the actual frame surface rather than a white contrast backplate. */
+:is([data-article-title-color], [data-article-body-color]) [data-article-fluid-frame] [data-article-hero-content],
+[data-article-body-color] [data-article-fluid-frame] .article-motion-summary {
+  background-color: transparent;
+}
