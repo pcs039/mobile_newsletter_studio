@@ -62,7 +62,11 @@ function getServiceRoleHeaders() {
 }
 
 function isMigrationRequired(status: number, body: string) {
-  return status === 404 || body.includes("PGRST205") || body.includes("42P01") || body.includes("Could not find the table");
+  return status === 404
+    || body.includes("PGRST202")
+    || body.includes("PGRST205")
+    || body.includes("42P01")
+    || body.includes("Could not find the table");
 }
 
 function isConflict(status: number, body: string) {
@@ -239,6 +243,71 @@ export async function createProjectArticleComposition(
   } catch (error) {
     console.error("Article composition create request failed", error);
     return { data: null, message: "기사 화면 구성 생성 중 오류가 발생했습니다.", status: "request_failed" };
+  }
+}
+
+export async function copyProjectArticleComposition(input: {
+  projectId: string;
+  sourceArticleId: string;
+  targetArticleId: string;
+}): Promise<ArticleCompositionRepositoryResult<ProjectArticleComposition | null>> {
+  const projectId = input.projectId.trim();
+  const sourceArticleId = input.sourceArticleId.trim();
+  const targetArticleId = input.targetArticleId.trim();
+
+  if (!projectId || !sourceArticleId || !targetArticleId || sourceArticleId === targetArticleId) {
+    return { data: null, message: "원본 기사와 적용할 기사를 확인해 주세요.", status: "invalid_input" };
+  }
+
+  const headers = getServiceRoleHeaders();
+  const endpoint = getSupabaseRestEndpoint("/rest/v1/rpc/copy_newsletter_article_composition_atomic");
+
+  if (!headers || !endpoint) {
+    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        p_project_id: projectId,
+        p_source_article_id: sourceArticleId,
+        p_target_article_id: targetArticleId,
+      }),
+      cache: "no-store",
+    });
+    const body = await response.text();
+
+    if (!response.ok) {
+      if (isMigrationRequired(response.status, body)) {
+        return {
+          data: null,
+          message: "기사 디자인 재사용을 위한 v1.27 migration 적용이 필요합니다.",
+          status: "migration_required",
+        };
+      }
+      if (body.includes("composition_copy_same_article") || body.includes("composition_copy_identifiers_required")) {
+        return { data: null, message: "원본 기사와 적용할 기사를 다르게 선택해 주세요.", status: "invalid_input" };
+      }
+      if (body.includes("composition_copy_article_not_found") || body.includes("composition_copy_source_not_found")) {
+        return { data: null, message: "복사할 기사 디자인을 찾지 못했습니다.", status: "not_found" };
+      }
+      if (body.includes("composition_copy_project_mismatch")) {
+        return { data: null, message: "같은 프로젝트의 기사 디자인만 재사용할 수 있습니다.", status: "conflict" };
+      }
+
+      console.error("Article composition copy failed", response.status, body);
+      return { data: null, message: "기사 디자인을 복사하지 못했습니다.", status: "request_failed" };
+    }
+
+    const composition = await getProjectArticleComposition(projectId, targetArticleId);
+    return composition.status === "ok"
+      ? { ...composition, message: "기사 디자인 배치를 복사했습니다." }
+      : composition;
+  } catch (error) {
+    console.error("Article composition copy request failed", error);
+    return { data: null, message: "기사 디자인 복사 중 오류가 발생했습니다.", status: "request_failed" };
   }
 }
 
