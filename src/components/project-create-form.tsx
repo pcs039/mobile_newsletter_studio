@@ -782,8 +782,8 @@ export function ProjectCreateForm({
           <div className="rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">모바일 표지</p>
-                <h4 className="mt-1 text-base font-black text-[#092046]">표지 설정</h4>
+                <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">이번 호 디자인</p>
+                <h4 className="mt-1 text-base font-black text-[#092046]">모바일 표지 설정</h4>
               </div>
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-[#092046] shadow-sm">
                 <input

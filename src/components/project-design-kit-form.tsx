@@ -406,8 +406,8 @@ export function ProjectDesignKitForm({
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
       <form onSubmit={saveDesignKit} className="space-y-5">
         <section className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5 shadow-sm">
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기본 설정</p>
-          <h3 className="mt-1 text-xl font-black text-[#092046]">대표 로고와 대표색만 먼저 정해도 됩니다.</h3>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기관 공통 기준</p>
+          <h3 className="mt-1 text-xl font-black text-[#092046]">기관 로고와 대표색부터 설정합니다.</h3>
           <p className="mt-2 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">
             처음에는 대표 로고와 대표색만 설정해도 됩니다. 나머지 항목은 필요할 때 추가로 조정할 수 있습니다.
           </p>
@@ -467,7 +467,7 @@ export function ProjectDesignKitForm({
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">로고 자산</p>
+              <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기관 공통 로고</p>
               <h3 className="mt-1 text-xl font-black text-[#092046]">공식 로고 관리</h3>
               <p className="mt-2 text-sm font-semibold text-slate-500">필요한 만큼 국문·영문·반전형 로고를 추가하고 대표 로고를 지정합니다.</p>
             </div>
@@ -584,7 +584,7 @@ export function ProjectDesignKitForm({
         </section>
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">색상과 글꼴</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기관 공통 색상·글꼴</p>
           <h3 className="mt-1 text-xl font-black text-[#092046]">기관 색상·글꼴</h3>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {colorFields.filter((field) => field.key !== "primaryColor" && field.key !== "secondaryColor").map((field) => (
@@ -624,7 +624,7 @@ export function ProjectDesignKitForm({
         </section>
 
         <details open={showAdvanced} onToggle={(event) => setShowAdvanced(event.currentTarget.open)} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <summary className="cursor-pointer text-xl font-black text-[#092046]">세부 스타일 설정</summary>
+          <summary className="cursor-pointer text-xl font-black text-[#092046]">기관 공통 컴포넌트 스타일</summary>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <div>
               <FieldLabel>버튼 모서리 둥글기</FieldLabel>
@@ -656,7 +656,7 @@ export function ProjectDesignKitForm({
         </details>
 
         <details open={showNotes} onToggle={(event) => setShowNotes(event.currentTarget.open)} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <summary className="cursor-pointer text-xl font-black text-[#092046]">제작 메모</summary>
+          <summary className="cursor-pointer text-xl font-black text-[#092046]">기관 디자인 메모</summary>
           <textarea value={draft.templateNotes} onChange={(event) => updateDraft("templateNotes", event.target.value)} rows={5} placeholder="기관 디자인 특징, 금지 색상, CI 사용 규칙, 로고 주변 여백 등을 입력하세요." className="mt-5 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-[#184a88] focus:ring-4 focus:ring-sky-100" />
         </details>
 
