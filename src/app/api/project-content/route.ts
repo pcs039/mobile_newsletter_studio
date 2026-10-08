@@ -28,6 +28,10 @@ function asPlainObject(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
+function asOptionalBoolean(value: unknown) {
+  return typeof value === "boolean" ? value : undefined;
+}
+
 function asContentSections(value: unknown) {
   if (!Array.isArray(value)) {
     return [];
@@ -112,6 +116,8 @@ export async function POST(request: Request) {
     title: asText(payload.title),
     summary: asText(payload.summary),
     body: asText(payload.body),
+    contentPresentation: asText(payload.contentPresentation),
+    showPublicTitle: asOptionalBoolean(payload.showPublicTitle),
     textAlignment: asText(payload.textAlignment),
     titleAlignment: asText(payload.titleAlignment),
     summaryAlignment: asText(payload.summaryAlignment),

@@ -19,6 +19,7 @@ import {
   renderKoreanTitleWithBreaks,
 } from "@/lib/korean-title-breaks";
 import type {
+  ArticleContentPresentation,
   ArticleElementMotionEffect,
   ArticleElementMotionSpeed,
   ArticleMotionPreset,
@@ -84,6 +85,7 @@ type ArticlePayload = {
   articleTtsVoice: string;
   audioSource: string;
   body: string;
+  contentPresentation: ArticleContentPresentation;
   bodyAlignment: string;
   bodyFontAssetId: string;
   buttonFontAssetId: string;
@@ -108,6 +110,7 @@ type ArticlePayload = {
   pageId: string;
   projectSlug: string;
   publicInfo: ArticlePublicInfo;
+  showPublicTitle: boolean;
   sortOrder: number;
   sourcePageNumber: number;
   status: string;
@@ -253,6 +256,28 @@ const editableBlockTypes: Array<{ type: EditorBlockType; label: string; help: st
   { type: "map_link", label: "지도", help: "위치 링크 삽입" },
   { type: "button_group", label: "행동 버튼", help: "신청·문의·전화·관련 페이지" },
   { type: "audio", label: "음성 대본", help: "낭독용 원고" },
+];
+
+const contentPresentationOptions: Array<{
+  value: ArticleContentPresentation;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "text",
+    label: "텍스트형",
+    description: "HTML 문단을 중심으로 연결 기능을 더하는 일반 기사입니다.",
+  },
+  {
+    value: "image",
+    label: "이미지형",
+    description: "완성된 포스터·카드뉴스·잡지 페이지를 원본 비율로 이어서 보여줍니다.",
+  },
+  {
+    value: "mixed",
+    label: "혼합형",
+    description: "HTML 문단과 이미지 콘텐츠를 원하는 순서로 함께 구성합니다.",
+  },
 ];
 
 const blockTypeThemes: Record<EditorBlockType, { button: string; marker: string }> = {
@@ -479,7 +504,7 @@ function getBlockTitleLabel(type: EditorBlockType) {
     case "paragraph":
       return "소제목";
     case "image":
-      return "이미지 캡션";
+      return "대체텍스트·캡션";
     case "video_link":
       return "영상 제목";
     case "map_link":
@@ -740,6 +765,10 @@ export function ProjectArticleEditorForm({
   const [isDeletingArticle, setIsDeletingArticle] = useState(false);
   const [uploadingImageBlockId, setUploadingImageBlockId] = useState("");
   const [blocks, setBlocks] = useState<EditorBlock[]>(() => makeInitialBlocks(article));
+  const [contentPresentation, setContentPresentation] = useState<ArticleContentPresentation>(
+    article?.contentPresentation ?? "text",
+  );
+  const [showPublicTitle, setShowPublicTitle] = useState(article?.showPublicTitle ?? true);
   const [motionPreviewTitle, setMotionPreviewTitle] = useState(article?.title ?? "");
   const [motionPreviewSummary, setMotionPreviewSummary] = useState(article?.summary ?? "");
   const [contactPhoneValue, setContactPhoneValue] = useState(article?.contactPhone ?? "");
@@ -785,6 +814,21 @@ export function ProjectArticleEditorForm({
   const imageAssets = useMemo(
     () => assets.filter((asset) => asset.mimeType.startsWith("image/") || asset.previewHref),
     [assets],
+  );
+  const availableBlockTypes = useMemo(
+    () =>
+      editableBlockTypes.filter((item) => {
+        if (contentPresentation === "image") {
+          return item.type !== "paragraph";
+        }
+
+        if (contentPresentation === "text") {
+          return item.type !== "image";
+        }
+
+        return true;
+      }),
+    [contentPresentation],
   );
   const blockSummary = useMemo(
     () =>
@@ -859,6 +903,47 @@ export function ProjectArticleEditorForm({
         textAlignment: "left",
       },
     ]);
+  }
+
+  function changeContentPresentation(nextPresentation: ArticleContentPresentation) {
+    if (nextPresentation === contentPresentation) {
+      return;
+    }
+
+    const incompatibleBlocks = blocks.filter((block) =>
+      nextPresentation === "image" ? block.type === "paragraph" : nextPresentation === "text" ? block.type === "image" : false,
+    );
+    const hasIncompatibleContent = incompatibleBlocks.some((block) => block.title.trim() || block.body.trim());
+
+    if (
+      hasIncompatibleContent &&
+      !window.confirm(
+        nextPresentation === "image"
+          ? "이미지형으로 바꾸면 현재 문단 블록이 편집 화면에서 제거됩니다. 기사 제목과 다른 연결 기능은 유지됩니다. 계속할까요?"
+          : "텍스트형으로 바꾸면 현재 이미지 블록이 편집 화면에서 제거됩니다. 업로드한 원본 파일은 소재 보관함에 유지됩니다. 계속할까요?",
+      )
+    ) {
+      return;
+    }
+
+    if (nextPresentation !== "mixed") {
+      setBlocks((currentBlocks) =>
+        currentBlocks.filter((block) =>
+          nextPresentation === "image" ? block.type !== "paragraph" : block.type !== "image",
+        ),
+      );
+    }
+
+    setContentPresentation(nextPresentation);
+    setShowPublicTitle(nextPresentation !== "image");
+    setError("");
+    setMessage(
+      nextPresentation === "image"
+        ? "이미지형으로 전환했습니다. 완성 이미지를 순서대로 추가하세요."
+        : nextPresentation === "mixed"
+          ? "혼합형으로 전환했습니다. 문단과 이미지를 원하는 순서로 배치하세요."
+          : "텍스트형으로 전환했습니다. 문단을 중심으로 기사를 구성하세요.",
+    );
   }
 
   function applyImageAssetToBlock(blockId: string, asset: ProjectAssetFile) {
@@ -1029,6 +1114,8 @@ export function ProjectArticleEditorForm({
     }
 
     setBlocks(standardArticleTemplate.map(makeTemplateBlock));
+    setContentPresentation("mixed");
+    setShowPublicTitle(true);
   }
 
   function getFormFieldValue(name: string) {
@@ -1260,6 +1347,7 @@ export function ProjectArticleEditorForm({
       title: getValue(formData, "title"),
       summary: getValue(formData, "summary"),
       body,
+      contentPresentation,
       textAlignment: getValue(formData, "textAlignment") || bodyAlignment,
       titleAlignment: getValue(formData, "titleAlignment"),
       summaryAlignment: getValue(formData, "summaryAlignment"),
@@ -1272,6 +1360,7 @@ export function ProjectArticleEditorForm({
       validFrom: toIsoFromDatetimeLocal(getValue(formData, "validFrom")),
       validUntil: toIsoFromDatetimeLocal(getValue(formData, "validUntil")),
       publicInfo: buildPublicInfo(formData, articleType),
+      showPublicTitle,
       contentBlocks,
       contactName: getValue(formData, "contactName"),
       contactPhone: getValue(formData, "contactPhone"),
@@ -1299,6 +1388,11 @@ export function ProjectArticleEditorForm({
   async function persistArticle(payload: ArticlePayload) {
     if (!payload.title) {
       setError("기사 제목은 반드시 입력해야 합니다.");
+      return null;
+    }
+
+    if (payload.contentPresentation === "image" && !payload.contentBlocks.some((block) => block.type === "image" && block.body)) {
+      setError("이미지형 기사에는 공개할 완성 이미지가 한 장 이상 필요합니다.");
       return null;
     }
 
@@ -1622,20 +1716,86 @@ export function ProjectArticleEditorForm({
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="mb-5">
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">콘텐츠 표현 방식</p>
+          <h3 className="mt-1 text-lg font-black text-[#092046]">기사를 어떤 형태로 보여줄까요?</h3>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {contentPresentationOptions.map((option) => {
+              const selected = contentPresentation === option.value;
+
+              return (
+                <label
+                  key={option.value}
+                  className={`cursor-pointer rounded-lg border p-4 transition ${
+                    selected
+                      ? "border-[#184a88] bg-[#eff6ff] shadow-sm"
+                      : "border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50/40"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-sm font-black text-[#092046]">
+                    <input
+                      type="radio"
+                      name="contentPresentation"
+                      value={option.value}
+                      checked={selected}
+                      onChange={() => changeContentPresentation(option.value)}
+                      className="h-4 w-4 accent-[#184a88]"
+                    />
+                    {option.label}
+                  </span>
+                  <span className="mt-2 block text-xs font-semibold leading-5 text-slate-500">{option.description}</span>
+                </label>
+              );
+            })}
+          </div>
+          {contentPresentation === "image" ? (
+            <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3">
+              <p className="text-sm font-black text-[#092046]">완성 이미지를 위에서 아래 순서대로 배치합니다.</p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                기사 제목은 관리자 식별용으로 유지됩니다. HTML 본문은 입력하지 않아도 되며 공개 화면에서는 원본 비율로 이어서 표시됩니다.
+              </p>
+              <label className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-[#092046]">
+                <input
+                  type="checkbox"
+                  checked={showPublicTitle}
+                  onChange={(event) => setShowPublicTitle(event.currentTarget.checked)}
+                  className="h-4 w-4 rounded border-slate-300 accent-[#184a88]"
+                />
+                공개 화면에 기사 제목 표시
+              </label>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="border-t border-slate-200 pt-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">사진·미디어</p>
-            <h3 className="mt-1 text-lg font-black text-[#092046]">본문과 미디어 블록</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">문단을 중심으로 사진, URL, 영상, 지도를 필요한 만큼 추가합니다.</p>
+            <h3 className="mt-1 text-lg font-black text-[#092046]">
+              {contentPresentation === "image"
+                ? "완성 이미지와 연결 블록"
+                : contentPresentation === "mixed"
+                  ? "본문과 미디어 블록"
+                  : "본문과 연결 블록"}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              {contentPresentation === "image"
+                ? "완성 이미지를 공개 순서대로 추가하고 필요한 URL·영상·지도·행동 버튼을 연결합니다."
+                : contentPresentation === "mixed"
+                  ? "문단과 사진, URL, 영상, 지도를 필요한 순서로 추가합니다."
+                  : "문단을 중심으로 URL, 영상, 지도와 행동 버튼을 필요한 만큼 추가합니다."}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={loadStandardTemplate}
-              className="rounded-lg border border-[#2f73b7] bg-white px-4 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
-            >
-              표준 기사 구성 불러오기
-            </button>
+            {contentPresentation !== "image" ? (
+              <button
+                type="button"
+                onClick={loadStandardTemplate}
+                className="rounded-lg border border-[#2f73b7] bg-white px-4 py-2 text-xs font-black text-[#092046] transition hover:bg-[#eaf3ff]"
+              >
+                표준 기사 구성 불러오기
+              </button>
+            ) : null}
             <StatusPill value={blockSummary || "블록 없음"} />
           </div>
         </div>
@@ -1643,7 +1803,7 @@ export function ProjectArticleEditorForm({
         <div className="mt-5 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4">
           <p className="text-sm font-black text-[#092046]">콘텐츠 블록 추가</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {editableBlockTypes.map((item) => {
+            {availableBlockTypes.map((item) => {
               const theme = blockTypeThemes[item.type];
 
               return (
@@ -1681,10 +1841,14 @@ export function ProjectArticleEditorForm({
             <div className="rounded-lg border-2 border-dashed border-sky-200 bg-[#f7fbff] px-5 py-8 text-center">
               <p className="text-base font-black text-[#092046]">콘텐츠 블록이 없습니다.</p>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                삭제 후에도 새 문단, 이미지, 행동 버튼, 영상 블록을 다시 추가할 수 있습니다.
+                {contentPresentation === "image"
+                  ? "완성 이미지 블록을 추가해 이미지형 기사를 시작하세요."
+                  : contentPresentation === "mixed"
+                    ? "문단과 이미지, 행동 버튼, 영상 블록을 원하는 순서로 추가하세요."
+                    : "문단과 행동 버튼, 영상 블록을 원하는 순서로 추가하세요."}
               </p>
               <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {editableBlockTypes.map((item) => {
+                {availableBlockTypes.map((item) => {
                   const theme = blockTypeThemes[item.type];
 
                   return (
@@ -1716,7 +1880,7 @@ export function ProjectArticleEditorForm({
                   </p>
                   {index === 0 ? (
                     <div className="mt-2">
-                      <SectionBadge tone="required">첫 본문</SectionBadge>
+                      <SectionBadge tone="required">첫 콘텐츠</SectionBadge>
                     </div>
                   ) : null}
                   <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{getBlockGuide(block.type)}</p>
@@ -1757,7 +1921,13 @@ export function ProjectArticleEditorForm({
                     value={block.title}
                     onChange={(event) => updateBlock(block.id, "title", event.target.value)}
                     placeholder={
-                      block.type === "button_group" ? "예: 신청하기" : block.type === "paragraph" ? "소제목" : "표시 제목"
+                      block.type === "button_group"
+                        ? "예: 신청하기"
+                        : block.type === "paragraph"
+                          ? "소제목"
+                          : block.type === "image"
+                            ? "이미지 내용을 설명하세요"
+                            : "표시 제목"
                     }
                     className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
                   />
@@ -1853,6 +2023,11 @@ export function ProjectArticleEditorForm({
                     </div>
                   </div>
                   <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">업로드 후 이미지 주소가 자동 입력됩니다.</p>
+                  {contentPresentation === "image" ? (
+                    <p className="mt-1 text-xs font-semibold leading-5 text-[#184a88]">
+                      여러 장은 이미지 블록을 반복해 추가하고 위로·아래로 버튼으로 공개 순서를 정하세요. 대체텍스트는 이미지 안의 핵심 내용을 짧게 설명합니다.
+                    </p>
+                  ) : null}
                   {block.body.trim() ? (
                     <div className="mt-4 rounded-lg border border-sky-100 bg-white p-3">
                       <div className="overflow-hidden rounded-md border border-slate-200 bg-slate-50">
@@ -1934,6 +2109,7 @@ export function ProjectArticleEditorForm({
           ))}
         </div>
 
+      </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-5">

@@ -1206,7 +1206,10 @@ export type ProjectContentBlock = {
   linkActionId: string | null;
   sortOrder: number;
   isVisible: boolean;
+  metadata: Record<string, unknown>;
 };
+
+export type ArticleContentPresentation = "text" | "image" | "mixed";
 
 export type ProjectLinkAction = {
   id: string;
@@ -1231,6 +1234,8 @@ export type ProjectContentArticle = {
   displayTitle: string;
   summary: string;
   body: string;
+  contentPresentation: ArticleContentPresentation;
+  showPublicTitle: boolean;
   textAlignment: ArticleTextAlignment;
   titleAlignment: ArticleTextAlignment;
   summaryAlignment: ArticleTextAlignment;
@@ -1315,6 +1320,8 @@ export type UpsertProjectArticleInput = {
   displayTitle?: string;
   summary?: string;
   body?: string;
+  contentPresentation?: string;
+  showPublicTitle?: boolean;
   textAlignment?: string;
   titleAlignment?: string;
   summaryAlignment?: string;
@@ -2729,7 +2736,35 @@ function mapContentBlockRowToProjectBlock(block: NewsletterContentBlockRow): Pro
     linkActionId: block.link_action_id,
     sortOrder: block.sort_order,
     isVisible: block.is_visible,
+    metadata: block.metadata ?? {},
   };
+}
+
+function normalizeArticleContentPresentation(value: unknown): ArticleContentPresentation | null {
+  return value === "text" || value === "image" || value === "mixed" ? value : null;
+}
+
+function getArticleContentPresentation(blocks: NewsletterContentBlockRow[]): ArticleContentPresentation {
+  for (const block of blocks) {
+    const presentation = normalizeArticleContentPresentation(block.metadata?.presentation_mode);
+
+    if (presentation) {
+      return presentation;
+    }
+  }
+
+  // Metadata-less rows predate image-only articles. Keep their existing public presentation.
+  return blocks.some((block) => block.block_type === "image") ? "mixed" : "text";
+}
+
+function getArticleShowPublicTitle(blocks: NewsletterContentBlockRow[]) {
+  for (const block of blocks) {
+    if (typeof block.metadata?.show_public_title === "boolean") {
+      return block.metadata.show_public_title;
+    }
+  }
+
+  return true;
 }
 
 function mapLinkActionRowToProjectLink(action: NewsletterLinkActionRow): ProjectLinkAction {
@@ -2770,6 +2805,8 @@ function mapArticleRowToProjectContentArticle(
     displayTitle: article.display_title || "",
     summary: article.summary || "",
     body: article.body || "",
+    contentPresentation: getArticleContentPresentation(blocks),
+    showPublicTitle: getArticleShowPublicTitle(blocks),
     textAlignment: normalizeArticleTextAlignment(article.text_alignment),
     titleAlignment: normalizeArticleTextAlignment(article.title_alignment),
     summaryAlignment: normalizeArticleTextAlignment(article.summary_alignment ?? article.text_alignment),
@@ -6523,6 +6560,19 @@ type AtomicArticleBlock = {
 function makeAtomicArticleBlocks(input: UpsertProjectArticleInput) {
   const blocks: AtomicArticleBlock[] = [];
   const contentBlocks = normalizeContentBlocks(input.contentBlocks);
+  const requestedPresentation = normalizeArticleContentPresentation(input.contentPresentation) ?? "text";
+  const hasParagraph = contentBlocks.some((block) => block.type === "paragraph");
+  const hasImage = contentBlocks.some((block) => block.type === "image");
+  const contentPresentation: ArticleContentPresentation =
+    requestedPresentation === "image" && hasParagraph
+      ? "mixed"
+      : requestedPresentation === "text" && hasImage
+        ? "mixed"
+        : requestedPresentation;
+  const blockMetadata = {
+    presentation_mode: contentPresentation,
+    show_public_title: input.showPublicTitle ?? contentPresentation !== "image",
+  };
 
   if (contentBlocks.length > 0) {
     contentBlocks.forEach((block) => {
@@ -6565,7 +6615,7 @@ function makeAtomicArticleBlocks(input: UpsertProjectArticleInput) {
         text_alignment: block.textAlignment,
         asset_id: block.assetId,
         sort_order: block.sortOrder,
-        metadata: {},
+        metadata: blockMetadata,
         action,
       });
     });
@@ -6581,7 +6631,7 @@ function makeAtomicArticleBlocks(input: UpsertProjectArticleInput) {
           text_alignment: normalizeArticleTextAlignment(section.textAlignment ?? input.bodyAlignment ?? input.textAlignment),
           asset_id: null,
           sort_order: section.sortOrder || (index + 1) * 10,
-          metadata: {},
+          metadata: blockMetadata,
           action: null,
         });
       });
@@ -6593,7 +6643,7 @@ function makeAtomicArticleBlocks(input: UpsertProjectArticleInput) {
         text_alignment: normalizeArticleTextAlignment(input.bodyAlignment ?? input.textAlignment),
         asset_id: null,
         sort_order: 10,
-        metadata: {},
+        metadata: blockMetadata,
         action: null,
       });
     }
@@ -6610,7 +6660,7 @@ function makeAtomicArticleBlocks(input: UpsertProjectArticleInput) {
         text_alignment: null,
         asset_id: null,
         sort_order: 20,
-        metadata: {},
+        metadata: blockMetadata,
         action: {
           label: cleanText(input.buttonLabel),
           action_type: detectLinkActionType(buttonTarget, "url"),
@@ -6629,7 +6679,7 @@ function makeAtomicArticleBlocks(input: UpsertProjectArticleInput) {
         text_alignment: null,
         asset_id: null,
         sort_order: 30,
-        metadata: {},
+        metadata: blockMetadata,
         action: {
           label: cleanText(input.videoLabel) || "영상 보기",
           action_type: "video",
@@ -6648,7 +6698,7 @@ function makeAtomicArticleBlocks(input: UpsertProjectArticleInput) {
         text_alignment: null,
         asset_id: null,
         sort_order: 40,
-        metadata: {},
+        metadata: blockMetadata,
         action: {
           label: cleanText(input.mapLabel) || "지도 보기",
           action_type: "map",
@@ -6667,7 +6717,7 @@ function makeAtomicArticleBlocks(input: UpsertProjectArticleInput) {
         text_alignment: null,
         asset_id: null,
         sort_order: 50,
-        metadata: {},
+        metadata: blockMetadata,
         action: null,
       });
     }
