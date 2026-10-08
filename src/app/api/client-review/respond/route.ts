@@ -48,6 +48,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: access.message }, { status: statusCode(access.status) });
   }
 
+  if (access.data.review.status !== "pending") {
+    return NextResponse.json({ ok: false, message: "이미 검토 응답이 완료되어 다시 응답할 수 없습니다." }, {
+      status: 409, headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+
   const result = await respondClientReview(token, body.decision);
   return NextResponse.json(
     { ok: result.status === "ok", decision: result.data, message: result.message },

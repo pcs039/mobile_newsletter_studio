@@ -1274,6 +1274,7 @@ export type ProjectContentArticle = {
 };
 
 export type ProjectArticleAudioFile = {
+  manifestHref?: string;
   id: string;
   title: string;
   previewHref: string;

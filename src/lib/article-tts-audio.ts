@@ -868,16 +868,16 @@ export async function getArticleTtsProjectStatus(projectSlug: string): Promise<A
   };
 }
 
-export async function getPublicArticleAudioManifest(slug: string, articleId: string) {
+export async function getPublicArticleAudioManifest(slug: string, articleId: string, reviewProjectId?: string) {
   const headers = getServiceHeaders();
 
   if (!headers) {
     return { ok: false as const, httpStatus: 503, message: "음성을 사용할 수 없습니다." };
   }
 
-  const project = await findProjectBySlug(slug, headers, true);
+  const project = await findProjectBySlug(slug, headers, !reviewProjectId);
 
-  if (!project) {
+  if (!project || (reviewProjectId && project.id !== reviewProjectId)) {
     return { ok: false as const, httpStatus: 404, message: "공개된 소식지를 찾지 못했습니다." };
   }
 
@@ -921,16 +921,16 @@ export async function getPublicArticleAudioManifest(slug: string, articleId: str
   };
 }
 
-export async function downloadPublicArticleAudioSegment(slug: string, articleId: string, segmentIndex: number) {
+export async function downloadPublicArticleAudioSegment(slug: string, articleId: string, segmentIndex: number, reviewProjectId?: string) {
   const headers = getServiceHeaders();
 
   if (!headers) {
     return { ok: false as const, httpStatus: 503, message: "음성을 사용할 수 없습니다." };
   }
 
-  const project = await findProjectBySlug(slug, headers, true);
+  const project = await findProjectBySlug(slug, headers, !reviewProjectId);
 
-  if (!project) {
+  if (!project || (reviewProjectId && project.id !== reviewProjectId)) {
     return { ok: false as const, httpStatus: 404, message: "공개된 소식지를 찾지 못했습니다." };
   }
 
@@ -940,7 +940,7 @@ export async function downloadPublicArticleAudioSegment(slug: string, articleId:
     return { ok: false as const, httpStatus: 404, message: "기사를 찾지 못했습니다." };
   }
 
-  const manifestResult = await getPublicArticleAudioManifest(slug, articleId);
+  const manifestResult = await getPublicArticleAudioManifest(slug, articleId, reviewProjectId);
 
   if (!manifestResult.ok || !manifestResult.manifest.hasAudio) {
     return { ok: false as const, httpStatus: 404, message: "음성을 찾지 못했습니다." };

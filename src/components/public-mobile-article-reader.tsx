@@ -1639,7 +1639,7 @@ function ArticleCard({
             isAiGenerated={hasAiArticleAudio}
             manifestUrl={
               hasAiArticleAudio
-                ? `/api/public/newsletters/${encodeURIComponent(slug)}/articles/${encodeURIComponent(article.id)}/audio`
+                ? article.audioFile.manifestHref ?? `/api/public/newsletters/${encodeURIComponent(slug)}/articles/${encodeURIComponent(article.id)}/audio`
                 : undefined
             }
             onPlaybackStart={() => {
