@@ -48,6 +48,12 @@ export type ArticleCompositionRepositoryResult<T> = {
   status: ArticleCompositionRepositoryStatus;
 };
 
+export type ProjectArticleCompositionSource = {
+  articleId: string;
+  status: "draft" | "ready";
+  updatedAt: string;
+};
+
 function getServiceRoleHeaders() {
   const config = getSupabaseConfigStatus();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -197,6 +203,56 @@ export async function getProjectArticleComposition(
   } catch (error) {
     console.error("Article composition lookup request failed", error);
     return { data: null, message: "기사 Composition 조회 중 오류가 발생했습니다.", status: "request_failed" };
+  }
+}
+
+export async function getProjectArticleCompositionSources(
+  projectId: string,
+): Promise<ArticleCompositionRepositoryResult<ProjectArticleCompositionSource[]>> {
+  const normalizedProjectId = projectId.trim();
+
+  if (!normalizedProjectId) {
+    return { data: [], message: "프로젝트 식별자가 필요합니다.", status: "invalid_input" };
+  }
+
+  const headers = getServiceRoleHeaders();
+  const endpoint = getSupabaseRestEndpoint(
+    `/rest/v1/newsletter_article_compositions?select=article_id,status,updated_at&project_id=eq.${encodeURIComponent(
+      normalizedProjectId,
+    )}&order=updated_at.desc`,
+  );
+
+  if (!headers || !endpoint) {
+    return { data: [], message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
+  }
+
+  try {
+    const response = await fetch(endpoint, { headers, cache: "no-store" });
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.error("Article composition source lookup failed", response.status, body);
+      return isMigrationRequired(response.status, body)
+        ? { data: [], message: "기사 Composition을 위한 v1.25 migration 적용이 필요합니다.", status: "migration_required" }
+        : { data: [], message: "재사용할 기사 디자인 목록을 불러오지 못했습니다.", status: "request_failed" };
+    }
+
+    const rows = (await response.json().catch(() => [])) as Array<{
+      article_id: string;
+      status: string;
+      updated_at: string;
+    }>;
+    const sources = rows.flatMap((row) => {
+      if (!row.article_id || !isArticleCompositionStatus(row.status)) return [];
+      return [{ articleId: row.article_id, status: row.status, updatedAt: row.updated_at }];
+    });
+
+    return sources.length === rows.length
+      ? { data: sources, message: "재사용할 기사 디자인 목록을 불러왔습니다.", status: "ok" }
+      : { data: [], message: "기사 디자인 목록 형식을 확인하지 못했습니다.", status: "request_failed" };
+  } catch (error) {
+    console.error("Article composition source lookup request failed", error);
+    return { data: [], message: "기사 디자인 목록 조회 중 오류가 발생했습니다.", status: "request_failed" };
   }
 }
 

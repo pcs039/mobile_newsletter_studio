@@ -5,7 +5,10 @@ import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectArticleEditorForm } from "@/components/project-article-editor-form";
 import { StatusPill } from "@/components/status-pill";
 import { isRollingArticleExpired } from "@/lib/article-publication";
-import { getProjectArticleComposition } from "@/lib/article-composition-repository";
+import {
+  getProjectArticleComposition,
+  getProjectArticleCompositionSources,
+} from "@/lib/article-composition-repository";
 import {
   getProjectAssetFiles,
   getProjectContent,
@@ -80,9 +83,15 @@ export default async function ReadingEditorPage({
   const initialTab: ArticleWorkspaceTab = selectedArticle && (requestedTab === "composition" || requestedTab === "review")
     ? requestedTab
     : "content";
-  const compositionData = selectedArticle && project
-    ? await getProjectArticleComposition(project.id, selectedArticle.id)
-    : null;
+  const [compositionData, compositionSourceData] = await Promise.all([
+    selectedArticle && project
+      ? getProjectArticleComposition(project.id, selectedArticle.id)
+      : null,
+    project ? getProjectArticleCompositionSources(project.id) : null,
+  ]);
+  const compositionSourceByArticleId = new Map(
+    compositionSourceData?.data.map((source) => [source.articleId, source]) ?? [],
+  );
   const mobilePreviewHref = selectedArticle
     ? `/newsletters/${projectId}?preview=admin&articleId=${selectedArticle.id}`
     : `/newsletters/${projectId}?preview=admin`;
@@ -258,6 +267,15 @@ export default async function ReadingEditorPage({
                 initialComposition={compositionData.data}
                 initialStatus={compositionData.status}
                 projectSlug={projectId}
+                reuseSources={listArticles
+                  .filter((article) => article.id !== selectedArticle.id)
+                  .map((article) => ({
+                    hasComposition: compositionSourceByArticleId.has(article.id),
+                    id: article.id,
+                    orderLabel: getArticleSortLabel(article),
+                    statusLabel: getArticleStatusLabel(article.status),
+                    title: article.title,
+                  }))}
               />
             ) : (
               <article className="rounded-lg border border-dashed border-[#b8d7ff] bg-[#f7fbff] px-5 py-10 text-center">

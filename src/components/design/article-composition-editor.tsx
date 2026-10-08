@@ -28,6 +28,13 @@ type ArticleCompositionEditorProps = {
   initialComposition: ProjectArticleComposition | null;
   initialStatus: ArticleCompositionRepositoryStatus;
   projectSlug: string;
+  reuseSources: Array<{
+    hasComposition: boolean;
+    id: string;
+    orderLabel: string;
+    statusLabel: string;
+    title: string;
+  }>;
 };
 
 type CompositionApiResponse = {
@@ -37,6 +44,12 @@ type CompositionApiResponse = {
 };
 
 type Notice = { kind: "error" | "success"; message: string } | null;
+
+type ReuseState =
+  | { status: "idle"; message: string }
+  | { status: "loading"; message: string }
+  | { status: "success"; message: string }
+  | { status: "error"; message: string };
 
 const slotDefinitions: Array<{
   description: string;
@@ -430,18 +443,101 @@ function PlacementControls({
   );
 }
 
+function DesignReusePanel({
+  disabled,
+  onApply,
+  onSourceChange,
+  selectedSourceId,
+  sources,
+  state,
+}: {
+  disabled: boolean;
+  onApply: () => void;
+  onSourceChange: (sourceId: string) => void;
+  selectedSourceId: string;
+  sources: ArticleCompositionEditorProps["reuseSources"];
+  state: ReuseState;
+}) {
+  const availableSourceCount = sources.filter((source) => source.hasComposition).length;
+
+  return (
+    <details className="rounded-lg border border-slate-200 bg-white">
+      <summary className="cursor-pointer px-4 py-3 text-sm font-black text-[#092046] sm:px-5">
+        다른 기사 디자인 불러오기
+        <span className="ml-2 text-xs font-bold text-slate-500">같은 발행호에서 재사용</span>
+      </summary>
+      <div className="border-t border-slate-200 p-4 sm:p-5">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <label className="min-w-0 text-sm font-black text-[#092046]">
+            원본 기사
+            <select
+              value={selectedSourceId}
+              disabled={disabled || availableSourceCount === 0}
+              onChange={(event) => onSourceChange(event.currentTarget.value)}
+              className="mt-2 h-12 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
+            >
+              <option value="">기사를 선택하세요</option>
+              {sources.map((source) => (
+                <option key={source.id} value={source.id} disabled={!source.hasComposition}>
+                  {source.orderLabel} · {source.title} · {source.statusLabel}{source.hasComposition ? "" : " · 디자인 없음"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={disabled || !selectedSourceId}
+            onClick={onApply}
+            className="h-12 rounded-lg border border-[#2f73b7] bg-[#eaf3ff] px-5 text-sm font-black text-[#092046] transition hover:bg-white disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400"
+          >
+            {state.status === "loading" ? "디자인 적용 중" : "디자인 적용"}
+          </button>
+        </div>
+
+        {sources.length === 0 ? (
+          <p className="mt-3 text-sm font-bold text-slate-600">재사용할 다른 기사가 없습니다.</p>
+        ) : availableSourceCount === 0 ? (
+          <p className="mt-3 text-sm font-bold text-slate-600">디자인 구성이 저장된 다른 기사가 없습니다.</p>
+        ) : null}
+
+        <div className="mt-4 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4 text-xs font-semibold leading-5 text-slate-600">
+          <p className="font-black text-[#092046]">복사되는 항목</p>
+          <p className="mt-1">배경, 이미지, 장식과 위치·회전·크기·투명도·레이어·표시 순서를 그대로 적용합니다.</p>
+          <p className="mt-2 font-black text-[#184a88]">현재 기사의 제목·본문·요약·콘텐츠 블록·링크·상태는 유지되고 디자인 배치만 교체됩니다.</p>
+          <p className="mt-2 text-slate-500">적용 중 오류가 발생하면 atomic transaction이 취소되어 현재 디자인도 그대로 유지됩니다.</p>
+        </div>
+
+        {state.status !== "idle" ? (
+          <p className={`mt-4 rounded-lg px-4 py-3 text-sm font-bold ${
+            state.status === "error"
+              ? "bg-rose-50 text-rose-800"
+              : state.status === "success"
+                ? "bg-emerald-50 text-emerald-800"
+                : "bg-sky-50 text-sky-800"
+          }`} role="status">
+            {state.message}
+          </p>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
 export function ArticleCompositionEditor({
   article,
   assets,
   initialComposition,
   initialStatus,
   projectSlug,
+  reuseSources,
 }: ArticleCompositionEditorProps) {
   const [composition, setComposition] = useState(initialComposition);
   const [busyKey, setBusyKey] = useState("");
   const [notice, setNotice] = useState<Notice>(null);
   const [activeSlot, setActiveSlot] = useState<ArticleCompositionSlot>("hero_background");
   const [selectedPlacementId, setSelectedPlacementId] = useState<string | null>(null);
+  const [reuseSourceId, setReuseSourceId] = useState("");
+  const [reuseState, setReuseState] = useState<ReuseState>({ status: "idle", message: "" });
   const selectableAssets = useMemo(
     () => assets.filter((asset) => isProductionAsset(asset) && asset.isActive && asset.approvalStatus !== "archived"),
     [assets],
@@ -569,6 +665,72 @@ export function ArticleCompositionEditor({
     );
   }
 
+  async function applyReusedDesign() {
+    if (!reuseSourceId || reuseSourceId === article.id || isBusy) return;
+
+    const source = reuseSources.find((candidate) => candidate.id === reuseSourceId && candidate.hasComposition);
+    if (!source) {
+      setReuseState({ status: "error", message: "불러올 기사 디자인을 다시 선택해 주세요. 현재 디자인은 그대로 유지됩니다." });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `“${source.title}”의 디자인 배치로 현재 디자인을 교체할까요?\n기사 제목·본문·링크와 기사 상태는 유지됩니다.`,
+    );
+    if (!confirmed) return;
+
+    setBusyKey(`copy:${source.id}`);
+    setReuseState({ status: "loading", message: "선택한 기사 디자인을 적용하고 있습니다." });
+
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+
+    const response = await fetch("/api/project-article-composition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "copy_composition",
+        articleId: article.id,
+        projectSlug,
+        sourceArticleId: source.id,
+      }),
+    }).catch(() => null);
+    const result = response
+      ? ((await response.json().catch(() => null)) as CompositionApiResponse | null)
+      : null;
+
+    setBusyKey("");
+
+    if (!response || !response.ok || !result?.ok || !result.composition) {
+      setReuseState({
+        status: "error",
+        message: `${result?.message ?? "기사 디자인을 불러오지 못했습니다."} 현재 디자인은 그대로 유지됩니다.`,
+      });
+      return;
+    }
+
+    setComposition(result.composition);
+    setSelectedPlacementId(null);
+    setReuseState({
+      status: "success",
+      message: `“${source.title}”의 디자인 배치를 적용했습니다. 모바일 미리보기에 즉시 반영되었습니다.`,
+    });
+  }
+
+  const availableReuseSources = reuseSources.filter((source) => source.id !== article.id);
+  const reusePanel = (
+    <DesignReusePanel
+      disabled={isBusy}
+      onApply={() => void applyReusedDesign()}
+      onSourceChange={(sourceId) => {
+        setReuseSourceId(sourceId);
+        setReuseState({ status: "idle", message: "" });
+      }}
+      selectedSourceId={reuseSourceId}
+      sources={availableReuseSources}
+      state={reuseState}
+    />
+  );
+
   if (initialStatus === "migration_required") {
     return (
       <section className="rounded-lg border border-amber-200 bg-amber-50 p-5">
@@ -597,6 +759,7 @@ export function ArticleCompositionEditor({
         >
           {busyKey === "create" ? "구성 생성 중" : "디자인 조정 시작"}
         </button>
+        <div className="mt-5">{reusePanel}</div>
       </section>
     );
   }
@@ -658,6 +821,8 @@ export function ArticleCompositionEditor({
           ))}
         </ol>
       </div>
+
+      <div className="mt-4">{reusePanel}</div>
 
       <div className="mt-6 flex flex-col gap-3 border-y border-slate-200 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -727,7 +892,11 @@ export function ArticleCompositionEditor({
             />
           </div>
 
-          {activePlacements.length > 0 ? (
+          {busyKey.startsWith("copy:") ? (
+            <div className="mt-5 rounded-lg border border-sky-200 bg-white px-4 py-6 text-center">
+              <p className="text-sm font-black text-[#184a88]">선택한 기사 디자인을 적용하고 있습니다.</p>
+            </div>
+          ) : activePlacements.length > 0 ? (
             <div className="mt-5 space-y-3">
               {activePlacements.map((placement) => (
                 <PlacementControls
