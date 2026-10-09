@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isArticleProductionPattern } from "@/lib/article-production-pattern";
 import { ArticleWorkspaceTabs, type ArticleWorkspaceTab } from "@/components/article-workspace-tabs";
 import { ArticleCompositionEditor } from "@/components/design/article-composition-editor";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
@@ -60,7 +61,7 @@ export default async function ReadingEditorPage({
   searchParams,
 }: {
   params: Promise<{ projectId: string }>;
-  searchParams?: Promise<{ articleId?: string; tab?: string }>;
+  searchParams?: Promise<{ articleId?: string; tab?: string; recommendedPattern?: string }>;
 }) {
   const { projectId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -233,7 +234,7 @@ export default async function ReadingEditorPage({
         </aside>
 
         <ArticleWorkspaceTabs
-          key={selectedArticle?.id ?? "new"}
+          key={`${selectedArticle?.id ?? "new"}:${initialTab}:${isArticleProductionPattern(resolvedSearchParams.recommendedPattern) ? resolvedSearchParams.recommendedPattern : ""}`}
           articleId={selectedArticle?.id ?? null}
           articleStatus={selectedArticle ? getArticleStatusLabel(selectedArticle.status) : "신규 작성"}
           articleTitle={selectedArticle?.title ?? "새 기사 작성"}
@@ -269,6 +270,7 @@ export default async function ReadingEditorPage({
                 initialComposition={compositionData.data}
                 initialStatus={compositionData.status}
                 projectSlug={projectId}
+                recommendedPattern={isArticleProductionPattern(resolvedSearchParams.recommendedPattern) ? resolvedSearchParams.recommendedPattern : undefined}
                 reuseSources={listArticles
                   .filter((article) => article.id !== selectedArticle.id)
                   .map((article) => ({

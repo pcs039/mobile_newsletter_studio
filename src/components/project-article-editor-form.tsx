@@ -4,8 +4,10 @@ import { readArticleBodyDesign, type ArticleBodyDesign } from "@/lib/article-bod
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
+import { clearArticleSave, getSavedArticleId, rememberArticleSave, subscribeArticleSave } from "@/lib/article-save-session";
+import { ArticleSavedDesignRecommendation } from "@/components/article-saved-design-recommendation";
 import { ProjectArticleAiAssistant } from "@/components/project-article-ai-assistant";
 import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { StatusPill } from "@/components/status-pill";
@@ -765,6 +767,7 @@ export function ProjectArticleEditorForm({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [message, setMessage] = useState("");
+  const savedArticleId = useSyncExternalStore(subscribeArticleSave, () => getSavedArticleId(projectSlug, article?.id), () => null);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeletingArticle, setIsDeletingArticle] = useState(false);
@@ -1433,6 +1436,7 @@ export function ProjectArticleEditorForm({
     setError("");
     setMessage("");
     setIsSaving(true);
+    clearArticleSave();
 
     const formData = new FormData(event.currentTarget);
     let savedArticle: { id: string; title: string } | null = null;
@@ -1448,6 +1452,7 @@ export function ProjectArticleEditorForm({
     }
 
     setMessage("기사와 콘텐츠 블록을 Supabase에 저장했습니다.");
+    rememberArticleSave(projectSlug, savedArticle.id);
     router.push(`/projects/${projectSlug}/reading?articleId=${savedArticle.id}`);
     router.refresh();
   }
@@ -1567,7 +1572,7 @@ export function ProjectArticleEditorForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} onInvalidCapture={clearArticleSave} className="space-y-5">
       <section aria-labelledby="article-workflow-heading" className="rounded-lg border border-[#b8d7ff] bg-white p-4 sm:p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -2755,6 +2760,8 @@ export function ProjectArticleEditorForm({
           {message}
         </div>
       ) : null}
+
+      {savedArticleId ? <ArticleSavedDesignRecommendation key={savedArticleId} projectSlug={projectSlug} articleId={savedArticleId} onDismiss={clearArticleSave} /> : null}
 
       {article ? (
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
