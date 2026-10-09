@@ -789,7 +789,7 @@ export function ArticleCompositionEditor({
     return (
       <section className="rounded-lg border border-amber-200 bg-amber-50 p-5">
         <p className="text-sm font-black text-amber-900">기사 화면 구성 기능을 준비 중입니다.</p>
-        <p className="mt-2 text-sm leading-6 text-amber-800">v1.25 Composition migration 적용 후 이 영역을 사용할 수 있습니다.</p>
+        <p className="mt-2 text-sm leading-6 text-amber-800">기사 디자인에 필요한 데이터 설정 후 사용할 수 있습니다.</p>
       </section>
     );
   }
@@ -797,7 +797,7 @@ export function ArticleCompositionEditor({
   if (!composition) {
     return (
       <section className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 개별 기사 디자인</p>
+        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">2. 디자인</p>
         <h3 className="mt-2 text-xl font-black text-[#092046]">기사 디자인 조정을 시작합니다</h3>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
           기관 디자인 자산을 기사 배경, 이미지, 장식에 배치합니다. 기사 내용은 기존 편집 데이터가 기준입니다.
@@ -836,9 +836,9 @@ export function ArticleCompositionEditor({
     <section className="rounded-lg border border-[#b8d7ff] bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 개별 기사 디자인</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">2. 디자인</p>
           <h3 className="mt-1 text-xl font-black text-[#092046]">기사 디자인 조정</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">레이어 변경은 항목별로 즉시 저장됩니다. 텍스트 디자인은 저장 버튼으로 반영합니다. 준비 완료 상태의 배경판과 상단 이미지·장식은 승인된 자산만 모바일 미리보기·기관 검토·공개 화면에 표시됩니다. 다른 배치 요소는 아직 공개 화면에 반영되지 않습니다.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">추천 디자인과 현재 미리보기를 확인한 뒤, 필요하면 세부 디자인을 조정하세요.</p>
         </div>
         <div className="flex rounded-lg border border-[#b8d7ff] bg-[#eef6ff] p-1">
           {(["draft", "ready"] as const).map((status) => (
@@ -861,29 +861,22 @@ export function ArticleCompositionEditor({
         <p className={`mt-4 rounded-lg px-4 py-3 text-sm font-bold ${
           notice.kind === "error" ? "bg-rose-50 text-rose-800" : "bg-emerald-50 text-emerald-800"
         }`}>
-          {notice.message}
+          {notice.message.replace(/Composition/g, "디자인 설정")}
         </p>
       ) : null}
 
+      <div className="mt-5 grid min-w-0 gap-5 2xl:grid-cols-[minmax(0,1fr)_390px] 2xl:items-start">
+        <div className="min-w-0">
       <ArticleProductionPatternControls key={String(composition.settings.productionPattern ?? "manual")} pattern={composition.settings.productionPattern}
         recommendedPattern={recommendationApplied ? undefined : recommendedPattern} projectSlug={projectSlug} articleId={article.id} textDesign={composition.settings.textDesign} disabled={isBusy}
         onApply={productionPattern => void mutate("PATCH", { action: "apply_production_pattern", projectSlug, articleId: article.id, compositionId: composition.id, productionPattern, textDesign: composition.settings.textDesign ?? {} }, "production-pattern")} />
 
+          <details className="mt-5 min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <summary className="cursor-pointer text-sm font-black text-[#092046]">세부 디자인 조정 · 배경·장식·글자</summary>
+            <p className="mt-3 text-xs leading-5 text-slate-600">배경·장식 변경은 항목별로 바로 저장됩니다. 텍스트 디자인은 저장 버튼으로 반영합니다. 준비 완료 상태의 승인된 배경판과 상단 장식만 검토·공개 화면에 표시되며, 다른 장식은 아직 반영되지 않습니다.</p>
       <ArticleTextDesignControls value={composition.settings.textDesign} disabled={isBusy}
         onChange={(textDesign) => setComposition({ ...composition, settings: { ...composition.settings, textDesign: { ...textDesign } } })}
         onSave={() => void mutate("PATCH", { action: "update_text_design", projectSlug, articleId: article.id, compositionId: composition.id, textDesign: composition.settings.textDesign ?? {} }, "text-design")} />
-
-      <div className="mt-6 rounded-lg border border-[#c9d7e8] bg-[#f7fbff] p-4">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">디자인 작업 순서</p>
-        <ol className="mt-3 grid gap-2 text-xs font-bold text-slate-700 sm:grid-cols-2 xl:grid-cols-5">
-          {["자산 준비", "배경판·요소 배치", "텍스트 영역 확인", "모바일 미리보기", "필요 시 세부 조정"].map((label, index) => (
-            <li key={label} className="flex min-h-10 items-center gap-2 rounded-lg border border-[#d8e8ff] bg-white px-3 py-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#184a88] text-[10px] text-white">{index + 1}</span>
-              <span>{label}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
 
       <div className="mt-4">{reusePanel}</div>
 
@@ -904,7 +897,7 @@ export function ArticleCompositionEditor({
         <p className="mt-1 text-sm leading-6 text-slate-600">한 번에 한 영역만 열어 자산을 선택하고 배치합니다. 제목과 본문은 HTML 텍스트로 유지되며 시각 요소보다 앞쪽에 보호됩니다.</p>
       </div>
 
-      <div role="tablist" aria-label="기사 디자인 배치 영역" className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+      <div role="tablist" aria-label="기사 디자인 배치 영역" className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {slotDefinitions.map((definition) => {
           const count = composition.assets.filter((placement) => placement.slot === definition.slot).length;
           const isActive = activeSlot === definition.slot;
@@ -933,7 +926,6 @@ export function ArticleCompositionEditor({
         })}
       </div>
 
-      <div className="mt-6 grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_390px] 2xl:items-start">
         <div
           id="composition-active-slot-panel"
           role="tabpanel"
@@ -983,6 +975,8 @@ export function ArticleCompositionEditor({
           )}
         </div>
 
+          </details>
+        </div>
         <div className="min-w-0 2xl:sticky 2xl:top-4">
           <CompositionMobilePreview
             article={article}

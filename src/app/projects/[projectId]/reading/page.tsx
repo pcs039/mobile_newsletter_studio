@@ -242,6 +242,7 @@ export default async function ReadingEditorPage({
           initialTab={initialTab}
           linkCount={selectedArticle?.links.length ?? 0}
           previewHref={mobilePreviewHref}
+          publishHref={`/projects/${projectId}/publish`}
           totalArticleCount={articles.length}
           content={
             <ProjectArticleEditorForm
@@ -297,18 +298,18 @@ export default async function ReadingEditorPage({
                       <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">내부 검수</p>
                       <h3 className="mt-1 text-lg font-black text-[#092046]">저장된 기사 상태 확인</h3>
                       <p className="mt-2 text-sm leading-6 text-slate-600">
-                        현재 저장본의 표시 순서를 확인한 뒤 프로젝트 검수·발행 화면으로 이동합니다.
+                        상단 모바일 확인에서 저장본을 보고, 기관 검토·발행으로 이동하세요.
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusPill value={getArticleStatusLabel(selectedArticle.status)} />
-                      <StatusPill value="Supabase 반영" />
                     </div>
                   </div>
                 </article>
 
-                <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <details className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                  <summary className="cursor-pointer text-sm font-black text-[#092046]">저장된 내용·표시 순서 확인</summary>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">모바일 검수 전 확인</p>
                       <h3 className="mt-1 text-lg font-bold text-[#092046]">현재 기사 블록</h3>
@@ -340,19 +341,19 @@ export default async function ReadingEditorPage({
                       <p className="text-sm font-bold text-slate-700">저장된 콘텐츠 블록이 없습니다.</p>
                     </div>
                   )}
-                </article>
+                </details>
 
                 <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h3 className="text-base font-black text-[#092046]">프로젝트 검수·발행</h3>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">전체 기사와 공개 URL, QR을 최종 확인합니다.</p>
+                      <h3 className="text-base font-black text-[#092046]">기관 검토·발행</h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">모바일 확인을 마치면 기관 검토 상태와 공개 가능 여부를 확인하세요.</p>
                     </div>
                     <Link
                       href={`/projects/${projectId}/publish`}
                       className="rounded-lg bg-[#092046] px-5 py-3 text-center text-sm font-black text-white transition hover:bg-[#123a78]"
                     >
-                      검수·발행 화면으로 이동
+                      기관 검토·발행으로 이동
                     </Link>
                   </div>
                 </article>

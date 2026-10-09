@@ -149,7 +149,7 @@ export function CompositionMobilePreview({
     const illustrationAsset = illustration ? assetById.get(illustration.assetId) : undefined;
     return (
       <div data-article-title-color={frameSettings.settings.titleColor} data-article-body-color={frameSettings.settings.bodyColor} style={articleTextColorStyle(frameSettings.settings)} className="mx-auto w-full max-w-[390px] rounded-lg border border-[#b8d7ff] bg-white p-4 shadow-lg">
-        <p className="mb-3 text-xs font-black text-[#184a88]">3. 모바일 즉시 미리보기</p>
+        <p className="mb-3 text-xs font-black text-[#184a88]">현재 디자인 미리보기</p>
         <div className="mb-3"><PublicTextSizeToggle compact /></div>
         <ArticleHeroBackgroundLayer background={{ url: assetById.get(framePlacement.assetId)?.previewHref ?? "", visible: true, settings: frameSettings.settings }}
           illustration={illustration && illustrationAsset ? { url: illustrationAsset.previewHref, visible: true, settings: getSettings(illustration) } : undefined}
@@ -166,7 +166,7 @@ export function CompositionMobilePreview({
   return (
     <div data-article-title-color={frameSettings?.ok ? frameSettings.settings.titleColor : undefined} data-article-body-color={frameSettings?.ok ? frameSettings.settings.bodyColor : undefined} style={articleTextColorStyle(frameSettings?.ok ? frameSettings.settings : undefined)} className="mx-auto w-full max-w-[390px] overflow-hidden rounded-lg border border-[#b8d7ff] bg-white shadow-lg">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#d8e8ff] bg-[#092046] px-4 py-3 text-xs font-black text-white">
-        <span>3. 모바일 즉시 미리보기</span>
+        <span>현재 디자인 미리보기</span>
         {selectedPlacement && selectedAsset ? (
           <span className="max-w-full truncate rounded-full bg-white/15 px-2 py-1 text-[10px] text-sky-50">
             선택: {selectedAsset.name} · {slotLabels[selectedPlacement.slot]}

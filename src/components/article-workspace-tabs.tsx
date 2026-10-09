@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { ArticleMobilePreviewModal } from "@/components/article-mobile-preview-modal";
 import { StatusPill } from "@/components/status-pill";
@@ -16,14 +17,15 @@ type ArticleWorkspaceTabsProps = {
   initialTab: ArticleWorkspaceTab;
   linkCount: number;
   previewHref: string;
+  publishHref: string;
   review: ReactNode;
   totalArticleCount: number;
 };
 
 const tabs: Array<{ description: string; label: string; value: ArticleWorkspaceTab }> = [
-  { value: "content", label: "기사 내용", description: "원본자료, 기사 본문, 사진·미디어와 연결 기능을 편집합니다." },
-  { value: "composition", label: "디자인 조정", description: "기관 디자인 자산을 기사 배경과 장식에 배치합니다." },
-  { value: "review", label: "내부 검수", description: "저장된 기사와 모바일 표시 상태를 확인합니다." },
+  { value: "content", label: "1. 작성", description: "기사 내용을 입력하고 저장하면 디자인 단계로 이동할 수 있습니다." },
+  { value: "composition", label: "2. 디자인", description: "추천 디자인을 적용하거나 세부 디자인을 직접 조정하세요." },
+  { value: "review", label: "3. 검수", description: "모바일 화면을 확인하고 기관 검토·발행 화면으로 이동하세요." },
 ];
 
 function getTabFromLocation(articleId: string | null): ArticleWorkspaceTab {
@@ -43,6 +45,7 @@ export function ArticleWorkspaceTabs({
   initialTab,
   linkCount,
   previewHref,
+  publishHref,
   review,
   totalArticleCount,
 }: ArticleWorkspaceTabsProps) {
@@ -81,7 +84,7 @@ export function ArticleWorkspaceTabs({
               {articleTitle}
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              {articleId ? tabs.find((tab) => tab.value === activeTab)?.description : "새 기사의 내용을 작성하고 저장하세요."}
+              {articleId ? tabs.find((tab) => tab.value === activeTab)?.description : "기사 내용을 입력하고 저장하면 디자인 단계로 이동할 수 있습니다."}
             </p>
           </div>
 
@@ -106,12 +109,13 @@ export function ArticleWorkspaceTabs({
               onClick={() => setIsPreviewOpen(true)}
               className="h-12 max-w-full shrink-0 rounded-lg border border-[#2f73b7] bg-white px-4 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
             >
-              모바일 미리보기
+              모바일 확인
             </button>
           </div>
         </div>
 
-        <div role="tablist" aria-label="기사 제작 영역" className="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
+        <div role="tablist" aria-label="기사 제작 영역" className="flex flex-wrap gap-2">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.value;
             const isDisabled = !articleId && tab.value !== "content";
@@ -136,6 +140,8 @@ export function ArticleWorkspaceTabs({
               </button>
             );
           })}
+        </div>
+        <Link href={publishHref} className="min-h-11 rounded-lg border border-slate-200 px-4 py-2 text-sm font-black text-[#184a88] hover:bg-[#eef6ff]">4. 발행</Link>
         </div>
       </article>
 
