@@ -861,7 +861,7 @@ export function ArticleCompositionEditor({
       ) : null}
 
       <ArticleProductionPatternControls key={String(composition.settings.productionPattern ?? "manual")} pattern={composition.settings.productionPattern}
-        textDesign={composition.settings.textDesign} disabled={isBusy}
+        projectSlug={projectSlug} articleId={article.id} textDesign={composition.settings.textDesign} disabled={isBusy}
         onApply={productionPattern => void mutate("PATCH", { action: "apply_production_pattern", projectSlug, articleId: article.id, compositionId: composition.id, productionPattern, textDesign: composition.settings.textDesign ?? {} }, "production-pattern")} />
 
       <ArticleTextDesignControls value={composition.settings.textDesign} disabled={isBusy}

@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { articleProductionPatterns, isArticleProductionPattern, productionPatternDescriptions, type ArticleProductionPattern } from "@/lib/article-production-pattern";
+import type { ArticlePatternRecommendation } from "@/lib/article-pattern-recommendation";
 import { readArticleTextDesign } from "@/lib/article-text-design";
 
-export function ArticleProductionPatternControls({ pattern, textDesign, disabled, onApply }: {
+export function ArticleProductionPatternControls({ pattern, textDesign, disabled, onApply, projectSlug, articleId }: {
+  projectSlug: string;
+  articleId: string;
   pattern: unknown;
   textDesign: unknown;
   disabled: boolean;
@@ -13,11 +16,57 @@ export function ArticleProductionPatternControls({ pattern, textDesign, disabled
   const saved = isArticleProductionPattern(pattern) ? pattern : "manual";
   const [selected, setSelected] = useState(saved);
   const [confirming, setConfirming] = useState(false);
+  const [analysis, setAnalysis] = useState<"idle" | "loading" | "complete" | "error">("idle");
+  const [recommendation, setRecommendation] = useState<ArticlePatternRecommendation | null>(null);
+  const [analysisError, setAnalysisError] = useState("");
+  const analysisRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => analysisRequest.current?.abort(), []);
+
+  async function recommend() {
+    if (analysisRequest.current) return;
+    const controller = new AbortController();
+    analysisRequest.current = controller;
+    setAnalysis("loading");
+    setRecommendation(null);
+    setAnalysisError("");
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+    try {
+      const response = await fetch("/api/project-content/pattern-recommendation", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectSlug, articleId }), signal: controller.signal,
+      });
+      const result = await response.json().catch(() => null) as { ok?: boolean; recommendation?: ArticlePatternRecommendation; message?: string } | null;
+      if (!response.ok || !result?.ok || !result.recommendation) throw new Error(result?.message ?? "AI 추천에 실패했습니다. 수동으로 패턴을 선택해 주세요.");
+      setRecommendation(result.recommendation);
+      setAnalysis("complete");
+    } catch (error) {
+      setAnalysisError(error instanceof Error && error.name !== "AbortError" ? error.message : "AI 분석을 완료하지 못했습니다. 수동으로 패턴을 선택해 주세요.");
+      setAnalysis("error");
+    } finally {
+      clearTimeout(timeout);
+      analysisRequest.current = null;
+    }
+  }
+
   const current = readArticleTextDesign(textDesign);
   const label = selected === "manual" ? "" : { event: "행사", policy: "정책", interview: "인터뷰" }[selected];
   return <fieldset disabled={disabled} className="mt-5 min-w-0 rounded-lg border border-slate-200 p-4">
     <legend className="px-2 font-black text-[#092046]">제작 패턴</legend>
     <p className="text-sm text-slate-600">적용된 패턴: {productionPatternDescriptions[saved].name}. 적용 후에도 모든 디자인을 직접 조정할 수 있습니다.</p>
+    <div className="mt-3 rounded-lg border border-slate-200 p-3">
+      <button type="button" disabled={analysis === "loading"} onClick={() => void recommend()} className="dd-btn dd-btn-secondary">{analysis === "loading" ? "분석 중…" : "AI 추천 받기"}</button>
+      <p className="mt-2 text-sm text-slate-600">저장된 기사 내용으로 분석합니다. 추천은 자동 적용되지 않습니다.</p>
+      <div role="status" aria-live="polite" aria-busy={analysis === "loading"}>
+        {analysis === "loading" ? <p className="mt-2 text-sm">기사 내용을 분석하고 있습니다. 수동 선택은 계속 사용할 수 있습니다.</p> : null}
+        {analysis === "error" ? <p className="mt-2 text-sm text-rose-800">추천 실패: {analysisError}</p> : null}
+        {recommendation ? <div className="mt-3 min-w-0 rounded bg-sky-50 p-3 [overflow-wrap:anywhere]">
+          <p className="text-sm font-bold">{recommendation.pattern === "manual" ? "직접 구성 추천" : "추천 완료"}</p>
+          <p className="mt-1 font-black">추천 패턴: {productionPatternDescriptions[recommendation.pattern].name}</p>
+          <p className="mt-2 text-sm">추천 이유: {recommendation.reason}</p>
+          <button type="button" onClick={() => { setSelected(recommendation.pattern); setConfirming(true); }} className="dd-btn dd-btn-primary mt-3">이 패턴 적용</button>
+        </div> : null}
+      </div>
+    </div>
     <label className="mt-3 block text-sm font-bold">제작 패턴 선택
       <select value={selected} onChange={e => { setSelected(e.target.value as ArticleProductionPattern); setConfirming(false); }} className="mt-1 block w-full rounded border border-slate-300 p-2">
         {articleProductionPatterns.map(value => <option key={value} value={value}>{productionPatternDescriptions[value].name}</option>)}
