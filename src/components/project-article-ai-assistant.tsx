@@ -487,8 +487,8 @@ export function ProjectArticleAiAssistant({
     <details className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 sm:p-5">
       <summary className="flex cursor-pointer list-none flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span>
-          <span className="block text-xs font-black uppercase tracking-wide text-[#184a88]">자료·기획</span>
-          <span className="mt-1 block text-base font-black text-[#092046]">원본자료 수집·AI 분석</span>
+          <span className="block text-xs font-black uppercase tracking-wide text-[#184a88]">원자료·AI 초안</span>
+          <span className="mt-1 block text-base font-black text-[#092046]">원자료로 초안 만들기</span>
           <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">
             자료를 가져오면 AI가 기사 구조와 공공정보를 제안합니다.
           </span>

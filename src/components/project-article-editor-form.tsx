@@ -359,14 +359,6 @@ const blockUseCases: Array<{ title: string; description: string }> = [
   { title: "유튜브 영상", description: "유튜브 블록에 영상 제목과 YouTube URL을 입력합니다." },
 ];
 
-const articleWorkflowAreas = [
-  "기사 내용",
-  "사진·미디어",
-  "디자인 조정",
-  "연결 기능",
-  "고급 설정",
-];
-
 function FieldLabel({ children, required = false }: { children: string; required?: boolean }) {
   return (
     <label className="mb-2 block text-sm font-black text-[#092046]">
@@ -1573,38 +1565,6 @@ export function ProjectArticleEditorForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} onInvalidCapture={clearArticleSave} className="space-y-5">
-      <section aria-labelledby="article-workflow-heading" className="rounded-lg border border-[#b8d7ff] bg-white p-4 sm:p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">기사 제작 워크스페이스</p>
-            <h2 id="article-workflow-heading" className="mt-1 text-lg font-black text-[#092046]">기사 제작 영역</h2>
-          </div>
-          <p className="text-xs font-semibold leading-5 text-slate-500">필요한 영역만 펼쳐 기사와 모바일 화면을 완성합니다.</p>
-        </div>
-        <ol className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
-          {articleWorkflowAreas.map((step, index) => {
-            const isCurrent = index === 0;
-
-            return (
-              <li
-                key={step}
-                aria-current={isCurrent ? "step" : undefined}
-                className={`min-w-0 rounded-lg border px-3 py-3 ${
-                  isCurrent
-                    ? "border-[#184a88] bg-[#092046] text-white shadow-sm"
-                    : "border-[#d8e8ff] bg-[#f7fbff] text-[#092046]"
-                }`}
-              >
-                <span className={`block text-[11px] font-black ${isCurrent ? "text-sky-200" : "text-[#184a88]"}`}>
-                  {index + 1}영역
-                </span>
-                <span className="mt-1 block text-xs font-black leading-5 [word-break:keep-all]">{step}</span>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
-
       <ProjectArticleAiAssistant
         getCurrentContent={getCurrentContentForAi}
         onApplyDraft={applyAiDraft}
@@ -1625,7 +1585,7 @@ export function ProjectArticleEditorForm({
           </div>
           <div className="flex flex-wrap gap-2">
             <SectionBadge tone="required">필수</SectionBadge>
-            <StatusPill value={article ? "DB 저장됨" : "신규 작성"} />
+            <StatusPill value={article ? "저장됨" : "신규 작성"} />
             {article?.audioFile ? (
               <StatusPill value={article.audioFile.sourceType === "ai_tts" ? "AI 음성 있음" : "연결된 음성 있음"} />
             ) : null}
@@ -1782,7 +1742,7 @@ export function ProjectArticleEditorForm({
         <div className="border-t border-slate-200 pt-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">사진·미디어</p>
+            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">본문·사진·미디어</p>
             <h3 className="mt-1 text-lg font-black text-[#092046]">
               {contentPresentation === "image"
                 ? "완성 이미지와 연결 블록"
@@ -2137,7 +2097,7 @@ export function ProjectArticleEditorForm({
       <div className="rounded-lg border border-slate-200 bg-[#f8fbff] p-5">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">선택 설정</p>
-          <h3 className="mt-1 text-lg font-black text-[#092046]">연결 기능과 고급 설정</h3>
+          <h3 className="mt-1 text-lg font-black text-[#092046]">추가 정보와 설정</h3>
         </div>
         <div className="mt-5 space-y-5">
           <section aria-labelledby="public-action-settings-heading" className="rounded-xl border border-[#b8d7ff] bg-[#eef6ff] p-4">
@@ -2275,14 +2235,8 @@ export function ProjectArticleEditorForm({
             </div>
           </section>
 
-          <section aria-labelledby="advanced-article-settings-heading" className="rounded-xl border border-slate-200 bg-white p-4">
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-slate-500">선택 설정</p>
-              <h4 id="advanced-article-settings-heading" className="mt-1 text-base font-black text-[#092046]">고급 설정</h4>
-              <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-                음성, 노출 우선순위, 화면 표시와 모션 등 필요한 항목만 펼쳐서 조정합니다.
-              </p>
-            </div>
+          <details aria-labelledby="advanced-article-settings-heading" className="rounded-xl border border-slate-200 bg-white p-4">
+            <summary className="cursor-pointer text-sm font-black text-[#092046]" id="advanced-article-settings-heading">고급 설정 · 음성·노출·화면 효과</summary>
             <div className="mt-4 space-y-3">
 
           <DetailSection title="음성·TTS" summary={selectedAudioSourceLabel}>
@@ -2714,7 +2668,7 @@ export function ProjectArticleEditorForm({
 
           </DetailSection>
             </div>
-          </section>
+          </details>
         </div>
       </div>
 

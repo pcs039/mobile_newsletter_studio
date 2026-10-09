@@ -338,7 +338,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       active="publish"
       projectId={projectId}
       title="검수·발행"
-      description="발행 전 최종 확인 후 공개 URL과 QR코드를 생성합니다."
+      description="모바일 화면과 기관 승인을 확인한 뒤 최종 발행하세요."
       sidebarTitle={
         <>
           검수
@@ -523,17 +523,11 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
             <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-bold text-[#092046]">모바일 읽기 보기</h3>
-                  <p className="mt-1 text-sm text-slate-500">저장된 기사 기준 모바일 공개 화면</p>
+                  <h3 className="text-lg font-bold text-[#092046]">모바일 내용 요약</h3>
+                  <p className="mt-1 text-sm text-slate-500">저장된 첫 기사 요약입니다. 실제 디자인은 상단 공개 화면 열기에서 확인하세요.</p>
                 </div>
                 <StatusPill value={articles.length > 0 ? "기사 있음" : "기사 없음"} />
               </div>
-              <Link
-                href={publicPreviewHref}
-                className="mb-4 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-              >
-                공개 화면 열기
-              </Link>
               <div className="mx-auto max-w-[300px] rounded-[30px] border border-slate-200 bg-slate-950 p-3 shadow-sm">
                 <div className="overflow-hidden rounded-[24px] bg-white">
                   <div className="px-4 py-4 text-white" style={{ backgroundColor: project?.primaryColor ?? "#092046" }}>

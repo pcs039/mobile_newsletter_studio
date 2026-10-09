@@ -198,6 +198,8 @@ export async function ProjectAdminShell({
   const isPublishingToolActive = visiblePublishingNavigation.some((item) => item.key === active);
   const isAnalyticsToolActive = visibleAnalyticsNavigation.some((item) => item.key === active);
 
+  const WorkflowContainer = active === "reading" || active === "publish" ? "details" : "section";
+
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950" data-print-scope={printScope}>
       <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -254,7 +256,8 @@ export async function ProjectAdminShell({
             </div>
           </header>
 
-          <section className="mb-7 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm" data-admin-workflow>
+          <WorkflowContainer className="mb-5 min-w-0 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm" data-admin-workflow>
+            {active === "reading" || active === "publish" ? <summary className="cursor-pointer text-sm font-black text-[#092046]">프로젝트 관리·자료 준비</summary> : null}
             <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프로젝트 운영 현황</p>
@@ -430,7 +433,7 @@ export async function ProjectAdminShell({
                 </div>
               </details>
             </nav>
-          </section>
+          </WorkflowContainer>
 
           {children}
         </section>
