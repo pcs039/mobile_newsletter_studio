@@ -320,7 +320,7 @@ function PlacementControls({
                 surface={settings.renderMode === "fluid_frame" && token !== "accentColor" ? settings.surfaceColor ?? "#F4F8FF" : undefined}
                 onChange={(color) => changeSettings({ [token]: color })} />
             ))}
-            <p className="text-xs leading-5 text-slate-600">강조색은 소제목 강조선과 번호 배지·라벨 테두리에 사용됩니다. 대비 경고가 있어도 선택한 색상을 자동으로 바꾸지 않습니다.</p>
+            <p className="text-xs leading-5 text-slate-600">강조색은 소제목 강조선, 번호 배지 배경과 라벨 테두리에 사용됩니다. 대비 경고가 있어도 선택한 색상을 자동으로 바꾸지 않습니다.</p>
           </div>
           {settings.renderMode === "fluid_frame" ? (
             <div className="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">

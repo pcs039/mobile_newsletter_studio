@@ -137,9 +137,9 @@ export function CompositionMobilePreview({
         <ArticleHeroBackgroundLayer background={{ url: assetById.get(framePlacement.assetId)?.previewHref ?? "", visible: true, settings: frameSettings.settings }}
           illustration={illustration && illustrationAsset ? { url: illustrationAsset.previewHref, visible: true, settings: getSettings(illustration) } : undefined}
           body={<p data-public-text-scale-target="article-body" className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}{article.body.length > 360 ? "…" : ""}</p>}>
-          <ArticleTextDesignElements settings={textDesign} position="before-title" />
+          <ArticleTextDesignElements settings={textDesign} accentColor={frameSettings?.ok ? frameSettings.settings.accentColor : undefined} position="before-title" />
           <h3 hidden={article.showPublicTitle === false} className="public-article-title break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
-          <ArticleTextDesignElements settings={textDesign} position="after-title" />
+          <ArticleTextDesignElements settings={textDesign} accentColor={frameSettings?.ok ? frameSettings.settings.accentColor : undefined} position="after-title" />
           {article.summary ? <p data-public-text-scale-target="article-summary" className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
         </ArticleHeroBackgroundLayer>
       </div>
@@ -179,9 +179,9 @@ export function CompositionMobilePreview({
 
         <div className="relative z-30 mx-auto max-w-[290px] text-center">
           <p className="text-[11px] font-black uppercase tracking-wide text-[#184a88]">Mobile Newsletter</p>
-          <ArticleTextDesignElements settings={textDesign} position="before-title" />
+          <ArticleTextDesignElements settings={textDesign} accentColor={frameSettings?.ok ? frameSettings.settings.accentColor : undefined} position="before-title" />
           <h3 hidden={article.showPublicTitle === false} className="public-article-title mt-3 break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
-          <ArticleTextDesignElements settings={textDesign} position="after-title" />
+          <ArticleTextDesignElements settings={textDesign} accentColor={frameSettings?.ok ? frameSettings.settings.accentColor : undefined} position="after-title" />
           {article.summary ? <p data-public-text-scale-target="article-summary" className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
         </div>
       </div>

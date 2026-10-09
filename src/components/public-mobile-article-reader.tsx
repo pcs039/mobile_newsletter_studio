@@ -1693,7 +1693,7 @@ function ArticleCard({
           ) : null}
         </div>
       ) : null}
-      <ArticleTextDesignElements settings={textDesign} position="before-title" />
+      <ArticleTextDesignElements settings={textDesign} accentColor={heroBackground?.settings.accentColor} position="before-title" />
       <div
         key={`article-title-${article.id}-${motionPreset}-${motionSpeed}-${motionSettings.title.effect}-${motionSettings.title.speed}`}
         className={
@@ -1739,7 +1739,7 @@ function ArticleCard({
             : renderKoreanTitleWithBreaks(articleTitle)}
         </h2>
       </div>
-      <ArticleTextDesignElements settings={textDesign} position="after-title" />
+      <ArticleTextDesignElements settings={textDesign} accentColor={heroBackground?.settings.accentColor} position="after-title" />
       {showTextSizeControl && (!isImageOnly || hasTextDesign) ? (
         <div className="mt-3">
           <PublicTextSizeToggle compact />
