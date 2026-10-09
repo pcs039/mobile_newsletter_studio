@@ -5,7 +5,7 @@ import { getClientReviewAccess } from "@/lib/client-review-repository";
 import { isArticlePubliclyVisible } from "@/lib/article-publication";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import { getUsableEbookPages } from "@/lib/ebook-pages";
-import { getArticleHeroBackgrounds } from "@/lib/article-composition-repository";
+import { getArticleHeroBackgrounds, getArticleTextDesigns } from "@/lib/article-composition-repository";
 import {
   getProjectContent, getProjectPageImages, getProjectAudioFiles,
   getProjectWorkspace, getProjectPageHotspotLinks, getFontAssets,
@@ -89,9 +89,10 @@ export async function getClientReviewRenderData(slug: string) {
   const publicAudio = audio.files[0]?.filePath
     ? { src: register("audio-files", audio.files[0].filePath), title: audio.files[0].title }
     : undefined;
-  const [heroBackgrounds, topIllustrations] = await Promise.all([
+  const [heroBackgrounds, topIllustrations, textDesigns] = await Promise.all([
     getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review"),
     getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review", "hero_illustration"),
+    getArticleTextDesigns(project.id, articles.map((article) => article.id), false),
   ]);
-  return { project, articles, pages, coverImageSrc, publicAudio, files, fonts: fonts.fonts, hotspots: hotspots.links, heroBackgrounds, topIllustrations };
+  return { project, articles, pages, coverImageSrc, publicAudio, files, fonts: fonts.fonts, hotspots: hotspots.links, heroBackgrounds, topIllustrations, textDesigns };
 }

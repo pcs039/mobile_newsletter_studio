@@ -262,6 +262,7 @@ export default async function ReadingEditorPage({
                   id: selectedArticle.id,
                   summary: selectedArticle.summary,
                   title: selectedArticle.title,
+                  showPublicTitle: selectedArticle.showPublicTitle,
                 }}
                 assets={designAssetData.ok ? designAssetData.assets : []}
                 initialComposition={compositionData.data}

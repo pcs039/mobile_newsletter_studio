@@ -1,3 +1,4 @@
+import { validateArticleTextDesign } from "@/lib/article-text-design";
 import { NextResponse } from "next/server";
 import {
   isArticleCompositionAssetTypeCompatible,
@@ -15,6 +16,7 @@ import {
   getProjectArticleComposition,
   saveProjectArticleCompositionPlacement,
   updateProjectArticleCompositionStatus,
+  updateProjectArticleCompositionSettings,
   type ArticleCompositionRepositoryResult,
 } from "@/lib/article-composition-repository";
 import {
@@ -284,6 +286,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, message: "현재 기사의 화면 구성을 확인해 주세요." }, { status: 400 });
   }
 
+  if (action === "update_text_design") {
+    const validation = validateArticleTextDesign(payload?.textDesign);
+    if (!validation.ok) return NextResponse.json({ ok: false, message: validation.message }, { status: 400 });
+    return repositoryResponse(await updateProjectArticleCompositionSettings(context.projectId, articleId,
+      { ...context.composition.settings, textDesign: { ...validation.settings } }));
+  }
   if (action === "update_status") {
     if (!isArticleCompositionStatus(payload?.status)) {
       return NextResponse.json({ ok: false, message: "기사 화면 구성 상태를 확인해 주세요." }, { status: 400 });

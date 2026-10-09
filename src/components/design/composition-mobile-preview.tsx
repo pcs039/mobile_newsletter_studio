@@ -11,6 +11,9 @@ import {
 } from "@/lib/article-composition";
 import type { ProjectDesignAsset } from "@/lib/newsletter-repository";
 import { articleTextColorStyle } from "@/lib/article-text-colors";
+import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
+import { ArticleTextDesignElements } from "@/components/article-text-design-elements";
+import { readArticleTextDesign, hasArticleTextDesign } from "@/lib/article-text-design";
 import { ArticleHeroBackgroundLayer } from "@/components/article-hero-background-layer";
 import { validateArticleCompositionPlacementSettings } from "@/lib/article-composition";
 
@@ -19,6 +22,7 @@ type CompositionMobilePreviewProps = {
     body: string;
     summary: string;
     title: string;
+    showPublicTitle?: boolean;
   };
   assets: ProjectDesignAsset[];
   composition: ProjectArticleComposition;
@@ -109,6 +113,7 @@ export function CompositionMobilePreview({
   composition,
   selectedPlacementId,
 }: CompositionMobilePreviewProps) {
+  const textDesign = readArticleTextDesign(composition.settings.textDesign);
   const assetById = new Map(assets.map((asset) => [asset.id, asset]));
   const visiblePlacements = composition.assets.filter((placement) => placement.isVisible && assetById.has(placement.assetId));
   const placementsFor = (slot: ArticleCompositionSlot) =>
@@ -122,16 +127,19 @@ export function CompositionMobilePreview({
   const selectedAsset = selectedPlacement ? assetById.get(selectedPlacement.assetId) : undefined;
   const framePlacement = heroBackgrounds[0];
   const frameSettings = framePlacement ? validateArticleCompositionPlacementSettings(framePlacement.settings, "hero_background") : null;
-  if (framePlacement && frameSettings?.ok && frameSettings.settings.renderMode === "fluid_frame") {
+  if (framePlacement && frameSettings?.ok && (frameSettings.settings.renderMode === "fluid_frame" || hasArticleTextDesign(textDesign))) {
     const illustration = heroIllustrations[0];
     const illustrationAsset = illustration ? assetById.get(illustration.assetId) : undefined;
     return (
       <div data-article-title-color={frameSettings.settings.titleColor} data-article-body-color={frameSettings.settings.bodyColor} style={articleTextColorStyle(frameSettings.settings)} className="mx-auto w-full max-w-[390px] rounded-lg border border-[#b8d7ff] bg-white p-4 shadow-lg">
         <p className="mb-3 text-xs font-black text-[#184a88]">3. 모바일 즉시 미리보기</p>
-        <ArticleHeroBackgroundLayer background={{ url: "", visible: true, settings: frameSettings.settings }}
+        <div className="mb-3"><PublicTextSizeToggle compact /></div>
+        <ArticleHeroBackgroundLayer background={{ url: assetById.get(framePlacement.assetId)?.previewHref ?? "", visible: true, settings: frameSettings.settings }}
           illustration={illustration && illustrationAsset ? { url: illustrationAsset.previewHref, visible: true, settings: getSettings(illustration) } : undefined}
           body={<p data-public-text-scale-target="article-body" className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}{article.body.length > 360 ? "…" : ""}</p>}>
-          <h3 className="public-article-title break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
+          <ArticleTextDesignElements settings={textDesign} position="before-title" />
+          <h3 hidden={article.showPublicTitle === false} className="public-article-title break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
+          <ArticleTextDesignElements settings={textDesign} position="after-title" />
           {article.summary ? <p data-public-text-scale-target="article-summary" className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
         </ArticleHeroBackgroundLayer>
       </div>
@@ -151,6 +159,7 @@ export function CompositionMobilePreview({
         )}
       </div>
 
+      <div className="px-4 py-3"><PublicTextSizeToggle compact /></div>
       <div className="relative min-h-64 overflow-hidden bg-[#eef6ff] px-6 py-10">
         <span className="absolute left-3 top-3 z-40 rounded bg-white/90 px-2 py-1 text-[10px] font-black text-[#184a88] shadow-sm">
           기사 제목 영역
@@ -170,7 +179,9 @@ export function CompositionMobilePreview({
 
         <div className="relative z-30 mx-auto max-w-[290px] text-center">
           <p className="text-[11px] font-black uppercase tracking-wide text-[#184a88]">Mobile Newsletter</p>
-          <h3 className="public-article-title mt-3 break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
+          <ArticleTextDesignElements settings={textDesign} position="before-title" />
+          <h3 hidden={article.showPublicTitle === false} className="public-article-title mt-3 break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
+          <ArticleTextDesignElements settings={textDesign} position="after-title" />
           {article.summary ? <p data-public-text-scale-target="article-summary" className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
         </div>
       </div>

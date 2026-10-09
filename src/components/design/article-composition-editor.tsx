@@ -1,5 +1,6 @@
 "use client";
 
+import { ArticleTextDesignControls } from "@/components/design/article-text-design-controls";
 import { ArticleColorInput } from "@/components/design/article-color-input";
 import { articleTextColorDefaults } from "@/lib/article-text-colors";
 import Link from "next/link";
@@ -25,6 +26,7 @@ type ArticleCompositionEditorProps = {
     id: string;
     summary: string;
     title: string;
+    showPublicTitle?: boolean;
   };
   assets: ProjectDesignAsset[];
   initialComposition: ProjectArticleComposition | null;
@@ -36,6 +38,7 @@ type ArticleCompositionEditorProps = {
     orderLabel: string;
     statusLabel: string;
     title: string;
+    showPublicTitle?: boolean;
   }>;
 };
 
@@ -317,7 +320,7 @@ function PlacementControls({
                 surface={settings.renderMode === "fluid_frame" && token !== "accentColor" ? settings.surfaceColor ?? "#F4F8FF" : undefined}
                 onChange={(color) => changeSettings({ [token]: color })} />
             ))}
-            <p className="text-xs leading-5 text-slate-600">강조색은 앞으로 추가될 HTML 디자인 요소에서 사용됩니다. 대비 경고가 있어도 선택한 색상을 자동으로 바꾸지 않습니다.</p>
+            <p className="text-xs leading-5 text-slate-600">강조색은 소제목 강조선과 번호 배지·라벨 테두리에 사용됩니다. 대비 경고가 있어도 선택한 색상을 자동으로 바꾸지 않습니다.</p>
           </div>
           {settings.renderMode === "fluid_frame" ? (
             <div className="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
@@ -827,7 +830,7 @@ export function ArticleCompositionEditor({
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 개별 기사 디자인</p>
           <h3 className="mt-1 text-xl font-black text-[#092046]">기사 디자인 조정</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">변경 내용은 항목별로 즉시 저장됩니다. 준비 완료 상태의 배경판과 상단 이미지·장식은 승인된 자산만 모바일 미리보기·기관 검토·공개 화면에 표시됩니다. 다른 배치 요소는 아직 공개 화면에 반영되지 않습니다.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">레이어 변경은 항목별로 즉시 저장됩니다. 텍스트 디자인은 저장 버튼으로 반영합니다. 준비 완료 상태의 배경판과 상단 이미지·장식은 승인된 자산만 모바일 미리보기·기관 검토·공개 화면에 표시됩니다. 다른 배치 요소는 아직 공개 화면에 반영되지 않습니다.</p>
         </div>
         <div className="flex rounded-lg border border-[#b8d7ff] bg-[#eef6ff] p-1">
           {(["draft", "ready"] as const).map((status) => (
@@ -853,6 +856,10 @@ export function ArticleCompositionEditor({
           {notice.message}
         </p>
       ) : null}
+
+      <ArticleTextDesignControls value={composition.settings.textDesign} disabled={isBusy}
+        onChange={(textDesign) => setComposition({ ...composition, settings: { ...composition.settings, textDesign: { ...textDesign } } })}
+        onSave={() => void mutate("PATCH", { action: "update_text_design", projectSlug, articleId: article.id, compositionId: composition.id, textDesign: composition.settings.textDesign ?? {} }, "text-design")} />
 
       <div className="mt-6 rounded-lg border border-[#c9d7e8] bg-[#f7fbff] p-4">
         <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">디자인 작업 순서</p>
