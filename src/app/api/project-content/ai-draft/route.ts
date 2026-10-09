@@ -1,3 +1,4 @@
+import { articleAiMaxSourceLength, articleAiRequestTimeoutMs, requestArticleAiResponse } from "@/lib/article-ai-provider";
 import { NextResponse } from "next/server";
 import { loadArticleAiPhotoAssets } from "@/lib/article-ai-photo-assets";
 import {
@@ -13,12 +14,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const maxSourceLength = 30_000;
-const requestTimeoutMs = 55_000;
-
-function getArticleAiModel() {
-  return process.env.OPENAI_ARTICLE_MODEL?.trim() || "gpt-5.6-terra";
-}
+const maxSourceLength = articleAiMaxSourceLength;
+const requestTimeoutMs = articleAiRequestTimeoutMs;
 
 function errorResponse(error: string, message: string, status: number) {
   return NextResponse.json({ ok: false, error, message }, { status });
@@ -96,32 +93,20 @@ export async function POST(request: Request) {
           },
         ]
       : promptText;
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: getArticleAiModel(),
-        store: false,
-        reasoning: { effort: "low" },
-        max_output_tokens: 5000,
-        instructions: articleAiSystemInstruction,
-        input: responseInput,
-        text: {
-          format: {
-            type: "json_schema",
-            name: "public_article_draft",
-            description: "원자료에 근거한 공공기관 모바일 기사 초안",
-            strict: true,
-            schema: articleAiDraftJsonSchema,
-          },
+    const response = await requestArticleAiResponse(apiKey, {
+      max_output_tokens: 5000,
+      instructions: articleAiSystemInstruction,
+      input: responseInput,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "public_article_draft",
+          description: "원자료에 근거한 공공기관 모바일 기사 초안",
+          strict: true,
+          schema: articleAiDraftJsonSchema,
         },
-      }),
-      cache: "no-store",
-      signal: controller.signal,
-    });
+      },
+    }, controller.signal);
 
     if (!response.ok) {
       if (response.status === 429) {
