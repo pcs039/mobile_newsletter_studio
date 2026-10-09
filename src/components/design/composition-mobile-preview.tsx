@@ -1,5 +1,7 @@
 "use client";
 
+import { ArticleBodyDesignElement, ArticleDesignedCaption } from "@/components/article-body-design-elements";
+import { readArticleBodyDesign } from "@/lib/article-body-design";
 import type { CSSProperties } from "react";
 import {
   articleCompositionSlotDefaultZIndex,
@@ -23,6 +25,7 @@ type CompositionMobilePreviewProps = {
     summary: string;
     title: string;
     showPublicTitle?: boolean;
+    blocks?: import("@/lib/newsletter-repository").ProjectContentBlock[];
   };
   assets: ProjectDesignAsset[];
   composition: ProjectArticleComposition;
@@ -114,6 +117,20 @@ export function CompositionMobilePreview({
   selectedPlacementId,
 }: CompositionMobilePreviewProps) {
   const textDesign = readArticleTextDesign(composition.settings.textDesign);
+  const hasBodyElements = article.blocks?.some(b => b.isVisible && (readArticleBodyDesign(b.metadata.body_design) || (b.type === "image" && textDesign.captionStyled)));
+  const bodyElements = hasBodyElements ? article.blocks?.filter(b => b.isVisible).map(block => {
+    const design = block.type === "paragraph" ? readArticleBodyDesign(block.metadata.body_design) : undefined;
+    if (design) return <ArticleBodyDesignElement key={block.id} design={design} title={block.title} body={block.body} />;
+    if (block.type === "paragraph") return <section key={block.id}>{block.title ? <h3 className="font-bold">{block.title}</h3> : null}<p data-public-text-scale-target="article-body" className="whitespace-pre-wrap break-words">{block.body}</p></section>;
+    if (block.type === "image" && block.body.trim()) return (
+      <figure key={block.id}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="h-auto w-full" src={block.body} alt={block.title || article.title} />
+        {textDesign.captionStyled ? <ArticleDesignedCaption text={block.title} /> : block.title ? <figcaption>{block.title}</figcaption> : null}
+      </figure>
+    );
+    return null;
+  }) : null;
   const assetById = new Map(assets.map((asset) => [asset.id, asset]));
   const visiblePlacements = composition.assets.filter((placement) => placement.isVisible && assetById.has(placement.assetId));
   const placementsFor = (slot: ArticleCompositionSlot) =>
@@ -127,7 +144,7 @@ export function CompositionMobilePreview({
   const selectedAsset = selectedPlacement ? assetById.get(selectedPlacement.assetId) : undefined;
   const framePlacement = heroBackgrounds[0];
   const frameSettings = framePlacement ? validateArticleCompositionPlacementSettings(framePlacement.settings, "hero_background") : null;
-  if (framePlacement && frameSettings?.ok && (frameSettings.settings.renderMode === "fluid_frame" || hasArticleTextDesign(textDesign))) {
+  if (framePlacement && frameSettings?.ok && (frameSettings.settings.renderMode === "fluid_frame" || hasArticleTextDesign(textDesign) || hasBodyElements)) {
     const illustration = heroIllustrations[0];
     const illustrationAsset = illustration ? assetById.get(illustration.assetId) : undefined;
     return (
@@ -136,7 +153,7 @@ export function CompositionMobilePreview({
         <div className="mb-3"><PublicTextSizeToggle compact /></div>
         <ArticleHeroBackgroundLayer background={{ url: assetById.get(framePlacement.assetId)?.previewHref ?? "", visible: true, settings: frameSettings.settings }}
           illustration={illustration && illustrationAsset ? { url: illustrationAsset.previewHref, visible: true, settings: getSettings(illustration) } : undefined}
-          body={<p data-public-text-scale-target="article-body" className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}{article.body.length > 360 ? "…" : ""}</p>}>
+          body={hasBodyElements ? <div className="mt-6 space-y-6">{bodyElements}</div> : <p data-public-text-scale-target="article-body" className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}{article.body.length > 360 ? "…" : ""}</p>}>
           <ArticleTextDesignElements settings={textDesign} accentColor={frameSettings?.ok ? frameSettings.settings.accentColor : undefined} position="before-title" />
           <h3 hidden={article.showPublicTitle === false} className="public-article-title break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
           <ArticleTextDesignElements settings={textDesign} accentColor={frameSettings?.ok ? frameSettings.settings.accentColor : undefined} position="after-title" />
@@ -194,12 +211,13 @@ export function CompositionMobilePreview({
           const asset = assetById.get(placement.assetId);
           return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-28 w-28" selected={placement.id === selectedPlacementId} /> : null;
         })}
-        <p data-public-text-scale-target="article-body" className="relative z-30 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+        <p hidden={Boolean(hasBodyElements)} data-public-text-scale-target="article-body" className="relative z-30 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
           {article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}
           {article.body.length > 360 ? "…" : ""}
         </p>
       </div>
 
+      {hasBodyElements ? <div className="space-y-6 px-6 pb-6">{bodyElements}</div> : null}
       {footerBanners.length > 0 ? (
         <div className="relative min-h-28 overflow-hidden border-t border-slate-100 bg-slate-50">
           {footerBanners.map((placement) => {

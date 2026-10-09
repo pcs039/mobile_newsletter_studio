@@ -1,5 +1,6 @@
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { normalizeArticlePublicationKind, type ArticlePublicationKind } from "@/lib/article-publication";
+import { validateArticleBodyDesign, type ArticleBodyDesign } from "@/lib/article-body-design";
 import { normalizeArticlePublicInfoValue, type ArticlePublicInfo as ArticlePublicInfoRecord } from "@/lib/article-public-info-fields";
 import { detectDeviceType } from "@/lib/device-type";
 import { normalizeEbookSource, type EbookSource } from "@/lib/ebook-source";
@@ -1349,6 +1350,7 @@ export type UpsertProjectArticleInput = {
     textAlignment?: string;
     sortOrder?: number;
     assetId?: string | null;
+    bodyDesign?: ArticleBodyDesign;
   }>;
   contactName?: string;
   contactPhone?: string;
@@ -2943,6 +2945,7 @@ function normalizeContentBlocks(blocks: UpsertProjectArticleInput["contentBlocks
       textAlignment: normalizeArticleTextAlignment(block.textAlignment),
       sortOrder: normalizeArticleSortOrder(block.sortOrder) || (index + 1) * 10,
       assetId: block.assetId || null,
+      bodyDesign: block.bodyDesign ? validateArticleBodyDesign(block.bodyDesign) : undefined,
     }))
     .filter((block) => {
       if (block.type === "paragraph") {
@@ -6616,7 +6619,7 @@ function makeAtomicArticleBlocks(input: UpsertProjectArticleInput) {
         text_alignment: block.textAlignment,
         asset_id: block.assetId,
         sort_order: block.sortOrder,
-        metadata: blockMetadata,
+        metadata: { ...blockMetadata, ...(block.bodyDesign ? { body_design: block.bodyDesign } : {}) },
         action,
       });
     });

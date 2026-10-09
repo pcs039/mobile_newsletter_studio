@@ -1,5 +1,7 @@
 "use client";
 
+import { readArticleBodyDesign, type ArticleBodyDesign } from "@/lib/article-body-design";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useRef, useState } from "react";
@@ -55,6 +57,7 @@ type EditorBlockType = Extract<
 >;
 
 type EditorBlock = {
+  bodyDesign?: ArticleBodyDesign;
   id: string;
   type: EditorBlockType;
   title: string;
@@ -98,6 +101,7 @@ type ArticlePayload = {
     textAlignment: ArticleTextAlignment;
     title: string;
     type: EditorBlockType;
+    bodyDesign?: ArticleBodyDesign;
   }>;
   imageMotionEffect: string;
   imageMotionSpeed: string;
@@ -458,9 +462,10 @@ function makeInitialBlocks(article: ProjectContentArticle | null): EditorBlock[]
         return {
           id: block.id || `${block.type}-${index + 1}`,
           type: block.type as EditorBlockType,
-          title: block.type === "paragraph" && block.title === "본문" ? "" : block.title || link?.label || "",
+          title: block.type === "paragraph" && !readArticleBodyDesign(block.metadata.body_design) && block.title === "본문" ? "" : block.title || link?.label || "",
           body: block.body || link?.targetValue || "",
           textAlignment: block.textAlignment,
+          bodyDesign: readArticleBodyDesign(block.metadata.body_design),
         };
       }) ?? [];
 
@@ -892,11 +897,12 @@ export function ProjectArticleEditorForm({
     );
   }
 
-  function addBlock(type: EditorBlockType) {
+  function addBlock(type: EditorBlockType, bodyDesign?: ArticleBodyDesign) {
     setBlocks((currentBlocks) => [
       ...currentBlocks,
       {
         id: makeBlockId(type),
+        bodyDesign,
         type,
         title: type === "audio" ? "음성 대본" : "",
         body: "",
@@ -1328,6 +1334,7 @@ export function ProjectArticleEditorForm({
         body: block.body.trim(),
         textAlignment: block.textAlignment,
         sortOrder: (index + 1) * 10,
+        bodyDesign: block.bodyDesign,
       }))
       .filter((block) => block.title || block.body);
     const body = contentBlocks
@@ -1871,6 +1878,7 @@ export function ProjectArticleEditorForm({
             </div>
           ) : null}
 
+          <div className="mb-4 flex flex-wrap gap-2"><button type="button" className="dd-btn dd-btn-secondary" onClick={() => addBlock("paragraph", { kind: "info", tone: "default", enabled: true })}>정보박스 추가</button><button type="button" className="dd-btn dd-btn-secondary" onClick={() => addBlock("paragraph", { kind: "quote", enabled: true })}>인용문 추가</button></div>
           {blocks.map((block, index) => (
             <div key={block.id} className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1914,10 +1922,17 @@ export function ProjectArticleEditorForm({
                 </div>
               </div>
 
+              {block.type === "paragraph" ? <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="text-sm font-bold">표시 방식<select aria-label="표시 방식" className="mt-1 w-full rounded border p-2" value={block.bodyDesign?.kind ?? "plain"} onChange={e => setBlocks(bs => bs.map(b => b.id === block.id ? { ...b, bodyDesign: e.target.value === "plain" ? undefined : { kind: e.target.value as ArticleBodyDesign["kind"], enabled: true } } : b))}><option value="plain">일반 문단</option><option value="info">정보박스</option><option value="quote">인용문</option></select></label>
+                {block.bodyDesign ? <label className="flex items-center gap-2"><input type="checkbox" checked={block.bodyDesign.enabled !== false} onChange={e => setBlocks(bs => bs.map(b => b.id === block.id ? { ...b, bodyDesign: { ...b.bodyDesign!, enabled: e.target.checked } } : b))} />{block.bodyDesign.kind === "info" ? "정보박스 사용" : "인용문 사용"}</label> : null}
+                {block.bodyDesign?.kind === "info" ? <label className="text-sm font-bold">정보 유형<select aria-label="정보 유형" className="mt-1 w-full rounded border p-2" value={block.bodyDesign.tone ?? "default"} onChange={e => setBlocks(bs => bs.map(b => b.id === block.id ? { ...b, bodyDesign: { ...b.bodyDesign!, tone: e.target.value as ArticleBodyDesign["tone"] } } : b))}><option value="default">기본</option><option value="key">핵심 정보</option><option value="notice">안내</option><option value="warning">주의</option></select></label> : null}
+                {block.bodyDesign?.kind === "quote" ? <label className="text-sm font-bold">출처·화자 (선택)<input maxLength={200} className="mt-1 w-full rounded border p-2" value={block.bodyDesign.source ?? ""} onChange={e => setBlocks(bs => bs.map(b => b.id === block.id ? { ...b, bodyDesign: { ...b.bodyDesign!, source: e.target.value } } : b))} /></label> : null}
+              </div> : null}
               <div className="mt-4 grid gap-3 xl:grid-cols-[240px_minmax(0,1fr)]">
                 <div>
-                  <FieldLabel>{getBlockTitleLabel(block.type)}</FieldLabel>
+                  <FieldLabel>{block.bodyDesign ? "제목 (선택)" : getBlockTitleLabel(block.type)}</FieldLabel>
                   <input
+                    maxLength={block.bodyDesign ? 200 : undefined}
                     value={block.title}
                     onChange={(event) => updateBlock(block.id, "title", event.target.value)}
                     placeholder={
@@ -1933,9 +1948,10 @@ export function ProjectArticleEditorForm({
                   />
                 </div>
                 <div>
-                  <FieldLabel>{getBlockBodyLabel(block.type)}</FieldLabel>
+                  <FieldLabel>{block.bodyDesign?.kind === "info" ? "정보 내용" : block.bodyDesign?.kind === "quote" ? "인용문" : getBlockBodyLabel(block.type)}</FieldLabel>
                   {shouldUseTextarea(block.type) ? (
                     <textarea
+                      maxLength={block.bodyDesign ? 4000 : undefined}
                       value={block.body}
                       onChange={(event) => updateBlock(block.id, "body", event.target.value)}
                       placeholder={getBlockBodyPlaceholder(block.type)}
@@ -1943,6 +1959,7 @@ export function ProjectArticleEditorForm({
                     />
                   ) : (
                     <input
+                      maxLength={block.bodyDesign ? 4000 : undefined}
                       value={block.body}
                       onChange={(event) => updateBlock(block.id, "body", event.target.value)}
                       placeholder={getBlockBodyPlaceholder(block.type)}

@@ -1,4 +1,7 @@
 "use client";
+
+import { readArticleBodyDesign } from "@/lib/article-body-design";
+import { ArticleBodyDesignElement, ArticleDesignedCaption } from "@/components/article-body-design-elements";
 import { ArticleTextDesignElements } from "@/components/article-text-design-elements";
 import { hasArticleTextDesign, type ArticleTextDesign } from "@/lib/article-text-design";
 
@@ -1068,11 +1071,14 @@ function renderContentBlock(
   onOpenArticleImage: (image: PublicArticleLightboxImage) => void,
   presentation: ArticlePublicPresentation,
   isImageOnly: boolean,
+  captionStyled = false,
 ) {
   const link = getBlockLink(article, block);
   const rawHref = link?.targetValue || block.body;
 
   if (block.type === "paragraph") {
+    const design = readArticleBodyDesign(block.metadata.body_design);
+    if (design) return <ArticleBodyDesignElement key={block.id} design={design} title={block.title} body={block.body} />;
     return (
       <section key={block.id}>
         {block.title ? (
@@ -1141,7 +1147,7 @@ function renderContentBlock(
               확대
             </span>
           </button>
-          {block.title && !isImageOnly ? (
+          {block.title && captionStyled ? <ArticleDesignedCaption text={block.title} /> : block.title && !isImageOnly ? (
             <figcaption
               className={`article-motion-caption ${articleMotionSpeedClassNames[motionSettings.image.speed]} px-4 py-3 text-sm font-bold leading-6 text-slate-700`}
               data-motion-effect={motionSettings.image.effect}
@@ -1568,6 +1574,7 @@ function ArticleCard({
               onOpenArticleImage,
               presentation,
               isImageOnly,
+              textDesign?.captionStyled,
             );
 
             return isImageOnly && block.type !== "image" ? (
@@ -1740,7 +1747,7 @@ function ArticleCard({
         </h2>
       </div>
       <ArticleTextDesignElements settings={textDesign} accentColor={heroBackground?.settings.accentColor} position="after-title" />
-      {showTextSizeControl && (!isImageOnly || hasTextDesign) ? (
+      {showTextSizeControl && (!isImageOnly || hasTextDesign || textDesign?.captionStyled) ? (
         <div className="mt-3">
           <PublicTextSizeToggle compact />
         </div>

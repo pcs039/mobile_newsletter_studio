@@ -1,3 +1,4 @@
+import { validateArticleBodyDesign } from "@/lib/article-body-design";
 import { NextResponse } from "next/server";
 import { requireProjectApiAccess } from "@/lib/project-api-access";
 import {
@@ -87,6 +88,7 @@ function asContentBlocks(value: unknown): NonNullable<UpsertProjectArticleInput[
       type: type as NonNullable<UpsertProjectArticleInput["contentBlocks"]>[number]["type"],
       title,
       body,
+      bodyDesign: blockRecord.bodyDesign === undefined ? undefined : validateArticleBodyDesign(blockRecord.bodyDesign),
       textAlignment: asText(blockRecord.textAlignment),
       sortOrder: asOptionalNumber(blockRecord.sortOrder) || (index + 1) * 10,
     });
@@ -104,6 +106,15 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+
+  try {
+    if (Array.isArray(payload.contentBlocks)) for (const block of payload.contentBlocks) {
+      if (block && typeof block === "object" && block.bodyDesign !== undefined) {
+        validateArticleBodyDesign(block.bodyDesign);
+        if (block.type !== "paragraph" || typeof block.body !== "string" || block.body.length > 4000 || (block.title !== undefined && (typeof block.title !== "string" || block.title.length > 200))) throw new Error("정보박스·인용문 내용은 4000자, 제목은 200자 이하로 입력해 주세요.");
+      }
+    }
+  } catch (error) { return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "설정을 확인해 주세요." }, { status: 400 }); }
 
   const input: UpsertProjectArticleInput = {
     projectSlug: asText(payload.projectSlug),

@@ -27,6 +27,7 @@ type ArticleCompositionEditorProps = {
     summary: string;
     title: string;
     showPublicTitle?: boolean;
+    blocks?: import("@/lib/newsletter-repository").ProjectContentBlock[];
   };
   assets: ProjectDesignAsset[];
   initialComposition: ProjectArticleComposition | null;
@@ -39,6 +40,7 @@ type ArticleCompositionEditorProps = {
     statusLabel: string;
     title: string;
     showPublicTitle?: boolean;
+    blocks?: import("@/lib/newsletter-repository").ProjectContentBlock[];
   }>;
 };
 

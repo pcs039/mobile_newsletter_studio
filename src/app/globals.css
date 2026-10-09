@@ -1480,3 +1480,12 @@ select {
 [data-public-text-scale="xlarge"] .article-design-subtitle { font-size:1.875rem; }
 
 .article-design-number[data-shape="circle"][data-digits="1"], .article-design-number[data-shape="circle"][data-digits="2"] { width:2.75em; min-height:2.75em; aspect-ratio:1; padding:.3em; }
+
+.article-design-info, .article-design-quote, .article-design-caption { min-width: 0; max-width: 100%; overflow-wrap: anywhere; white-space: pre-wrap; color: var(--article-body-color, #334155); font-size: 1rem; line-height: 1.75; }
+.article-design-info, .article-design-quote { margin: 1em 0; padding: 1em; border-inline-start: 4px solid var(--article-accent-color, #184a88); border-radius: .65em; background: var(--article-frame-surface, transparent); }
+.article-design-info h3 { font-weight: 800; margin-block: .35em; }
+.article-design-info-label { font-size: .85em; font-weight: 800; }
+.article-design-quote-source { font-size: .85em; margin-top: .7em; }
+.article-design-caption { padding: .75em 1em; border-inline-start: 3px solid var(--article-accent-color, #184a88); font-family: var(--newsletter-caption-font, inherit); }
+html[data-public-text-scale="large"] :is(.article-design-info, .article-design-quote, .article-design-caption) { font-size: 1.25rem; }
+html[data-public-text-scale="xlarge"] :is(.article-design-info, .article-design-quote, .article-design-caption) { font-size: 1.5rem; }

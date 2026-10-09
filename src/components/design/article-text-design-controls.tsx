@@ -25,6 +25,8 @@ export function ArticleTextDesignControls({ value, disabled, onChange, onSave }:
         {settings.labelEnabled ? <label className="mt-3 block text-sm">라벨 표시 텍스트<input maxLength={80} value={settings.label ?? ""} onChange={(e) => change({ label: e.target.value })} className="mt-1 w-full min-w-0 rounded border border-slate-300 p-2" /></label> : null}
       </div>
     </div>
+    <label className="mt-4 flex items-center gap-2 font-bold"><input type="checkbox" checked={settings.captionStyled ?? false} onChange={e => change({ captionStyled: e.target.checked })} />이미지 설명 스타일 사용</label>
+    <p className="mt-1 text-sm text-slate-600">기사 이미지에 입력한 기존 설명을 사용합니다.</p>
     <button type="button" onClick={onSave} className="dd-btn dd-btn-primary mt-4">텍스트 디자인 저장</button>
   </fieldset>;
 }

@@ -1,4 +1,5 @@
 export type ArticleTextDesign = {
+  captionStyled?: boolean;
   subtitleEnabled?: boolean;
   subtitle?: string;
   numberEnabled?: boolean;
@@ -11,10 +12,10 @@ export type ArticleTextDesign = {
 export function validateArticleTextDesign(value: unknown): { ok: true; settings: ArticleTextDesign } | { ok: false; message: string } {
   if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, message: "텍스트 디자인 설정을 확인해 주세요." };
   const input = value as Record<string, unknown>;
-  const allowed = ["subtitleEnabled", "subtitle", "numberEnabled", "number", "numberShape", "labelEnabled", "label"];
+  const allowed = ["captionStyled", "subtitleEnabled", "subtitle", "numberEnabled", "number", "numberShape", "labelEnabled", "label"];
   if (Object.keys(input).some((key) => !allowed.includes(key))) return { ok: false, message: "지원하지 않는 텍스트 디자인 설정입니다." };
   const settings: ArticleTextDesign = {};
-  for (const key of ["subtitleEnabled", "numberEnabled", "labelEnabled"] as const) {
+  for (const key of ["captionStyled", "subtitleEnabled", "numberEnabled", "labelEnabled"] as const) {
     if (!(key in input)) continue;
     if (typeof input[key] !== "boolean") return { ok: false, message: "사용 여부를 확인해 주세요." };
     settings[key] = input[key];
