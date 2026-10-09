@@ -5,7 +5,8 @@ import { articleProductionPatterns, isArticleProductionPattern, productionPatter
 import type { ArticlePatternRecommendation } from "@/lib/article-pattern-recommendation";
 import { readArticleTextDesign } from "@/lib/article-text-design";
 
-export function ArticleProductionPatternControls({ pattern, textDesign, disabled, onApply, projectSlug, articleId }: {
+export function ArticleProductionPatternControls({ pattern, textDesign, disabled, onApply, projectSlug, articleId, recommendedPattern }: {
+  recommendedPattern?: ArticleProductionPattern;
   projectSlug: string;
   articleId: string;
   pattern: unknown;
@@ -14,7 +15,7 @@ export function ArticleProductionPatternControls({ pattern, textDesign, disabled
   onApply: (pattern: ArticleProductionPattern) => void;
 }) {
   const saved = isArticleProductionPattern(pattern) ? pattern : "manual";
-  const [selected, setSelected] = useState(saved);
+  const [selected, setSelected] = useState(isArticleProductionPattern(recommendedPattern) ? recommendedPattern : saved);
   const [confirming, setConfirming] = useState(false);
   const [analysis, setAnalysis] = useState<"idle" | "loading" | "complete" | "error">("idle");
   const [recommendation, setRecommendation] = useState<ArticlePatternRecommendation | null>(null);
@@ -53,6 +54,10 @@ export function ArticleProductionPatternControls({ pattern, textDesign, disabled
   return <fieldset disabled={disabled} className="mt-5 min-w-0 rounded-lg border border-slate-200 p-4">
     <legend className="px-2 font-black text-[#092046]">제작 패턴</legend>
     <p className="text-sm text-slate-600">적용된 패턴: {productionPatternDescriptions[saved].name}. 적용 후에도 모든 디자인을 직접 조정할 수 있습니다.</p>
+    {isArticleProductionPattern(recommendedPattern) ? <div className="mt-3 rounded-lg bg-sky-50 p-3 text-sm [overflow-wrap:anywhere]">
+      <p>기사 작성 단계에서 AI가 {productionPatternDescriptions[recommendedPattern].name}을 추천했습니다. 아래 변경 예정 항목을 확인하세요. 아직 적용되지 않았습니다.</p>
+      <button type="button" className="dd-btn dd-btn-secondary mt-2" onClick={() => { setSelected(recommendedPattern); setConfirming(true); }}>추천 패턴 확인/적용</button>
+    </div> : null}
     <div className="mt-3 rounded-lg border border-slate-200 p-3">
       <button type="button" disabled={analysis === "loading"} onClick={() => void recommend()} className="dd-btn dd-btn-secondary">{analysis === "loading" ? "분석 중…" : "AI 추천 받기"}</button>
       <p className="mt-2 text-sm text-slate-600">저장된 기사 내용으로 분석합니다. 추천은 자동 적용되지 않습니다.</p>

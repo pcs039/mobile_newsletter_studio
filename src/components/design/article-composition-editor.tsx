@@ -33,6 +33,7 @@ type ArticleCompositionEditorProps = {
   assets: ProjectDesignAsset[];
   initialComposition: ProjectArticleComposition | null;
   initialStatus: ArticleCompositionRepositoryStatus;
+  recommendedPattern?: import("@/lib/article-production-pattern").ArticleProductionPattern;
   projectSlug: string;
   reuseSources: Array<{
     hasComposition: boolean;
@@ -579,9 +580,11 @@ export function ArticleCompositionEditor({
   initialComposition,
   initialStatus,
   projectSlug,
+  recommendedPattern,
   reuseSources,
 }: ArticleCompositionEditorProps) {
   const [composition, setComposition] = useState(initialComposition);
+  const [recommendationApplied, setRecommendationApplied] = useState(false);
   const [busyKey, setBusyKey] = useState("");
   const [notice, setNotice] = useState<Notice>(null);
   const [activeSlot, setActiveSlot] = useState<ArticleCompositionSlot>("hero_background");
@@ -618,6 +621,7 @@ export function ArticleCompositionEditor({
       return;
     }
 
+    if (key === "production-pattern") setRecommendationApplied(true);
     setComposition(result.composition);
     setNotice({ kind: "success", message: result.message ?? "기사 화면 구성을 저장했습니다." });
   }
@@ -798,6 +802,7 @@ export function ArticleCompositionEditor({
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
           기관 디자인 자산을 기사 배경, 이미지, 장식에 배치합니다. 기사 내용은 기존 편집 데이터가 기준입니다.
         </p>
+        {recommendedPattern ? <p className="mt-3 text-sm font-bold">기사 작성 단계의 AI 추천을 확인하려면 디자인 조정을 시작하세요. 추천은 자동 적용되지 않습니다.</p> : null}
         {initialStatus !== "not_found" ? (
           <p className="mt-3 text-sm font-bold text-rose-700">기사 화면 구성 정보를 불러오지 못했습니다.</p>
         ) : null}
@@ -861,7 +866,7 @@ export function ArticleCompositionEditor({
       ) : null}
 
       <ArticleProductionPatternControls key={String(composition.settings.productionPattern ?? "manual")} pattern={composition.settings.productionPattern}
-        projectSlug={projectSlug} articleId={article.id} textDesign={composition.settings.textDesign} disabled={isBusy}
+        recommendedPattern={recommendationApplied ? undefined : recommendedPattern} projectSlug={projectSlug} articleId={article.id} textDesign={composition.settings.textDesign} disabled={isBusy}
         onApply={productionPattern => void mutate("PATCH", { action: "apply_production_pattern", projectSlug, articleId: article.id, compositionId: composition.id, productionPattern, textDesign: composition.settings.textDesign ?? {} }, "production-pattern")} />
 
       <ArticleTextDesignControls value={composition.settings.textDesign} disabled={isBusy}
