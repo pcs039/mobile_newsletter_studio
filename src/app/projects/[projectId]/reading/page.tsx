@@ -259,6 +259,7 @@ export default async function ReadingEditorPage({
               <ArticleCompositionEditor
                 article={{
                   body: selectedArticle.body,
+                  blocks: selectedArticle.blocks,
                   id: selectedArticle.id,
                   summary: selectedArticle.summary,
                   title: selectedArticle.title,
