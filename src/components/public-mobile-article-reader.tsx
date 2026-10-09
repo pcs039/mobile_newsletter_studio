@@ -1,4 +1,6 @@
 "use client";
+import { ArticleTextDesignElements } from "@/components/article-text-design-elements";
+import { hasArticleTextDesign, type ArticleTextDesign } from "@/lib/article-text-design";
 
 import { articleTextColorStyle } from "@/lib/article-text-colors";
 
@@ -71,6 +73,7 @@ import { trackArticleEvent, type ArticleEventType } from "@/lib/public-article-a
 
 type PublicMobileArticleReaderProps = {
   heroBackgrounds?: Record<string, ArticleHeroBackground>;
+  textDesigns?: Record<string, ArticleTextDesign>;
   topIllustrations?: Record<string, ArticleHeroBackground>;
   articles: ProjectContentArticle[];
   analyticsDisabled?: boolean;
@@ -1349,6 +1352,7 @@ function ArticlePublicInfoCard({
 }
 
 function ArticleCard({
+  textDesign,
   heroBackground,
   topIllustration,
   analyticsDisabled = false,
@@ -1365,6 +1369,7 @@ function ArticleCard({
   slug,
   survey,
 }: {
+  textDesign?: ArticleTextDesign;
   heroBackground?: ArticleHeroBackground;
   topIllustration?: ArticleHeroBackground;
   analyticsDisabled?: boolean;
@@ -1381,6 +1386,7 @@ function ArticleCard({
   slug: string;
   survey?: ProjectSurveyItem | null;
 }) {
+  const hasTextDesign = hasArticleTextDesign(textDesign);
   const articleRef = useRef<HTMLElement>(null);
   const visibleBlocks = getVisibleBlocks(article);
   const publicInfoAction = getPublicInfoAttachedAction(article, visibleBlocks);
@@ -1645,10 +1651,10 @@ function ArticleCard({
       style={{ ...fontStyle, ...articleTextColorStyle(heroBackground?.settings) }}
     >
       <ArticleHeroBackgroundLayer
-        background={heroBackground?.settings.renderMode === "fluid_frame" || article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel ? heroBackground : undefined}
+        background={heroBackground?.settings.renderMode === "fluid_frame" || article.showPublicTitle || article.summary || hasTextDesign || shouldShowTypeCue || rollingLabel || urgencyLabel ? heroBackground : undefined}
         body={articleBody}
         illustration={topIllustration}
-        contentVisible={Boolean(article.showPublicTitle || article.summary || shouldShowTypeCue || rollingLabel || urgencyLabel || showAdminPreviewControls)}
+        contentVisible={Boolean(article.showPublicTitle || article.summary || hasTextDesign || shouldShowTypeCue || rollingLabel || urgencyLabel || showAdminPreviewControls)}
       >
       {showAdminPreviewControls ? (
         <div className="flex justify-end">
@@ -1687,6 +1693,7 @@ function ArticleCard({
           ) : null}
         </div>
       ) : null}
+      <ArticleTextDesignElements settings={textDesign} accentColor={heroBackground?.settings.accentColor} position="before-title" />
       <div
         key={`article-title-${article.id}-${motionPreset}-${motionSpeed}-${motionSettings.title.effect}-${motionSettings.title.speed}`}
         className={
@@ -1732,7 +1739,8 @@ function ArticleCard({
             : renderKoreanTitleWithBreaks(articleTitle)}
         </h2>
       </div>
-      {showTextSizeControl && !isImageOnly ? (
+      <ArticleTextDesignElements settings={textDesign} accentColor={heroBackground?.settings.accentColor} position="after-title" />
+      {showTextSizeControl && (!isImageOnly || hasTextDesign) ? (
         <div className="mt-3">
           <PublicTextSizeToggle compact />
         </div>
@@ -1770,6 +1778,7 @@ function ArticleCard({
 
 export function PublicMobileArticleReader({
   heroBackgrounds = {},
+  textDesigns = {},
   topIllustrations = {},
   analyticsDisabled = false,
   articles,
@@ -2453,7 +2462,7 @@ export function PublicMobileArticleReader({
                   <ArticleCard
                     analyticsDisabled={analyticsDisabled}
                     article={currentArticle}
-                    heroBackground={heroBackgrounds[currentArticle.id]}
+                    textDesign={textDesigns[currentArticle.id]} heroBackground={heroBackgrounds[currentArticle.id]}
                     topIllustration={topIllustrations[currentArticle.id]}
                     className="mx-5 my-5"
                     fontAssets={fontAssets}
@@ -2652,7 +2661,7 @@ export function PublicMobileArticleReader({
               key={article.id}
               analyticsDisabled={analyticsDisabled}
               article={article}
-              heroBackground={heroBackgrounds[article.id]}
+              textDesign={textDesigns[article.id]} heroBackground={heroBackgrounds[article.id]}
               topIllustration={topIllustrations[article.id]}
               fontAssets={fontAssets}
               index={index}

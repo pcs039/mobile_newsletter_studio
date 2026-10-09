@@ -1465,3 +1465,18 @@ select {
 [data-article-body-color] [data-article-fluid-frame] .article-motion-summary {
   background-color: transparent;
 }
+
+/* HTML design elements share article color tokens and the reader's text scale. */
+.article-design-labels { display:flex; flex-wrap:wrap; align-items:center; gap:.75em; margin-bottom:1rem; min-width:0; font-size:1rem; }
+.article-design-number, .article-design-pill { display:inline-flex; align-items:center; justify-content:center; max-width:100%; box-sizing:border-box; border:2px solid var(--article-accent-color, #184A88); background:#fff; color:#092046; font-weight:800; line-height:1.4; overflow-wrap:anywhere; }
+.article-design-number { min-width:2.5em; min-height:2.5em; padding:.4em .65em; flex-shrink:0; border-radius:999px; }
+.article-design-number[data-shape="rounded"] { border-radius:.5em; }
+.article-design-number[data-shape="square"] { border-radius:0; }
+.article-design-pill { border-radius:999px; padding:.45em .9em; white-space:normal; }
+.article-design-subtitle { margin-top:.75rem; margin-bottom:1rem; font-size:1.125rem; font-weight:700; line-height:1.6; color:var(--article-body-color, #334155); border-inline-start:3px solid var(--article-accent-color, #184A88); padding-inline-start:.65em; min-width:0; overflow-wrap:anywhere; white-space:pre-wrap; }
+[data-public-text-scale="large"] .article-design-labels { font-size:1.25rem; }
+[data-public-text-scale="xlarge"] .article-design-labels { font-size:1.5rem; }
+[data-public-text-scale="large"] .article-design-subtitle { font-size:1.5rem; }
+[data-public-text-scale="xlarge"] .article-design-subtitle { font-size:1.875rem; }
+
+.article-design-number[data-shape="circle"][data-digits="1"], .article-design-number[data-shape="circle"][data-digits="2"] { width:2.75em; min-height:2.75em; aspect-ratio:1; padding:.3em; }

@@ -1,3 +1,4 @@
+import { readArticleTextDesign, type ArticleTextDesign } from "@/lib/article-text-design";
 import "server-only";
 
 import {
@@ -550,10 +551,11 @@ export async function copyProjectArticleCompositionsBatch(input: {
   }
 }
 
-export async function updateProjectArticleCompositionStatus(
+async function patchProjectArticleComposition(
   projectId: string,
   articleId: string,
-  status: "draft" | "ready",
+  status: "draft" | "ready" | undefined,
+  settings?: ArticleCompositionSettings,
 ): Promise<ArticleCompositionRepositoryResult<ProjectArticleComposition | null>> {
   const headers = getServiceRoleHeaders();
   const endpoint = getSupabaseRestEndpoint(
@@ -570,7 +572,7 @@ export async function updateProjectArticleCompositionStatus(
     const response = await fetch(endpoint, {
       method: "PATCH",
       headers: { ...headers, Prefer: "return=representation" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ ...(status ? { status } : {}), ...(settings ? { settings } : {}) }),
       cache: "no-store",
     });
     const body = await response.text();
@@ -590,6 +592,14 @@ export async function updateProjectArticleCompositionStatus(
     console.error("Article composition status update request failed", error);
     return { data: null, message: "기사 화면 구성 상태 변경 중 오류가 발생했습니다.", status: "request_failed" };
   }
+}
+
+export function updateProjectArticleCompositionStatus(projectId: string, articleId: string, status: "draft" | "ready") {
+  return patchProjectArticleComposition(projectId, articleId, status);
+}
+
+export function updateProjectArticleCompositionSettings(projectId: string, articleId: string, settings: ArticleCompositionSettings) {
+  return patchProjectArticleComposition(projectId, articleId, undefined, settings);
 }
 
 export type SaveProjectArticleCompositionPlacementInput = {
@@ -697,4 +707,28 @@ export async function deleteProjectArticleCompositionPlacement(input: {
     console.error("Article composition placement delete request failed", error);
     return { data: null, message: "기사 화면 구성 자산 제거 중 오류가 발생했습니다.", status: "request_failed" };
   }
+}
+
+// Only minimal, validated text settings from ready compositions; no design asset metadata.
+export async function getArticleTextDesigns(projectId: string, articleIds: string[], includeDraftArticles = false): Promise<Record<string, ArticleTextDesign>> {
+  const headers = getServiceRoleHeaders();
+  if (!headers || !uuidPattern.test(projectId) || !articleIds.length || articleIds.some((id) => !uuidPattern.test(id))) return {};
+  const result: Record<string, ArticleTextDesign> = {};
+  try {
+    const ids = [...new Set(articleIds)];
+    for (let start = 0; start < ids.length; start += 100) {
+      const filter = `in.(${ids.slice(start, start + 100).join(",")})`;
+      const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_article_compositions?${new URLSearchParams({ select: "article_id,settings", project_id: `eq.${projectId}`, article_id: filter, status: "eq.ready", limit: "100" })}`);
+      const articleEndpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_articles?${new URLSearchParams({ select: "id,status,publication_kind,valid_from,valid_until", project_id: `eq.${projectId}`, id: filter, limit: "100" })}`);
+      if (!endpoint || !articleEndpoint) return {};
+      const [response, articleResponse] = await Promise.all([fetch(endpoint, { headers, cache: "no-store" }), fetch(articleEndpoint, { headers, cache: "no-store" })]);
+      if (!response.ok || !articleResponse.ok) return {};
+      const articles = await articleResponse.json() as Array<{ id: string; status: string; publication_kind: string; valid_from: string | null; valid_until: string | null }>;
+      const allowed = new Set(articles.filter((a) => includeDraftArticles || isArticlePubliclyVisible({ id: a.id, status: a.status, publicationKind: normalizeArticlePublicationKind(a.publication_kind), validFrom: a.valid_from, validUntil: a.valid_until })).map((a) => a.id));
+      for (const row of await response.json() as Array<{ article_id: string; settings: Record<string, unknown> }>) {
+        if (allowed.has(row.article_id)) result[row.article_id] = readArticleTextDesign(row.settings?.textDesign);
+      }
+    }
+    return result;
+  } catch { return {}; }
 }
