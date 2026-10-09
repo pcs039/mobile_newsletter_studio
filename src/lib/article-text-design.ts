@@ -1,5 +1,6 @@
 export type ArticleTextDesign = {
   captionStyled?: boolean;
+  bodyEmphasis?: "none" | "info" | "quote";
   subtitleEnabled?: boolean;
   subtitle?: string;
   numberEnabled?: boolean;
@@ -12,7 +13,7 @@ export type ArticleTextDesign = {
 export function validateArticleTextDesign(value: unknown): { ok: true; settings: ArticleTextDesign } | { ok: false; message: string } {
   if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, message: "텍스트 디자인 설정을 확인해 주세요." };
   const input = value as Record<string, unknown>;
-  const allowed = ["captionStyled", "subtitleEnabled", "subtitle", "numberEnabled", "number", "numberShape", "labelEnabled", "label"];
+  const allowed = ["bodyEmphasis", "captionStyled", "subtitleEnabled", "subtitle", "numberEnabled", "number", "numberShape", "labelEnabled", "label"];
   if (Object.keys(input).some((key) => !allowed.includes(key))) return { ok: false, message: "지원하지 않는 텍스트 디자인 설정입니다." };
   const settings: ArticleTextDesign = {};
   for (const key of ["captionStyled", "subtitleEnabled", "numberEnabled", "labelEnabled"] as const) {
@@ -29,6 +30,10 @@ export function validateArticleTextDesign(value: unknown): { ok: true; settings:
   if ("numberShape" in input) {
     if (!["circle", "rounded", "square"].includes(input.numberShape as string)) return { ok: false, message: "번호 모양을 확인해 주세요." };
     settings.numberShape = input.numberShape as ArticleTextDesign["numberShape"];
+  }
+  if ("bodyEmphasis" in input) {
+    if (!["none", "info", "quote"].includes(input.bodyEmphasis as string)) return { ok: false, message: "본문 강조 설정을 확인해 주세요." };
+    settings.bodyEmphasis = input.bodyEmphasis as ArticleTextDesign["bodyEmphasis"];
   }
   return { ok: true, settings };
 }
