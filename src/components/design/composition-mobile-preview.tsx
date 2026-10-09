@@ -120,7 +120,7 @@ export function CompositionMobilePreview({
   const hasBodyElements = article.blocks?.some(b => b.isVisible && (readArticleBodyDesign(b.metadata.body_design) || (b.type === "image" && textDesign.captionStyled)));
   const bodyElements = hasBodyElements ? article.blocks?.filter(b => b.isVisible).map(block => {
     const design = block.type === "paragraph" ? readArticleBodyDesign(block.metadata.body_design) : undefined;
-    if (design) return <ArticleBodyDesignElement key={block.id} design={design} title={block.title} body={block.body} />;
+    if (design) return <ArticleBodyDesignElement key={block.id} design={design} title={block.title} body={block.body} emphasis={textDesign.bodyEmphasis} />;
     if (block.type === "paragraph") return <section key={block.id}>{block.title ? <h3 className="font-bold">{block.title}</h3> : null}<p data-public-text-scale-target="article-body" className="whitespace-pre-wrap break-words">{block.body}</p></section>;
     if (block.type === "image" && block.body.trim()) return (
       <figure key={block.id}>

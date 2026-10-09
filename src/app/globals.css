@@ -1489,3 +1489,13 @@ select {
 .article-design-caption { padding: .75em 1em; border-inline-start: 3px solid var(--article-accent-color, #184a88); font-family: var(--newsletter-caption-font, inherit); }
 html[data-public-text-scale="large"] :is(.article-design-info, .article-design-quote, .article-design-caption) { font-size: 1.25rem; }
 html[data-public-text-scale="xlarge"] :is(.article-design-info, .article-design-quote, .article-design-caption) { font-size: 1.5rem; }
+
+/* Presets emphasize existing semantic blocks; text remains selectable and scales naturally. */
+.article-design-info[data-emphasized], .article-design-quote[data-emphasized] {
+  border-inline-start-width: 0.4em;
+  padding-block: 1.25em;
+}
+.article-design-info[data-emphasized] .article-design-info-label,
+.article-design-quote[data-emphasized] > p {
+  font-weight: 700;
+}

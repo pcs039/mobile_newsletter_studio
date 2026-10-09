@@ -1,5 +1,6 @@
 "use client";
 
+import { ArticleProductionPatternControls } from "@/components/design/article-production-pattern-controls";
 import { ArticleTextDesignControls } from "@/components/design/article-text-design-controls";
 import { ArticleColorInput } from "@/components/design/article-color-input";
 import { articleTextColorDefaults } from "@/lib/article-text-colors";
@@ -858,6 +859,10 @@ export function ArticleCompositionEditor({
           {notice.message}
         </p>
       ) : null}
+
+      <ArticleProductionPatternControls key={String(composition.settings.productionPattern ?? "manual")} pattern={composition.settings.productionPattern}
+        textDesign={composition.settings.textDesign} disabled={isBusy}
+        onApply={productionPattern => void mutate("PATCH", { action: "apply_production_pattern", projectSlug, articleId: article.id, compositionId: composition.id, productionPattern, textDesign: composition.settings.textDesign ?? {} }, "production-pattern")} />
 
       <ArticleTextDesignControls value={composition.settings.textDesign} disabled={isBusy}
         onChange={(textDesign) => setComposition({ ...composition, settings: { ...composition.settings, textDesign: { ...textDesign } } })}

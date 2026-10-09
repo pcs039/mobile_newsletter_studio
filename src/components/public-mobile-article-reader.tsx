@@ -1072,13 +1072,14 @@ function renderContentBlock(
   presentation: ArticlePublicPresentation,
   isImageOnly: boolean,
   captionStyled = false,
+  bodyEmphasis?: ArticleTextDesign["bodyEmphasis"],
 ) {
   const link = getBlockLink(article, block);
   const rawHref = link?.targetValue || block.body;
 
   if (block.type === "paragraph") {
     const design = readArticleBodyDesign(block.metadata.body_design);
-    if (design) return <ArticleBodyDesignElement key={block.id} design={design} title={block.title} body={block.body} />;
+    if (design) return <ArticleBodyDesignElement key={block.id} design={design} title={block.title} body={block.body} emphasis={bodyEmphasis} />;
     return (
       <section key={block.id}>
         {block.title ? (
@@ -1575,6 +1576,7 @@ function ArticleCard({
               presentation,
               isImageOnly,
               textDesign?.captionStyled,
+              textDesign?.bodyEmphasis,
             );
 
             return isImageOnly && block.type !== "image" ? (

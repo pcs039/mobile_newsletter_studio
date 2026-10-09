@@ -1,3 +1,4 @@
+import { applyArticleProductionPattern, isArticleProductionPattern } from "@/lib/article-production-pattern";
 import { validateArticleTextDesign } from "@/lib/article-text-design";
 import { NextResponse } from "next/server";
 import {
@@ -286,6 +287,18 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, message: "현재 기사의 화면 구성을 확인해 주세요." }, { status: 400 });
   }
 
+  if (action === "apply_production_pattern") {
+    if (!isArticleProductionPattern(payload?.productionPattern)) {
+      return NextResponse.json({ ok: false, message: "제작 패턴을 확인해 주세요." }, { status: 400 });
+    }
+    const validation = validateArticleTextDesign(payload && "textDesign" in payload ? payload.textDesign : context.composition.settings.textDesign ?? {});
+    if (!validation.ok) return NextResponse.json({ ok: false, message: validation.message }, { status: 400 });
+    return repositoryResponse(await updateProjectArticleCompositionSettings(context.projectId, articleId, {
+      ...context.composition.settings,
+      productionPattern: payload.productionPattern,
+      textDesign: { ...applyArticleProductionPattern(payload.productionPattern, validation.settings) },
+    }));
+  }
   if (action === "update_text_design") {
     const validation = validateArticleTextDesign(payload?.textDesign);
     if (!validation.ok) return NextResponse.json({ ok: false, message: validation.message }, { status: 400 });
