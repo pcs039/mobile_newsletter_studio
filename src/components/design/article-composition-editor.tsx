@@ -1,5 +1,6 @@
 "use client";
 
+import { ArticleCanvaTemplates } from "@/components/design/article-canva-templates";
 import { ArticleProductionPatternControls } from "@/components/design/article-production-pattern-controls";
 import { ArticleTextDesignControls } from "@/components/design/article-text-design-controls";
 import { ArticleColorInput } from "@/components/design/article-color-input";
@@ -814,6 +815,7 @@ export function ArticleCompositionEditor({
         >
           {busyKey === "create" ? "구성 생성 중" : "디자인 조정 시작"}
         </button>
+        <ArticleCanvaTemplates key={article.id} projectSlug={projectSlug} articleId={article.id} />
         <div className="mt-5">{reusePanel}</div>
       </section>
     );
@@ -867,6 +869,7 @@ export function ArticleCompositionEditor({
 
       <div className="mt-5 grid min-w-0 gap-5 2xl:grid-cols-[minmax(0,1fr)_390px] 2xl:items-start">
         <div className="min-w-0">
+      <ArticleCanvaTemplates key={`${article.id}:${String(composition.settings.productionPattern ?? "manual")}`} projectSlug={projectSlug} articleId={article.id} pattern={composition.settings.productionPattern} />
       <ArticleProductionPatternControls key={String(composition.settings.productionPattern ?? "manual")} pattern={composition.settings.productionPattern}
         recommendedPattern={recommendationApplied ? undefined : recommendedPattern} projectSlug={projectSlug} articleId={article.id} textDesign={composition.settings.textDesign} disabled={isBusy}
         onApply={productionPattern => void mutate("PATCH", { action: "apply_production_pattern", projectSlug, articleId: article.id, compositionId: composition.id, productionPattern, textDesign: composition.settings.textDesign ?? {} }, "production-pattern")} />

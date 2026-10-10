@@ -1,3 +1,4 @@
+import { CanvaTemplateManager } from "@/components/design/canva-template-manager";
 import Link from "next/link";
 import { IssueDesignBatchApply } from "@/components/design/issue-design-batch-apply";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
@@ -127,6 +128,8 @@ export default async function ProjectDesignKitPage({ params }: { params: Promise
             />
             <IssueDesignBatchApply articles={issueDesignArticles} projectSlug={projectId} />
           </section>
+
+          <div id="canva-templates" className="scroll-mt-6"><CanvaTemplateManager projectSlug={projectId} /></div>
 
           <section className="border-t border-[#c9d7e8] pt-6">
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 개별 기사 디자인</p>
