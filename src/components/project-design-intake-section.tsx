@@ -9,6 +9,10 @@ import {
   productionAssetTypes,
   usageRoleLabels,
 } from "@/components/design/design-asset-options";
+import {
+  assetSourceLabels, assetUsageTagLabels, assetReuseScopeLabels, assetTransparencyLabels,
+  defaultDesignAssetMetadata, designAssetClassification, type DesignAssetMetadata,
+} from "@/lib/design-asset-metadata";
 import type {
   ProjectDesignAsset,
   ProjectDesignAssetApprovalStatus,
@@ -31,6 +35,7 @@ type UploadDraft = {
 type IntakeAssetType = "source_design" | "reference";
 
 type ProductionUploadDraft = {
+  metadata: DesignAssetMetadata | null;
   file: File | null;
   name: string;
   assetType: ProjectDesignProductionAssetType;
@@ -87,6 +92,7 @@ function makeEmptyUploadDraft(): UploadDraft {
 
 function makeEmptyProductionUploadDraft(): ProductionUploadDraft {
   return {
+    metadata: defaultDesignAssetMetadata(),
     file: null,
     name: "",
     assetType: "background",
@@ -260,6 +266,7 @@ export function ProjectDesignIntakeSection({
     formData.set("usageRole", productionDraft.usageRole);
     formData.set("approvalStatus", productionDraft.approvalStatus);
     formData.set("usageNote", productionDraft.usageNote);
+    formData.set("metadata", JSON.stringify(productionDraft.metadata));
 
     const response = await fetch("/api/project-design-kit/assets", { method: "POST", body: formData }).catch(() => null);
     const result = response ? ((await response.json().catch(() => null)) as AssetApiResult | null) : null;
@@ -676,6 +683,14 @@ function ProductionAssetLibrary({
   onSave: (asset: ProjectDesignAsset, payload: Record<string, unknown>) => void;
   onUpload: () => void;
 }) {
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [originFilter, setOriginFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
+  const filteredAssets = assets.filter((asset) =>
+    (typeFilter === "all" || asset.assetType === typeFilter) &&
+    (originFilter === "all" || (asset.metadata?.source ?? "unspecified") === originFilter) &&
+    (tagFilter === "all" || (tagFilter === "unspecified" ? !asset.metadata?.usageTags?.length : asset.metadata?.usageTags?.some((tag) => tag === tagFilter))),
+  );
   return (
     <section id="design-asset-library" className="scroll-mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -724,6 +739,14 @@ function ProductionAssetLibrary({
             options={productionAssetTypes.map((value) => ({ value, label: productionAssetLabels[value] }))}
             onChange={(value) => onDraftChange({ assetType: value as ProjectDesignProductionAssetType })}
           />
+        </div>
+        <details className="mt-4 rounded-lg border border-slate-200 p-3">
+          <summary className="cursor-pointer text-sm font-black text-[#092046]">외부 제작 정보 · 세부 분류</summary>
+          <div className="mt-3"><AssetMetadataFields value={draft.metadata} onChange={(metadata) => onDraftChange({ metadata })} /></div>
+        </details>
+        <details className="mt-3 rounded-lg border border-slate-200 p-3">
+          <summary className="cursor-pointer text-sm font-black text-[#092046]">사용 조건 · 원본 연결</summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <SelectField
             label="원본 연결"
             value={draft.parentSourceAssetId}
@@ -761,6 +784,7 @@ function ProductionAssetLibrary({
             />
           </label>
         </div>
+        </details>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className={`text-xs font-bold ${requestState.status === "error" ? "text-rose-700" : "text-[#184a88]"}`}>{requestState.message}</p>
           <button type="button" onClick={onUpload} disabled={isSaving} className="dd-btn dd-btn-primary dd-btn-sm">
@@ -792,8 +816,13 @@ function ProductionAssetLibrary({
           </label>
         </div>
 
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <SelectField label="유형 필터" value={typeFilter} onChange={setTypeFilter} options={[{value:"all",label:"전체 유형"}, ...productionAssetTypes.map((value) => ({value,label:productionAssetLabels[value]}))]} />
+          <SelectField label="출처 필터" value={originFilter} onChange={setOriginFilter} options={[{value:"all",label:"전체 출처"},{value:"unspecified",label:"미지정/기존 자산"}, ...Object.entries(assetSourceLabels).map(([value,label]) => ({value,label}))]} />
+          <SelectField label="용도 필터" value={tagFilter} onChange={setTagFilter} options={[{value:"all",label:"전체 용도"},{value:"unspecified",label:"미지정"}, ...Object.entries(assetUsageTagLabels).map(([value,label]) => ({value,label}))]} />
+        </div>
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
-          {assets.map((asset) => (
+          {filteredAssets.map((asset) => (
             <ProductionAssetCard
               key={`${asset.id}-${asset.updated}`}
               asset={asset}
@@ -802,9 +831,9 @@ function ProductionAssetLibrary({
               onSave={onSave}
             />
           ))}
-          {assets.length === 0 ? (
+          {filteredAssets.length === 0 ? (
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-400 xl:col-span-2">
-              {sourceFilter === "all" ? "등록된 제작 자산이 없습니다." : "선택한 원본에서 파생된 제작 자산이 없습니다."}
+              선택한 조건에 맞는 제작 자산이 없습니다.
             </div>
           ) : null}
         </div>
@@ -857,6 +886,7 @@ function ProductionAssetCard({
   onSave: (asset: ProjectDesignAsset, payload: Record<string, unknown>) => void;
 }) {
   const [draft, setDraft] = useState({
+    metadata: asset.metadata,
     name: asset.name,
     parentSourceAssetId: asset.parentSourceAssetId,
     backgroundMode: asset.backgroundMode,
@@ -869,7 +899,7 @@ function ProductionAssetCard({
   return (
     <article className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4">
       <div className="flex min-w-0 gap-3">
-        <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white">
+        <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 design-asset-checkerboard">
           {isPreviewableImage(asset) && asset.previewHref ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={asset.previewHref} alt="" className="h-full w-full object-contain" />
@@ -882,13 +912,18 @@ function ProductionAssetCard({
             <span className="text-xs font-black text-[#184a88]">{productionAssetLabels[asset.assetType]}</span>
             <span className="text-xs font-bold text-slate-500">{approvalStatusLabels[asset.approvalStatus]}</span>
           </div>
-          <p className="mt-1 break-all text-sm font-black text-[#092046]">{fileName}</p>
+          <p className="mt-1 break-all text-sm font-black text-[#092046]">{asset.name}</p>
+          <p className="mt-1 break-words text-xs font-semibold text-slate-600">{designAssetClassification(asset.metadata)}</p>
           <p className="mt-1 text-xs font-semibold text-slate-500">
             {asset.mimeType || getExtension(fileName)} · {formatBytes(asset.fileSizeBytes)} · 등록 {asset.created || "날짜 정보 없음"}
           </p>
         </div>
       </div>
 
+      <details className="mt-4">
+        <summary className="cursor-pointer text-xs font-black text-[#184a88]">추가 정보 · 수정</summary>
+        <p className="mt-2 break-all text-xs text-slate-500">{fileName}</p>
+        <div className="mt-3"><AssetMetadataFields value={draft.metadata} onChange={(metadata) => setDraft((current) => ({ ...current, metadata }))} /></div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="text-xs font-black text-slate-600 sm:col-span-2">
           자산 이름
@@ -943,6 +978,34 @@ function ProductionAssetCard({
           삭제
         </button>
       </div>
+      </details>
     </article>
+  );
+}
+
+function AssetMetadataFields({ value, onChange }: { value: DesignAssetMetadata | null; onChange: (value: DesignAssetMetadata | null) => void }) {
+  const change = (patch: Partial<DesignAssetMetadata>) => onChange({ ...(value ?? {}), ...patch });
+  const options = (labels: Record<string, string>) => Object.entries(labels).map(([value, label]) => ({ value, label }));
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <SelectField label="출처" value={value?.source ?? ""} options={[{ value: "", label: "미지정/기존 자산" }, ...options(assetSourceLabels)]} onChange={(source) => {
+        const next = { ...(value ?? {}) }; if (source) next.source = source as DesignAssetMetadata["source"]; else delete next.source; onChange(next);
+      }} />
+      <SelectField label="재사용 분류" value={value?.reuseScope ?? "project"} options={options(assetReuseScopeLabels)} onChange={(reuseScope) => change({ reuseScope: reuseScope as DesignAssetMetadata["reuseScope"] })} />
+      <SelectField label="배경 투명" value={value?.transparency ?? "unknown"} options={options(assetTransparencyLabels)} onChange={(transparency) => change({ transparency: transparency as DesignAssetMetadata["transparency"] })} />
+      <fieldset className="min-w-0">
+        <legend className="text-xs font-black text-slate-600">용도</legend>
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-2">
+          {Object.entries(assetUsageTagLabels).map(([tag, label]) => (
+            <label key={tag} className="flex items-center gap-1 text-xs font-semibold text-slate-600">
+              <input type="checkbox" checked={value?.usageTags?.includes(tag as keyof typeof assetUsageTagLabels) ?? false} onChange={(event) => {
+                const tags = value?.usageTags ?? []; change({ usageTags: event.target.checked ? [...tags, tag as keyof typeof assetUsageTagLabels] : tags.filter((item) => item !== tag) });
+              }} />{label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <p className="text-xs leading-5 text-slate-500 sm:col-span-2">현재는 이 프로젝트 안에서만 사용되며, 향후 재사용을 위한 분류입니다.</p>
+    </div>
   );
 }

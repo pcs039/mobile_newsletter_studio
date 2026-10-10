@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { designAssetClassification } from "@/lib/design-asset-metadata";
+import { usageRoleLabels } from "@/components/design/design-asset-options";
 import type { ProjectDesignAsset } from "@/lib/newsletter-repository";
 
 type CompositionAssetPickerProps = {
@@ -29,10 +31,10 @@ const approvalLabels: Record<string, string> = {
 function previewStyle(asset: ProjectDesignAsset) {
   return asset.previewHref
     ? {
-        backgroundImage: `url(${JSON.stringify(asset.previewHref)})`,
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundSize: "contain",
+        backgroundImage: `url(${JSON.stringify(asset.previewHref)}), linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%), linear-gradient(45deg, #e2e8f0 25%, #f8fafc 25%, #f8fafc 75%, #e2e8f0 75%)`,
+        backgroundPosition: "center, 0 0, 6px 6px",
+        backgroundRepeat: "no-repeat, repeat, repeat",
+        backgroundSize: "contain, 12px 12px, 12px 12px",
       }
     : undefined;
 }
@@ -92,7 +94,7 @@ export function CompositionAssetPicker({
                   role={asset.altText ? "img" : undefined}
                   aria-label={asset.altText || undefined}
                   aria-hidden={asset.altText ? undefined : true}
-                  className="block aspect-[4/3] w-full bg-slate-100"
+                  className="block aspect-[4/3] w-full design-asset-checkerboard"
                   style={previewStyle(asset)}
                 />
                 <span className="block p-3">
@@ -102,8 +104,9 @@ export function CompositionAssetPicker({
                     <span>·</span>
                     <span>{approvalLabels[asset.approvalStatus] ?? asset.approvalStatus}</span>
                     <span>·</span>
-                    <span>{asset.usageRole}</span>
+                    <span>{usageRoleLabels[asset.usageRole]}</span>
                   </span>
+                  <span className="mt-1 block break-words text-[11px] text-slate-600">{designAssetClassification(asset.metadata)}</span>
                 </span>
               </button>
             );
