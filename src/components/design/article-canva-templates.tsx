@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { CanvaTextAutofill } from "@/components/design/canva-text-autofill";
 import { useEffect, useRef, useState } from "react";
 import { canvaTemplatePatterns, type CanvaTemplate, type CanvaPreviewField } from "@/lib/canva-template";
 export function ArticleCanvaTemplates({ projectSlug, articleId, pattern }: { projectSlug: string; articleId: string; pattern?: unknown }) {
@@ -33,11 +34,12 @@ export function ArticleCanvaTemplates({ projectSlug, articleId, pattern }: { pro
   }
   const matches = templates.filter(t => t.productionPattern === pattern || t.productionPattern === "common");
   return <details className="my-4 min-w-0 rounded border border-slate-200 p-3"><summary className="cursor-pointer font-bold">Canva 제작 · 추천 템플릿 {matches.length}개</summary>
-    <p className="mt-2 text-sm text-slate-600">현재 기사 데이터를 확인합니다. Canva 전송·디자인 적용은 실행하지 않습니다.</p>
+    <p className="mt-2 text-sm text-slate-600">먼저 기사 데이터를 확인하세요. Canva 연결 후 글자만 새 디자인으로 만들 수 있습니다.</p>
     <Link className="text-sm text-blue-800 underline" href={`/projects/${projectSlug}/design#canva-templates`}>Canva 템플릿 관리</Link>
     <p role="status" className="my-2 text-sm">{notice}</p>
     <label className="block text-sm">템플릿 선택<select className="mt-1 w-full min-w-0 rounded border border-slate-300 p-2" value={selected} disabled={busy} onChange={e => { setSelected(e.target.value); setFields(null); }}><option value="">템플릿을 선택하세요</option>{templates.map(t => <option key={t.id} value={t.id}>{matches.includes(t) ? "추천 · " : ""}{t.name} · {canvaTemplatePatterns[t.productionPattern]}</option>)}</select></label>
     <button type="button" disabled={busy || !selected} className="mt-2 rounded bg-blue-950 px-3 py-2 text-sm font-bold text-white disabled:opacity-50" onClick={() => void preview()}>{busy ? "확인 중" : "자동 입력 예정 확인"}</button>
+    {selected && <CanvaTextAutofill key={`${projectSlug}:${articleId}:${selected}`} projectSlug={projectSlug} articleId={articleId} templateId={selected} />}
     {fields && <section className="mt-3" aria-label="Canva 자동 입력 예정"><h4 className="font-bold">Canva 자동 입력 예정</h4>{!fields.length && <p>등록한 자동 입력 항목이 없습니다.</p>}<dl className="mt-2 space-y-2">{fields.map(f => <div key={f.field} className="min-w-0 rounded bg-slate-50 p-3"><dt className="break-all text-sm font-bold">{f.field}</dt><dd className="whitespace-pre-wrap break-words text-sm">{f.status === "missing" ? "값 없음" : f.status === "image_pending" ? "대표 이미지 있음 · Canva 이미지 변환 전" : f.text}</dd></div>)}</dl>
       <details className="mt-2 text-sm"><summary className="cursor-pointer">개발자 세부보기</summary><p>준비 데이터입니다. 이미지는 내부 참조이며 Canva asset_id가 아닙니다.</p><pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all rounded bg-slate-50 p-2">{JSON.stringify({ fields }, null, 2)}</pre></details>
     </section>}
