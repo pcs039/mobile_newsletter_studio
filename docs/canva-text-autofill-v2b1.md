@@ -10,6 +10,8 @@ Set server-only `CANVA_CLIENT_ID`, `CANVA_CLIENT_SECRET`, `CANVA_REDIRECT_URI`. 
 
 Scopes: `design:content:read`, `design:content:write`, `design:meta:read`, `brandtemplate:content:read`. No asset permissions. Canva plan/app access must permit Autofill.
 
+On Vercel, connection, CSRF and callback checks share a canonical external origin. Proxy headers are used only when `VERCEL=1`, the environment is preview/production, and `VERCEL_URL` is a valid deployment host. Accepted hosts are exactly the configured callback host and Vercel's deployment/branch system hosts. Host and forwarded-host must agree; forwarded protocol must be HTTPS. Other servers retain direct request URL checks, including local development. Visiting a Preview alias does not authorize connection to a different callback origin.
+
 ## Security and execution
 
 Connection is scoped to `(project_id, administrator user_id)`. Tokens/verifier live only in a dedicated service-role table with RLS and no public/anon/authenticated grant; credentials are not application-encrypted in this minimum version. Database/service-role administrators can access them. Never add this row to project/article/public/review DTOs. PKCE/state expires in 10 minutes; state is bound to the authenticated administrator, project, and HttpOnly same-site cookie and consumed once before code exchange. Callback origin is fixed by server configuration. Mutation routes require same Origin plus existing administrator/project authorization.

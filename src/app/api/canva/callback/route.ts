@@ -6,13 +6,14 @@ import { CanvaConnectError, matchesState } from "@/lib/canva-connect-contract";
 import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { withConnectionLock } from "@/lib/canva-connection-repository";
 import { canvaConfig, tokenRequest } from "@/lib/canva-connect-server";
+import { canvaRequestOrigin } from "@/lib/canva-request-origin";
 export const runtime="nodejs";
 export async function GET(request: Request) {
   try {
     const user=await requireApiUser();
     if(!user || user.role!=="admin") throw new CanvaConnectError(401,"관리자로 로그인한 뒤 Canva에 다시 연결해 주세요.");
     const config=canvaConfig(); const url=new URL(request.url);
-    if(url.origin+url.pathname!==config.redirectUri) throw new CanvaConnectError(400,"Canva callback 주소를 확인해 주세요.");
+    if(canvaRequestOrigin(request)+url.pathname!==config.redirectUri) throw new CanvaConnectError(400,"Canva callback 주소를 확인해 주세요.");
     const state=url.searchParams.get("state")||"";
     if((await cookies()).get(canvaStateCookie)?.value!==state || !state) throw new CanvaConnectError(400,"Canva 연결 확인이 만료되었습니다. 다시 연결해 주세요.");
     const {digest}=await import("@/lib/canva-connect-contract");

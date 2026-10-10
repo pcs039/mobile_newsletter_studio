@@ -2,6 +2,7 @@ import { canvaAdmin, canvaFailure, canvaJson, canvaStateCookie, sameOrigin } fro
 import { CanvaConnectError, makeAuthorization } from "@/lib/canva-connect-contract";
 import { connectionRows, ensureConnection, getConnection, withConnectionLock } from "@/lib/canva-connection-repository";
 import { canvaConfig, canvaConfigured, revokeToken } from "@/lib/canva-connect-server";
+import { canvaRequestOrigin } from "@/lib/canva-request-origin";
 export const runtime="nodejs";
 export async function GET(request: Request) {
   const access=await canvaAdmin(new URL(request.url).searchParams.get("projectSlug")||"");
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     if (!p || typeof p.projectSlug!=="string" || Object.keys(p).some(k=>k!=="projectSlug")) throw new CanvaConnectError(400,"프로젝트 정보를 확인하세요.");
     const access=await canvaAdmin(p.projectSlug); if(!access.ok) return access.response;
     const c=canvaConfig();
-    if(new URL(c.redirectUri).origin!==new URL(request.url).origin) throw new CanvaConnectError(503,"등록된 Canva callback 주소의 서버에서 연결해 주세요.");
+    if(new URL(c.redirectUri).origin!==canvaRequestOrigin(request)) throw new CanvaConnectError(503,"등록된 Canva callback 주소의 서버에서 연결해 주세요.");
     await ensureConnection(access.project.id,access.user.id);
     const auth=makeAuthorization(c.clientId,c.redirectUri);
     await withConnectionLock(access.project.id,access.user.id,async (_row,update)=>{
