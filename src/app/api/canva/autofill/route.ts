@@ -2,7 +2,7 @@ import { canvaAdmin, canvaFailure, canvaJson, sameOrigin } from "@/lib/canva-api
 import { CanvaConnectError, digest, readCanvaJob, textAutofill } from "@/lib/canva-connect-contract";
 import { createCanvaConfirmation, verifyCanvaConfirmation } from "@/lib/canva-confirmation";
 import { getConnection, withConnectionLock, type Execution } from "@/lib/canva-connection-repository";
-import { accessToken, canvaRequest } from "@/lib/canva-connect-server";
+import { accessToken, connectedCanvaRequest } from "@/lib/canva-connect-server";
 import { listCanvaTemplates } from "@/lib/canva-template-repository";
 import { buildCanvaPreview, canvaUuid } from "@/lib/canva-template";
 import { getProjectContent } from "@/lib/newsletter-repository";
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       if(!e || e.articleId!==articleId) return canvaJson({ok:true,execution:null});
       if(e.job?.status==="in_progress") {
         const token=await accessToken(current,update);
-        const job=readCanvaJob(await canvaRequest(`/autofills/${encodeURIComponent(e.job.id)}`,token));
+        const job=readCanvaJob(await connectedCanvaRequest(`/autofills/${encodeURIComponent(e.job.id)}`,token,update));
         if(job.id!==e.job.id) throw new CanvaConnectError(502,"Canva 작업 식별자가 다릅니다.");
         const next={...e,status:job.status,job}; await update({execution:next});
         return canvaJson({ok:true,execution:publicExecution(next)});
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       if(p.action==="execute" && previous && ["sending","unknown","in_progress"].includes(previous.status)) throw new CanvaConnectError(409,"이 연결의 이전 생성 요청을 먼저 확인하세요. Canva에서 결과를 확인하기 전에는 다시 생성하지 않습니다.");
       const token=await accessToken(row,update);
       const path=template.templateType==="brand_template"?`/brand-templates/${encodeURIComponent(template.externalId)}/dataset`:`/designs/${encodeURIComponent(template.externalId)}/dataset`;
-      const payload=textAutofill(template,fields,await canvaRequest(path,token),article.title);
+      const payload=textAutofill(template,fields,await connectedCanvaRequest(path,token,update),article.title);
       const hash=digest(JSON.stringify(payload));
       const binding=JSON.stringify([access.project.id,access.user.id,article.id,template.id,hash]);
       if(p.action==="prepare") return canvaJson({ok:true,fields:fields.filter(f=>f.type==="text"),imageExcluded:template.fieldMappings.some(m=>m.type==="image"),confirmation:createCanvaConfirmation(binding)});
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       await update({execution});
       try {
         // No automatic POST retries: the official endpoint documents no idempotency key.
-        const job=readCanvaJob(await canvaRequest("/autofills",token,payload));
+        const job=readCanvaJob(await connectedCanvaRequest("/autofills",token,update,payload));
         const next={...execution,status:job.status,job}; await update({execution:next});
         return canvaJson({ok:true,execution:publicExecution(next)});
       } catch(e) {

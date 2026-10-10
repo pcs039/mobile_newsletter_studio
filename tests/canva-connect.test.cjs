@@ -37,3 +37,16 @@ test('refresh consumes old token once, rotates, failures leave disconnected; nev
  global.fetch=async()=>{throw Error('TOKEN SECRET')};await assert.rejects(m.canvaRequest('/autofills','token',{}),e=>e.status===504&&!e.message.includes('TOKEN'));
  }finally{global.fetch=original;}
 });
+test('remote revoked token clears credentials, preserves execution guard; no retries',async()=>{
+ const m=load('src/lib/canva-connect-server.ts'),original=global.fetch;
+ const execution={key:'existing-request',status:'unknown'};let row={access_token:'access',refresh_token:'refresh',expires_at:new Date(Date.now()+3600000).toISOString(),execution};let patches=[],calls=0;
+ const update=async p=>{patches.push(p);return Object.assign(row,p);};
+ try{
+ global.fetch=async()=>{calls++;return Response.json({code:'revoked_access_token',message:'SECRET'}, {status:401});};
+ await assert.rejects(m.connectedCanvaRequest('/brand-templates/test/dataset','access',update),e=>e.status===401&&!e.message.includes('SECRET'));assert.equal(calls,1);assert.equal(row.access_token,null);assert.equal(row.refresh_token,null);assert.equal(row.expires_at,null);assert.equal(row.execution,execution);assert.equal(patches.length,1);
+ patches=[];global.fetch=async()=>Response.json({message:'SECRET'}, {status:403});await assert.rejects(m.connectedCanvaRequest('/brand-templates/test/dataset','access',update),e=>e.status===403);assert.equal(patches.length,0);
+ // A renewed token works repeatedly without refresh or credential changes.
+ row={access_token:'new-access',refresh_token:'new-refresh',expires_at:new Date(Date.now()+3600000).toISOString()};global.fetch=async()=>Response.json({dataset:{EVENT_TITLE:{type:'text'}}});for(let i=0;i<2;i++){const token=await m.accessToken(row,update);assert((await m.connectedCanvaRequest('/brand-templates/test/dataset',token,update)).dataset);}assert.equal(patches.length,0);
+ row.expires_at='invalid';await assert.rejects(m.accessToken(row,update),e=>e.status===401);assert.equal(row.refresh_token,null);
+ }finally{global.fetch=original;}
+});

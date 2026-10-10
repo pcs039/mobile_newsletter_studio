@@ -21,12 +21,28 @@ export async function tokenRequest(params: URLSearchParams) {
 }
 export async function accessToken(row: Connection, update: (patch: object)=>Promise<Connection>) {
   if (!row.access_token || !row.refresh_token || !row.expires_at) throw new CanvaConnectError(401,"Canva에 다시 연결해 주세요.");
+  if (!Number.isFinite(Date.parse(row.expires_at))) {
+    await update({access_token:null,refresh_token:null,expires_at:null});
+    throw new CanvaConnectError(401,"Canva에 다시 연결해 주세요.");
+  }
   if (Date.parse(row.expires_at)>Date.now()+60000) return row.access_token;
   // Consume before calling Canva. An interrupted/failed rotation requires reconnection, never token replay.
   await update({access_token:null,refresh_token:null,expires_at:null});
   const next = await tokenRequest(new URLSearchParams({grant_type:"refresh_token",refresh_token:row.refresh_token}));
   await update(next);
   return next.access_token;
+}
+// Called under the connection lease. A remote 401 invalidates only this
+// project/admin's credentials. Keep execution guards; never retry a creation.
+export async function connectedCanvaRequest(path: string, token: string, update: (patch: object)=>Promise<Connection>, body?: object) {
+  try {
+    return await canvaRequest(path, token, body);
+  } catch (error) {
+    if (error instanceof CanvaConnectError && error.status === 401) {
+      await update({access_token:null,refresh_token:null,expires_at:null});
+    }
+    throw error;
+  }
 }
 export async function canvaRequest(path: string, token: string, body?: object) {
   let r: Response;

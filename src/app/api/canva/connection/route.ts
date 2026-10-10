@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   try {
     if (!canvaConfigured()) return canvaJson({ok:true,status:"setup_required"});
     const row=await getConnection(access.project.id,access.user.id);
-    return canvaJson({ok:true,status:row?.access_token&&row.refresh_token?"connected":"disconnected"});
+    return canvaJson({ok:true,status:row?.access_token&&row.refresh_token&&row.expires_at&&Number.isFinite(Date.parse(row.expires_at))?"connected":"disconnected"});
   } catch(e) { return canvaFailure(e); }
 }
 export async function POST(request: Request) {
