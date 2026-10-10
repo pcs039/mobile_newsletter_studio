@@ -1,3 +1,4 @@
+import { readDesignAssetMetadata, type DesignAssetMetadata } from "@/lib/design-asset-metadata";
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { normalizeArticlePublicationKind, type ArticlePublicationKind } from "@/lib/article-publication";
 import { validateArticleBodyDesign, type ArticleBodyDesign } from "@/lib/article-body-design";
@@ -114,6 +115,7 @@ type ProjectDesignKitRow = {
 };
 
 type ProjectDesignAssetRow = {
+  metadata?: unknown;
   id: string;
   project_id: string;
   asset_type: ProjectDesignAssetType;
@@ -624,6 +626,7 @@ export type ProjectDesignKit = {
 export type ProjectDesignKitInput = Omit<ProjectDesignKit, "id" | "projectId" | "created" | "updated" | "isDefault">;
 
 export type ProjectDesignAsset = {
+  metadata: DesignAssetMetadata | null;
   id: string;
   projectId: string;
   assetType: ProjectDesignAssetType;
@@ -2248,6 +2251,7 @@ const designKitSelectColumns = [
 ].join(",");
 
 const designAssetSelectColumns = [
+  "metadata",
   "id",
   "project_id",
   "asset_type",
@@ -2395,6 +2399,7 @@ function mapProjectDesignAssetRow(row: ProjectDesignAssetRow): ProjectDesignAsse
   const storagePreviewHref = makeStoragePreviewHref(storageBucket, row.storage_path);
 
   return {
+    metadata: readDesignAssetMetadata(row.metadata),
     id: row.id,
     projectId: row.project_id,
     assetType,
@@ -5772,10 +5777,19 @@ export async function getProjectDesignAssets(projectSlug: string): Promise<Proje
   }
 
   try {
-    const response = await fetch(endpoint, {
+    let response = await fetch(endpoint, {
       headers,
       cache: "no-store",
     });
+
+    // A Preview may run before the separately controlled Production migration.
+    // Retry legacy columns only for this missing-column error, preserving project scope.
+    if (!response.ok) {
+      const error = await response.clone().json().catch(() => null) as { code?: string; message?: string } | null;
+      if ((error?.code === "42703" || error?.code === "PGRST204") && error.message?.includes("metadata")) {
+        response = await fetch(endpoint.replace(`select=${designAssetSelectColumns}`, `select=${designAssetSelectColumns.split(",").filter((column) => column !== "metadata").join(",")}`), { headers, cache: "no-store" });
+      }
+    }
 
     if (!response.ok) {
       console.error("Failed to fetch project design assets", {

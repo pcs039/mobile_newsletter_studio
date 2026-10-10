@@ -1,3 +1,4 @@
+import { validateDesignAssetMetadata } from "@/lib/design-asset-metadata";
 import { NextResponse } from "next/server";
 import {
   getProjectDesignAssets,
@@ -208,6 +209,15 @@ async function ensureAssetBucket(assetType: ProjectDesignAssetType, headers: Rec
   });
 
   return createdBucket.ok || createdBucket.status === 409;
+}
+
+async function canStoreMetadata(projectId: string, headers: Record<string, string>) {
+  const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_project_design_assets?select=metadata&project_id=eq.${encodeURIComponent(projectId)}&limit=0`);
+  return Boolean(endpoint && (await fetch(endpoint, { headers, cache: "no-store" })).ok);
+}
+
+function metadataMigrationRequired() {
+  return NextResponse.json({ ok: false, message: "외부 제작 정보 저장을 준비 중입니다. metadata migration 적용 상태를 확인하세요." }, { status: 503 });
 }
 
 async function getProjectContext(projectSlug: string) {
@@ -465,6 +475,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message }, { status: 400 });
   }
 
+  const metadataInput = formData.get("metadata");
+  let metadataValue: unknown = null;
+  if (metadataInput !== null) {
+    if (typeof metadataInput !== "string" || metadataInput.length > 1024) {
+      return NextResponse.json({ ok: false, message: "외부 제작 정보 형식이 올바르지 않습니다." }, { status: 400 });
+    }
+    try { metadataValue = JSON.parse(metadataInput); } catch {
+      return NextResponse.json({ ok: false, message: "외부 제작 정보 형식이 올바르지 않습니다." }, { status: 400 });
+    }
+  }
+  const metadata = validateDesignAssetMetadata(metadataValue);
+  if (!metadata.ok) return NextResponse.json({ ok: false, message: metadata.message }, { status: 400 });
+
   const context = await getProjectContext(projectSlug);
 
   if (!context.ok) {
@@ -475,6 +498,10 @@ export async function POST(request: Request) {
 
   if (!headers) {
     return NextResponse.json({ ok: false, message: "SUPABASE_SERVICE_ROLE_KEY 설정 후 디자인 자산을 업로드할 수 있습니다." }, { status: 503 });
+  }
+
+  if (metadataInput !== null && !(await canStoreMetadata(context.project.id, headers))) {
+    return metadataMigrationRequired();
   }
 
   const requestedParentSourceAssetId = asText(formData.get("parentSourceAssetId"));
@@ -558,6 +585,7 @@ export async function POST(request: Request) {
       Prefer: "return=representation",
     },
     body: JSON.stringify({
+      ...(metadataInput !== null ? { metadata: metadata.metadata } : {}),
       project_id: context.project.id,
       asset_type: assetType,
       parent_source_asset_id: parentSourceAssetId,
@@ -650,6 +678,9 @@ export async function PATCH(request: Request) {
     return access.response;
   }
 
+  const metadata = validateDesignAssetMetadata("metadata" in payload ? payload.metadata : null);
+  if (!metadata.ok) return NextResponse.json({ ok: false, message: metadata.message }, { status: 400 });
+
   const context = await getProjectContext(projectSlug);
 
   if (!context.ok) {
@@ -668,6 +699,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, message: "수정할 디자인 자산을 찾지 못했습니다." }, { status: 404 });
   }
 
+  if ("metadata" in payload && !(await canStoreMetadata(context.project.id, headers))) {
+    return metadataMigrationRequired();
+  }
+
   const shouldSetPrimary = currentAsset.asset_type === "logo" && payload.isPrimary === true;
   const isProductionAsset = isProductionAssetType(currentAsset.asset_type);
 
@@ -676,6 +711,7 @@ export async function PATCH(request: Request) {
   }
 
   const patchBody: Record<string, unknown> = {};
+  if ("metadata" in payload) patchBody.metadata = metadata.metadata;
 
   if ("name" in payload) patchBody.name = asText(payload.name) || (currentAsset.asset_type === "logo" ? "공식 로고" : "디자인 자산");
   if (currentAsset.asset_type === "logo" && "language" in payload) patchBody.language = readLanguage(payload.language);
