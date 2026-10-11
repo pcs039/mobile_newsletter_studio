@@ -69,7 +69,10 @@ export async function POST(request: Request) {
       let payload=background?backgroundAutofill(template,fields,dataset,article.title,"pending-background"):textAutofill(template,fields,dataset,article.title);
       const hash=digest(JSON.stringify([payload,background?.hash||null]));
       const binding=JSON.stringify([access.project.id,access.user.id,article.id,template.id,hash]);
-      if(p.action==="prepare") return canvaJson({ok:true,fields:fields.filter(f=>f.type==="text"),imageExcluded:!background&&template.fieldMappings.some(m=>m.type==="image"),background:background?{id:background.id,name:background.name,width:background.width,height:background.height}:null,confirmation:createCanvaConfirmation(binding),...(previous?.status==="uploading"&&previous.hash===hash&&previous.articleId===article.id&&previous.templateId===template.id?{requestKey:previous.key,execution:publicExecution(previous)}:{})});
+      if(p.action==="prepare") return canvaJson({ok:true,fields:fields.filter(f=>f.type==="text").map(field=>{
+        const value=(payload.data as Record<string,{type:"text";text:string}|{type:"image";asset_id:string}>)[field.field];
+        return {...field,text:value?.type==="text"?value.text:field.text};
+      }),imageExcluded:!background&&template.fieldMappings.some(m=>m.type==="image"),background:background?{id:background.id,name:background.name,width:background.width,height:background.height}:null,confirmation:createCanvaConfirmation(binding),...(previous?.status==="uploading"&&previous.hash===hash&&previous.articleId===article.id&&previous.templateId===template.id?{requestKey:previous.key,execution:publicExecution(previous)}:{})});
       if(!verifyCanvaConfirmation(p.confirmation,binding)) throw new CanvaConnectError(409,"기사 또는 템플릿이 변경되었거나 확인 시간이 지났습니다. 전달 내용을 다시 확인하세요.");
       if(previous?.hash===hash&&previous.articleId===article.id&&previous.templateId===template.id&&previous.status==="success")return canvaJson({ok:true,execution:publicExecution(previous),duplicate:true});
       let execution:Execution={key:p.requestKey,hash,articleId:article.id,templateId:template.id,status:"sending"};
