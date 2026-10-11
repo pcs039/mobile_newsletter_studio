@@ -5,6 +5,7 @@ import type { ArticleDesignDraft } from "@/lib/article-design-draft";
 import type { ProjectArticleComposition } from "@/lib/article-composition";
 import { conceptDirections, type ArticleDesignConcept } from "@/lib/article-design-concept";
 import { productionPatternDescriptions } from "@/lib/article-production-pattern";
+import { buildVisualAssetSpecifications, visualAssetRoles } from "@/lib/article-visual-asset-spec";
 
 type Proposal = Pick<ArticleDesignDraft, "pattern" | "changes" | "preserved" | "placements"> & { confirmation: string };
 export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, composition, onApplied }: {
@@ -22,6 +23,9 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, c
   const localVersion = JSON.stringify({ settings: composition.settings, assets: composition.assets, updated: composition.updatedAt });
   const [version, setVersion] = useState(localVersion);
   const stale = version !== localVersion;
+  const frame = composition.assets.find(asset => asset.slot === "hero_background" && asset.isVisible)?.settings;
+  const colors = [frame?.titleColor, frame?.bodyColor, frame?.accentColor].filter((color): color is string => typeof color === "string");
+  const visualAssets = selected ? buildVisualAssetSpecifications(selected, colors) : [];
 
   async function call(url: string, payload: unknown, controller: AbortController) {
     const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
@@ -75,6 +79,19 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, c
             <span className="mt-2 block">추천 이유: {c.rationale}</span>
           </button>)}
         </div>
+        {selected ? <section className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3" aria-label="비주얼 자산 계획">
+          <h4 className="text-sm font-bold">비주얼 자산 계획</h4>
+          <p className="mt-1 text-xs text-slate-600">생성·저장하지 않는 계획입니다. 글자는 HTML로 유지하고 기관 브랜드를 우선합니다. 장식·반복 무늬는 선택적인 재사용 계획이며 자동 배치하지 않습니다.</p>
+          {visualAssets.length ? <ul className="mt-2 space-y-3 text-sm">
+            {visualAssets.map(asset => <li key={asset.assetRole} className="min-w-0 border-t border-slate-200 pt-2">
+              <p className="font-bold">{visualAssetRoles[asset.assetRole]}</p>
+              <p>용도: {asset.purpose}</p>
+              <p>스타일: {asset.visualStyle}</p>
+              <p>크기: {asset.targetSize.width} × {asset.targetSize.height}px · {asset.aspectRatio}{asset.transparentBackground ? " · 투명 PNG" : " · 배경 포함"}</p>
+              <p>Canva 사용: {asset.canvaUsage === "background" ? "배경" : asset.canvaUsage === "overlay" ? "겹쳐 쓰는 독립 자산" : "단독 이미지"}</p>
+            </li>)}
+          </ul> : <p className="mt-2 text-sm">현재 디자인을 유지하며 추가 이미지 자산을 계획하지 않습니다.</p>}
+        </section> : null}
         {!draft ? <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" className="dd-btn dd-btn-primary max-w-full" style={{ whiteSpace: "normal" }} disabled={!selected || busy || disabled || stale} onClick={() => void perform("prepare")}>이 콘셉트로 초안 만들기</button>
           <button type="button" className="dd-btn dd-btn-secondary" disabled={busy} onClick={() => { setConcepts([]); setSelected(null); }}>취소</button>
