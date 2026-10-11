@@ -15,10 +15,10 @@ export async function uploadCanvaBackground(input:{id:string;hash:string;bytes:U
  else{
   await save({sourceAssetId:input.id,sourceHash:input.hash,status:"sending"});
   try{
-   const r=await fetch('https://api.canva.com/rest/v1/asset-uploads',{method:'POST',cache:'no-store',signal:AbortSignal.timeout(15000),headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/octet-stream','Asset-Upload-Metadata':JSON.stringify({name_base64:Buffer.from(`GPT background ${input.id}`).toString('base64')})},body:new Uint8Array(input.bytes)});
-   if(!r.ok){if(r.status===401)await update({access_token:null,refresh_token:null,expires_at:null});throw new CanvaConnectError([401,403,429].includes(r.status)?r.status:502,"Canva 이미지 업로드가 거절되었습니다. 연결·권한을 확인하세요.");}
+   const r=await fetch('https://api.canva.com/rest/v1/asset-uploads',{method:'POST',cache:'no-store',signal:AbortSignal.timeout(15000),headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/octet-stream','Asset-Upload-Metadata':JSON.stringify({name_base64:Buffer.from(`GPT ${input.id}`).toString('base64')})},body:new Uint8Array(input.bytes)});
+   if(!r.ok){if(r.status===401)await update({access_token:null,refresh_token:null,expires_at:null});throw new CanvaConnectError([400,401,403,429].includes(r.status)?r.status:502,"Canva 이미지 업로드가 거절되었습니다. 연결·권한을 확인하세요.");}
    job=readCanvaUploadJob(await r.json());
-  }catch(e){const rejected=e instanceof CanvaConnectError&&[401,403,429].includes(e.status);await save({sourceAssetId:input.id,sourceHash:input.hash,status:rejected?"failed":"unknown"});throw e instanceof CanvaConnectError?e:new CanvaConnectError(504,"이미지 업로드 결과가 불확실합니다. 자동 재시도하지 않습니다.");}
+  }catch(e){const rejected=e instanceof CanvaConnectError&&[400,401,403,429].includes(e.status);await save({sourceAssetId:input.id,sourceHash:input.hash,status:rejected?"failed":"unknown"});throw e instanceof CanvaConnectError?e:new CanvaConnectError(504,"이미지 업로드 결과가 불확실합니다. 자동 재시도하지 않습니다.");}
  }
  const deadline=Date.now()+10000;
  for(let n=0;;n++){

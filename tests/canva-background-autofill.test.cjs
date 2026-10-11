@@ -19,8 +19,8 @@ test('upload response requires matching image result, rejects arbitrary job and 
 });
 test('one binary upload; persisted success and job recovery prevent repeated upload',async()=>{
  let gets=0;const m=loader({'@/lib/canva-connect-server':{connectedCanvaRequest:async path=>{gets++;assert.equal(path,'/asset-uploads/JOB');return {job:{id:'JOB',status:'success',asset:{id:'M_IMAGE',type:'image'}}};}}})('src/lib/canva-background-upload.ts');
- const original=global.fetch;let posts=0,row={},patches=[];const update=async p=>{patches.push(p);Object.assign(row,p);return row;};const input={id:'test-id',hash:'hash',bytes:Uint8Array.of(1,2)};
- global.fetch=async(url,opts)=>{posts++;assert.equal(row.execution.backgroundUpload.status,'sending');assert.equal(url,'https://api.canva.com/rest/v1/asset-uploads');assert.equal(opts.headers['Content-Type'],'application/octet-stream');assert.deepEqual(opts.body,input.bytes);return Response.json({job:{id:'JOB',status:'success',asset:{type:'image',id:'M_IMAGE'}}});};
+ const original=global.fetch;let posts=0,row={},patches=[];const update=async p=>{patches.push(p);Object.assign(row,p);return row;};const input={id:'20b22f93-95fb-4589-8f77-77ec033f8707',hash:'hash',bytes:Uint8Array.of(1,2)};
+ global.fetch=async(url,opts)=>{posts++;assert.equal(row.execution.backgroundUpload.status,'sending');assert.equal(url,'https://api.canva.com/rest/v1/asset-uploads');assert.equal(opts.headers['Content-Type'],'application/octet-stream');assert.deepEqual(opts.body,input.bytes);const name=Buffer.from(JSON.parse(opts.headers['Asset-Upload-Metadata']).name_base64,'base64').toString();assert(name.length<=50);return Response.json({job:{id:'JOB',status:'success',asset:{type:'image',id:'M_IMAGE'}}});};
  try{const a=await m.uploadCanvaBackground(input,'test-token',{key:'key',status:'sending'},update);assert.equal(a.assetId,'M_IMAGE');assert.equal(posts,1);await m.uploadCanvaBackground(input,'test-token',a.execution,update);assert.equal(posts,1);
  const pending={...a.execution,backgroundUpload:{sourceAssetId:input.id,sourceHash:input.hash,status:'in_progress',jobId:'JOB'}};await m.uploadCanvaBackground(input,'test-token',pending,update);assert.equal(posts,1);assert.equal(gets,1);
  await assert.rejects(m.uploadCanvaBackground({...input,hash:'changed'},'token',a.execution,update),e=>e.status===409);
@@ -63,4 +63,10 @@ test('authorized route prepare writes no execution; image execute once, key/hash
  assert.equal((await post({...request,requestKey:'66666666-6666-4666-8666-666666666666'})).status,200);assert.equal(uploads,1);assert.equal(creates,1);
  assert.equal((await post({...body,action:'prepare',backgroundAssetId:'77777777-7777-4777-8777-777777777777'})).status,404);
  allowed=false;assert.equal((await post({...body,action:'prepare'})).status,403);assert.equal(JSON.stringify(article),snapshot);
+});
+
+test('definite bad request records failure without retry',async()=>{
+ const m=loader()('src/lib/canva-background-upload.ts'),original=global.fetch;let calls=0,row={};const update=async p=>{Object.assign(row,p);return row;};
+ global.fetch=async()=>{calls++;return Response.json({code:'invalid_request'},{status:400});};
+ try{await assert.rejects(m.uploadCanvaBackground({id:'id',hash:'hash',bytes:Uint8Array.of(1)},'token',{key:'key',status:'sending'},update),e=>e.status===400);assert.equal(row.execution.backgroundUpload.status,'failed');assert.equal(row.execution.status,'failed');assert.equal(calls,1);}finally{global.fetch=original;}
 });
