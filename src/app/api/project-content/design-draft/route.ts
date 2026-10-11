@@ -5,6 +5,7 @@ import { getProjectArticleComposition } from "@/lib/article-composition-reposito
 import { buildDraftForProject } from "@/lib/article-design-draft";
 import { applyDesignDraft, getDraftSnapshot, getReadyVisibleDraftAssets } from "@/lib/article-design-draft-repository";
 import { isArticleProductionPattern } from "@/lib/article-production-pattern";
+import { resolveExistingConceptColors, validateDesignConcept } from "@/lib/article-design-concept";
 import { createHash } from "node:crypto";
 import { getCanonicalSiteOrigin } from "@/lib/site-url";
 
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
   const payload = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!payload || !["prepare", "apply"].includes(String(payload.action)) || !isArticleProductionPattern(payload.pattern) ||
     typeof payload.projectSlug !== "string" || typeof payload.articleId !== "string") return result({ ok: false, message: "초안 요청을 확인해 주세요." }, 400);
+  const concept = payload.concept === undefined ? undefined : validateDesignConcept(payload.concept);
+  if (concept === null || (concept && concept.pattern !== payload.pattern)) return result({ ok: false, message: "콘셉트를 다시 선택해 주세요." }, 400);
   const access = await requireProjectApiAccess({ projectSlug: payload.projectSlug });
   if (!access.ok) return access.response;
   const snapshot = await getDraftSnapshot(access.project.id, payload.articleId);
@@ -43,7 +46,11 @@ export async function POST(request: Request) {
   const after = await getDraftSnapshot(access.project.id, article.id);
   if (!after.ok) return result({ ok: false, message: after.message }, after.status);
   if (fingerprint(after.data) !== fingerprint(snapshot.data)) return result({ ok: false, message: "기사 또는 디자인이 변경되었습니다. 다시 시도해 주세요." }, 409);
-  const draft = buildDraftForProject(access.project.id, article, payload.pattern, assets.assets, readyVisible, snapshot.data);
+  const draft = buildDraftForProject(access.project.id, article, payload.pattern, assets.assets, readyVisible, snapshot.data, concept);
+  if (concept && draft.pattern !== "manual") {
+    const colors = resolveExistingConceptColors(snapshot.data, access.project.primaryColor);
+    draft.preserved.push(`기존 팔레트 참고: 제목 ${colors.titleColor} · 본문 ${colors.bodyColor} · 강조 ${colors.accentColor} (변경 없음)`);
+  }
   // A client sends only the fingerprint it confirmed, never arbitrary settings or asset IDs.
   const confirmation = fingerprint(draft);
   if (payload.action === "prepare") return result({ ok: true, draft: { pattern: draft.pattern, changes: draft.changes, preserved: draft.preserved,
