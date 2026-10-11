@@ -26,6 +26,17 @@ other types → manual. It does not infer a nonexistent interview article type.
 
 ## Deterministic apply and limitations
 
+### Style quality rules
+
+HTML owns meaningful title/body/info/quote/caption text; raster assets provide separate background or
+illustration roles. Concepts must not assume baked-in image text or replace HTML text with an image.
+The prompt prioritizes the institution's existing brand tone, without inventing unavailable brand information,
+and discourages excessive advertising or painterly presentation. Mobile readability and normal/maximum
+text-scale stability take priority over decoration; fixed-height, overlapping or text-obscuring proposals are excluded.
+Background and illustration remain separate semantic roles. Future decoration/pattern roles can be modeled
+separately without changing article content; they are not accepted or automatically placed in this version.
+These are recommendation constraints, not new image generation or renderer behavior.
+
 The existing draft planner gates assets by same project, approved/active/web compatibility,
 explicit pattern tags and existing visible use in a ready Composition. No source preference or arbitrary ID input.
 Concept asset role narrows allowed candidates to none/background/illustration/both.

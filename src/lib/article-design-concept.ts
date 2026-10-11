@@ -53,6 +53,10 @@ export const designConceptInstruction = `${patternRecommendationInstruction.spli
 이번 요청은 기사에 맞는 디자인 콘셉트 3안을 concepts로 반환한다. name/description/rationale는 짧은 한국어다.
 3안은 information/editorial/friendly layoutDirection을 하나씩 사용하고, 기사별로 다른 이름과 이유를 제안한다.
 기사 본문이나 라벨 문구 생성, HEX, DB 정보, asset ID, URL, Canva 정보를 반환하지 않는다. visualTone/colorDirection/assetRole은 허용된 semantic 값만 사용한다.
+제목·본문·정보박스·인용·캡션은 실제 HTML 텍스트로 유지하고 raster 자산은 배경·일러스트 역할로 분리한다. 이미지 내부에 글자를 생성하거나 글자를 이미지로 대체하는 구성을 전제로 하지 않는다.
+기관의 기존 brand tone을 우선하고 과도한 광고형·회화형 스타일을 지양한다. brand 정보가 입력에 없으면 추측하지 않고 기존 팔레트 유지 방향으로 제안한다.
+assetRole의 background와 illustration 역할을 구분한다. decoration/pattern 등 향후 역할을 현재 자동 배치 슬롯으로 확장하지 않는다.
+모바일 가독성과 기본/최대 글자 크기에서의 안정성을 우선한다. 고정 높이·텍스트 겹침·장식으로 제목이나 본문을 가리는 구성을 제안하지 않는다.
 기존 색상·콘텐츠·배치를 존중한다. manual은 현재 디자인 유지다.`;
 export function buildDesignConceptInput(article: ProjectContentArticle) {
   return JSON.stringify({ articleType: article.articleType, text: buildPatternRecommendationInput(article).slice(0, 6000),
