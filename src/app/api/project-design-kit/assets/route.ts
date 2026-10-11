@@ -13,6 +13,7 @@ import {
 } from "@/lib/newsletter-repository";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 import { requireProjectApiAccess } from "@/lib/project-api-access";
+import { insertProjectDesignAssetRecord, uploadProjectDesignAssetFile } from "@/lib/project-design-asset-write";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,7 @@ const usageRoles = ["header", "section", "card", "article", "footer", "general"]
 const approvalStatuses = ["draft", "approved", "archived"] as const;
 
 type ProjectAssetRow = {
+  metadata?: unknown;
   id: string;
   project_id: string;
   storage_path: string | null;
@@ -302,7 +304,7 @@ async function promoteFirstActiveLogo(projectId: string, headers: Record<string,
 
 async function findDesignAsset(projectId: string, assetId: string, headers: Record<string, string>) {
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_project_design_assets?select=id,project_id,asset_type,storage_bucket,storage_path,is_primary,is_active&id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_project_design_assets?select=id,project_id,asset_type,storage_bucket,storage_path,is_primary,is_active,metadata&id=eq.${encodeURIComponent(
       assetId,
     )}&project_id=eq.${encodeURIComponent(projectId)}&limit=1`,
   );
@@ -532,15 +534,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Supabase Storage 버킷을 준비하지 못했습니다." }, { status: 503 });
   }
 
-  const uploadResponse = await fetch(storageEndpoint, {
-    method: "POST",
-    headers: {
-      ...storageHeaders,
-      "x-upsert": "false",
-    },
-    body: file,
-    cache: "no-store",
-  });
+  const uploadResponse = await uploadProjectDesignAssetFile(storageBucket, storagePath, file, storageHeaders);
 
   if (!uploadResponse.ok) {
     console.error("Failed to upload design asset", {
@@ -578,13 +572,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const insertResponse = await fetch(insertEndpoint, {
-    method: "POST",
-    headers: {
-      ...headers,
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify({
+  const insertResponse = await insertProjectDesignAssetRecord({
       ...(metadataInput !== null ? { metadata: metadata.metadata } : {}),
       project_id: context.project.id,
       asset_type: assetType,
@@ -606,9 +594,7 @@ export async function POST(request: Request) {
       is_primary: isPrimary,
       is_active: true,
       sort_order: assets.ok ? assets.assets.length : 0,
-    }),
-    cache: "no-store",
-  });
+    }, headers);
 
   if (!insertResponse.ok) {
     console.error("Failed to insert design asset", {
@@ -711,7 +697,12 @@ export async function PATCH(request: Request) {
   }
 
   const patchBody: Record<string, unknown> = {};
-  if ("metadata" in payload) patchBody.metadata = metadata.metadata;
+  if ("metadata" in payload) {
+    const existingMetadata = validateDesignAssetMetadata(currentAsset.metadata ?? null);
+    const provenance = existingMetadata.ok ? existingMetadata.metadata?.canvaExport : undefined;
+    // Classification edits cannot erase/change the import identity used for deduplication.
+    patchBody.metadata = provenance ? { ...metadata.metadata, canvaExport: provenance } : metadata.metadata;
+  }
 
   if ("name" in payload) patchBody.name = asText(payload.name) || (currentAsset.asset_type === "logo" ? "공식 로고" : "디자인 자산");
   if (currentAsset.asset_type === "logo" && "language" in payload) patchBody.language = readLanguage(payload.language);

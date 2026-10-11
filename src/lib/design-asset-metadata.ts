@@ -15,6 +15,7 @@ export type DesignAssetMetadata = {
   usageTags?: Array<keyof typeof assetUsageTagLabels>;
   reuseScope?: keyof typeof assetReuseScopeLabels;
   transparency?: keyof typeof assetTransparencyLabels;
+  canvaExport?: { designId: string; format: "png" };
 };
 
 export function defaultDesignAssetMetadata(): DesignAssetMetadata {
@@ -32,7 +33,14 @@ export function validateDesignAssetMetadata(value: unknown):
   if (value === null) return { ok: true, metadata: null };
   if (!value || typeof value !== "object" || Array.isArray(value)) return invalid;
   const record = value as Record<string, unknown>;
-  if (Object.keys(record).some((key) => !["source", "usageTags", "reuseScope", "transparency"].includes(key))) return invalid;
+  if (Object.keys(record).some((key) => !["source", "usageTags", "reuseScope", "transparency", "canvaExport"].includes(key))) return invalid;
+  if ("canvaExport" in record) {
+    const provenance = record.canvaExport;
+    if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) return invalid;
+    const p = provenance as Record<string, unknown>;
+    if (Object.keys(p).some(key => !["designId", "format"].includes(key)) || typeof p.designId !== "string" ||
+      !/^D[A-Za-z0-9_-]{1,199}$/.test(p.designId) || p.format !== "png") return invalid;
+  }
   if ("source" in record && !allowed(record.source, assetSourceLabels)) return invalid;
   if ("reuseScope" in record && !allowed(record.reuseScope, assetReuseScopeLabels)) return invalid;
   if ("transparency" in record && !allowed(record.transparency, assetTransparencyLabels)) return invalid;
@@ -44,6 +52,10 @@ export function validateDesignAssetMetadata(value: unknown):
   if ("reuseScope" in record) metadata.reuseScope = record.reuseScope as DesignAssetMetadata["reuseScope"];
   if ("transparency" in record) metadata.transparency = record.transparency as DesignAssetMetadata["transparency"];
   if ("usageTags" in record) metadata.usageTags = [...new Set(record.usageTags as NonNullable<DesignAssetMetadata["usageTags"]>)];
+  if ("canvaExport" in record) {
+    const p = record.canvaExport as { designId: string };
+    metadata.canvaExport = { designId: p.designId, format: "png" };
+  }
   return { ok: true, metadata };
 }
 

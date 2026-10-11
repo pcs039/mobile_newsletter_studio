@@ -51,6 +51,7 @@ export async function POST(request: Request) {
         return canvaJson({ok:true,execution:publicExecution(previous)});
       }
       if(p.action==="execute" && previous && ["sending","unknown","in_progress"].includes(previous.status)) throw new CanvaConnectError(409,"이 연결의 이전 생성 요청을 먼저 확인하세요. Canva에서 결과를 확인하기 전에는 다시 생성하지 않습니다.");
+      if(p.action==="execute" && previous?.pngImport && ["sending","unknown","in_progress","ready"].includes(previous.pngImport.status)) throw new CanvaConnectError(409,"진행 중인 PNG 가져오기를 먼저 확인하세요.");
       const token=await accessToken(row,update);
       const path=template.templateType==="brand_template"?`/brand-templates/${encodeURIComponent(template.externalId)}/dataset`:`/designs/${encodeURIComponent(template.externalId)}/dataset`;
       const payload=textAutofill(template,fields,await connectedCanvaRequest(path,token,update),article.title);

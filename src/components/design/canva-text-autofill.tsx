@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { CanvaPreviewField } from "@/lib/canva-template";
+import { CanvaPngImportControls } from "./canva-png-import-controls";
 type Job={id:string;status:"in_progress"|"success"|"failed";designId?:string;editUrl?:string;viewUrl?:string};
 type Execution={status:string;job?:Job};
 export function CanvaTextAutofill({projectSlug,articleId,templateId}:{projectSlug:string;articleId:string;templateId:string}) {
@@ -48,6 +49,7 @@ export function CanvaTextAutofill({projectSlug,articleId,templateId}:{projectSlu
       <button type="button" disabled={busy||!confirmed} className="rounded bg-blue-950 px-3 py-2 text-sm font-bold text-white disabled:opacity-50" onClick={()=>void run("execute")}>Canva 디자인 만들기</button><button type="button" disabled={busy} className="ml-2 text-sm" onClick={()=>{setPrepared(null);setConfirmed(false);}}>취소</button>
     </div>}
     {execution?.status==="success"&&<div><p>Canva 디자인이 생성되었습니다.</p><p className="break-all text-sm">디자인 ID: {execution.job?.designId}</p>{execution.job?.editUrl&&<a href={execution.job.editUrl} target="_blank" rel="noopener noreferrer" className="text-blue-800 underline">Canva에서 열기</a>}{execution.job?.viewUrl&&<a href={execution.job.viewUrl} target="_blank" rel="noopener noreferrer" className="ml-3 text-blue-800 underline">Canva에서 보기</a>}</div>}
+    {execution?.status==="success" && execution.job?.designId && <CanvaPngImportControls key={execution.job.designId} projectSlug={projectSlug} articleId={articleId} designId={execution.job.designId}/>}
     {execution?.status==="failed"&&<p>Canva 디자인 생성에 실패했습니다. 기존 기사에는 영향이 없습니다.</p>}
     {execution && ["success","failed"].includes(execution.status)&&<button type="button" disabled={busy} className="mt-2 text-sm underline" onClick={()=>{setExecution(null);setPrepared(null);key.current=null;}}>새 전달 내용 준비</button>}
   </section>;
