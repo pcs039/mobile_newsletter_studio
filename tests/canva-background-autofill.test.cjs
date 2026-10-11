@@ -41,6 +41,7 @@ test('authorized route prepare writes no execution; image execute once, key/hash
  const projectId='11111111-1111-4111-8111-111111111111',articleId='22222222-2222-4222-8222-222222222222',templateId='33333333-3333-4333-8333-333333333333',assetId='44444444-4444-4444-8444-444444444444';
  const article={id:articleId,title:'가을빛으로 물드는 도심, 2026 시민문화축제 개최',body:'보존 본문',blocks:[],links:['https://example.com']},snapshot=JSON.stringify(article);
  const expectedTitle='가을빛으로 물드는 도심,\n2026 시민문화축제 개최';
+ const manualTitle='가을빛으로 물드는 도심,\n2026 시민문화축제\n개최';
  const routeFields=fields.map(field=>field.field==='EVENT_TITLE'?{...field,text:article.title}:field);
  let row={execution:null},writes=0,uploads=0,creates=0,allowed=true;
  const update=async p=>{writes++;row={...row,...p};return row;};
@@ -48,7 +49,7 @@ test('authorized route prepare writes no execution; image execute once, key/hash
   '@/lib/staging-environment':{requireStagingE2E:()=>{}},
   '@/lib/canva-api-access':{sameOrigin:()=>{},canvaAdmin:async()=>allowed?{ok:true,project:{id:projectId,slug:'test',title:'test',issue:'1'},user:{id:'admin'}}:{ok:false,response:Response.json({ok:false},{status:403})},canvaJson:(d,status=200)=>Response.json(d,{status}),canvaFailure:e=>Response.json({message:e.message},{status:e.status||502})},
   '@/lib/canva-connection-repository':{getConnection:async()=>row,withConnectionLock:async(p,u,fn)=>fn(row,update)},
-  '@/lib/canva-connect-server':{accessToken:async()=> 'test-token',connectedCanvaRequest:async(path,token,update,payload)=>{if(path==='/autofills'){creates++;assert.equal(row.execution.status,'sending');assert.equal(payload.data.BACKGROUND_IMAGE.asset_id,'M_IMAGE');assert.equal(payload.data.EVENT_TITLE.text,expectedTitle);assert.equal(payload.title,article.title);return {job:{id:'AUTOJOB',status:'success',result:{type:'create_design',design:{id:'D_RESULT',urls:{edit_url:'https://www.canva.com/design/D_RESULT/edit'}}}}};}return dataset;}},
+  '@/lib/canva-connect-server':{accessToken:async()=> 'test-token',connectedCanvaRequest:async(path,token,update,payload)=>{if(path==='/autofills'){creates++;assert.equal(row.execution.status,'sending');assert.equal(payload.data.BACKGROUND_IMAGE.asset_id,'M_IMAGE');assert.equal(payload.data.EVENT_TITLE.text,manualTitle);assert.equal(payload.title,article.title);return {job:{id:'AUTOJOB',status:'success',result:{type:'create_design',design:{id:'D_RESULT',urls:{edit_url:'https://www.canva.com/design/D_RESULT/edit'}}}}};}return dataset;}},
   '@/lib/canva-background-repository':{listCanvaBackgrounds:async()=>[],readCanvaBackground:async(p,id)=>{if(p!==projectId||id!==assetId)throw Object.assign(Error('wrong project asset'),{status:404});return {id:assetId,hash:'stable-source',bytes:Uint8Array.of(1),name:'approved GPT',width:1152,height:1536};}},
   '@/lib/canva-background-upload':{uploadCanvaBackground:async(input,token,e,update)=>{uploads++;const execution={...e,status:'uploading',backgroundUpload:{sourceAssetId:input.id,sourceHash:input.hash,status:'success',assetId:'M_IMAGE'}};await update({execution});return {execution,assetId:'M_IMAGE'};}},
   '@/lib/canva-template-repository':{listCanvaTemplates:async()=>[{...template,id:templateId,isActive:true}]},
@@ -60,8 +61,13 @@ test('authorized route prepare writes no execution; image execute once, key/hash
  const post=b=>mod.POST(new Request('https://canva-staging.datadiction.co.kr/api/canva/autofill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}));
  const prepared=await (await post({...body,action:'prepare'})).json();assert(prepared.confirmation);assert.equal(writes,0);assert.equal(uploads,0);assert.equal(creates,0);
  assert.equal(prepared.fields.find(field=>field.field==='EVENT_TITLE').text,expectedTitle);
- const request={...body,action:'execute',confirmation:prepared.confirmation,requestKey:'55555555-5555-4555-8555-555555555555'};
+ const key='55555555-5555-4555-8555-555555555555';
+ assert.equal((await post({...body,action:'execute',confirmation:prepared.confirmation,requestKey:key,displayTitleOverride:manualTitle})).status,409);assert.equal(uploads,0);assert.equal(writes,0);
+ assert.equal((await post({...body,action:'prepare',displayTitleOverride:'1\n2\n3\n4'})).status,400);
+ const manualPrepared=await (await post({...body,action:'prepare',displayTitleOverride:manualTitle})).json();assert.equal(manualPrepared.fields.find(field=>field.field==='EVENT_TITLE').text,manualTitle);assert.equal(writes,0);
+ const request={...body,action:'execute',displayTitleOverride:manualTitle,confirmation:manualPrepared.confirmation,requestKey:key};
  assert.equal((await post(request)).status,200);assert.equal(uploads,1);assert.equal(creates,1);
+ assert.equal((await post({...request,displayTitleOverride:'변경한 제목'})).status,409);assert.equal(creates,1);
  assert.equal((await post(request)).status,200);assert.equal(uploads,1);assert.equal(creates,1);
  assert.equal((await post({...request,requestKey:'66666666-6666-4666-8666-666666666666'})).status,200);assert.equal(uploads,1);assert.equal(creates,1);
  assert.equal((await post({...body,action:'prepare',backgroundAssetId:'77777777-7777-4777-8777-777777777777'})).status,404);

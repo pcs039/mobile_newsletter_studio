@@ -1,5 +1,15 @@
 // Presentation only: never write this derived value back to article content.
 // Semantic boundaries are deterministic heuristics, not linguistic analysis.
+export function validateCanvaTitleOverride(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") throw Error("표시 제목을 확인해 주세요.");
+  const title = value.replace(/\r\n/g, "\n");
+  if (!title.trim() || title.length > 500 || /[\u0000-\u0009\u000b-\u001f\u007f]/.test(title) || title.split("\n").length > 3 || title.split("\n").some(line => !line.trim())) {
+    throw Error("표시 제목은 빈 줄 없이 1~3줄, 500자 이하로 입력해 주세요.");
+  }
+  return title;
+}
+
 function visualWidth(text: string) {
   return Array.from(text).reduce((width, character) => width + (/\s/.test(character) ? 0.3 : /[\u0021-\u007e]/.test(character) ? 0.55 : 1), 0);
 }

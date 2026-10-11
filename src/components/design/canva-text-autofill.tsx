@@ -13,7 +13,10 @@ export function CanvaTextAutofill({projectSlug,articleId,templateId}:{projectSlu
   const e2e = useStagingE2E();
   const [backgrounds,setBackgrounds]=useState<Array<{id:string;name:string}>>([]);
   const [backgroundAssetId,setBackgroundAssetId]=useState("");
-  useEffect(()=>{if(e2e!=="enabled")return;let active=true;fetch(`/api/canva/autofill?${new URLSearchParams({projectSlug,articleId})}`).then(async r=>{const d=await r.json();if(active&&r.ok)setBackgrounds(d.backgrounds||[]);}).catch(()=>{});return()=>{active=false;};},[projectSlug,articleId,e2e]);
+  const [autoDisplayTitle,setAutoDisplayTitle]=useState<string|null>(null);
+  const [manualOverride,setManualOverride]=useState<string|null>(null);
+  function changeTitle(value:string|null){setManualOverride(value);setPrepared(null);setConfirmed(false);key.current=null;}
+  useEffect(()=>{if(e2e!=="enabled")return;let active=true;fetch(`/api/canva/autofill?${new URLSearchParams({projectSlug,articleId})}`).then(async r=>{const d=await r.json();if(active&&r.ok){setBackgrounds(d.backgrounds||[]);setAutoDisplayTitle(d.autoDisplayTitle??null);}}).catch(()=>{});return()=>{active=false;};},[projectSlug,articleId,e2e]);
   async function json(method:string,body?:object){
     const r=await fetch(method==="GET"?`/api/canva/autofill?${new URLSearchParams({projectSlug,articleId})}`:"/api/canva/autofill",{method,headers:{"Content-Type":"application/json"},signal:AbortSignal.timeout(45000),...(body?{body:JSON.stringify({projectSlug,articleId,templateId,...(backgroundAssetId?{backgroundAssetId}:{}),...body})}:{})});
     const d=await r.json();if(!r.ok)throw Error(d.message||"Canva 요청을 확인하지 못했습니다.");return d;
@@ -31,10 +34,10 @@ export function CanvaTextAutofill({projectSlug,articleId,templateId}:{projectSlu
     if(pending.current)return;pending.current=true;setBusy(true);setNotice("");
     try{
       if(action==="prepare"){
-        const d=await json("POST",{action});if(!alive.current)return;
+        const d=await json("POST",{action,displayTitleOverride:manualOverride});if(!alive.current)return;
         setPrepared(d);setConfirmed(false);setExecution(d.execution||null);key.current=d.requestKey||crypto.randomUUID();
       }else{
-        const d=await json(action==="status"?"GET":"POST",action==="status"?undefined:{action,confirmation:prepared?.confirmation,requestKey:key.current});
+        const d=await json(action==="status"?"GET":"POST",action==="status"?undefined:{action,confirmation:prepared?.confirmation,requestKey:key.current,displayTitleOverride:manualOverride});
         if(!alive.current)return;setExecution(d.execution);
         if(!d.execution)setNotice("현재 기사에 진행 중인 작업이 없습니다.");
         else if(d.execution.status==="unknown" || d.execution.status==="sending")setNotice("전송 결과가 불확실합니다. 중복 생성을 방지하기 위해 다시 보내지 않습니다. Canva에서 생성 여부를 확인하세요.");
@@ -48,6 +51,13 @@ export function CanvaTextAutofill({projectSlug,articleId,templateId}:{projectSlu
   if(e2e !== "enabled") return e2e === "loading" ? <p>Canva 실행 환경 확인 중…</p> : <StagingE2ENotice/>;
   return <section aria-label="Canva 글자 자동 입력" className="mt-3 rounded border border-slate-200 p-3">
     <h4 className="font-bold">Canva 디자인 만들기</h4><p className="my-2 text-sm text-slate-600">저장된 글자와 선택한 승인 GPT 배경으로 새 디자인을 만듭니다. 원본 Canva 디자인과 기사 디자인은 변경하지 않습니다.</p>
+    <fieldset className="my-3 min-w-0 rounded border p-3" disabled={busy||!!running||!!execution||autoDisplayTitle===null}>
+      <legend className="text-sm font-bold">Canva 표시 제목</legend>
+      <div className="flex flex-wrap gap-3 text-sm"><label><input type="radio" checked={manualOverride===null} onChange={()=>changeTitle(null)}/> 자동 추천</label><label><input type="radio" checked={manualOverride!==null} onChange={()=>changeTitle(autoDisplayTitle||"")}/> 직접 수정</label></div>
+      <label className="mt-2 block text-sm">표시 제목<textarea rows={3} maxLength={500} readOnly={manualOverride===null} value={manualOverride??autoDisplayTitle??""} onChange={e=>changeTitle(e.target.value)} className="mt-1 w-full min-w-0 rounded border p-2"/></label>
+      <p className="text-xs text-slate-600">원본 제목은 바뀌지 않습니다. 직접 수정한 값은 현재 화면에서만 유지됩니다. 빈 줄 없이 최대 3줄입니다.</p>
+      {manualOverride!==null&&<button type="button" className="mt-2 text-sm underline" onClick={()=>changeTitle(null)}>자동 추천으로 되돌리기</button>}
+    </fieldset>
     <label className="my-2 block text-sm">승인된 GPT 배경<select className="mt-1 w-full rounded border p-2" value={backgroundAssetId} disabled={busy||!!running} onChange={e=>{setBackgroundAssetId(e.target.value);setPrepared(null);setConfirmed(false);}}><option value="">배경 없이 글자만 전달</option>{backgrounds.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
     <p className="text-sm text-slate-600">배경은 3:4 원본 비율을 유지합니다. Canva의 3:4 프레임에 중앙 crop을 설정하고, 문자 없는 이미지·중앙 안전영역·기관 톤을 확인하세요. 자동으로 기사에 배치하지 않습니다.</p>
     <div className="flex flex-wrap gap-2"><button type="button" disabled={busy||!!running} className="rounded border px-3 py-2 text-sm disabled:opacity-50" onClick={()=>void run("prepare")}>전달 내용 확인</button><button type="button" disabled={busy} className="rounded border px-3 py-2 text-sm disabled:opacity-50" onClick={()=>void run("status")}>진행 작업 확인</button></div>

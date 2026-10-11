@@ -1,6 +1,6 @@
 import { CanvaConnectError, textAutofill } from "@/lib/canva-connect-contract";
 import type { CanvaPreviewField, CanvaTemplate } from "@/lib/canva-template";
-export function backgroundAutofill(template: CanvaTemplate, fields: CanvaPreviewField[], response: unknown, title: string, assetId: string) {
+export function backgroundAutofill(template: CanvaTemplate, fields: CanvaPreviewField[], response: unknown, title: string, assetId: string, displayTitleOverride: string | null = null) {
   const schema = (response as {dataset?: Record<string,{type?: string}>})?.dataset;
   if (template.templateType !== "brand_template" || !schema || schema.BACKGROUND_IMAGE?.type !== "image" ||
     Object.entries(schema).some(([field,value])=>value.type !== "text" && !(field === "BACKGROUND_IMAGE" && value.type === "image")) ||
@@ -10,7 +10,7 @@ export function backgroundAutofill(template: CanvaTemplate, fields: CanvaPreview
   if (template.fieldMappings.some(m=>m.type === "image" && m.field !== "BACKGROUND_IMAGE")) throw new CanvaConnectError(409,"이번에는 BACKGROUND_IMAGE 배경 한 개만 연결할 수 있습니다.");
   const textSchema = Object.fromEntries(Object.entries(schema).filter(([,v])=>v.type === "text"));
   const textTemplate = {...template,fieldMappings:template.fieldMappings.filter(m=>m.type === "text")};
-  const payload = textAutofill(textTemplate,fields,{dataset:textSchema},title);
+  const payload = textAutofill(textTemplate,fields,{dataset:textSchema},title,displayTitleOverride);
   if (["EVENT_TITLE","EVENT_DATE","EVENT_PLACE"].some(field=>!payload.data[field])) throw new CanvaConnectError(409,"행사 제목·일시·장소 연결을 확인하세요.");
   if (!/^[A-Za-z0-9_-]{1,200}$/.test(assetId)) throw new CanvaConnectError(400,"배경 자산 식별자가 올바르지 않습니다.");
   return {...payload,data:{...payload.data,BACKGROUND_IMAGE:{type:"image" as const,asset_id:assetId}}};
