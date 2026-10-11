@@ -1,3 +1,4 @@
+import { StagingBadge } from "@/components/staging-badge";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
@@ -202,6 +203,7 @@ export async function ProjectAdminShell({
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950" data-print-scope={printScope}>
+      <StagingBadge/>
       <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="bg-[#071f46] px-6 py-7 text-white" data-admin-sidebar>
           <div className="mb-9">

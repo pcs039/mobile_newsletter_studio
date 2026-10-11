@@ -4,6 +4,8 @@ import Image from "next/image";
 import type { ArticleDesignConcept } from "@/lib/article-design-concept";
 import type { VisualAssetSpecification } from "@/lib/article-visual-asset-spec";
 
+import { useStagingE2E, StagingE2ENotice } from "./staging-e2e-status";
+
 type Preview={base64:string;proof:string;width:number;height:number;size:number};
 export function ArticleVisualAssetGenerator({projectSlug,articleId,concept,specification,disabled,onBusy}:{
   projectSlug:string;articleId:string;concept:ArticleDesignConcept;specification:VisualAssetSpecification;disabled:boolean;onBusy:(busy:boolean)=>void;
@@ -12,8 +14,9 @@ export function ArticleVisualAssetGenerator({projectSlug,articleId,concept,speci
   const [approvalAttempted,setApprovalAttempted]=useState(false);
   const pending=useRef<AbortController|null>(null);
   useEffect(()=>()=>pending.current?.abort(),[]);
-  const enabled=process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/,"")==="https://mvrkpmffuhcqwisqvpqi.supabase.co";
-  if(!enabled||!["hero_background","hero_illustration"].includes(specification.assetRole))return null;
+  const e2e = useStagingE2E();
+  if(!["hero_background","hero_illustration"].includes(specification.assetRole))return null;
+  if(e2e !== "enabled")return e2e === "loading" ? <p className="text-xs">이미지 생성 환경 확인 중…</p> : <StagingE2ENotice/>;
   async function perform(action:"generate"|"approve"){
     if(pending.current||disabled||saved)return;
     if(action==="generate"&&approvalAttempted)return;

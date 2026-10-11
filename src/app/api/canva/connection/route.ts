@@ -1,3 +1,4 @@
+import { requireStagingE2E, stagingRequestAllowed } from "@/lib/staging-environment";
 import { canvaAdmin, canvaFailure, canvaJson, canvaStateCookie, sameOrigin } from "@/lib/canva-api-access";
 import { CanvaConnectError, makeAuthorization } from "@/lib/canva-connect-contract";
 import { connectionRows, ensureConnection, getConnection, withConnectionLock } from "@/lib/canva-connection-repository";
@@ -8,6 +9,7 @@ export async function GET(request: Request) {
   const access=await canvaAdmin(new URL(request.url).searchParams.get("projectSlug")||"");
   if (!access.ok) return access.response;
   try {
+    if (!stagingRequestAllowed(request)) return canvaJson({ok:true,status:"staging_only"});
     if (!canvaConfigured()) return canvaJson({ok:true,status:"setup_required"});
     const row=await getConnection(access.project.id,access.user.id);
     return canvaJson({ok:true,status:row?.access_token&&row.refresh_token&&row.expires_at&&Number.isFinite(Date.parse(row.expires_at))?"connected":"disconnected"});
@@ -15,6 +17,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
+    requireStagingE2E(request);
     sameOrigin(request);
     const p=await request.json();
     if (!p || typeof p.projectSlug!=="string" || Object.keys(p).some(k=>k!=="projectSlug")) throw new CanvaConnectError(400,"프로젝트 정보를 확인하세요.");
@@ -33,6 +36,7 @@ export async function POST(request: Request) {
 }
 export async function DELETE(request: Request) {
   try {
+    requireStagingE2E(request);
     sameOrigin(request); const p=await request.json();
     if (!p || typeof p.projectSlug!=="string" || p.confirm!==true || Object.keys(p).some(k=>!["projectSlug","confirm"].includes(k))) throw new CanvaConnectError(400,"연결 해제 확인이 필요합니다.");
     const access=await canvaAdmin(p.projectSlug); if(!access.ok) return access.response;

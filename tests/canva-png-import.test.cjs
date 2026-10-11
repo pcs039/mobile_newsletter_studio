@@ -3,12 +3,13 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const loader=require('./canva-test-loader.cjs');
 const load=loader(),png=load('src/lib/canva-png-export.ts');
 test('feature gate cannot write against Production or an unrelated Preview database',()=>{
+ const names=['APP_ENV','NEXT_PUBLIC_SITE_URL','SITE_URL','CANVA_REDIRECT_URI'];const old=names.map(k=>process.env[k]);Object.assign(process.env,{APP_ENV:'staging',NEXT_PUBLIC_SITE_URL:'https://canva-staging.datadiction.co.kr',SITE_URL:'https://canva-staging.datadiction.co.kr',CANVA_REDIRECT_URI:'https://canva-staging.datadiction.co.kr/api/canva/callback'});
  const oldUrl=process.env.NEXT_PUBLIC_SUPABASE_URL,oldEnv=process.env.VERCEL_ENV;
  try {
   process.env.NEXT_PUBLIC_SUPABASE_URL='https://mvrkpmffuhcqwisqvpqi.supabase.co';process.env.VERCEL_ENV='preview';assert(png.canvaPngImportEnabled());
   process.env.VERCEL_ENV='production';assert(!png.canvaPngImportEnabled());
   process.env.VERCEL_ENV='preview';process.env.NEXT_PUBLIC_SUPABASE_URL='https://production.supabase.co';assert(!png.canvaPngImportEnabled());
- } finally {if(oldUrl===undefined)delete process.env.NEXT_PUBLIC_SUPABASE_URL;else process.env.NEXT_PUBLIC_SUPABASE_URL=oldUrl;if(oldEnv===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=oldEnv;}
+ } finally {names.forEach((k,i)=>old[i]===undefined?delete process.env[k]:process.env[k]=old[i]);if(oldUrl===undefined)delete process.env.NEXT_PUBLIC_SUPABASE_URL;else process.env.NEXT_PUBLIC_SUPABASE_URL=oldUrl;if(oldEnv===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=oldEnv;}
 });
 test('PNG format and one-page gate; download host cannot be supplied arbitrarily',()=>{
  png.requireSinglePagePng({formats:{png:{page_numbers:[1]}}},{design:{page_count:1}});
@@ -47,6 +48,7 @@ test('import route requires completed same-project result; dedup skips Canva; UR
  const articleId='11111111-1111-4111-8111-111111111111';let calls=[],saved=[],asset=null,allowed=true,enabled=true;
  let row={execution:{articleId,status:'success',job:{status:'success',designId:'D123'}}};let failure=null;
  const route=loader({
+  '@/lib/staging-environment':{requireStagingE2E:()=>{},stagingRequestAllowed:()=>true},
   '@/lib/canva-connect-contract':load('src/lib/canva-connect-contract.ts'),
   '@/lib/canva-api-access':{sameOrigin:r=>{if(r.headers.get('origin')!=='https://staging.example')throw Error('origin');},canvaAdmin:async()=>allowed?{ok:true,project:{id:'p',slug:'p'},user:{id:'admin'}}:{ok:false,response:Response.json({}, {status:401})},canvaJson:Response.json,canvaFailure:e=>Response.json({message:e.message},{status:e.status||400})},
   '@/lib/canva-connection-repository':{getConnection:async()=>row,withConnectionLock:async(_p,_u,f)=>f(row,async p=>{saved.push(p);Object.assign(row,p);return row;})},

@@ -1,3 +1,4 @@
+import { requireStagingE2E } from "@/lib/staging-environment";
 import { NextResponse } from "next/server";
 import { requireProjectApiAccess } from "@/lib/project-api-access";
 import { getProjectContent } from "@/lib/newsletter-repository";
@@ -16,6 +17,7 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 function result(body:unknown,status=200){return NextResponse.json(body,{status,headers:{"Cache-Control":"no-store","Referrer-Policy":"no-referrer"}});}
 export async function POST(request:Request){
   try{
+    requireStagingE2E(request);
     requireImageSameOrigin(request);
     // Bound before parsing large approval images; never read or log credentials/provider bodies.
     if(Number(request.headers.get("content-length"))>3_500_000)throw new ImageGenerationError(413,"미리보기 이미지가 너무 큽니다.");

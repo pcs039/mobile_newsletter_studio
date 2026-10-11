@@ -26,6 +26,7 @@ test('generation guard joins identical requests, rejects changed/in-flight reque
  await assert.rejects(guardedImageGeneration('other','key','fp',async()=>{calls++;throw Error('fail');}));await assert.rejects(guardedImageGeneration('other','key','fp',async()=>{calls++;}));assert.equal(calls,2);
 });
 test('admin/project/Staging gates, generation write zero, proof approval dedup and tamper/anon/review rejection',async()=>{
+ const extraNames=['APP_ENV','NEXT_PUBLIC_SITE_URL','SITE_URL','CANVA_REDIRECT_URI'];const extraOld=extraNames.map(k=>process.env[k]);Object.assign(process.env,{APP_ENV:'staging',NEXT_PUBLIC_SITE_URL:'https://canva-staging.datadiction.co.kr',SITE_URL:'https://canva-staging.datadiction.co.kr',CANVA_REDIRECT_URI:'https://canva-staging.datadiction.co.kr/api/canva/callback'});
  const old={url:process.env.NEXT_PUBLIC_SUPABASE_URL,key:process.env.SUPABASE_SERVICE_ROLE_KEY,vercel:process.env.VERCEL,env:process.env.VERCEL_ENV};
  Object.assign(process.env,{NEXT_PUBLIC_SUPABASE_URL:'https://mvrkpmffuhcqwisqvpqi.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'test',VERCEL:'',VERCEL_ENV:''});
  let writes=0,calls=0,role='admin',accessOk=true;
@@ -36,7 +37,7 @@ test('admin/project/Staging gates, generation write zero, proof approval dedup a
  '@/lib/generated-image-asset-repository':{registerGeneratedImageAsset:async proof=>{writes++;return {id:proof.assetId,name:'saved'};}}
  })('src/app/api/project-content/visual-asset-generation/route.ts');
  const input={action:'generate',projectSlug:'s',articleId:'11111111-1111-4111-8111-111111111111',role:'hero_background',concept,requestKey:'22222222-2222-4222-8222-222222222222'};
- const req=p=>new Request('http://localhost/api',{method:'POST',headers:{Origin:'http://localhost'},body:JSON.stringify(p)});
+ const req=p=>new Request('https://canva-staging.datadiction.co.kr/api',{method:'POST',headers:{Origin:'https://canva-staging.datadiction.co.kr'},body:JSON.stringify(p)});
  try{const r=await POST(req(input));assert.equal(r.status,200);const b=await r.json();assert.equal(writes,0);assert.equal(calls,1);
  assert.equal((await POST(req({...input,role:'decoration'}))).status,400);
  assert.equal((await POST(req({...input,articleId:'33333333-3333-4333-8333-333333333333'}))).status,404);
@@ -44,7 +45,7 @@ test('admin/project/Staging gates, generation write zero, proof approval dedup a
  assert.equal((await POST(req({action:'approve',projectSlug:'s',articleId:input.articleId,proof:b.proof,base64:b.base64}))).status,200);assert.equal(writes,1);
  role='user';assert.equal((await POST(req(input))).status,403);accessOk=false;assert.equal((await POST(req(input))).status,401);
  accessOk=true;role='admin';process.env.VERCEL_ENV='production';assert.equal((await POST(req(input))).status,403);
- }finally{for(const [k,v]of Object.entries({NEXT_PUBLIC_SUPABASE_URL:old.url,SUPABASE_SERVICE_ROLE_KEY:old.key,VERCEL:old.vercel,VERCEL_ENV:old.env})){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
+ }finally{extraNames.forEach((k,i)=>extraOld[i]===undefined?delete process.env[k]:process.env[k]=extraOld[i]);for(const [k,v]of Object.entries({NEXT_PUBLIC_SUPABASE_URL:old.url,SUPABASE_SERVICE_ROLE_KEY:old.key,VERCEL:old.vercel,VERCEL_ENV:old.env})){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
 });
 test('provider failure/timeout never retries or exposes raw error bodies',async()=>{
  const {requestArticleImage}=load('src/lib/article-image-provider.ts');const oldFetch=global.fetch,oldKey=process.env.OPENAI_API_KEY;process.env.OPENAI_API_KEY='test';

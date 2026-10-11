@@ -3,8 +3,8 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const loader=require('./canva-test-loader.cjs');
 const origin='https://canva-staging.datadiction.co.kr';
 const deployment='mns-test.vercel.app';
-const envNames=['VERCEL','VERCEL_ENV','VERCEL_URL','VERCEL_BRANCH_URL','CANVA_REDIRECT_URI'];
-function withEnv(fn){const previous=envNames.map(k=>process.env[k]);Object.assign(process.env,{VERCEL:'1',VERCEL_ENV:'preview',VERCEL_URL:deployment,VERCEL_BRANCH_URL:'mns-branch.vercel.app',CANVA_REDIRECT_URI:origin+'/api/canva/callback'});return Promise.resolve().then(fn).finally(()=>envNames.forEach((k,i)=>previous[i]===undefined?delete process.env[k]:process.env[k]=previous[i]));}
+const envNames=['VERCEL','VERCEL_ENV','VERCEL_URL','VERCEL_BRANCH_URL','CANVA_REDIRECT_URI','APP_ENV','NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SITE_URL','SITE_URL'];
+function withEnv(fn){const previous=envNames.map(k=>process.env[k]);Object.assign(process.env,{APP_ENV:'staging',NEXT_PUBLIC_SUPABASE_URL:'https://mvrkpmffuhcqwisqvpqi.supabase.co',NEXT_PUBLIC_SITE_URL:origin,SITE_URL:origin,VERCEL:'1',VERCEL_ENV:'preview',VERCEL_URL:deployment,VERCEL_BRANCH_URL:'mns-branch.vercel.app',CANVA_REDIRECT_URI:origin+'/api/canva/callback'});return Promise.resolve().then(fn).finally(()=>envNames.forEach((k,i)=>previous[i]===undefined?delete process.env[k]:process.env[k]=previous[i]));}
 function request(host='canva-staging.datadiction.co.kr',extra={}){return new Request('https://'+deployment+'/api/canva/connection',{method:'POST',headers:{host,'x-forwarded-host':host,'x-forwarded-proto':'https',origin,...extra},body:JSON.stringify({projectSlug:'fixture'})});}
 const m=loader()('src/lib/canva-request-origin.ts');
 test('custom domain behind Vercel uses external origin; strict CSRF retained',()=>withEnv(()=>{
@@ -25,7 +25,7 @@ test('connection custom domain succeeds; direct Preview mismatch performs no DB 
  const load=loader({'@/lib/canva-api-access':{sameOrigin:m.requireCanvaSameOrigin,canvaAdmin:async()=>({ok:true,project:{id:'p'},user:{id:'u'}}),canvaJson:(v,s=200)=>Object.assign(Response.json(v,{status:s}),{cookies:{set:()=>{}}}),canvaFailure:e=>Response.json({ok:false},{status:e.status||502}),canvaStateCookie:'state'},'@/lib/canva-connect-server':{canvaConfig:()=>({clientId:'test',redirectUri:process.env.CANVA_REDIRECT_URI})},'@/lib/canva-connection-repository':{ensureConnection:async()=>{writes++;},withConnectionLock:async(p,u,fn)=>fn({},async()=>{writes++;})}});
  const route=load('src/app/api/canva/connection/route.ts');
  const res=await route.POST(request());assert.equal(res.status,200);const data=await res.json();const url=new URL(data.url);assert.equal(url.origin,'https://www.canva.com');assert.equal(url.searchParams.get('redirect_uri'),origin+'/api/canva/callback');assert.equal(writes,2);
- const preview=request(deployment,{origin:'https://'+deployment});assert.equal((await route.POST(preview)).status,503);assert.equal(writes,2);
+ const preview=request(deployment,{origin:'https://'+deployment});assert.equal((await route.POST(preview)).status,403);assert.equal(writes,2);
  assert.equal((await route.POST(request(undefined,{'x-forwarded-host':'evil.example'}))).status,403);assert.equal(writes,2);
 }));
 test('callback uses canonical origin and exact path before state/cookie validation',()=>withEnv(async()=>{
@@ -34,5 +34,5 @@ test('callback uses canonical origin and exact path before state/cookie validati
  const r=url=>new Request(url,{headers:base.headers});
  const custom=await route.GET(r('https://'+deployment+'/api/canva/callback?state=x'));assert.equal(custom.status,400);assert.match((await custom.json()).message,/만료/);
  const wrong=await route.GET(r('https://'+deployment+'/api/canva/callback/'));assert.equal(wrong.status,400);assert.match((await wrong.json()).message,/callback/);
- const preview=await route.GET(new Request('https://'+deployment+'/api/canva/callback',{headers:request(deployment).headers}));assert.equal(preview.status,400);assert.match((await preview.json()).message,/callback/);
+ const preview=await route.GET(new Request('https://'+deployment+'/api/canva/callback',{headers:request(deployment).headers}));assert.equal(preview.status,403);assert.match((await preview.json()).message,/Staging/);
 }));

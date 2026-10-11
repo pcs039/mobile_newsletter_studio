@@ -1,3 +1,4 @@
+import { requireStagingE2E } from "@/lib/staging-environment";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/app-auth";
@@ -10,6 +11,7 @@ import { canvaRequestOrigin } from "@/lib/canva-request-origin";
 export const runtime="nodejs";
 export async function GET(request: Request) {
   try {
+    requireStagingE2E(request);
     const user=await requireApiUser();
     if(!user || user.role!=="admin") throw new CanvaConnectError(401,"관리자로 로그인한 뒤 Canva에 다시 연결해 주세요.");
     const config=canvaConfig(); const url=new URL(request.url);
