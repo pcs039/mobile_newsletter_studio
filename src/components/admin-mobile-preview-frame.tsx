@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const previewSizePresets = [
   { label: "소형", width: 360, height: 740 },
@@ -35,9 +35,30 @@ export function AdminMobilePreviewFrame({
   const iframeSrc = appendEmbeddedPreviewParams(previewHref, previewVersion);
   const frameWidth = Math.min(previewSize.width + 56, 480);
   const frameHeight = Math.min(previewSize.height + 70, 920);
+  const frameContainerRef = useRef<HTMLDivElement>(null);
+  const [compactWidth, setCompactWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    const container = frameContainerRef.current;
+    if (!container || !isPreviewExpanded) return;
+    const desktop = window.matchMedia("(min-width: 768px)");
+    const measure = () => setCompactWidth(desktop.matches ? null : container.clientWidth);
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    desktop.addEventListener("change", measure);
+    return () => {
+      observer.disconnect();
+      desktop.removeEventListener("change", measure);
+    };
+  }, [isPreviewExpanded]);
+
+  // Scale the shell, not the iframe viewport: article layout retains the selected
+  // phone width even when the administrator's screen is narrower than the phone.
+  const compactScale = compactWidth === null ? 1 : Math.min(1, compactWidth / frameWidth);
+  const compactHeight = Math.min(frameHeight, 780);
 
   return (
-    <article className="admin-mobile-preview-panel rounded-lg border border-slate-200 bg-white p-4 shadow-sm xl:max-h-[calc(100dvh-3rem)] xl:overflow-y-auto">
+    <article className="admin-mobile-preview-panel min-w-0 rounded-lg border border-slate-200 bg-white p-2 shadow-sm md:p-4 xl:max-h-[calc(100dvh-3rem)] xl:overflow-y-auto">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">저장본 기준</p>
@@ -97,31 +118,43 @@ export function AdminMobilePreviewFrame({
             })}
           </div>
 
-          <div className="mt-5 flex justify-center overflow-x-auto pb-2">
+          <div ref={frameContainerRef} className="mt-5 flex min-w-0 justify-center overflow-hidden pb-2 md:overflow-x-auto">
             <div
-              className="resize overflow-auto rounded-[34px] border border-slate-300 bg-slate-950 p-3 shadow-xl shadow-blue-950/20"
-              style={{
-                height: `min(${frameHeight}px, calc(100dvh - 260px))`,
-                maxHeight: 780,
-                maxWidth: "min(480px, 100%)",
-                minHeight: 520,
-                minWidth: 320,
-                width: frameWidth,
+              style={compactWidth === null ? { display: "contents" } : {
+                position: "relative",
+                flexShrink: 0,
+                width: frameWidth * compactScale,
+                height: compactHeight * compactScale,
               }}
             >
-              <div className="flex h-full min-h-0 flex-col rounded-[26px] bg-slate-900 px-4 pb-3 pt-2">
-                <div className="mx-auto mb-2 h-1.5 w-16 shrink-0 rounded-full bg-slate-700" />
-                <div className="mb-2 flex shrink-0 items-center justify-between text-[10px] font-bold text-slate-400">
-                  <span>9:41</span>
-                  <span>LTE · 100%</span>
-                </div>
-                <div className="min-h-0 flex-1 overflow-hidden rounded-[22px] border border-slate-800 bg-white">
-                  <iframe
-                    key={previewVersion}
-                    title={iframeTitle}
-                    src={iframeSrc}
-                    className="h-full w-full border-0 bg-white"
-                  />
+              <div
+                className="overflow-auto rounded-[34px] border border-slate-300 bg-slate-950 p-3 shadow-xl shadow-blue-950/20 md:resize"
+                style={{
+                  height: compactWidth === null ? `min(${frameHeight}px, calc(100dvh - 260px))` : compactHeight,
+                  maxHeight: 780,
+                  maxWidth: compactWidth === null ? "min(480px, 100%)" : undefined,
+                  minHeight: 520,
+                  minWidth: compactWidth === null ? 320 : frameWidth,
+                  width: frameWidth,
+                  position: compactWidth === null ? undefined : "absolute",
+                  transform: compactWidth === null ? undefined : `scale(${compactScale})`,
+                  transformOrigin: "top left",
+                }}
+              >
+                <div className="flex h-full min-h-0 flex-col rounded-[26px] bg-slate-900 px-4 pb-3 pt-2">
+                  <div className="mx-auto mb-2 h-1.5 w-16 shrink-0 rounded-full bg-slate-700" />
+                  <div className="mb-2 flex shrink-0 items-center justify-between text-[10px] font-bold text-slate-400">
+                    <span>9:41</span>
+                    <span>LTE · 100%</span>
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-hidden rounded-[22px] border border-slate-800 bg-white">
+                    <iframe
+                      key={previewVersion}
+                      title={iframeTitle}
+                      src={iframeSrc}
+                      className="h-full w-full border-0 bg-white"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

@@ -4,8 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { articleProductionPatterns, isArticleProductionPattern, productionPatternDescriptions, type ArticleProductionPattern } from "@/lib/article-production-pattern";
 import type { ArticlePatternRecommendation } from "@/lib/article-pattern-recommendation";
 import { readArticleTextDesign } from "@/lib/article-text-design";
+import { ArticleDesignDraftControls } from "@/components/design/article-design-draft-controls";
+import type { ProjectArticleComposition } from "@/lib/article-composition";
 
-export function ArticleProductionPatternControls({ pattern, textDesign, disabled, onApply, projectSlug, articleId, recommendedPattern }: {
+export function ArticleProductionPatternControls({ pattern, textDesign, disabled, onApply, projectSlug, articleId, recommendedPattern, composition, onDraftApplied }: {
+  composition: ProjectArticleComposition;
+  onDraftApplied: (value: ProjectArticleComposition) => void;
   recommendedPattern?: ArticleProductionPattern;
   projectSlug: string;
   articleId: string;
@@ -54,6 +58,8 @@ export function ArticleProductionPatternControls({ pattern, textDesign, disabled
   return <fieldset disabled={disabled} className="mt-5 min-w-0 rounded-lg border border-slate-200 p-4">
     <legend className="px-2 font-black text-[#092046]">제작 패턴</legend>
     <p className="text-sm text-slate-600">적용된 패턴: {productionPatternDescriptions[saved].name}. 적용 후에도 모든 디자인을 직접 조정할 수 있습니다.</p>
+    <ArticleDesignDraftControls projectSlug={projectSlug} articleId={articleId} composition={composition} disabled={disabled || analysis === "loading"}
+      recommendation={recommendation} onApplied={onDraftApplied} />
     {isArticleProductionPattern(recommendedPattern) ? <div className="mt-3 rounded-lg bg-sky-50 p-3 text-sm [overflow-wrap:anywhere]">
       <p>기사 작성 단계에서 AI가 {productionPatternDescriptions[recommendedPattern].name}을 추천했습니다. 아래 변경 예정 항목을 확인하세요. 아직 적용되지 않았습니다.</p>
       <button type="button" className="dd-btn dd-btn-secondary mt-2" onClick={() => { setSelected(recommendedPattern); setConfirming(true); }}>추천 패턴 확인/적용</button>
