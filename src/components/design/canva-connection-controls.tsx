@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { StagingE2ENotice } from "./staging-e2e-status";
 export function CanvaConnectionControls({projectSlug}:{projectSlug:string}) {
   const [status,setStatus]=useState("loading"); const [notice,setNotice]=useState(""); const [busy,setBusy]=useState(false);
   const [disconnect,setDisconnect]=useState(false);const pending=useRef(false);
@@ -22,10 +23,11 @@ export function CanvaConnectionControls({projectSlug}:{projectSlug:string}) {
     }catch(e){setNotice(e instanceof Error?e.message:"연결 요청을 처리하지 못했습니다.");}finally{pending.current=false;setBusy(false);}
   }
   return <section aria-label="Canva 연결" className="mb-4 rounded border border-slate-200 p-3">
-    <h3 className="font-bold">Canva 연결</h3><p className="my-2 text-sm">{status==="connected"?"연결됨":status==="loading"?"확인 중":status==="setup_required"?"Canva 연결 설정 필요":"연결 필요 · 인증 실패 시 다시 연결하세요"}</p>
+    <h3 className="font-bold">Canva 연결</h3><p className="my-2 text-sm">{status==="connected"?"연결됨":status==="loading"?"확인 중":status==="staging_only"?"고정 Staging 전용":status==="setup_required"?"Canva 연결 설정 필요":"연결 필요 · 인증 실패 시 다시 연결하세요"}</p>
     <p className="text-sm text-slate-600">현재 프로젝트와 관리자 계정 전용 연결입니다. 글자 자동 입력만 지원합니다.</p>
     <p role="status" className="my-2 text-sm">{notice}</p>
-    {status!=="loading" && <button type="button" disabled={busy || status==="setup_required"} className="rounded bg-blue-950 px-3 py-2 text-sm font-bold text-white disabled:opacity-50" onClick={()=>void run()}>{busy?"처리 중":status==="connected"?"Canva 다시 연결":"Canva 연결"}</button>}
+    {status==="staging_only" && <StagingE2ENotice/>}
+    {status!=="loading" && <button type="button" disabled={busy || status==="setup_required" || status==="staging_only"} className="rounded bg-blue-950 px-3 py-2 text-sm font-bold text-white disabled:opacity-50" onClick={()=>void run()}>{busy?"처리 중":status==="connected"?"Canva 다시 연결":"Canva 연결"}</button>}
     {status==="connected" && <button type="button" disabled={busy} className="ml-2 rounded border px-3 py-2 text-sm" onClick={()=>setDisconnect(true)}>연결 해제</button>}
     {disconnect && <div className="mt-3 rounded bg-slate-50 p-3"><p>이 프로젝트의 Canva 연결을 해제할까요? 기사와 디자인은 유지됩니다.</p><button type="button" disabled={busy} className="mr-2 mt-2 rounded border px-3 py-2 text-sm" onClick={()=>void run(true)}>연결 해제 확인</button><button type="button" disabled={busy} onClick={()=>setDisconnect(false)}>취소</button></div>}
   </section>;

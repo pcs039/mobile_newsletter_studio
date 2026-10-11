@@ -1,3 +1,4 @@
+import { requireStagingE2E } from "@/lib/staging-environment";
 import { canvaAdmin, canvaFailure, canvaJson, sameOrigin } from "@/lib/canva-api-access";
 import { CanvaConnectError, digest, readCanvaJob, textAutofill } from "@/lib/canva-connect-contract";
 import { createCanvaConfirmation, verifyCanvaConfirmation } from "@/lib/canva-confirmation";
@@ -11,6 +12,7 @@ export const maxDuration=60;
 function publicExecution(e: Execution) { return { status:e.status, ...(e.job ? {job:e.job} : {}) }; }
 export async function GET(request: Request) {
   try {
+    requireStagingE2E(request);
     const url=new URL(request.url); const access=await canvaAdmin(url.searchParams.get("projectSlug")||""); if(!access.ok) return access.response;
     const articleId=url.searchParams.get("articleId");
     if(!articleId || !canvaUuid.test(articleId)) throw new CanvaConnectError(400,"저장된 기사를 선택하세요.");
@@ -32,6 +34,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
+    requireStagingE2E(request);
     sameOrigin(request); const p=await request.json();
     if(!p || Object.keys(p).some(k=>!["projectSlug","articleId","templateId","action","confirmation","requestKey"].includes(k)) || typeof p.projectSlug!=="string" || !canvaUuid.test(p.articleId||"") || !canvaUuid.test(p.templateId||"") || !["prepare","execute"].includes(p.action)) throw new CanvaConnectError(400,"기사와 템플릿을 확인해 주세요.");
     const access=await canvaAdmin(p.projectSlug);if(!access.ok) return access.response;

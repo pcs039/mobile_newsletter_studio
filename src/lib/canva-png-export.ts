@@ -1,3 +1,4 @@
+import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { createHash } from "node:crypto";
 import { CanvaConnectError } from "@/lib/canva-connect-contract";
 
@@ -7,12 +8,7 @@ export type CanvaImportAssetType = typeof canvaImportAssetTypes[number];
 
 // This first rollout deliberately accepts only the approved Staging database.
 // A later Production rollout needs an explicit change/review, not an env typo.
-export function canvaPngImportEnabled() {
-  try {
-    return process.env.VERCEL_ENV !== "production" &&
-      new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "").hostname === "mvrkpmffuhcqwisqvpqi.supabase.co";
-  } catch { return false; }
-}
+export function canvaPngImportEnabled() { return stagingEnvironmentConfigured(); }
 
 export function canvaImportAssetId(projectId: string, designId: string) {
   const hash = createHash("sha256").update(JSON.stringify(["canva-png-v1", projectId, designId])).digest("hex").slice(0, 32);

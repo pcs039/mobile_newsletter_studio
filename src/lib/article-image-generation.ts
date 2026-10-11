@@ -1,3 +1,4 @@
+import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { inflateSync } from "node:zlib";
 import { buildVisualAssetSpecifications } from "@/lib/article-visual-asset-spec";
@@ -6,9 +7,7 @@ import { validateCanvaPng } from "@/lib/canva-png-export";
 
 export const generatedImageMaxBytes = 2_500_000;
 export class ImageGenerationError extends Error { constructor(public status: number, message: string) { super(message); } }
-export function imageGenerationEnabled() {
-  try { return process.env.VERCEL_ENV !== "production" && new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "").hostname === "mvrkpmffuhcqwisqvpqi.supabase.co"; } catch { return false; }
-}
+export function imageGenerationEnabled() { return stagingEnvironmentConfigured(); }
 export type GeneratableRole = "hero_background" | "hero_illustration";
 export function buildImageGenerationRequest(concept: ArticleDesignConcept, role: GeneratableRole, palette: string[]) {
   const specification = buildVisualAssetSpecifications(concept, palette).find(s => s.assetRole === role);

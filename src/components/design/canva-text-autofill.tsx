@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CanvaPreviewField } from "@/lib/canva-template";
 import { CanvaPngImportControls } from "./canva-png-import-controls";
+import { useStagingE2E, StagingE2ENotice } from "./staging-e2e-status";
 type Job={id:string;status:"in_progress"|"success"|"failed";designId?:string;editUrl?:string;viewUrl?:string};
 type Execution={status:string;job?:Job};
 export function CanvaTextAutofill({projectSlug,articleId,templateId}:{projectSlug:string;articleId:string;templateId:string}) {
@@ -9,6 +10,7 @@ export function CanvaTextAutofill({projectSlug,articleId,templateId}:{projectSlu
   const [prepared,setPrepared]=useState<{fields:CanvaPreviewField[];confirmation:string;imageExcluded:boolean}|null>(null);
   const [execution,setExecution]=useState<Execution|null>(null);const pending=useRef(false);const key=useRef<string|null>(null);const alive=useRef(true);
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
+  const e2e = useStagingE2E();
   async function json(method:string,body?:object){
     const r=await fetch(method==="GET"?`/api/canva/autofill?${new URLSearchParams({projectSlug,articleId})}`:"/api/canva/autofill",{method,headers:{"Content-Type":"application/json"},signal:AbortSignal.timeout(45000),...(body?{body:JSON.stringify({projectSlug,articleId,templateId,...body})}:{})});
     const d=await r.json();if(!r.ok)throw Error(d.message||"Canva 요청을 확인하지 못했습니다.");return d;
@@ -39,6 +41,7 @@ export function CanvaTextAutofill({projectSlug,articleId,templateId}:{projectSlu
     finally{pending.current=false;if(alive.current)setBusy(false);}
   }
   const running=execution && ["sending","unknown","in_progress"].includes(execution.status);
+  if(e2e !== "enabled") return e2e === "loading" ? <p>Canva 실행 환경 확인 중…</p> : <StagingE2ENotice/>;
   return <section aria-label="Canva 글자 자동 입력" className="mt-3 rounded border border-slate-200 p-3">
     <h4 className="font-bold">Canva 디자인 만들기</h4><p className="my-2 text-sm text-slate-600">저장된 글자를 전달해 새 디자인을 만듭니다. 원본 Canva 디자인과 기사 디자인은 변경하지 않습니다.</p>
     <div className="flex flex-wrap gap-2"><button type="button" disabled={busy||!!running} className="rounded border px-3 py-2 text-sm disabled:opacity-50" onClick={()=>void run("prepare")}>전달 내용 확인</button><button type="button" disabled={busy} className="rounded border px-3 py-2 text-sm disabled:opacity-50" onClick={()=>void run("status")}>진행 작업 확인</button></div>

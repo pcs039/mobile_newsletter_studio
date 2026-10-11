@@ -1,3 +1,4 @@
+import { StagingBadge } from "@/components/staging-badge";
 import Link from "next/link";
 import { AdminMainNavigation } from "@/components/admin-main-navigation";
 import { DashboardProjectList } from "@/components/dashboard-project-list";
@@ -115,6 +116,7 @@ export default async function Home() {
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950">
+      <StagingBadge/>
       <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">

@@ -1,3 +1,4 @@
+import { requireStagingE2E, stagingRequestAllowed } from "@/lib/staging-environment";
 import { canvaAdmin, canvaFailure, canvaJson, sameOrigin } from "@/lib/canva-api-access";
 import { CanvaConnectError } from "@/lib/canva-connect-contract";
 import { accessToken, connectedCanvaRequest } from "@/lib/canva-connect-server";
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
   try {
     const u = new URL(request.url); const access = await canvaAdmin(u.searchParams.get("projectSlug") || "");
     if (!access.ok) return access.response;
-    if (!canvaPngImportEnabled()) return canvaJson({ ok: true, enabled: false });
+    if (!stagingRequestAllowed(request) || !canvaPngImportEnabled()) return canvaJson({ ok: true, enabled: false });
     const articleId = u.searchParams.get("articleId");
     if (!canvaUuid.test(articleId || "")) throw new CanvaConnectError(400, "저장된 기사를 선택하세요.");
     const row = await getConnection(access.project.id, access.user.id);
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    requireStagingE2E(request);
     sameOrigin(request);
     const p = await request.json();
     if (!p || Object.keys(p).some(k => !["projectSlug", "articleId", "designId", "action", "assetType"].includes(k)) ||
