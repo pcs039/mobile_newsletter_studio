@@ -6,6 +6,7 @@ import type { ProjectArticleComposition } from "@/lib/article-composition";
 import { conceptDirections, type ArticleDesignConcept } from "@/lib/article-design-concept";
 import { productionPatternDescriptions } from "@/lib/article-production-pattern";
 import { buildVisualAssetSpecifications, visualAssetRoles } from "@/lib/article-visual-asset-spec";
+import { ArticleVisualAssetGenerator } from "@/components/design/article-visual-asset-generator";
 
 type Proposal = Pick<ArticleDesignDraft, "pattern" | "changes" | "preserved" | "placements"> & { confirmation: string };
 export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, composition, onApplied }: {
@@ -17,6 +18,7 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, c
   const [selected, setSelected] = useState<ArticleDesignConcept | null>(null);
   const [fallback, setFallback] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [assetBusy, setAssetBusy] = useState(false);
   const [message, setMessage] = useState("");
   const inFlight = useRef<AbortController | null>(null);
   useEffect(() => () => inFlight.current?.abort(), []);
@@ -35,7 +37,7 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, c
     return body;
   }
   async function perform(action: "concepts" | "prepare" | "apply") {
-    if (inFlight.current || disabled) return;
+    if (inFlight.current || disabled || assetBusy) return;
     const controller = new AbortController(); inFlight.current = controller;
     setBusy(true); setMessage("");
     const timeout = setTimeout(() => controller.abort(), 60_000);
@@ -57,7 +59,7 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, c
     } finally { clearTimeout(timeout); inFlight.current = null; setBusy(false); }
   }
   return <div className="mt-3 min-w-0 rounded-lg border border-sky-200 p-3 [overflow-wrap:anywhere]">
-    <button type="button" className="dd-btn dd-btn-primary max-w-full" style={{ whiteSpace: "normal" }} disabled={disabled || busy} onClick={() => void perform("concepts")}>
+    <button type="button" className="dd-btn dd-btn-primary max-w-full" style={{ whiteSpace: "normal" }} disabled={disabled || busy || assetBusy} onClick={() => void perform("concepts")}>
       {busy ? "처리 중…" : "디자인 콘셉트 제안받기"}
     </button>
     <p className="mt-2 text-sm text-slate-600">저장된 기사와 디자인 기준입니다. 편집 중인 설정은 먼저 저장하세요. 변경 예정 항목을 확인한 뒤에만 적용됩니다.</p>
@@ -66,7 +68,7 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, c
       {concepts.length ? <section className="mt-3" aria-label="디자인 콘셉트 선택">
         <p className="text-sm text-slate-600">{fallback ? "AI 분석을 완료하지 못했거나 정보가 부족해 기본 3안을 제안합니다." : "기사에 어울리는 콘셉트 3안을 제안했습니다."} 색상과 여백 방향은 안내이며, 현재 색상·본문·기존 배치를 유지합니다.</p>
         <div className="mt-3 grid min-w-0 gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))" }} role="group" aria-label="콘셉트 3안">
-          {concepts.map(c => <button type="button" key={c.name} style={{ whiteSpace: "normal", overflowWrap: "anywhere" }} aria-pressed={selected === c} disabled={busy || disabled}
+          {concepts.map(c => <button type="button" key={c.name} style={{ whiteSpace: "normal", overflowWrap: "anywhere" }} aria-pressed={selected === c} disabled={busy || disabled || assetBusy}
             className={`min-w-0 rounded-lg border p-3 text-left text-sm ${selected === c ? "border-sky-700 bg-sky-50 ring-2 ring-sky-700" : "border-slate-200 bg-white"}`}
             onClick={() => { setSelected(c); setDraft(null); setMessage(""); }}>
             <span className="block font-bold">{c.name}</span>
@@ -81,7 +83,7 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, c
         </div>
         {selected ? <section className="mt-3 min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3" aria-label="비주얼 자산 계획">
           <h4 className="text-sm font-bold">비주얼 자산 계획</h4>
-          <p className="mt-1 text-xs text-slate-600">생성·저장하지 않는 계획입니다. 글자는 HTML로 유지하고 기관 브랜드를 우선합니다. 장식·반복 무늬는 선택적인 재사용 계획이며 자동 배치하지 않습니다.</p>
+          <p className="mt-1 text-xs text-slate-600">계획 확인만으로 생성·저장하지 않습니다. 글자는 HTML로 유지하고 기관 브랜드를 우선합니다. 장식·반복 무늬는 계획만 제공하며 생성·자동 배치하지 않습니다.</p>
           {visualAssets.length ? <ul className="mt-2 space-y-3 text-sm">
             {visualAssets.map(asset => <li key={asset.assetRole} className="min-w-0 border-t border-slate-200 pt-2">
               <p className="font-bold">{visualAssetRoles[asset.assetRole]}</p>
@@ -89,12 +91,13 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, c
               <p>스타일: {asset.visualStyle}</p>
               <p>크기: {asset.targetSize.width} × {asset.targetSize.height}px · {asset.aspectRatio}{asset.transparentBackground ? " · 투명 PNG" : " · 배경 포함"}</p>
               <p>Canva 사용: {asset.canvaUsage === "background" ? "배경" : asset.canvaUsage === "overlay" ? "겹쳐 쓰는 독립 자산" : "단독 이미지"}</p>
+              <ArticleVisualAssetGenerator key={`${projectSlug}:${articleId}:${JSON.stringify(selected)}:${asset.assetRole}`} projectSlug={projectSlug} articleId={articleId} concept={selected} specification={asset} disabled={disabled || busy || assetBusy} onBusy={setAssetBusy} />
             </li>)}
           </ul> : <p className="mt-2 text-sm">현재 디자인을 유지하며 추가 이미지 자산을 계획하지 않습니다.</p>}
         </section> : null}
         {!draft ? <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" className="dd-btn dd-btn-primary max-w-full" style={{ whiteSpace: "normal" }} disabled={!selected || busy || disabled || stale} onClick={() => void perform("prepare")}>이 콘셉트로 초안 만들기</button>
-          <button type="button" className="dd-btn dd-btn-secondary" disabled={busy} onClick={() => { setConcepts([]); setSelected(null); }}>취소</button>
+          <button type="button" className="dd-btn dd-btn-primary max-w-full" style={{ whiteSpace: "normal" }} disabled={!selected || busy || disabled || stale || assetBusy} onClick={() => void perform("prepare")}>이 콘셉트로 초안 만들기</button>
+          <button type="button" className="dd-btn dd-btn-secondary" disabled={busy || assetBusy} onClick={() => { setConcepts([]); setSelected(null); }}>취소</button>
         </div> : null}
         {stale && !draft ? <p className="mt-2 text-sm text-rose-800">편집 설정이 변경되었습니다. 콘셉트를 다시 제안받아 주세요.</p> : null}
       </section> : null}
@@ -107,8 +110,8 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, c
         <ul className="list-disc space-y-1 pl-5 text-sm">{draft.preserved.map(text => <li key={text}>{text}</li>)}</ul>
         {stale ? <p className="mt-2 text-sm text-rose-800">편집 설정이 변경되었습니다. 초안을 다시 만들어 주세요.</p> : null}
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" disabled={busy || disabled || stale} className="dd-btn dd-btn-primary" onClick={() => void perform("apply")}>초안 적용</button>
-          <button type="button" disabled={busy} className="dd-btn dd-btn-secondary" onClick={() => { setDraft(null); setMessage(""); }}>취소</button>
+          <button type="button" disabled={busy || disabled || stale || assetBusy} className="dd-btn dd-btn-primary" onClick={() => void perform("apply")}>초안 적용</button>
+          <button type="button" disabled={busy || assetBusy} className="dd-btn dd-btn-secondary" onClick={() => { setDraft(null); setMessage(""); }}>취소</button>
         </div>
       </section> : null}
     </div>
