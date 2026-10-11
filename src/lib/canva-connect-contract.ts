@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { CanvaPreviewField, CanvaTemplate } from "@/lib/canva-template";
 
-export const canvaScopes = ["design:content:read", "design:content:write", "design:meta:read", "brandtemplate:content:read"] as const;
+export const canvaScopes = ["design:content:read", "design:content:write", "design:meta:read", "brandtemplate:content:read", "asset:read", "asset:write"] as const;
 export class CanvaConnectError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }

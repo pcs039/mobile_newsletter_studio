@@ -6,7 +6,7 @@ const template={id:'11111111-1111-4111-8111-111111111111',name:'행사',external
 const fields=[{field:'EVENT_TITLE',type:'text',status:'ready',text:'<script>행사</script>'}];
 test('OAuth PKCE state, redirect allowlist and minimum scopes',()=>{
  const a=c.makeAuthorization('CLIENT','https://staging.example/api/canva/callback'),u=new URL(a.url);
- assert.equal(u.origin,'https://www.canva.com');assert.equal(u.searchParams.get('code_challenge'),crypto.createHash('sha256').update(a.verifier).digest('base64url'));assert.equal(u.searchParams.get('code_challenge_method'),'s256');assert(!u.href.includes(a.verifier));assert(c.matchesState(a.state,a.stateHash));assert(!c.matchesState('x',a.stateHash));assert(!c.matchesState(a.state,'bad'));assert.equal(c.canvaScopes.length,4);assert(!c.canvaScopes.some(s=>s.startsWith('asset:')));
+ assert.equal(u.origin,'https://www.canva.com');assert.equal(u.searchParams.get('code_challenge'),crypto.createHash('sha256').update(a.verifier).digest('base64url'));assert.equal(u.searchParams.get('code_challenge_method'),'s256');assert(!u.href.includes(a.verifier));assert(c.matchesState(a.state,a.stateHash));assert(!c.matchesState('x',a.stateHash));assert(!c.matchesState(a.state,'bad'));assert.deepEqual(u.searchParams.get('scope').split(' '),['design:content:read','design:content:write','design:meta:read','brandtemplate:content:read','asset:read','asset:write']);
  for(const v of ['http://evil.test/api/canva/callback','https://u:p@example.com/api/canva/callback','https://example.com/other','https://example.com/api/canva/callback?x=1'])assert.throws(()=>c.validateRedirect(v));
  assert.equal(c.validateRedirect('http://localhost:3001/api/canva/callback'),'http://localhost:3001/api/canva/callback');
 });
@@ -48,5 +48,19 @@ test('remote revoked token clears credentials, preserves execution guard; no ret
  // A renewed token works repeatedly without refresh or credential changes.
  row={access_token:'new-access',refresh_token:'new-refresh',expires_at:new Date(Date.now()+3600000).toISOString()};global.fetch=async()=>Response.json({dataset:{EVENT_TITLE:{type:'text'}}});for(let i=0;i<2;i++){const token=await m.accessToken(row,update);assert((await m.connectedCanvaRequest('/brand-templates/test/dataset',token,update)).dataset);}assert.equal(patches.length,0);
  row.expires_at='invalid';await assert.rejects(m.accessToken(row,update),e=>e.status===401);assert.equal(row.refresh_token,null);
+ }finally{global.fetch=original;}
+});
+
+test('token validation requires asset read/write and preserves all existing scopes',async()=>{
+ process.env.CANVA_CLIENT_ID='TEST';process.env.CANVA_CLIENT_SECRET='TEST_SECRET';process.env.CANVA_REDIRECT_URI='https://staging.example/api/canva/callback';
+ const m=load('src/lib/canva-connect-server.ts'),original=global.fetch;
+ const response={access_token:'test-access',refresh_token:'test-refresh',expires_in:3600,token_type:'Bearer'};
+ try{
+  for(const missing of c.canvaScopes){
+   global.fetch=async()=>Response.json({...response,scope:c.canvaScopes.filter(s=>s!==missing).join(' ')});
+   await assert.rejects(m.tokenRequest(new URLSearchParams({grant_type:'authorization_code',code:'test-code'})),e=>e.status===401);
+  }
+  global.fetch=async()=>Response.json({...response,scope:c.canvaScopes.join(' ')});
+  assert.equal((await m.tokenRequest(new URLSearchParams({grant_type:'authorization_code',code:'test-code'}))).access_token,'test-access');
  }finally{global.fetch=original;}
 });
