@@ -71,7 +71,7 @@ export function ArticleMobilePreviewModal({ isOpen, onClose, previewHref }: Arti
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-2 sm:p-5"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-1 sm:p-5"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -81,7 +81,7 @@ export function ArticleMobilePreviewModal({ isOpen, onClose, previewHref }: Arti
         role="dialog"
         aria-modal="true"
         aria-labelledby="article-mobile-preview-title"
-        className="max-h-[90dvh] w-full max-w-5xl overflow-y-auto rounded-lg bg-[#f4f8ff] p-3 shadow-2xl sm:p-5"
+        className="max-h-[90dvh] min-w-0 w-full max-w-5xl overflow-x-hidden overflow-y-auto rounded-lg bg-[#f4f8ff] p-2 shadow-2xl sm:p-5"
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div className="min-w-0">
