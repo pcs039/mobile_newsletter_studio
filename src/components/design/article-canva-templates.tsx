@@ -34,7 +34,7 @@ export function ArticleCanvaTemplates({ projectSlug, articleId, pattern }: { pro
   }
   const matches = templates.filter(t => t.productionPattern === pattern || t.productionPattern === "common");
   return <details className="my-4 min-w-0 rounded border border-slate-200 p-3"><summary className="cursor-pointer font-bold">Canva 제작 · 추천 템플릿 {matches.length}개</summary>
-    <p className="mt-2 text-sm text-slate-600">먼저 기사 데이터를 확인하세요. Canva 연결 후 글자만 새 디자인으로 만들 수 있습니다.</p>
+    <p className="mt-2 text-sm text-slate-600">먼저 기사 데이터를 확인하세요. Canva 연결 후 글자와 승인된 GPT 배경으로 새 디자인을 만들 수 있습니다.</p>
     <Link className="text-sm text-blue-800 underline" href={`/projects/${projectSlug}/design#canva-templates`}>Canva 템플릿 관리</Link>
     <p role="status" className="my-2 text-sm">{notice}</p>
     <label className="block text-sm">템플릿 선택<select className="mt-1 w-full min-w-0 rounded border border-slate-300 p-2" value={selected} disabled={busy} onChange={e => { setSelected(e.target.value); setFields(null); }}><option value="">템플릿을 선택하세요</option>{templates.map(t => <option key={t.id} value={t.id}>{matches.includes(t) ? "추천 · " : ""}{t.name} · {canvaTemplatePatterns[t.productionPattern]}</option>)}</select></label>
