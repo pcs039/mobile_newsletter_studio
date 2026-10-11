@@ -2,7 +2,10 @@ import type { ProjectContentArticle, ProjectDesignAsset } from "@/lib/newsletter
 import type { ProjectArticleComposition } from "@/lib/article-composition";
 import { isArticleCompositionAssetTypeCompatible } from "@/lib/article-composition";
 import { readArticleBodyDesign } from "@/lib/article-body-design";
+import { productionPatternDescriptions } from "@/lib/article-production-pattern";
 import type { ArticleProductionPattern } from "@/lib/article-production-pattern";
+import type { ArticleDesignConcept } from "@/lib/article-design-concept";
+import { conceptDirections } from "@/lib/article-design-concept";
 import type { ArticleTextDesign } from "@/lib/article-text-design";
 
 export type DraftSnapshot = {
@@ -54,6 +57,21 @@ function buildArticleDesignDraft(article: ProjectContentArticle, pattern: Articl
 }
 
 export function buildDraftForProject(projectId: string, article: ProjectContentArticle, pattern: ArticleProductionPattern,
-  assets: ProjectDesignAsset[], readyVisible: Record<string, string[]>, snapshot: DraftSnapshot) {
-  return buildArticleDesignDraft(article, pattern, assets.filter(a => a.projectId === projectId), readyVisible, snapshot);
+  assets: ProjectDesignAsset[], readyVisible: Record<string, string[]>, snapshot: DraftSnapshot, concept?: ArticleDesignConcept) {
+  const draft = buildArticleDesignDraft(article, pattern, assets.filter(a => a.projectId === projectId), readyVisible, snapshot);
+  if (!concept || pattern === "manual") return draft;
+  if (concept.layoutDirection === "editorial") delete draft.textDesign.bodyEmphasis;
+  const slots = concept.assetRole === "both" ? ["hero_background", "hero_illustration"] :
+    concept.assetRole === "background" ? ["hero_background"] : concept.assetRole === "illustration" ? ["hero_illustration"] : [];
+  draft.placements = draft.placements.filter(p => slots.includes(p.slot));
+  draft.changes = [
+    `제작 패턴: ${productionPatternDescriptions[pattern].name}`,
+    `라벨: ${draft.textDesign.label}`,
+    ...(draft.textDesign.bodyEmphasis ? [draft.textDesign.bodyEmphasis === "info" ? "기존 정보박스 강조" : "기존 인용문 강조"] : []),
+    ...(draft.textDesign.captionStyled ? ["기존 이미지 설명 스타일 적용"] : []),
+    ...draft.placements.map(p => `${p.slot === "hero_background" ? "옅은 배경판" : "상단 장식"}: ${p.name}`),
+  ];
+  draft.preserved.push(`색상 방향: ${conceptDirections.colorDirection[concept.colorDirection]} · 현재 기사 색상과 기관 기본색 유지 (새 색상 저장 없음)`);
+  if (!draft.placements.length) draft.preserved.push("새 자산 배치 없음");
+  return draft;
 }
