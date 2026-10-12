@@ -1,0 +1,35 @@
+{
+  "templateId": "event_festival_02",
+  "canvaBrandTemplateId": "EAHXxCyfpSI",
+  "imageReference": "MAHXzEWrQNA",
+  "posts": 4,
+  "samples": {
+    "short": {
+      "designId": "DAHX00M2njA",
+      "values": {"TITLE":"문화축제","EVENT_DATE":"10.25.","EVENT_PLACE":"시청광장","EVENT_SUMMARY":"시민 누구나 무료 참여","CTA":"참여하기"},
+      "observedLines": {"TITLE":1,"EVENT_DATE":1,"EVENT_PLACE":1,"EVENT_SUMMARY":1,"CTA":1},
+      "visualReady": true
+    },
+    "medium": {
+      "designId": "DAHX03axgyk",
+      "values": {"TITLE":"시민 문화 축제","EVENT_DATE":"10월 25일 10시","EVENT_PLACE":"시청광장 중앙무대","EVENT_SUMMARY":"공연과 체험을 즐기는 시민 축제입니다.","CTA":"행사 일정 확인"},
+      "observedLines": {"TITLE":2,"EVENT_DATE":2,"EVENT_PLACE":2,"EVENT_SUMMARY":1,"CTA":1},
+      "visualReady": true
+    },
+    "long": {
+      "designId": "DAHX0zR-Ynw",
+      "values": {"TITLE":"가을빛으로 물드는 도심,\n2026 시민문화축제 개최","EVENT_DATE":"2026년 10월 25일 10:00~18:00","EVENT_PLACE":"시청광장 및 시민문화회관 대강당 앞 안내 부스","EVENT_SUMMARY":"시민이 함께 만드는 지역 대표 문화행사가 오는 10월 25일 시청광장에서 열립니다. 공연·체험·전시·가족 프로그램이 하루 동안 이어지며, 누구나 무료로 참여할 수 있습니다.","CTA":"행사 일정과 장소 및 신청 방법 자세히 확인"},
+      "overflowFields": ["TITLE","EVENT_DATE","EVENT_PLACE","EVENT_SUMMARY"],
+      "ctaOneLineFits": true,
+      "visualReady": false
+    },
+    "boundary": {
+      "designId": "DAHX06jMcX0",
+      "values": {"TITLE":"문화축제","EVENT_DATE":"10.25.","EVENT_PLACE":"시청광장","EVENT_SUMMARY":"공연과 체험을 즐기는 시민 축제입니다. 시민 누구나 무료로 참여하세요.","CTA":"행사 일정과 장소 및 신청 방법 자세히 확인 행사 일정과 장소 및 신청 방법 자세히 확인"},
+      "summaryObservedLines": 2,
+      "summaryReviewRequired": true,
+      "ctaOverflowObserved": true,
+      "visualReady": false
+    }
+  }
+}
