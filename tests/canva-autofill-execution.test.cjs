@@ -152,10 +152,33 @@ test('upload-only receipt asset/source mismatch and stale hash remain blocked', 
 test('real sending/unknown Autofill, any retained job and pending PNG import cannot use upload-only exception', async () => {
   const f = uploadOnlyFixture();
   for (const patch of [{ status: 'sending' }, { status: 'unknown' }, { status: 'in_progress' },
-    { job: { id: 'OLD', status: 'in_progress' } }, { job: { id: 'OLD', status: 'success' } },
+    { job: { id: 'OLD', status: 'in_progress' } }, { job: { id: 'OLD', status: 'failed' } },
     ...['sending', 'unknown', 'in_progress', 'ready'].map(status => ({ pngImport: { status } }))]) {
     const ctx = setup({ templateId: f.templateId, row: { execution: { ...f.execution, ...patch } } });
     assert.equal((await ctx.run({ prepared: f.input })).status, 'canva_error');
+    assert.equal(ctx.calls.length, 0); assert.equal(ctx.patches.length, 0);
+  }
+});
+test('legacy successful job plus completed upload and new hash preserves flat previousSuccess; replay reuses current job', async () => {
+  const f = uploadOnlyFixture();
+  const oldJob = { id: 'OLD', status: 'success', designId: 'OLD_DESIGN', editUrl: 'https://www.canva.com/design/OLD_DESIGN/edit' };
+  const old = { ...f.execution, job: oldJob, previousSuccess: { key: 'older', job: oldJob } };
+  const ctx = setup({ templateId: f.templateId, row: { execution: old } });
+  assert.equal((await ctx.run({ prepared: f.input })).status, 'created');
+  const expected = { key: old.key, hash: old.hash, articleId: old.articleId, templateId: old.templateId, job: oldJob };
+  assert.deepEqual(ctx.patches.find(p => p.execution?.status === 'sending').execution.previousSuccess, expected);
+  assert.deepEqual(ctx.row().execution.previousSuccess, expected);
+  assert.deepEqual(ctx.row().execution.backgroundUpload, f.upload);
+  assert.equal((await ctx.run({ prepared: f.input })).duplicate, true);
+  assert.equal(ctx.calls.filter(c => c.body).length, 1);
+});
+test('same key changed hash and pending/failed job or PNG import cannot archive a legacy execution', async () => {
+  const f = uploadOnlyFixture();
+  for (const patch of [{ key: requestKey, job: { id: 'OLD', status: 'success' } },
+    { job: { id: 'OLD', status: 'in_progress' } }, { job: { id: 'OLD', status: 'failed' } },
+    { job: { id: 'OLD', status: 'success' }, pngImport: { status: 'in_progress' } }]) {
+    const ctx = setup({ templateId: f.templateId, row: { execution: { ...f.execution, ...patch } } });
+    assert.equal((await ctx.run({ prepared: f.input })).ok, false);
     assert.equal(ctx.calls.length, 0); assert.equal(ctx.patches.length, 0);
   }
 });

@@ -101,12 +101,17 @@ export async function executeCanonicalCanvaAutofill(request: Request, input: {
       // Legacy upload-only records can retain the outer uploading status after
       // a successful upload. This is safe only without ANY Autofill job and
       // with every freshly validated image bound to that exact upload receipt.
-      const completedUploadOnly = previous?.status === "uploading" && !previous.job && images.length > 0 &&
+      const completedBackgroundUpload = previous?.status === "uploading" && images.length > 0 &&
         previous.backgroundUpload?.status === "success" && images.every(image =>
           image.asset.id === previous.backgroundUpload!.sourceAssetId &&
           image.sourceHash === previous.backgroundUpload!.sourceHash &&
           image.upload?.assetId === previous.backgroundUpload!.assetId);
-      if (previous && ["sending", "unknown", "uploading", "in_progress"].includes(previous.status) && !(same && previous.job) && !completedUploadOnly)
+      const completedUploadOnly = completedBackgroundUpload && !previous?.job;
+      const completedUploadWithPastSuccess = completedBackgroundUpload && previous?.job?.status === "success" &&
+        previous.hash !== hash && previous.key !== input.requestKey;
+      if (!same && previous?.job && previous.job.status !== "success")
+        return fail("canva_error", "이전 미완료·실패 생성 결과를 새 요청으로 재실행하지 않습니다.");
+      if (previous && ["sending", "unknown", "uploading", "in_progress"].includes(previous.status) && !(same && previous.job) && !completedUploadOnly && !completedUploadWithPastSuccess)
         return fail("canva_error", "이전 생성 결과가 미확정입니다. Canva에서 확인하기 전에는 재실행하지 않습니다.");
       if (same && previous?.status === "failed") return fail("canva_error", "이전 요청이 실패했습니다. 자동 재실행하지 않습니다.");
       const token = await accessToken(row, update);
@@ -121,7 +126,10 @@ export async function executeCanonicalCanvaAutofill(request: Request, input: {
       // Persist sending BEFORE the single POST. A crash or uncertain response
       // blocks both same-key and new-key replay under the existing DB lease.
       const execution: Execution = { key: input.requestKey, hash, articleId: article.id, templateId: template.id, status: "sending",
-        ...(images.length ? { backgroundUpload: row.execution!.backgroundUpload } : {}) };
+        ...(images.length ? { backgroundUpload: row.execution!.backgroundUpload } : {}),
+        ...(previous?.job?.status === "success" && previous.hash !== hash ? {
+          previousSuccess: { key: previous.key, hash: previous.hash, articleId: previous.articleId, templateId: previous.templateId, job: previous.job }
+        } : previous?.previousSuccess ? { previousSuccess: previous.previousSuccess } : {}) };
       await update({ execution });
       try {
         const job = readCanvaJob(await connectedCanvaRequest("/autofills", token, update, payload));
