@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ArticlePatternRecommendation } from "@/lib/article-pattern-recommendation";
 import type { ArticleDesignDraft } from "@/lib/article-design-draft";
 import type { ProjectArticleComposition } from "@/lib/article-composition";
@@ -8,14 +8,22 @@ import { productionPatternDescriptions } from "@/lib/article-production-pattern"
 import { buildVisualAssetSpecifications, visualAssetRoles } from "@/lib/article-visual-asset-spec";
 import { ArticleVisualAssetGenerator } from "@/components/design/article-visual-asset-generator";
 
+import { ArticleTemplateRecommendations } from "@/components/design/article-template-recommendations";
+import { recommendArticleDesignTemplates, type TemplateRecommendationArticle } from "@/lib/article-design-template-recommendation";
+
 type Proposal = Pick<ArticleDesignDraft, "pattern" | "changes" | "preserved" | "placements"> & { confirmation: string };
-export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, composition, onApplied }: {
+export function ArticleDesignDraftControls({ projectSlug, articleId, article, disabled, composition, onApplied }: {
+  article: TemplateRecommendationArticle;
   projectSlug: string; articleId: string; disabled: boolean; composition: ProjectArticleComposition;
   recommendation: ArticlePatternRecommendation | null; onApplied: (value: ProjectArticleComposition) => void;
 }) {
   const [draft, setDraft] = useState<Proposal | null>(null);
   const [concepts, setConcepts] = useState<ArticleDesignConcept[]>([]);
   const [selected, setSelected] = useState<ArticleDesignConcept | null>(null);
+  const templateRecommendations = useMemo(() => {
+    try { return recommendArticleDesignTemplates(article, selected ?? undefined); }
+    catch { return []; }
+  }, [article, selected]);
   const [fallback, setFallback] = useState(false);
   const [busy, setBusy] = useState(false);
   const [assetBusy, setAssetBusy] = useState(false);
@@ -59,7 +67,9 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, disabled, c
     } finally { clearTimeout(timeout); inFlight.current = null; setBusy(false); }
   }
   return <div className="mt-3 min-w-0 rounded-lg border border-sky-200 p-3 [overflow-wrap:anywhere]">
-    <button type="button" className="dd-btn dd-btn-primary max-w-full" style={{ whiteSpace: "normal" }} disabled={disabled || busy || assetBusy} onClick={() => void perform("concepts")}>
+    <h3 className="font-black text-[#092046]">AI 디자인 추천</h3>
+    <ArticleTemplateRecommendations key={articleId} recommendations={templateRecommendations} disabled={disabled || busy || assetBusy} />
+    <button type="button" className="dd-btn dd-btn-primary mt-4 max-w-full" style={{ whiteSpace: "normal" }} disabled={disabled || busy || assetBusy} onClick={() => void perform("concepts")}>
       {busy ? "처리 중…" : "디자인 콘셉트 제안받기"}
     </button>
     <p className="mt-2 text-sm text-slate-600">저장된 기사와 디자인 기준입니다. 편집 중인 설정은 먼저 저장하세요. 변경 예정 항목을 확인한 뒤에만 적용됩니다.</p>
