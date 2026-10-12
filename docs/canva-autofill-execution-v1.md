@@ -24,9 +24,10 @@ Image fields must point to that exact existing receipt. Other uploaded assets or
 Use the existing 90-second project/admin connection lease. Save status=sending before one POST `/autofills`.
 Same input hash/article/template success returns its saved design even with another requestKey. Reusing the same key for changed input is blocked.
 An uncertain response persists unknown (or leaves sending if persistence fails), blocking blind retry, including with a new key. In-flight legacy requests and PNG imports are respected.
+An outer uploading status is accepted as completed upload-only preparation only when there is no Autofill job, at least one validated image binding, and the successful upload receipt's source ID, Canva asset ID and fresh source hash all match. Pending PNG imports still block. Any retained job (even an old success job) prevents this exception; no persisted records are manually cleared. The successful receipt is carried into the new sending execution.
 No automatic POST retry. Async results return in_progress with jobId. A later explicit invocation performs at most one GET of the saved job and never recreates it.
 created is returned only from a validated success response; identifiers/URLs come from readCanvaJob. Provider exceptions are redacted.
 
 ## Real E2E
 
-Mock provider tests only at this implementation stage. No push/deployment is performed, and no new adapter is running on fixed Staging yet. Actual Staging creation requires an explicitly prepared fully populated canonical template plus a deployed adapter. No Production design/DB/Storage writes occur.
+Unit/mock validation is complete; actual fixed Staging Autofill creation remains pending. The adapter is deployed as server-only code, without a new invocation route or UI binding. Staging OAuth and a fully populated event_festival_02 payload with a successful background upload receipt have been prepared. The current legacy record also retains an older successful Autofill job, so it is not a job-free upload-only record and the narrow guard exception does not apply to that record. Real creation needs separate authorization and resolution of this execution provenance; no manual DB bypass or new creation POST is performed during guard validation. No Production design/DB/Storage writes occur.

@@ -98,7 +98,15 @@ export async function executeCanonicalCanvaAutofill(request: Request, input: {
       if (same && previous?.status === "success" && !previous.job) return fail("canva_error", "기존 성공 결과 식별자가 없습니다. Canva에서 먼저 확인하세요.");
       if (previous?.pngImport && ["sending", "unknown", "in_progress", "ready"].includes(previous.pngImport.status))
         return fail("canva_error", "기존 PNG 가져오기를 먼저 확인하세요.");
-      if (previous && ["sending", "unknown", "uploading", "in_progress"].includes(previous.status) && !(same && previous.job))
+      // Legacy upload-only records can retain the outer uploading status after
+      // a successful upload. This is safe only without ANY Autofill job and
+      // with every freshly validated image bound to that exact upload receipt.
+      const completedUploadOnly = previous?.status === "uploading" && !previous.job && images.length > 0 &&
+        previous.backgroundUpload?.status === "success" && images.every(image =>
+          image.asset.id === previous.backgroundUpload!.sourceAssetId &&
+          image.sourceHash === previous.backgroundUpload!.sourceHash &&
+          image.upload?.assetId === previous.backgroundUpload!.assetId);
+      if (previous && ["sending", "unknown", "uploading", "in_progress"].includes(previous.status) && !(same && previous.job) && !completedUploadOnly)
         return fail("canva_error", "이전 생성 결과가 미확정입니다. Canva에서 확인하기 전에는 재실행하지 않습니다.");
       if (same && previous?.status === "failed") return fail("canva_error", "이전 요청이 실패했습니다. 자동 재실행하지 않습니다.");
       const token = await accessToken(row, update);

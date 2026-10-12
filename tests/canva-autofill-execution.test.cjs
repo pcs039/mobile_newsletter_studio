@@ -107,3 +107,64 @@ test('image execution reuses matching durable upload receipt and fresh approved 
   assert.equal((await setup({ ...options, imageStale: true }).run({ prepared: input })).status, 'not_ready');
   assert.equal((await setup({ templateId }).run({ prepared: input })).status, 'not_ready');
 });
+
+function uploadOnlyFixture() {
+  const templateId = 'policy_support_02';
+  const upload = { sourceAssetId: 'asset', sourceHash: 'a'.repeat(64), status: 'success', jobId: 'UPLOAD', assetId: 'IMAGE' };
+  const input = prepared(templateId, [{ field: 'MAIN_IMAGE', sourceHash: upload.sourceHash,
+    asset: { id: 'asset', projectId: project.id, isActive: true, approvalStatus: 'approved', mimeType: 'image/png' }, upload }]);
+  const execution = { backgroundUpload: upload, status: 'uploading', key: 'old-upload', hash: 'old-upload-hash', articleId, templateId };
+  return { templateId, upload, input, execution };
+}
+test('completed matching upload-only execution reaches live dataset validation without creation or writes', async () => {
+  const f = uploadOnlyFixture();
+  const ctx = setup({ templateId: f.templateId, row: { execution: f.execution }, dataset: { dataset: {} } });
+  assert.equal((await ctx.run({ prepared: f.input })).status, 'dataset_mismatch');
+  assert.equal(ctx.calls.length, 1); assert(ctx.calls[0].path.endsWith('/dataset'));
+  assert.equal(ctx.calls.filter(c => c.body).length, 0); assert.equal(ctx.patches.length, 0);
+});
+test('completed upload-only receipt survives mock sending and successful creation; duplicate replay creates nothing', async () => {
+  const f = uploadOnlyFixture();
+  const ctx = setup({ templateId: f.templateId, row: { execution: f.execution } });
+  assert.equal((await ctx.run({ prepared: f.input })).status, 'created');
+  const sending = ctx.patches.find(p => p.execution?.status === 'sending');
+  assert.deepEqual(sending.execution.backgroundUpload, f.upload);
+  assert.deepEqual(ctx.row().execution.backgroundUpload, f.upload);
+  assert.equal((await ctx.run({ prepared: f.input })).duplicate, true);
+  assert.equal(ctx.calls.filter(c => c.body).length, 1);
+});
+test('sending, unknown and in_progress background uploads remain blocked before all Canva calls', async () => {
+  const f = uploadOnlyFixture();
+  for (const status of ['sending', 'unknown', 'in_progress']) {
+    const ctx = setup({ templateId: f.templateId, row: { execution: { ...f.execution, backgroundUpload: { ...f.upload, status } } } });
+    assert.equal((await ctx.run({ prepared: f.input })).status, 'not_ready');
+    assert.equal(ctx.calls.length, 0); assert.equal(ctx.patches.length, 0);
+  }
+});
+test('upload-only receipt asset/source mismatch and stale hash remain blocked', async () => {
+  const f = uploadOnlyFixture();
+  for (const patch of [{ assetId: 'OTHER' }, { sourceAssetId: 'other-asset' }, { sourceHash: 'b'.repeat(64) }]) {
+    const ctx = setup({ templateId: f.templateId, row: { execution: { ...f.execution, backgroundUpload: { ...f.upload, ...patch } } } });
+    assert.equal((await ctx.run({ prepared: f.input })).status, 'not_ready');
+    assert.equal(ctx.calls.length, 0); assert.equal(ctx.patches.length, 0);
+  }
+});
+test('real sending/unknown Autofill, any retained job and pending PNG import cannot use upload-only exception', async () => {
+  const f = uploadOnlyFixture();
+  for (const patch of [{ status: 'sending' }, { status: 'unknown' }, { status: 'in_progress' },
+    { job: { id: 'OLD', status: 'in_progress' } }, { job: { id: 'OLD', status: 'success' } },
+    ...['sending', 'unknown', 'in_progress', 'ready'].map(status => ({ pngImport: { status } }))]) {
+    const ctx = setup({ templateId: f.templateId, row: { execution: { ...f.execution, ...patch } } });
+    assert.equal((await ctx.run({ prepared: f.input })).status, 'canva_error');
+    assert.equal(ctx.calls.length, 0); assert.equal(ctx.patches.length, 0);
+  }
+});
+test('image Autofill in_progress job is polled on replay without a second POST and keeps upload receipt', async () => {
+  const f = uploadOnlyFixture();
+  const ctx = setup({ templateId: f.templateId, pending: true, row: { execution: f.execution } });
+  assert.equal((await ctx.run({ prepared: f.input })).status, 'in_progress');
+  assert.equal((await ctx.run({ prepared: f.input })).status, 'created');
+  assert.equal(ctx.calls.filter(c => c.body).length, 1);
+  assert.equal(ctx.calls.filter(c => c.path === '/autofills/JOB').length, 1);
+  assert.deepEqual(ctx.row().execution.backgroundUpload, f.upload);
+});
