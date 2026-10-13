@@ -12,10 +12,10 @@ export function CanvaDesignReviewControls({ review, templateName, disabled, onAc
     <p className="mt-1 text-xs text-slate-600">디자인 ID: {review.designId} · 제작 완료</p>
     <p className="mt-2 text-sm">{approved ? "Canva에서 다시 수정할 수 있습니다." : review.status === "needs_revision" ? "수정 내용을 Canva에서 확인한 뒤 다시 승인하세요." : "생성 결과를 확인한 뒤 사용할 디자인을 결정하세요."}</p>
     <div className="mt-3 flex flex-wrap gap-2">
-      <a className="dd-btn dd-btn-secondary max-w-full" style={{ whiteSpace: "normal" }} href={review.editUrl} target="_blank" rel="noopener noreferrer" onClick={() => onAction("open")}>{approved ? "Canva에서 열기" : "Canva에서 확인"}</a>
+      <a className="dd-btn dd-btn-secondary max-w-full" style={{ whiteSpace: "normal" }} href={review.editUrl} target="_blank" rel="noopener noreferrer" aria-disabled={disabled} onClick={event => { if (disabled) event.preventDefault(); else onAction("open"); }}>{approved ? "Canva에서 열기" : "Canva에서 확인"}</a>
       {approved ? <button type="button" disabled={disabled} className="dd-btn dd-btn-secondary max-w-full" onClick={() => onAction("cancel")}>선택 취소</button> : <>
         <button type="button" disabled={disabled} className="dd-btn dd-btn-primary max-w-full" onClick={() => onAction("approve")}>이 디자인 사용</button>
-        <a className="dd-btn dd-btn-secondary max-w-full" style={{ whiteSpace: "normal" }} href={review.editUrl} target="_blank" rel="noopener noreferrer" onClick={() => onAction("revise")}>Canva에서 수정</a>
+        <a className="dd-btn dd-btn-secondary max-w-full" style={{ whiteSpace: "normal" }} href={review.editUrl} target="_blank" rel="noopener noreferrer" aria-disabled={disabled} onClick={event => { if (disabled) event.preventDefault(); else onAction("revise"); }}>Canva에서 수정</a>
       </>}
       <button type="button" disabled={disabled} className="dd-btn dd-btn-secondary max-w-full" onClick={onChooseAnother}>다른 디자인 선택</button>
     </div>

@@ -46,22 +46,24 @@ test('download rejects redirect/failure, MIME and size without leaking signed UR
 });
 test('import route requires completed same-project result; dedup skips Canva; URL never persisted',async()=>{
  const articleId='11111111-1111-4111-8111-111111111111';let calls=[],saved=[],asset=null,allowed=true,enabled=true;
- let row={execution:{articleId,status:'success',job:{status:'success',designId:'D123'}}};let failure=null;
+ let row={execution:{articleId,templateId:'event_festival_02',hash:'hash',status:'success',job:{status:'success',designId:'D123'},designReview:{status:'approved',designId:'D123',articleId,templateId:'event_festival_02',snapshotHash:'snapshot',executionHash:'hash'}}};let failure=null;
  const route=loader({
   '@/lib/staging-environment':{requireStagingE2E:()=>{},stagingRequestAllowed:()=>true},
   '@/lib/canva-connect-contract':load('src/lib/canva-connect-contract.ts'),
   '@/lib/canva-api-access':{sameOrigin:r=>{if(r.headers.get('origin')!=='https://staging.example')throw Error('origin');},canvaAdmin:async()=>allowed?{ok:true,project:{id:'p',slug:'p'},user:{id:'admin'}}:{ok:false,response:Response.json({}, {status:401})},canvaJson:Response.json,canvaFailure:e=>Response.json({message:e.message},{status:e.status||400})},
+  '@/lib/canva-design-approval':{prepareDesignApproval:async()=>({snapshot:'snapshot',binding:'binding'}),requireDesignApproval:load('src/lib/canva-design-approval.ts').requireDesignApproval},
   '@/lib/canva-connection-repository':{getConnection:async()=>row,withConnectionLock:async(_p,_u,f)=>f(row,async p=>{saved.push(p);Object.assign(row,p);return row;})},
   '@/lib/newsletter-repository':{getProjectContent:async()=>({source:'supabase',articles:[{id:articleId,title:'기사'}]})},
   '@/lib/canva-connect-server':{accessToken:async()=> 'test-only',connectedCanvaRequest:async path=>{calls.push(path);if(path.endsWith('export-formats'))return {formats:{png:{}}};if(path.startsWith('/designs/'))return {design:{id:'D123',page_count:1}};if(failure)throw failure;return {job:{id:'export1',status:'success',urls:['https://export-download.canva.com/x']}};}},
   '@/lib/canva-png-export':{...png,canvaPngImportEnabled:()=>enabled,downloadCanvaPng:async()=>({file:new File(['png'],'a.png',{type:'image/png'})})},
   '@/lib/canva-png-asset-repository':{findCanvaPngAsset:async()=>asset,registerCanvaPngAsset:async()=>{asset={id:'asset',name:'기사 PNG'};return asset;}},
  })('src/app/api/canva/png-import/route.ts');
- const request=(extra={})=>new Request('https://staging.example/api/canva/png-import',{method:'POST',headers:{origin:'https://staging.example','Content-Type':'application/json'},body:JSON.stringify({projectSlug:'p',articleId,designId:'D123',action:'start',assetType:'illustration',...extra})});
+ const request=(extra={})=>new Request('https://staging.example/api/canva/png-import',{method:'POST',headers:{origin:'https://staging.example','Content-Type':'application/json'},body:JSON.stringify({projectSlug:'p',articleId,designId:'D123',templateId:'event_festival_02',action:'start',assetType:'illustration',...extra})});
  assert.equal((await route.POST(request({designId:'D_other'}))).status,404);assert.equal(calls.length,0);
  allowed=false;assert.equal((await route.POST(request())).status,401);allowed=true;
  enabled=false;assert.equal((await route.POST(request())).status,403);enabled=true;
- const first=await route.POST(request());assert.equal(first.status,200);assert.equal((await first.json()).import.status,'success');
+ const first=await route.POST(request());assert.equal(first.status,200);assert.equal((await first.json()).import.status,'ready');
+ const imported=await route.POST(request({action:'status'}));assert.equal((await imported.json()).import.status,'success');
  assert.equal(calls.filter(x=>x==='/exports').length,1);
  const before=calls.length;const again=await route.POST(request());assert.equal((await again.json()).duplicate,true);assert.equal(calls.length,before);
  assert(!JSON.stringify(saved).includes('export-download'));assert(!JSON.stringify(saved).includes('test-only'));
