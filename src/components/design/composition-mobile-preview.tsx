@@ -1,5 +1,7 @@
 "use client";
 
+import { ArticleFullLayout } from "@/components/article-full-layout";
+import { readFullLayout } from "@/lib/article-full-layout";
 import { ArticleBodyDesignElement, ArticleDesignedCaption } from "@/components/article-body-design-elements";
 import { readArticleBodyDesign } from "@/lib/article-body-design";
 import type { CSSProperties } from "react";
@@ -25,6 +27,7 @@ type CompositionMobilePreviewProps = {
     summary: string;
     title: string;
     showPublicTitle?: boolean;
+    articleType?: import("@/lib/newsletter-repository").ProjectContentArticle["articleType"]; publicInfo?: Record<string,string>; links?: import("@/lib/newsletter-repository").ProjectLinkAction[];
     blocks?: import("@/lib/newsletter-repository").ProjectContentBlock[];
   };
   assets: ProjectDesignAsset[];
@@ -116,6 +119,8 @@ export function CompositionMobilePreview({
   composition,
   selectedPlacementId,
 }: CompositionMobilePreviewProps) {
+  const fullLayout = article.blocks?.find(b=>b.isVisible&&readFullLayout(b)&&b.body.includes("fullLayoutBlock="));
+  if(fullLayout)return <ArticleFullLayout article={{...article,blocks:article.blocks??[],articleType:article.articleType??"general",publicInfo:article.publicInfo??{},links:article.links??[]}} block={fullLayout}/>;
   const textDesign = readArticleTextDesign(composition.settings.textDesign);
   const hasBodyElements = article.blocks?.some(b => b.isVisible && (readArticleBodyDesign(b.metadata.body_design) || (b.type === "image" && textDesign.captionStyled)));
   const bodyElements = hasBodyElements ? article.blocks?.filter(b => b.isVisible).map(block => {

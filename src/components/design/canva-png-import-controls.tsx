@@ -1,5 +1,6 @@
 "use client";
 
+import { CanvaArticleApplyControls } from "@/components/design/canva-article-apply-controls";
 import { useEffect, useRef, useState } from "react";
 import { productionAssetLabels, productionAssetTypes } from "./design-asset-options";
 
@@ -81,6 +82,7 @@ export function CanvaPngImportControls({ projectSlug, articleId, designId, templ
       {current.duplicate ? <p className="text-sm">기존 앱 자산을 재사용했습니다. Canva 수정본 자동 동기화는 지원하지 않습니다.</p> : null}
       <p className="text-sm">아직 기사에 적용되지 않았습니다. 자산 관리에서 승인한 뒤 기사 디자인에서 직접 선택하세요.</p>
       <a className="text-sm text-blue-800 underline" href={`/projects/${encodeURIComponent(projectSlug)}/design`}>디자인 자산 관리</a>
+      {current.assetId && (templateId ?? approval?.templateId) ? <CanvaArticleApplyControls key={`${articleId}:${templateId ?? approval?.templateId}:${current.assetId}`} projectSlug={projectSlug} articleId={articleId} assetId={current.assetId} templateId={(templateId ?? approval?.templateId)!} /> : null}
       <button type="button" disabled={busy} className="ml-3 text-sm underline" onClick={() => void run("status")}>등록 상태 확인</button>
     </> : <>
       <p className="my-2 text-sm">한 페이지 PNG를 프로젝트 자산으로 등록합니다. 기사에 자동으로 배치하지 않습니다.</p>

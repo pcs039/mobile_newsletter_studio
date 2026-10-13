@@ -7,7 +7,7 @@ function harness(respond){
  const react={useState(initial){const i=cursor++;if(!(i in states))states[i]=initial;return[states[i],v=>{states[i]=v;}];},useRef(initial){const i=cursor++;if(!(i in states))states[i]={current:initial};return states[i];},useEffect(fn){if(!mounted)effects.push(fn);}};
  const fetch=async(url,options={})=>{const input=options.body?JSON.parse(options.body):{action:'get'};calls.push(input);return{ok:true,json:async()=>respond(input)};};
  const source=ts.transpileModule(fs.readFileSync('src/components/design/canva-png-import-controls.tsx','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- const req=name=>name==='react'?react:name==='./design-asset-options'?load('src/components/design/design-asset-options.ts'):require(name);
+ const req=name=>name==='@/components/design/canva-article-apply-controls'?{CanvaArticleApplyControls:()=>null}:name==='react'?react:name==='./design-asset-options'?load('src/components/design/design-asset-options.ts'):require(name);
  const mod={exports:{}};vm.runInThisContext('(function(require,module,exports,fetch,setTimeout){'+source+'\n})')(req,mod,mod.exports,fetch,(fn,ms)=>setTimeout(fn,ms===2000?0:ms));
  return{calls,render(){cursor=0;const tree=mod.exports.CanvaPngImportControls(props);mounted=true;return tree;},mount(){effects.forEach(fn=>fn());}};
 }
