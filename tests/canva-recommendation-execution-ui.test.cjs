@@ -57,6 +57,7 @@ test('in_progress uses poll with identical key/confirmation, never a second exec
   const h = harness(input => input.action === 'prepare' ? ready : input.action === 'execute' ? { ok: true, status: 'in_progress', jobId: 'J' } : { ok: true, status: 'created', duplicate: true });
   h.render(); h.mount(); await settle(); button(h.render()).props.onClick(); await settle();
   assert.deepEqual(h.calls.map(c => c.action), ['prepare', 'execute', 'poll']);
+  assert(markup(h.render()).includes('Canva 디자인 생성 완료')); assert(!markup(h.render()).includes('기존 Canva 디자인을 재사용했습니다.'));
   assert.equal(h.calls[1].requestKey, h.calls[2].requestKey); assert.equal(h.calls[1].confirmation, h.calls[2].confirmation);
 });
 test('execution auth / dataset / unsafe errors are localized; arbitrary provider error copy is never displayed', async () => {
@@ -77,4 +78,18 @@ test('unmount cancels local observation and cannot replay creation; fresh instan
 test('Strict Mode effect cleanup cannot overwrite a newer successful preparation with a stale abort error', async () => {
   const h = harness(() => ready); h.render(); const [cleanup] = h.mount(); cleanup(); h.mount(); await settle();
   const tree = h.render(); assert(!button(tree).props.disabled); assert(!markup(tree).includes('제작 준비를 확인하지 못했습니다.'));
+});
+
+test('reusing an already pending job retains reuse provenance through success polling', async () => {
+  const h = harness(input => input.action === 'prepare' ? ready : input.action === 'execute' ? { ok: true, status: 'in_progress', duplicate: true } : { ok: true, status: 'created', duplicate: true });
+  h.render(); h.mount(); await settle(); button(h.render()).props.onClick(); await settle();
+  assert(markup(h.render()).includes('기존 Canva 디자인을 재사용했습니다.')); assert.equal(h.calls.filter(c => c.action === 'execute').length, 1);
+});
+
+test('bounded new-job polling resumes as status-only and still displays new completion, not reuse', async () => {
+  let polls = 0;
+  const h = harness(input => input.action === 'prepare' ? ready : input.action === 'execute' ? { ok: true, status: 'in_progress' } : ++polls <= 6 ? { ok: true, status: 'in_progress', duplicate: true } : { ok: true, status: 'created', duplicate: true });
+  h.render(); h.mount(); await settle(); button(h.render()).props.onClick(); await settle();
+  const statusButton = find(h.render(), t => t.type === 'button' && t.props.children === '제작 상태 확인')[0]; assert(statusButton); statusButton.props.onClick(); await settle();
+  assert(markup(h.render()).includes('Canva 디자인 생성 완료')); assert.equal(h.calls.filter(c => c.action === 'execute').length, 1);
 });

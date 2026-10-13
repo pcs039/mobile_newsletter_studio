@@ -54,6 +54,10 @@ export function CanvaRecommendationExecutionControls({ projectSlug, articleId, t
       // One creation request. Subsequent observations use poll, whose server
       // guard requires the SAME persisted key/hash/job and cannot create.
       let value: CanvaAutofillExecutionResult = await call(pollOnly ? "poll" : "execute", abort.signal);
+      // Polling reuses the persisted job, but that does not mean the user
+      // reused a pre-existing design. Retain the initial creation provenance.
+      const reused = pollOnly ? result?.duplicate === true : value.duplicate === true;
+      value = { ...value, duplicate: reused };
       if (alive.current) setResult(value);
       for (let count = 0; value.status === "in_progress" && count < 6 && !abort.signal.aborted; count++) {
         await new Promise<void>(resolve => {
@@ -61,7 +65,7 @@ export function CanvaRecommendationExecutionControls({ projectSlug, articleId, t
           abort.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true });
         });
         if (!alive.current || abort.signal.aborted) break;
-        value = await call("poll", abort.signal);
+        value = { ...await call("poll", abort.signal), duplicate: reused };
         if (alive.current) setResult(value);
       }
     } catch { if (alive.current) setError("제작 실패 · 결과가 미확정일 수 있습니다. 자동으로 다시 제작하지 않습니다. 프로젝트 디자인 화면에서 상태를 확인하세요."); }
