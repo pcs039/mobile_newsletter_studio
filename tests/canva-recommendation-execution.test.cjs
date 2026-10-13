@@ -87,5 +87,7 @@ test('result UX separates reuse / auth / dataset / fit; edit URL accepts Canva H
   assert.match(canvaExecutionMessage({ status: 'auth_required' }), /다시 연결/);
   assert.equal(canvaExecutionMessage({ status: 'dataset_mismatch' }), '템플릿 정보를 다시 확인해야 합니다.');
   assert.equal(canvaExecutionMessage({ status: 'visual_not_ready' }), '내용 확인 필요');
-  for (const url of ['javascript:alert(1)', 'https://evil.test', 'https://www.canva.com.evil.test/design/D/edit']) assert.equal(canvaEditLink(url), null);
+  assert.equal(canvaEditLink('https://www.canva.com/api/design/opaque-reference/edit?utm_source=app'), 'https://www.canva.com/api/design/opaque-reference/edit?utm_source=app');
+  assert.equal(canvaEditLink('https://www.canva.com/design/D/secret/edit'), 'https://www.canva.com/design/D/secret/edit');
+  for (const url of ['https://www.canva.com/api/design/ref/view', 'https://www.canva.com/design/D/redirect', 'javascript:alert(1)', 'https://evil.test', 'https://www.canva.com.evil.test/design/D/edit']) assert.equal(canvaEditLink(url), null);
 });

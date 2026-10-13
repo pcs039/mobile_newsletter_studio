@@ -27,5 +27,5 @@ export function canvaExecutionMessage(result: CanvaAutofillExecutionResult) {
   return "제작 실패 · 결과를 확인하지 못했습니다. 자동으로 다시 제작하지 않습니다.";
 }
 export function canvaEditLink(value: string | undefined) {
-  try { const url = new URL(value ?? ""); return url.protocol === "https:" && url.hostname === "www.canva.com" && /^\/design\//.test(url.pathname) ? url.href : null; } catch { return null; }
+  try { const url = new URL(value ?? ""); return url.protocol === "https:" && url.hostname === "www.canva.com" && (/^\/design\/[^/]+(?:\/[^/]+)*\/edit$/.test(url.pathname) || /^\/api\/design\/[^/]+\/edit$/.test(url.pathname)) ? url.href : null; } catch { return null; }
 }
