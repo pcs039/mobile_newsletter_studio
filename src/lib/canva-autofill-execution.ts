@@ -146,7 +146,7 @@ export async function executeCanonicalCanvaAutofill(request: Request, input: {
       }
       // Persist sending BEFORE the single POST. A crash or uncertain response
       // blocks both same-key and new-key replay under the existing DB lease.
-      const execution: Execution = { key: input.requestKey, hash, articleId: article.id, templateId: template.id, status: "sending",
+      const execution: Execution = { key: input.requestKey, hash, articleId: article.id, templateId: template.id, status: "sending", articleSnapshotHash: digest(JSON.stringify(article)),
         ...(images.length ? { backgroundUpload: row.execution!.backgroundUpload } : {}),
         ...(previous?.job?.status === "success" && previous.hash !== hash ? {
           previousSuccess: { key: previous.key, hash: previous.hash, articleId: previous.articleId, templateId: previous.templateId, job: previous.job }

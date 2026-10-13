@@ -15,7 +15,7 @@ export type DesignAssetMetadata = {
   usageTags?: Array<keyof typeof assetUsageTagLabels>;
   reuseScope?: keyof typeof assetReuseScopeLabels;
   transparency?: keyof typeof assetTransparencyLabels;
-  canvaExport?: { designId: string; format: "png" };
+  canvaExport?: { designId: string; format: "png"; articleId?: string; templateId?: string; importedAt?: string };
 };
 
 export function defaultDesignAssetMetadata(): DesignAssetMetadata {
@@ -38,8 +38,12 @@ export function validateDesignAssetMetadata(value: unknown):
     const provenance = record.canvaExport;
     if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) return invalid;
     const p = provenance as Record<string, unknown>;
-    if (Object.keys(p).some(key => !["designId", "format"].includes(key)) || typeof p.designId !== "string" ||
+    if (Object.keys(p).some(key => !["designId", "format", "articleId", "templateId", "importedAt"].includes(key)) || typeof p.designId !== "string" ||
       !/^D[A-Za-z0-9_-]{1,199}$/.test(p.designId) || p.format !== "png") return invalid;
+    if (["articleId", "templateId", "importedAt"].some(k => k in p) &&
+      (typeof p.articleId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(p.articleId) ||
+       typeof p.templateId !== "string" || !/^[a-z][a-z0-9_]{1,99}$/.test(p.templateId) || typeof p.importedAt !== "string" ||
+       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(p.importedAt) || !Number.isFinite(Date.parse(p.importedAt)))) return invalid;
   }
   if ("source" in record && !allowed(record.source, assetSourceLabels)) return invalid;
   if ("reuseScope" in record && !allowed(record.reuseScope, assetReuseScopeLabels)) return invalid;
@@ -53,8 +57,8 @@ export function validateDesignAssetMetadata(value: unknown):
   if ("transparency" in record) metadata.transparency = record.transparency as DesignAssetMetadata["transparency"];
   if ("usageTags" in record) metadata.usageTags = [...new Set(record.usageTags as NonNullable<DesignAssetMetadata["usageTags"]>)];
   if ("canvaExport" in record) {
-    const p = record.canvaExport as { designId: string };
-    metadata.canvaExport = { designId: p.designId, format: "png" };
+    const p = record.canvaExport as NonNullable<DesignAssetMetadata["canvaExport"]>;
+    metadata.canvaExport = { designId: p.designId, format: "png", ...(p.articleId ? { articleId: p.articleId, templateId: p.templateId, importedAt: p.importedAt } : {}) };
   }
   return { ok: true, metadata };
 }

@@ -11,7 +11,8 @@ export type CanvaPngImport = {
   assetName?: string;
 };
 export type CanvaBackgroundUpload = {sourceAssetId:string;sourceHash:string;status:"sending"|"unknown"|"in_progress"|"success"|"failed";jobId?:string;assetId?:string};
-export type Execution = {titleOverrideHash?:string; backgroundUpload?:CanvaBackgroundUpload; previousSuccess?: {key:string;hash:string;articleId:string;templateId:string;job:CanvaJob}; key: string; hash: string; articleId: string; templateId: string; status: "sending" | "unknown" | "uploading" | "in_progress" | "success" | "failed"; job?: CanvaJob; pngImport?: CanvaPngImport };
+export type CanvaDesignApproval = { status: "approved" | "needs_revision"; designId: string; articleId: string; templateId: string; snapshotHash: string; executionHash: string; approvedAt: string };
+export type Execution = {articleSnapshotHash?: string; designReview?: CanvaDesignApproval;titleOverrideHash?:string; backgroundUpload?:CanvaBackgroundUpload; previousSuccess?: {key:string;hash:string;articleId:string;templateId:string;job:CanvaJob}; key: string; hash: string; articleId: string; templateId: string; status: "sending" | "unknown" | "uploading" | "in_progress" | "success" | "failed"; job?: CanvaJob; pngImport?: CanvaPngImport };
 export type Connection = { project_id: string; user_id: string; access_token: string | null; refresh_token: string | null; expires_at: string | null; oauth_state_hash: string | null; oauth_verifier: string | null; oauth_expires_at: string | null; lock_id: string | null; execution: Execution | null };
 const table = "newsletter_project_canva_connections";
 export async function connectionRows(projectId: string, userId: string, method = "GET", patch?: object, filters: Record<string,string> = {}, prefer = "return=representation"): Promise<Connection[]> {

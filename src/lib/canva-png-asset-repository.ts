@@ -29,7 +29,7 @@ export async function findCanvaPngAsset(projectId: string, assetId: string, desi
 }
 
 export async function registerCanvaPngAsset(input: {
-  projectId: string; assetId: string; designId: string; assetType: CanvaImportAssetType; name: string; file: File;
+  projectId: string; assetId: string; designId: string; articleId?: string; templateId?: string; importedAt?: string; assetType: CanvaImportAssetType; name: string; file: File;
 }) {
   const existing = await findCanvaPngAsset(input.projectId, input.assetId, input.designId);
   if (existing) return existing;
@@ -51,7 +51,7 @@ export async function registerCanvaPngAsset(input: {
       throw new CanvaConnectError(502, "PNG 파일을 디자인 Storage에 등록하지 못했습니다.");
     }
   }
-  const metadata = validateDesignAssetMetadata({ source: "canva", usageTags: [], reuseScope: "project", transparency: "unknown", canvaExport: { designId: input.designId, format: "png" } });
+  const metadata = validateDesignAssetMetadata({ source: "canva", usageTags: [], reuseScope: "project", transparency: "unknown", canvaExport: { designId: input.designId, format: "png", ...(input.articleId ? { articleId: input.articleId, templateId: input.templateId, importedAt: input.importedAt } : {}) } });
   if (!metadata.ok) throw new CanvaConnectError(400, metadata.message);
   const inserted = await insertProjectDesignAssetRecord({
     id: input.assetId, project_id: input.projectId, name: input.name, asset_type: input.assetType,
