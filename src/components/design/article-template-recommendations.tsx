@@ -43,6 +43,6 @@ export function ArticleTemplateRecommendations({ recommendations, disabled = fal
       })}
     </div>}
     <p role="status" aria-live="polite" className="mt-2 text-xs text-slate-600">{selected ? `선택한 디자인: ${selected.displayName}. 선택만으로 적용되거나 저장되지 않습니다.` : "아직 선택한 디자인이 없습니다."}</p>
-    {selected && projectSlug && articleId ? <CanvaRecommendationExecutionControls key={`${projectSlug}:${articleId}:${articleVersion}:${selected.templateId}`} projectSlug={projectSlug} articleId={articleId} templateId={selected.templateId} disabled={disabled} /> : null}
+    {selected && projectSlug && articleId ? <CanvaRecommendationExecutionControls key={`${projectSlug}:${articleId}:${articleVersion}:${selected.templateId}`} projectSlug={projectSlug} articleId={articleId} templateId={selected.templateId} articleVersion={articleVersion} onChooseAnother={() => setSelection({ id: null, resultKey })} disabled={disabled} /> : null}
   </div>;
 }

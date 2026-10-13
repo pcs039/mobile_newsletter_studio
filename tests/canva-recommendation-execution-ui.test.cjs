@@ -5,7 +5,7 @@ const { renderToStaticMarkup } = require('react-dom/server');
 const load = require('./canva-test-loader.cjs')();
 const ready = { ok: true, supported: true, connected: true, isReady: true, visualReady: true, stagingAllowed: true, missingFields: [], visualIssues: [], confirmation: 'signed' };
 const props = { projectSlug: 'test', articleId: 'article', templateId: 'event_festival_02', disabled: false };
-function harness(responses) {
+function harness(responses, storage = new Map()) {
   const states = [], effects = []; let cursor = 0, mounted = false;
   const react = { useState(initial) { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], value => { states[index] = value; }]; },
     useRef(initial) { const index = cursor++; if (!(index in states)) states[index] = { current: initial }; return states[index]; }, useEffect(action) { if (!mounted) effects.push(action); } };
@@ -13,8 +13,8 @@ function harness(responses) {
   const timer = (fn, ms) => ms === 3000 ? setTimeout(fn, 0) : setTimeout(fn, ms);
   const fetch = async (url, options) => { const input = JSON.parse(options.body); calls.push(input); const value = await responses(input, calls.length); return { ok: true, json: async () => value }; };
   const source = ts.transpileModule(fs.readFileSync('src/components/design/canva-recommendation-execution-controls.tsx', 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  const req = name => name === 'react' ? react : name.startsWith('@/') ? load('src/' + name.slice(2) + '.ts') : require(name);
-  vm.runInThisContext('(function(require,module,exports,fetch,setTimeout,clearTimeout){' + source + '\n})')(req, compiledModule, compiledModule.exports, fetch, timer, clearTimeout);
+  const req = name => name === 'react' ? react : name.startsWith('@/') ? load('src/' + name.slice(2) + (name.includes('/components/') ? '.tsx' : '.ts')) : require(name);
+  vm.runInThisContext('(function(require,module,exports,fetch,setTimeout,clearTimeout,sessionStorage){' + source + '\n})')(req, compiledModule, compiledModule.exports, fetch, timer, clearTimeout, { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) });
   return { calls, render(p = props) { cursor = 0; const result = compiledModule.exports.CanvaRecommendationExecutionControls(p); mounted = true; return result; }, mount() { return effects.map(effect => effect()); } };
 }
 function find(tree, predicate) { if (!tree || typeof tree !== 'object') return []; if (Array.isArray(tree)) return tree.flatMap(t => find(t, predicate)); return [...(predicate(tree) ? [tree] : []), ...find(tree.props?.children, predicate)]; }
@@ -92,4 +92,39 @@ test('bounded new-job polling resumes as status-only and still displays new comp
   h.render(); h.mount(); await settle(); button(h.render()).props.onClick(); await settle();
   const statusButton = find(h.render(), t => t.type === 'button' && t.props.children === '제작 상태 확인')[0]; assert(statusButton); statusButton.props.onClick(); await settle();
   assert(markup(h.render()).includes('Canva 디자인 생성 완료')); assert.equal(h.calls.filter(c => c.action === 'execute').length, 1);
+});
+
+const reviewPanel = tree => find(tree, t => t.props?.review && t.props?.onAction)[0];
+test('created is not approved; explicit approval, revision and cancellation are local only; rerender and navigation restore', async () => {
+  const storage = new Map();
+  const responses = input => input.action === 'prepare' ? ready : { ok: true, status: 'created', canvaDesignId: 'D', editUrl: 'https://www.canva.com/design/D/edit' };
+  const h = harness(responses, storage); h.render(); h.mount(); await settle(); button(h.render()).props.onClick(); await settle();
+  assert.equal(reviewPanel(h.render()).props.review.status, 'created');
+  reviewPanel(h.render()).props.onAction('approve'); assert.equal(reviewPanel(h.render()).props.review.status, 'approved');
+  assert(markup(h.render()).includes('이 디자인을 사용하기로 했습니다.'));
+  assert.equal(h.calls.length, 2);
+  const next = harness(responses, storage); next.render(); next.mount(); await settle();
+  assert.equal(reviewPanel(next.render()).props.review.status, 'approved');
+  reviewPanel(next.render()).props.onAction('cancel'); assert.equal(reviewPanel(next.render()).props.review.status, 'created');
+  reviewPanel(next.render()).props.onAction('revise'); assert.equal(reviewPanel(next.render()).props.review.status, 'needs_revision');
+  assert(markup(next.render()).includes('수정 내용을 Canva에서 확인한 뒤 다시 승인하세요.'));
+  reviewPanel(next.render()).props.onAction('approve'); assert.equal(reviewPanel(next.render()).props.review.status, 'approved');
+  assert.deepEqual(next.calls.map(c => c.action), ['prepare']);
+});
+test('another design clears active result and selection without deleting provider design', async () => {
+  let deselected = 0;
+  const h = harness(input => input.action === 'prepare' ? ready : { ok: true, status: 'created', canvaDesignId: 'D', editUrl: 'https://www.canva.com/design/D/edit' });
+  const p = { ...props, onChooseAnother: () => deselected++ };
+  h.render(p); h.mount(); await settle(); button(h.render(p)).props.onClick(); await settle();
+  reviewPanel(h.render(p)).props.onChooseAnother();
+  assert.equal(deselected, 1); assert(!reviewPanel(h.render(p))); assert.equal(h.calls.length, 2);
+});
+test('article/version/template context changes discard persisted approval including switching back', async () => {
+  for (const change of [{ articleId: 'other' }, { articleVersion: 'new' }, { templateId: 'policy_support_02' }]) {
+    const storage = new Map();
+    storage.set('canva-design-review:test', JSON.stringify({ context: require('node:crypto').createHash('sha256').update(JSON.stringify(['article', '', 'event_festival_02'])).digest('hex'), review: { designId: 'D', editUrl: 'https://www.canva.com/design/D/edit', completedAt: '2026-10-13', status: 'approved' } }));
+    const h = harness(() => ready, storage); h.render({ ...props, ...change }); h.mount(); await settle();
+    assert(!reviewPanel(h.render({ ...props, ...change }))); assert.equal(storage.size, 0);
+    const back = harness(() => ready, storage); back.render(); back.mount(); await settle(); assert(!reviewPanel(back.render()));
+  }
 });

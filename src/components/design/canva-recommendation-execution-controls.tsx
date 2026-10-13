@@ -1,11 +1,28 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { canProduceCanva, canvaEditLink, canvaExecutionMessage, canvaFieldLabels, type CanvaRecommendationPreparation } from "@/lib/canva-recommendation-execution";
+import { CanvaDesignReviewControls } from "@/components/design/canva-design-review-controls";
+import { receiveCanvaDesign, restoreCanvaReview, reviewCanvaDesign, type CanvaDesignReview } from "@/lib/canva-design-review";
+import { getCanonicalCanvaTemplate } from "@/lib/canva-template-registry";
 import type { CanvaAutofillExecutionResult } from "@/lib/canva-autofill-execution";
 
-export function CanvaRecommendationExecutionControls({ projectSlug, articleId, templateId, disabled }: {
-  projectSlug: string; articleId: string; templateId: string; disabled: boolean;
+export function CanvaRecommendationExecutionControls({ projectSlug, articleId, templateId, disabled, articleVersion = "", onChooseAnother }: {
+  projectSlug: string; articleId: string; templateId: string; disabled: boolean; articleVersion?: string; onChooseAnother?: () => void;
 }) {
+  const [review, setReview] = useState<CanvaDesignReview | null>(null);
+  const reviewRef = useRef<CanvaDesignReview | null>(null);
+  const context = JSON.stringify([articleId, articleVersion, templateId]);
+  const contextHash = useRef<string | null>(null);
+  const storageKey = `canva-design-review:${projectSlug}`;
+  function recordReview(value: CanvaDesignReview | null) {
+    reviewRef.current = value; setReview(value);
+    try { if (value && contextHash.current) sessionStorage.setItem(storageKey, JSON.stringify({ context: contextHash.current, review: value })); else sessionStorage.removeItem(storageKey); } catch { /* Session persistence is optional in restricted browsers. */ }
+  }
+  function receiveResult(value: CanvaAutofillExecutionResult) {
+    setResult(value);
+    const url = canvaEditLink(value.editUrl);
+    if (value.status === "created" && value.canvaDesignId && url) recordReview(receiveCanvaDesign(reviewRef.current, value.canvaDesignId, url, new Date().toISOString()));
+  }
   const [preparation, setPreparation] = useState<CanvaRecommendationPreparation | null>(null);
   const [result, setResult] = useState<CanvaAutofillExecutionResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,6 +48,18 @@ export function CanvaRecommendationExecutionControls({ projectSlug, articleId, t
   useEffect(() => {
     alive.current = true;
     let active = true;
+    // Persist only a digest of the article snapshot, never article text.
+    void crypto.subtle.digest("SHA-256", new TextEncoder().encode(context)).then(bytes => {
+      if (!active) return;
+      contextHash.current = Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, "0")).join("");
+      try {
+        const restored = restoreCanvaReview(JSON.parse(sessionStorage.getItem(storageKey) ?? "null"), contextHash.current);
+        if (restored && canvaEditLink(restored.editUrl)) {
+          recordReview(restored); setSubmitted(true);
+          setResult({ ok: true, status: "created", canvaDesignId: restored.designId, editUrl: restored.editUrl });
+        } else sessionStorage.removeItem(storageKey);
+      } catch { /* No persistent state is required to edit or review. */ }
+    }).catch(() => { /* Review remains available without session persistence. */ });
     const abort = new AbortController(); controller.current = abort;
     if (!supported) { return () => { active = false; alive.current = false; abort.abort(); }; }
     const timer = setTimeout(() => abort.abort(), 15_000);
@@ -58,7 +87,7 @@ export function CanvaRecommendationExecutionControls({ projectSlug, articleId, t
       // reused a pre-existing design. Retain the initial creation provenance.
       const reused = pollOnly ? result?.duplicate === true : value.duplicate === true;
       value = { ...value, duplicate: reused };
-      if (alive.current) setResult(value);
+      if (alive.current) receiveResult(value);
       for (let count = 0; value.status === "in_progress" && count < 6 && !abort.signal.aborted; count++) {
         await new Promise<void>(resolve => {
           const timer = setTimeout(resolve, 3000);
@@ -66,7 +95,7 @@ export function CanvaRecommendationExecutionControls({ projectSlug, articleId, t
         });
         if (!alive.current || abort.signal.aborted) break;
         value = { ...await call("poll", abort.signal), duplicate: reused };
-        if (alive.current) setResult(value);
+        if (alive.current) receiveResult(value);
       }
     } catch { if (alive.current) setError("제작 실패 · 결과가 미확정일 수 있습니다. 자동으로 다시 제작하지 않습니다. 프로젝트 디자인 화면에서 상태를 확인하세요."); }
     finally { clearTimeout(timeout); flight.current = false; if (alive.current) setBusy(false); }
@@ -84,7 +113,9 @@ export function CanvaRecommendationExecutionControls({ projectSlug, articleId, t
     <button type="button" className="dd-btn dd-btn-primary mt-3 max-w-full" style={{ whiteSpace: "normal" }}
       disabled={disabled || busy || checking || submitted || !canProduceCanva(preparation)} onClick={() => void run()}>이 디자인으로 Canva 제작</button>
     {result?.status === "in_progress" && !busy ? <button type="button" disabled={disabled} className="dd-btn dd-btn-secondary ml-2 mt-3 max-w-full" onClick={() => void run(true)}>제작 상태 확인</button> : null}
-    {result?.status === "created" && editUrl ? <a className="dd-btn dd-btn-secondary mt-3 max-w-full" href={editUrl} target="_blank" rel="noopener noreferrer">Canva에서 열기</a> : null}
+    {review && editUrl ? <CanvaDesignReviewControls review={review} templateName={getCanonicalCanvaTemplate(templateId)?.displayName ?? "선택한 디자인"} disabled={disabled || busy}
+      onAction={action => recordReview(reviewCanvaDesign(review, action))}
+      onChooseAnother={() => { recordReview(null); setResult(null); onChooseAnother?.(); }} /> : result?.status === "created" && editUrl ? <a className="dd-btn dd-btn-secondary mt-3 max-w-full" href={editUrl} target="_blank" rel="noopener noreferrer">Canva에서 열기</a> : null}
     {(result?.status === "auth_required" || preparation && preparation.stagingAllowed && !preparation.connected) ? <a className="mt-2 block text-sm underline" href={`/projects/${encodeURIComponent(projectSlug)}/design#canva-templates`}>Canva 연결 확인</a> : null}
     {preparation && !preparation.stagingAllowed ? <a className="mt-2 block text-sm underline" href="https://canva-staging.datadiction.co.kr">고정 Staging으로 이동</a> : null}
     <p className="mt-2 text-xs text-slate-600">저장된 기사 기준입니다. 제작 버튼을 누르기 전에는 디자인을 생성하지 않습니다.</p>
