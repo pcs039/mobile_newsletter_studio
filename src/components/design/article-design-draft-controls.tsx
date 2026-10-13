@@ -68,7 +68,7 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, article, di
   }
   return <div className="mt-3 min-w-0 rounded-lg border border-sky-200 p-3 [overflow-wrap:anywhere]">
     <h3 className="font-black text-[#092046]">AI 디자인 추천</h3>
-    <ArticleTemplateRecommendations key={articleId} recommendations={templateRecommendations} disabled={disabled || busy || assetBusy} />
+    <ArticleTemplateRecommendations key={articleId} projectSlug={projectSlug} articleId={articleId} articleVersion={JSON.stringify(article)} recommendations={templateRecommendations} disabled={disabled || busy || assetBusy} />
     <button type="button" className="dd-btn dd-btn-primary mt-4 max-w-full" style={{ whiteSpace: "normal" }} disabled={disabled || busy || assetBusy} onClick={() => void perform("concepts")}>
       {busy ? "처리 중…" : "디자인 콘셉트 제안받기"}
     </button>

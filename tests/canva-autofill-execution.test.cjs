@@ -261,3 +261,13 @@ test('image Autofill in_progress job is polled on replay without a second POST a
   assert.equal(ctx.calls.filter(c => c.path === '/autofills/JOB').length, 1);
   assert.deepEqual(ctx.row().execution.backgroundUpload, f.upload);
 });
+
+test('poll-only lease guard never creates if prior success was replaced or key/hash/job is absent', async () => {
+  for (const execution of [null, { key: 'other', hash: 'other', articleId, templateId: 'statistics_performance_02', status: 'success', job: { id: 'OLD', status: 'success' } }]) {
+    const c = setup({ row: { execution } });
+    assert.equal((await c.run({ pollOnly: true })).status, 'canva_error'); assert.equal(c.calls.length, 0); assert.equal(c.patches.length, 0);
+  }
+  const c = setup({ pending: true }); assert.equal((await c.run()).status, 'in_progress');
+  assert.equal((await c.run({ pollOnly: true })).status, 'created'); assert.equal(c.calls.filter(call => call.body).length, 1);
+  assert.equal((await c.run({ pollOnly: true })).duplicate, true); assert.equal(c.calls.filter(call => call.body).length, 1);
+});

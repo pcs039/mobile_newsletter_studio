@@ -1,12 +1,14 @@
 "use client";
 
+import { CanvaRecommendationExecutionControls } from "@/components/design/canva-recommendation-execution-controls";
 import { useState } from "react";
 import type { ArticleDesignTemplateRecommendation } from "@/lib/article-design-template-recommendation";
 import { canvaTemplateFamilies } from "@/lib/canva-template-registry";
 
-export function ArticleTemplateRecommendations({ recommendations, disabled = false }: {
+export function ArticleTemplateRecommendations({ recommendations, disabled = false, projectSlug, articleId, articleVersion }: {
   recommendations: readonly ArticleDesignTemplateRecommendation[] | null;
   disabled?: boolean;
+  projectSlug?: string; articleId?: string; articleVersion?: string;
 }) {
   const resultKey = JSON.stringify(recommendations);
   const [selection, setSelection] = useState<{ id: string | null; resultKey: string }>({ id: null, resultKey });
@@ -40,6 +42,7 @@ export function ArticleTemplateRecommendations({ recommendations, disabled = fal
         </article>;
       })}
     </div>}
-    <p role="status" aria-live="polite" className="mt-2 text-xs text-slate-600">{selected ? `선택한 디자인: ${selected.displayName}. 이 화면에서만 유지되며 적용되거나 저장되지 않습니다.` : "아직 선택한 디자인이 없습니다."}</p>
+    <p role="status" aria-live="polite" className="mt-2 text-xs text-slate-600">{selected ? `선택한 디자인: ${selected.displayName}. 선택만으로 적용되거나 저장되지 않습니다.` : "아직 선택한 디자인이 없습니다."}</p>
+    {selected && projectSlug && articleId ? <CanvaRecommendationExecutionControls key={`${projectSlug}:${articleId}:${articleVersion}:${selected.templateId}`} projectSlug={projectSlug} articleId={articleId} templateId={selected.templateId} disabled={disabled} /> : null}
   </div>;
 }

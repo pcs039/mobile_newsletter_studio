@@ -38,6 +38,7 @@ function datasetMatches(datasetResponse: unknown, text: readonly string[], image
 export async function executeCanonicalCanvaAutofill(request: Request, input: {
   projectSlug: string; articleId: string; canvaBrandTemplateId: string; requestKey: string;
   prepared: CanonicalCanvaAutofillPayload;
+  pollOnly?: boolean;
 }): Promise<CanvaAutofillExecutionResult> {
   try {
     requireStagingE2E(request); sameOrigin(request);
@@ -109,6 +110,10 @@ export async function executeCanonicalCanvaAutofill(request: Request, input: {
         ...value, contentFitStatus: fit.supported ? "passed" : "not_supported",
       });
       const same = previous?.articleId === article.id && previous.templateId === template.id && previous.hash === hash;
+      // Recheck under the lease: a polling route must not create even if a
+      // different request replaced the execution after its initial read.
+      if (input.pollOnly && (!same || previous?.key !== input.requestKey || !previous.job || !["in_progress", "success"].includes(previous.job.status)))
+        return fail("canva_error", "기존 제작 상태가 변경되었습니다. 새 제작은 실행하지 않았습니다.");
       if (previous?.key === input.requestKey && !same) return fail("not_ready", "이미 사용한 실행 식별자의 입력이 변경되었습니다.");
       if (same && previous?.job?.status === "success") return fitResult(result(previous.job, true));
       if (same && previous?.status === "success" && !previous.job) return fail("canva_error", "기존 성공 결과 식별자가 없습니다. Canva에서 먼저 확인하세요.");

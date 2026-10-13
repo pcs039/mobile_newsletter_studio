@@ -22,7 +22,7 @@ function harness(file = 'src/components/design/article-template-recommendations.
   } };
   const compiledModule = { exports: {} };
   const compiled = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  const localRequire = name => name === 'react' ? react : name === '@/components/design/article-template-recommendations' ? { ArticleTemplateRecommendations: CardsMarker } : name === '@/components/design/article-visual-asset-generator' ? { ArticleVisualAssetGenerator: VisualMarker } : name.startsWith('@/') ? load('src/' + name.slice(2) + '.ts') : require(name);
+  const localRequire = name => name === 'react' ? react : name === '@/components/design/canva-recommendation-execution-controls' ? { CanvaRecommendationExecutionControls: VisualMarker } : name === '@/components/design/article-template-recommendations' ? { ArticleTemplateRecommendations: CardsMarker } : name === '@/components/design/article-visual-asset-generator' ? { ArticleVisualAssetGenerator: VisualMarker } : name.startsWith('@/') ? load('src/' + name.slice(2) + '.ts') : require(name);
   vm.runInThisContext('(function(require,module,exports){' + compiled + '\n})', { filename: file })(localRequire, compiledModule, compiledModule.exports);
   return props => { cursor = 0; return Object.values(compiledModule.exports)[0](props); };
 }
@@ -62,7 +62,7 @@ test('select one, switch cards, and rerender: only one active selection; no prov
   find(tree, t => t.type === 'button')[2].props.onClick();
   tree = render({ recommendations });
   assert.deepEqual(find(tree, t => t.type === 'button').map(t => t.props['aria-pressed']), [false, false, true]);
-  assert(html(tree).includes('이 화면에서만 유지되며 적용되거나 저장되지 않습니다.'));
+  assert(html(tree).includes('선택만으로 적용되거나 저장되지 않습니다.'));
   assert.equal(JSON.stringify(recommendations), before);
   assert.equal(find(tree, t => t.type === 'a' || t.type === 'form').length, 0);
   const changed = render({ recommendations: recommend({ ...base, title: '캐릭터 대화 만화', body: '만화 캐릭터 대사 말풍선' }) });
@@ -123,4 +123,13 @@ test('existing concept/draft container calculates cards without requests, catche
     assert(html(harness()(unavailable.props)).includes('기존 디자인 편집은 계속 사용할 수 있습니다.'));
     assert.equal(find(failed, t => t.type === 'button' && t.props.disabled === false).length, 1);
   } finally { global.fetch = originalFetch; }
+});
+
+test('execution child key changes on selected template or article content; stale results cannot migrate', () => {
+  const render = harness(), recommendations = recommend(base), props = { recommendations, projectSlug: 'test', articleId: 'saved', articleVersion: 'v1' };
+  let tree = render(props); find(tree, t => t.type === 'button')[0].props.onClick(); tree = render(props);
+  const first = find(tree, t => t.type === VisualMarker)[0]; assert.equal(first.props.templateId, recommendations[0].templateId);
+  find(tree, t => t.type === 'button')[1].props.onClick(); const second = find(render(props), t => t.type === VisualMarker)[0]; assert.notEqual(second.key, first.key);
+  const updated = find(render({ ...props, articleVersion: 'v2' }), t => t.type === VisualMarker)[0]; assert.notEqual(updated.key, second.key);
+  assert.equal(find(render({ ...props, recommendations: [] }), t => t.type === VisualMarker).length, 0);
 });
