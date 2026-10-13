@@ -9,10 +9,13 @@ import { getProjectContent } from "@/lib/newsletter-repository";
 import { getConnection, withConnectionLock, type Execution } from "@/lib/canva-connection-repository";
 import { accessToken, connectedCanvaRequest } from "@/lib/canva-connect-server";
 import { readCanvaBackground } from "@/lib/canva-background-repository";
+import { prepareCanvaContentFit } from "@/lib/canva-content-fit";
 
 export type CanvaAutofillExecutionResult = {
   ok: boolean;
-  status: "created" | "in_progress" | "not_ready" | "auth_required" | "dataset_mismatch" | "canva_error";
+  status: "created" | "in_progress" | "not_ready" | "visual_not_ready" | "auth_required" | "dataset_mismatch" | "canva_error";
+  contentFitStatus?: "passed" | "blocked" | "not_supported";
+  visualIssues?: Array<{ field: string; fitStatus: "adjusted" | "overflow" }>;
   canvaDesignId?: string; editUrl?: string; jobId?: string; duplicate?: boolean; error?: string;
 };
 const fail = (status: CanvaAutofillExecutionResult["status"], error: string): CanvaAutofillExecutionResult => ({ ok: false, status, error });
@@ -91,10 +94,23 @@ export async function executeCanonicalCanvaAutofill(request: Request, input: {
       const fresh = buildCanonicalCanvaAutofillPayload({ templateId: template.id, project: access.project, article, fieldMappings: mappings, images });
       if (!fresh.isReady || !fresh.payload || digest(JSON.stringify(fresh.payload)) !== digest(JSON.stringify(prepared.payload)))
         return fail("not_ready", "저장된 기사·이미지 또는 전달 값이 변경되었습니다. payload를 다시 확인하세요.");
-      const payload = fresh.payload, hash = digest(JSON.stringify(payload)), previous = row.execution;
+      const fit = prepareCanvaContentFit(fresh);
+      if (fit.supported && (fit.visualReady !== true || !fit.payload)) return {
+        ok: false, status: "visual_not_ready", contentFitStatus: "blocked",
+        error: "템플릿의 안전한 글자 범위를 확인하세요.",
+        visualIssues: fit.fields.flatMap(({ field, fitStatus }) => fitStatus === "ok" ? [] : [{ field, fitStatus }]),
+      };
+      // Retain the existing raw, validated source hash for request-key/replay
+      // compatibility. The only display transformation is deterministic CR/LF
+      // normalization; POST uses the preflight's fitted copy when supported.
+      const payload = fit.supported ? fit.payload! : fresh.payload;
+      const hash = digest(JSON.stringify(fresh.payload)), previous = row.execution;
+      const fitResult = (value: CanvaAutofillExecutionResult): CanvaAutofillExecutionResult => ({
+        ...value, contentFitStatus: fit.supported ? "passed" : "not_supported",
+      });
       const same = previous?.articleId === article.id && previous.templateId === template.id && previous.hash === hash;
       if (previous?.key === input.requestKey && !same) return fail("not_ready", "이미 사용한 실행 식별자의 입력이 변경되었습니다.");
-      if (same && previous?.job?.status === "success") return result(previous.job, true);
+      if (same && previous?.job?.status === "success") return fitResult(result(previous.job, true));
       if (same && previous?.status === "success" && !previous.job) return fail("canva_error", "기존 성공 결과 식별자가 없습니다. Canva에서 먼저 확인하세요.");
       if (previous?.pngImport && ["sending", "unknown", "in_progress", "ready"].includes(previous.pngImport.status))
         return fail("canva_error", "기존 PNG 가져오기를 먼저 확인하세요.");
@@ -121,7 +137,7 @@ export async function executeCanonicalCanvaAutofill(request: Request, input: {
         const job = readCanvaJob(await connectedCanvaRequest(`/autofills/${encodeURIComponent(previous.job.id)}`, token, update));
         if (job.id !== previous.job.id) return fail("canva_error", "Canva 작업 식별자가 다릅니다.");
         await update({ execution: { ...previous, status: job.status, job } });
-        return result(job, true);
+        return fitResult(result(job, true));
       }
       // Persist sending BEFORE the single POST. A crash or uncertain response
       // blocks both same-key and new-key replay under the existing DB lease.
@@ -136,7 +152,7 @@ export async function executeCanonicalCanvaAutofill(request: Request, input: {
         await update({ execution: { ...execution, status: job.status, job } });
         // Canva jobs are async. Return in_progress; a later explicit invocation
         // polls the saved job once, and never repeats the creation POST.
-        return result(job);
+        return fitResult(result(job));
       } catch (error) {
         const rejected = error instanceof CanvaConnectError && [401, 403, 404, 429].includes(error.status);
         await update({ execution: { ...execution, status: rejected ? "failed" : "unknown" } });
