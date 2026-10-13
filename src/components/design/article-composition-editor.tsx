@@ -29,6 +29,9 @@ type ArticleCompositionEditorProps = {
     summary: string;
     title: string;
     showPublicTitle?: boolean;
+    institutionPriority?: number;
+    urgency?: import("@/lib/newsletter-repository").ProjectContentArticle["urgency"];
+    publicationKind?: import("@/lib/newsletter-repository").ProjectContentArticle["publicationKind"];
     links?: import("@/lib/newsletter-repository").ProjectLinkAction[];
     blocks: import("@/lib/newsletter-repository").ProjectContentBlock[];
     articleType: import("@/lib/newsletter-repository").ProjectContentArticle["articleType"];
@@ -874,7 +877,8 @@ export function ArticleCompositionEditor({
       <div className="mt-5 grid min-w-0 gap-5 2xl:grid-cols-[minmax(0,1fr)_390px] 2xl:items-start">
         <div className="min-w-0">
       <ArticleCanvaTemplates key={`${article.id}:${String(composition.settings.productionPattern ?? "manual")}`} projectSlug={projectSlug} articleId={article.id} pattern={composition.settings.productionPattern} />
-      <ArticleProductionPatternControls article={article} key={String(composition.settings.productionPattern ?? "manual")} pattern={composition.settings.productionPattern}
+      <ArticleProductionPatternControls
+        institutionVisualAvailable={assets.some(asset => asset.isActive && asset.approvalStatus === "approved" && asset.metadata?.source === "institution" && ["background", "illustration", "card_frame", "banner"].includes(asset.assetType))} article={article} key={String(composition.settings.productionPattern ?? "manual")} pattern={composition.settings.productionPattern}
         composition={composition} onDraftApplied={value => { setComposition(value); setRecommendationApplied(true); }}
         recommendedPattern={recommendationApplied ? undefined : recommendedPattern} projectSlug={projectSlug} articleId={article.id} textDesign={composition.settings.textDesign} disabled={isBusy}
         onApply={productionPattern => void mutate("PATCH", { action: "apply_production_pattern", projectSlug, articleId: article.id, compositionId: composition.id, productionPattern, textDesign: composition.settings.textDesign ?? {} }, "production-pattern")} />
