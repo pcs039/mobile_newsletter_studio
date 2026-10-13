@@ -15,7 +15,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 function publicImport(value: CanvaPngImport, articleId?: string, templateId?: string) {
-  return { status: value.status, ...(value.assetId ? { assetId: value.assetId, assetName: value.assetName, ...(value.status === "success" && articleId && templateId ? { candidate: { assetId: value.assetId, articleId, templateId, autoApplied: false } } : {}) } : {}) };
+  return { status: value.status, designId: value.designId, ...(articleId && templateId ? { articleId, templateId } : {}), ...(value.assetId ? { assetId: value.assetId, assetName: value.assetName, ...(value.status === "success" && articleId && templateId ? { candidate: { assetId: value.assetId, articleId, templateId, autoApplied: false } } : {}) } : {}) };
 }
 
 export async function GET(request: Request) {

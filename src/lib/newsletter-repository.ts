@@ -1,3 +1,4 @@
+import { readFullLayout } from "@/lib/article-full-layout";
 import { readDesignAssetMetadata, type DesignAssetMetadata } from "@/lib/design-asset-metadata";
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { normalizeArticlePublicationKind, type ArticlePublicationKind } from "@/lib/article-publication";
@@ -2753,6 +2754,7 @@ function normalizeArticleContentPresentation(value: unknown): ArticleContentPres
 }
 
 function getArticleContentPresentation(blocks: NewsletterContentBlockRow[]): ArticleContentPresentation {
+  if (blocks.some(b=>readFullLayout(mapContentBlockRowToProjectBlock(b)))) return "image";
   for (const block of blocks) {
     const presentation = normalizeArticleContentPresentation(block.metadata?.presentation_mode);
 
@@ -2766,6 +2768,7 @@ function getArticleContentPresentation(blocks: NewsletterContentBlockRow[]): Art
 }
 
 function getArticleShowPublicTitle(blocks: NewsletterContentBlockRow[]) {
+  if (blocks.some(b=>readFullLayout(mapContentBlockRowToProjectBlock(b)))) return false;
   for (const block of blocks) {
     if (typeof block.metadata?.show_public_title === "boolean") {
       return block.metadata.show_public_title;

@@ -1,3 +1,4 @@
+import { mapFullLayouts } from "@/lib/article-full-layout-server";
 import "server-only";
 
 import { getClientReviewCookieToken } from "@/lib/client-review";
@@ -62,7 +63,7 @@ export async function getClientReviewRenderData(slug: string) {
     // Keep external images/links, but never route a reviewer through an admin API.
     return value.startsWith("/") ? "" : value;
   };
-  const articles = content.articles
+  const sourceArticles = content.articles
     .filter((article) => getDisplayArticleTitle(article, "").trim() && isArticlePubliclyVisible(article))
     .map((article) => ({
       ...article,
@@ -89,6 +90,7 @@ export async function getClientReviewRenderData(slug: string) {
   const publicAudio = audio.files[0]?.filePath
     ? { src: register("audio-files", audio.files[0].filePath), title: audio.files[0].title }
     : undefined;
+  const articles = await mapFullLayouts(project.id,slug,sourceArticles,"review");
   const [heroBackgrounds, topIllustrations, textDesigns] = await Promise.all([
     getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review"),
     getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review", "hero_illustration"),

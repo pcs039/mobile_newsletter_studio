@@ -29,6 +29,7 @@ type ArticleCompositionEditorProps = {
     summary: string;
     title: string;
     showPublicTitle?: boolean;
+    links?: import("@/lib/newsletter-repository").ProjectLinkAction[];
     blocks: import("@/lib/newsletter-repository").ProjectContentBlock[];
     articleType: import("@/lib/newsletter-repository").ProjectContentArticle["articleType"];
     publicInfo: import("@/lib/article-public-info-fields").ArticlePublicInfo;
@@ -45,6 +46,7 @@ type ArticleCompositionEditorProps = {
     statusLabel: string;
     title: string;
     showPublicTitle?: boolean;
+    links?: import("@/lib/newsletter-repository").ProjectLinkAction[];
     blocks?: import("@/lib/newsletter-repository").ProjectContentBlock[];
   }>;
 };

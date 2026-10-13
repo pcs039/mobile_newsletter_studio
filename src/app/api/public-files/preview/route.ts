@@ -1,3 +1,4 @@
+import { serveFullLayout } from "@/lib/article-full-layout-server";
 import { NextResponse } from "next/server";
 import { requireProjectApiAccess } from "@/lib/project-api-access";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
@@ -160,7 +161,7 @@ async function authorizePublicFile(
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  if (searchParams.has("heroArticle") || searchParams.has("topArticle")) {
+  if (searchParams.has("heroArticle") || searchParams.has("topArticle") || searchParams.has("fullLayoutBlock")) {
     const slug = searchParams.get("project")?.trim() ?? "";
     const illustration = searchParams.has("topArticle");
     const articleId = searchParams.get(illustration ? "topArticle" : "heroArticle") ?? "";
@@ -173,6 +174,7 @@ export async function GET(request: Request) {
       const access = await requireProjectApiAccess({ projectId: workspace.project.id });
       if (!access.ok) return access.response;
     }
+    if (searchParams.has("fullLayoutBlock")) return serveFullLayout(workspace.project.id,slug,searchParams.get("articleId")??"",searchParams.get("fullLayoutBlock")??"",preview);
     return serveArticleHeroBackground(workspace.project.id, articleId, preview, illustration ? "hero_illustration" : "hero_background");
   }
   const bucket = searchParams.get("bucket")?.trim() ?? "";

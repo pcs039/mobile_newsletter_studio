@@ -21,6 +21,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
+import { ArticleFullLayout } from "@/components/article-full-layout";
+import { activeFullLayout, originalFullLayoutPresentation } from "@/lib/article-full-layout";
 import { ArticleHeroBackgroundLayer } from "@/components/article-hero-background-layer";
 import type { ArticleHeroBackground } from "@/lib/article-hero-background";
 import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
@@ -1363,7 +1365,7 @@ function ArticleCard({
   heroBackground,
   topIllustration,
   analyticsDisabled = false,
-  article,
+  article: sourceArticle,
   className = "",
   fontAssets,
   index,
@@ -1393,6 +1395,9 @@ function ArticleCard({
   slug: string;
   survey?: ProjectSurveyItem | null;
 }) {
+  const [failedFullLayout,setFailedFullLayout] = useState<string|null>(null);
+  const fullLayout = activeFullLayout(sourceArticle);
+  const article = fullLayout && failedFullLayout === fullLayout.id ? { ...sourceArticle, ...originalFullLayoutPresentation(sourceArticle), blocks: sourceArticle.blocks.filter(b=>b.id!==fullLayout.id) } : sourceArticle;
   const hasTextDesign = hasArticleTextDesign(textDesign);
   const articleRef = useRef<HTMLElement>(null);
   const visibleBlocks = getVisibleBlocks(article);
@@ -1659,7 +1664,7 @@ function ArticleCard({
       data-article-body-color={heroBackground?.settings.bodyColor}
       style={{ ...fontStyle, ...articleTextColorStyle(heroBackground?.settings) }}
     >
-      <ArticleHeroBackgroundLayer
+      {fullLayout && failedFullLayout !== fullLayout.id ? <ArticleFullLayout article={article} block={fullLayout} onFailure={()=>setFailedFullLayout(fullLayout.id)} onOpenImage={onOpenArticleImage} /> : <ArticleHeroBackgroundLayer
         background={heroBackground?.settings.renderMode === "fluid_frame" || article.showPublicTitle || article.summary || hasTextDesign || shouldShowTypeCue || rollingLabel || urgencyLabel ? heroBackground : undefined}
         body={articleBody}
         illustration={topIllustration}
@@ -1780,7 +1785,7 @@ function ArticleCard({
           </div>
         </ScrollMotionReveal>
       ) : null}
-      </ArticleHeroBackgroundLayer>
+      </ArticleHeroBackgroundLayer>}
     </article>
   );
 }

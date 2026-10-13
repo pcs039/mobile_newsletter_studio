@@ -1,3 +1,4 @@
+import { serveFullLayout } from "@/lib/article-full-layout-server";
 import { NextResponse } from "next/server";
 import {
   clientReviewAccessStatus, clientReviewResponseHeaders, getClientReviewSession, getClientReviewRenderData,
@@ -14,10 +15,11 @@ function failure(message: string, status: number) {
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const slug = params.get("project")?.trim() ?? "";
-  if (params.has("heroArticle") || params.has("topArticle")) {
+  if (params.has("heroArticle") || params.has("topArticle") || params.has("fullLayoutBlock")) {
     const access = await getClientReviewSession(slug);
     if (access.status !== "ok") return failure(access.message, clientReviewAccessStatus(access.status));
     if (access.data.review.status !== "pending") return failure("이미 검토 응답이 완료되었습니다.", 409);
+    if (params.has("fullLayoutBlock")) return serveFullLayout(access.data.project.id,slug,params.get("articleId")??"",params.get("fullLayoutBlock")??"",false);
     const illustration = params.has("topArticle");
     return serveArticleHeroBackground(access.data.project.id, params.get(illustration ? "topArticle" : "heroArticle") ?? "", false, illustration ? "hero_illustration" : "hero_background");
   }

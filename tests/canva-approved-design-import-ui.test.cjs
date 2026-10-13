@@ -5,9 +5,9 @@ const props={projectSlug:'fixture',articleId:'article',templateId:'event_festiva
 function harness(respond){
  const states=[],effects=[],calls=[];let cursor=0,mounted=false;
  const react={useState(initial){const i=cursor++;if(!(i in states))states[i]=initial;return[states[i],v=>{states[i]=v;}];},useRef(initial){const i=cursor++;if(!(i in states))states[i]={current:initial};return states[i];},useEffect(fn){if(!mounted)effects.push(fn);}};
- const fetch=async(url,options={})=>{const input=options.body?JSON.parse(options.body):{action:'get'};calls.push(input);return{ok:true,json:async()=>respond(input)};};
+ const fetch=async(url,options={})=>{const input=options.body?JSON.parse(options.body):{action:'get'};calls.push(input);const d=respond(input,url);if(d.import)d.import={designId:props.designId,articleId:props.articleId,templateId:props.templateId,...d.import};return{ok:d.httpStatus!==409,status:d.httpStatus??200,json:async()=>d};};
  const source=ts.transpileModule(fs.readFileSync('src/components/design/canva-png-import-controls.tsx','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- const req=name=>name==='react'?react:name==='./design-asset-options'?load('src/components/design/design-asset-options.ts'):require(name);
+ const req=name=>name==='@/components/design/canva-article-apply-controls'?{CanvaArticleApplyControls:p=>require('react').createElement('button',{'data-asset':p.assetId,'data-template':p.templateId},'기사에 적용')}:name==='react'?react:name==='./design-asset-options'?load('src/components/design/design-asset-options.ts'):require(name);
  const mod={exports:{}};vm.runInThisContext('(function(require,module,exports,fetch,setTimeout){'+source+'\n})')(req,mod,mod.exports,fetch,(fn,ms)=>setTimeout(fn,ms===2000?0:ms));
  return{calls,render(){cursor=0;const tree=mod.exports.CanvaPngImportControls(props);mounted=true;return tree;},mount(){effects.forEach(fn=>fn());}};
 }
@@ -28,4 +28,14 @@ test('unapproved result cannot expose import; existing local approval requires e
 test('unknown/failed import status never offers automatic retry; production-disabled response only offers guidance',async()=>{
  for(const status of ['unknown','sending','failed']){const h=harness(()=>({...ready,import:{status}}));h.render();h.mount();await settle();assert(!button(h.render(),'앱으로 가져오기'));assert.equal(h.calls.length,1);}
  const h=harness(()=>({enabled:false}));h.render();h.mount();await settle();assert(!button(h.render(),'앱으로 가져오기'));assert(renderToStaticMarkup(h.render()).includes('고정 Staging'));
+});
+
+test('stale review plus successful import retains server receipt and apply candidate without approving or exporting',async()=>{
+ const h=harness((input,url)=>url.includes('templateId=')?{httpStatus:409}:{enabled:true,approved:false,templateId:props.templateId,import:{status:'success',assetId:'existing',assetName:'PNG'}});
+ h.render();h.mount();await settle();const html=renderToStaticMarkup(h.render());assert(html.includes('기사에 적용'));assert(html.includes('data-asset="existing"'));assert(html.includes('data-template="event_festival_02"'));assert(!button(h.render(),'앱으로 가져오기'));assert(h.calls.every(c=>c.action==='get'));assert.equal(h.calls.length,2);
+});
+test('stale review with unfinished import remains gated; wrong article/template/design receipt cannot become apply candidate',async()=>{
+ for(const patch of [{status:'in_progress'},{status:'success',templateId:'event_festival_01'},{status:'success',articleId:'other'},{status:'success',designId:'Dother'}]){
+  const h=harness(()=>({enabled:true,approved:false,templateId:props.templateId,import:{status:'success',assetId:'existing',...patch}}));h.render();h.mount();await settle();assert(!renderToStaticMarkup(h.render()).includes('기사에 적용'));assert(!button(h.render(),'앱으로 가져오기'));assert(button(h.render(),'이 디자인 사용'));assert.equal(h.calls.length,1);
+ }
 });
