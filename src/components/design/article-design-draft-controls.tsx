@@ -10,21 +10,21 @@ import { ArticleVisualAssetGenerator } from "@/components/design/article-visual-
 
 import { fullLayoutSourceVersion } from "@/lib/article-full-layout";
 import { ArticleTemplateRecommendations } from "@/components/design/article-template-recommendations";
-import { recommendArticleDesignTemplates, type TemplateRecommendationArticle } from "@/lib/article-design-template-recommendation";
+import { buildVisualDirectorResult, type VisualDirectorArticle } from "@/lib/article-visual-director";
+import { ArticleVisualDirectorResult } from "@/components/design/article-visual-director-result";
 
 type Proposal = Pick<ArticleDesignDraft, "pattern" | "changes" | "preserved" | "placements"> & { confirmation: string };
-export function ArticleDesignDraftControls({ projectSlug, articleId, article, disabled, composition, onApplied }: {
-  article: TemplateRecommendationArticle;
+export function ArticleDesignDraftControls({ projectSlug, articleId, article, disabled, composition, onApplied, institutionVisualAvailable = false }: {
+  article: VisualDirectorArticle;
+  institutionVisualAvailable?: boolean;
   projectSlug: string; articleId: string; disabled: boolean; composition: ProjectArticleComposition;
   recommendation: ArticlePatternRecommendation | null; onApplied: (value: ProjectArticleComposition) => void;
 }) {
   const [draft, setDraft] = useState<Proposal | null>(null);
   const [concepts, setConcepts] = useState<ArticleDesignConcept[]>([]);
   const [selected, setSelected] = useState<ArticleDesignConcept | null>(null);
-  const templateRecommendations = useMemo(() => {
-    try { return recommendArticleDesignTemplates(article, selected ?? undefined); }
-    catch { return []; }
-  }, [article, selected]);
+  const visualDirector = useMemo(() => buildVisualDirectorResult(article, { institutionVisualAvailable }, selected ?? undefined), [article, selected, institutionVisualAvailable]);
+  const templateRecommendations = visualDirector.canvaRecommendations ?? [];
   const [fallback, setFallback] = useState(false);
   const [busy, setBusy] = useState(false);
   const [assetBusy, setAssetBusy] = useState(false);
@@ -68,8 +68,10 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, article, di
     } finally { clearTimeout(timeout); inFlight.current = null; setBusy(false); }
   }
   return <div className="mt-3 min-w-0 rounded-lg border border-sky-200 p-3 [overflow-wrap:anywhere]">
+    <ArticleVisualDirectorResult result={visualDirector} />
     <h3 className="font-black text-[#092046]">AI 디자인 추천</h3>
-    <ArticleTemplateRecommendations key={articleId} projectSlug={projectSlug} articleId={articleId} articleVersion={fullLayoutSourceVersion(article)} recommendations={templateRecommendations} disabled={disabled || busy || assetBusy} />
+    {visualDirector.primaryStrategy === "canva_full_layout" ? <ArticleTemplateRecommendations key={articleId} projectSlug={projectSlug} articleId={articleId} articleVersion={fullLayoutSourceVersion(article)} recommendations={templateRecommendations} disabled={disabled || busy || assetBusy} /> :
+      <p className="mt-2 text-sm text-slate-600">기사 내용과 자료를 확인한 뒤, 아래에서 콘셉트와 제작 패턴을 직접 조정할 수 있습니다.</p>}
     <button type="button" className="dd-btn dd-btn-primary mt-4 max-w-full" style={{ whiteSpace: "normal" }} disabled={disabled || busy || assetBusy} onClick={() => void perform("concepts")}>
       {busy ? "처리 중…" : "디자인 콘셉트 제안받기"}
     </button>

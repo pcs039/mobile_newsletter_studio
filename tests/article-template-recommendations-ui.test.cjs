@@ -22,7 +22,7 @@ function harness(file = 'src/components/design/article-template-recommendations.
   } };
   const compiledModule = { exports: {} };
   const compiled = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-  const localRequire = name => name === 'react' ? react : name === '@/components/design/canva-recommendation-execution-controls' ? { CanvaRecommendationExecutionControls: VisualMarker } : name === '@/components/design/article-template-recommendations' ? { ArticleTemplateRecommendations: CardsMarker } : name === '@/components/design/article-visual-asset-generator' ? { ArticleVisualAssetGenerator: VisualMarker } : name.startsWith('@/') ? load('src/' + name.slice(2) + '.ts') : require(name);
+  const localRequire = name => name === 'react' ? react : name === '@/components/design/article-visual-director-result' ? load('src/components/design/article-visual-director-result.tsx') : name === '@/components/design/canva-recommendation-execution-controls' ? { CanvaRecommendationExecutionControls: VisualMarker } : name === '@/components/design/article-template-recommendations' ? { ArticleTemplateRecommendations: CardsMarker } : name === '@/components/design/article-visual-asset-generator' ? { ArticleVisualAssetGenerator: VisualMarker } : name.startsWith('@/') ? load('src/' + name.slice(2) + '.ts') : require(name);
   vm.runInThisContext('(function(require,module,exports){' + compiled + '\n})', { filename: file })(localRequire, compiledModule, compiledModule.exports);
   return props => { cursor = 0; return Object.values(compiledModule.exports)[0](props); };
 }
@@ -118,9 +118,9 @@ test('existing concept/draft container calculates cards without requests, catche
     assert.deepEqual(cards.props.recommendations, recommend(base));
     assert(find(tree, t => t.type === 'button').some(t => t.props.children === '디자인 콘셉트 제안받기'));
     const failed = render({ ...props, article: { ...base, title: null } });
-    const unavailable = find(failed, t => t.type === CardsMarker)[0];
-    assert.deepEqual(unavailable.props.recommendations, []);
-    assert(html(harness()(unavailable.props)).includes('기존 디자인 편집은 계속 사용할 수 있습니다.'));
+    assert.equal(find(failed, t => t.type === CardsMarker).length, 0);
+    assert(html(failed).includes('자료 확인 필요'));
+    assert(html(failed).includes('콘셉트와 제작 패턴을 직접 조정'));
     assert.equal(find(failed, t => t.type === 'button' && t.props.disabled === false).length, 1);
   } finally { global.fetch = originalFetch; }
 });
