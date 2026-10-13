@@ -53,6 +53,76 @@ test('ready verified payload executes once and returns actual design identifiers
   assert.equal((await ctx.run({ requestKey: '00000000-0000-4000-8000-000000000003' })).duplicate, true);
   assert.equal(ctx.calls.filter(c => c.body).length, 1);
 });
+
+function eventFixture(values = require('./fixtures/canva-content-fit-calibration.json').samples.short.values) {
+  const templateId = 'event_festival_02';
+  const saved = { ...article, title: values.TITLE, summary: values.EVENT_SUMMARY, articleType: 'event_festival',
+    publicInfo: { dateTime: values.EVENT_DATE, place: values.EVENT_PLACE }, links: [{ id: 'cta', isVisible: true, label: values.CTA }] };
+  const upload = { sourceAssetId: 'asset', sourceHash: 'a'.repeat(64), status: 'success', jobId: 'UPLOAD', assetId: 'IMAGE' };
+  const input = build({ templateId, project, article: saved, images: [{ field: 'MAIN_IMAGE', sourceHash: upload.sourceHash,
+    asset: { id: 'asset', projectId: project.id, approvalStatus: 'approved', isActive: true, mimeType: 'image/png' }, upload }] });
+  const execution = { key: 'old', hash: 'old', articleId, templateId, status: 'uploading', backgroundUpload: upload };
+  return { templateId, saved, upload, input, execution };
+}
+test('data-ready unsafe event input returns redacted visual_not_ready before dataset/POST/credential refresh or writes', async () => {
+  const values = require('./fixtures/canva-content-fit-calibration.json').samples.long.values;
+  const f = eventFixture(values), ctx = setup({ templateId: f.templateId, article: f.saved, tokenFailure: true, row: { execution: f.execution } });
+  assert.equal(f.input.isReady, true);
+  const result = await ctx.run({ prepared: f.input });
+  assert.equal(result.status, 'visual_not_ready'); assert.equal(result.contentFitStatus, 'blocked');
+  assert.deepEqual(result.visualIssues.map(issue => issue.field), ['TITLE', 'EVENT_DATE', 'EVENT_PLACE', 'EVENT_SUMMARY']);
+  assert(result.visualIssues.every(issue => issue.fitStatus === 'overflow'));
+  assert(!JSON.stringify(result).includes(values.TITLE)); assert(!JSON.stringify(result).includes(values.EVENT_SUMMARY));
+  assert.equal(ctx.calls.length, 0); assert.equal(ctx.patches.length, 0);
+  assert.equal((await ctx.run({ prepared: { ...f.input, isReady: false } })).status, 'not_ready');
+});
+test('original E2E TITLE/date/summary are blocked even if caller claims visualReady=true or a saved success exists', async () => {
+  const f = eventFixture({ TITLE: '가을빛으로 물드는 도심, 2026 시민문화축제 개최', EVENT_DATE: '2026년 10월 25일 10:00~18:00', EVENT_PLACE: '시청광장',
+    EVENT_SUMMARY: '시민이 함께 만드는 지역 대표 문화행사가 오는 10월 25일 시청광장에서 열립니다. 공연·체험·전시·가족 프로그램이 하루 동안 이어지며, 누구나 무료로 참여할 수 있습니다.', CTA: '행사 일정 확인' });
+  const digest = pure('src/lib/canva-connect-contract.ts').digest;
+  const ctx = setup({ templateId: f.templateId, article: f.saved, row: { execution: { ...f.execution,
+    hash: digest(JSON.stringify(f.input.payload)), status: 'success', job: { id: 'JOB', status: 'success', designId: 'OLD' } } } });
+  const result = await ctx.run({ prepared: { ...f.input, visualReady: true } });
+  assert.equal(result.status, 'visual_not_ready');
+  assert.deepEqual(result.visualIssues.map(issue => issue.field), ['TITLE', 'EVENT_DATE', 'EVENT_SUMMARY']);
+  assert.equal(ctx.calls.length, 0); assert.equal(ctx.patches.length, 0);
+});
+test('calibration short and medium event values pass gate; duplicate success adds no POST and preserves receipt/history', async () => {
+  const samples = require('./fixtures/canva-content-fit-calibration.json').samples;
+  for (const sample of [samples.short, samples.medium]) {
+    const f = eventFixture(sample.values), old = { id: 'OLD', status: 'success', designId: 'OLD_DESIGN' };
+    const ctx = setup({ templateId: f.templateId, article: f.saved, row: { execution: { ...f.execution, job: old } } });
+    const result = await ctx.run({ prepared: f.input });
+    assert.equal(result.status, 'created'); assert.equal(result.contentFitStatus, 'passed');
+    assert.deepEqual(ctx.row().execution.backgroundUpload, f.upload);
+    assert.deepEqual(ctx.row().execution.previousSuccess.job, old);
+    assert.equal((await ctx.run({ prepared: f.input })).duplicate, true);
+    assert.equal(ctx.calls.filter(call => call.body).length, 1);
+  }
+});
+test('safe event async polling keeps receipt/previousSuccess without a repeated creation', async () => {
+  const f = eventFixture(), old = { id: 'OLD', status: 'success', designId: 'OLD_DESIGN' };
+  const ctx = setup({ templateId: f.templateId, article: f.saved, pending: true, row: { execution: { ...f.execution, job: old } } });
+  assert.equal((await ctx.run({ prepared: f.input })).status, 'in_progress');
+  assert.equal((await ctx.run({ prepared: f.input })).status, 'created');
+  assert.equal(ctx.calls.filter(c => c.body).length, 1); assert.equal(ctx.calls.filter(c => c.path === '/autofills/JOB').length, 1);
+  assert.deepEqual(ctx.row().execution.previousSuccess.job, old); assert.deepEqual(ctx.row().execution.backgroundUpload, f.upload);
+});
+test('fitted event copy only normalizes CRLF; replay uses unchanged raw source hash and never edits content', async () => {
+  const f = eventFixture({ ...require('./fixtures/canva-content-fit-calibration.json').samples.short.values, TITLE: '문화\r\n축제' });
+  const snapshot = JSON.stringify(f.saved), ctx = setup({ templateId: f.templateId, article: f.saved, row: { execution: f.execution } });
+  assert.equal((await ctx.run({ prepared: f.input })).status, 'created');
+  assert.equal(ctx.calls.find(c => c.body).body.data.TITLE.text, '문화\n축제');
+  assert.equal(ctx.row().execution.hash, pure('src/lib/canva-connect-contract.ts').digest(JSON.stringify(f.input.payload)));
+  assert.equal((await ctx.run({ prepared: f.input })).duplicate, true); assert.equal(ctx.calls.filter(c => c.body).length, 1);
+  assert.equal(JSON.stringify(f.saved), snapshot);
+});
+test('other verified templates keep existing execution and explicit not_supported classification', async () => {
+  const ctx = setup();
+  assert.equal((await ctx.run()).contentFitStatus, 'not_supported');
+  assert.equal((await ctx.run()).duplicate, true);
+  assert.equal(ctx.calls.filter(c => c.body).length, 1);
+});
 test('not_ready, needs_republish, ID mismatch, extra fields and text/image mismatch perform no Canva requests', async () => {
   const base = prepared();
   const variants = [ { ...base, isReady: false }, { ...base, payload: null }, { ...base, templateId: 'cardnews_02' }, { ...base, datasetStatus: 'needs_republish' },
