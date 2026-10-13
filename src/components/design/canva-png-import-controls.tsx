@@ -4,7 +4,7 @@ import { CanvaArticleApplyControls } from "@/components/design/canva-article-app
 import { useEffect, useRef, useState } from "react";
 import { productionAssetLabels, productionAssetTypes } from "./design-asset-options";
 
-type ImportState = { status: string; assetId?: string; assetName?: string; duplicate?: boolean };
+type ImportState = { status: string; assetId?: string; assetName?: string; duplicate?: boolean; designId?: string; articleId?: string; templateId?: string };
 
 export function CanvaPngImportControls({ projectSlug, articleId, designId, templateId, onBusyChange }: { projectSlug: string; articleId: string; designId: string; templateId?: string; onBusyChange?: (busy: boolean) => void }) {
   const [approval, setApproval] = useState<{ approved: boolean; confirmation?: string; templateId?: string } | null>(null);
@@ -19,9 +19,25 @@ export function CanvaPngImportControls({ projectSlug, articleId, designId, templ
   useEffect(() => {
     alive.current = true;
     const controller = new AbortController();
-    void fetch(`/api/canva/png-import?${new URLSearchParams({ projectSlug, articleId, ...(templateId ? { templateId, designId } : {}) })}`, { signal: controller.signal })
-      .then(async r => { if (!r.ok) throw Error(); return r.json(); })
-      .then(d => { if (alive.current) { setEnabled(d.enabled === true); setCurrent(d.import); setApproval({ approved: d.approved === true, confirmation: d.confirmation, templateId: d.templateId }); } })
+    async function readState() {
+      const params = { projectSlug, articleId };
+      let response = await fetch(`/api/canva/png-import?${new URLSearchParams({ ...params, ...(templateId ? { templateId, designId } : {}) })}`, { signal: controller.signal });
+      // A stale pre-import review must not hide the immutable imported receipt.
+      // This read-only fallback does not approve or start export/import.
+      if (!response.ok && response.status === 409 && templateId) {
+        response = await fetch(`/api/canva/png-import?${new URLSearchParams(params)}`, { signal: controller.signal });
+      }
+      if (!response.ok) throw Error();
+      return response.json();
+    }
+    void readState()
+      .then(d => { if (alive.current) {
+        const receipt = d.import as ImportState | null;
+        const matches = receipt?.designId === designId && receipt.articleId === articleId && (!templateId || receipt.templateId === templateId);
+        setEnabled(d.enabled === true);
+        setCurrent(matches ? receipt : null);
+        setApproval({ approved: d.approved === true, confirmation: d.confirmation, templateId: d.templateId });
+      } })
       .catch(() => { if (alive.current && !controller.signal.aborted) setNotice("가져오기 상태를 확인하지 못했습니다."); });
     return () => { alive.current = false; controller.abort(); };
   }, [projectSlug, articleId, designId, templateId]);
@@ -72,18 +88,20 @@ export function CanvaPngImportControls({ projectSlug, articleId, designId, templ
     finally { pending.current = false; onBusyChange?.(false); if (alive.current) setBusy(false); }
   }
   if (!enabled) return <p role="status" className="mt-2 text-sm">{notice || "앱으로 가져오기는 고정 Staging에서만 사용할 수 있습니다."}</p>;
-  if (!approval?.approved) return <div className="mt-2 text-sm"><p role="status">현재 결과를 다시 검토하고 이 디자인 사용으로 승인해 주세요. {notice}</p><button type="button" disabled={busy} onClick={() => void approveAgain()} className="dd-btn dd-btn-secondary mt-2">이 디자인 사용</button></div>;
+  const imported = current?.status === "success" && !!current.assetId;
+  const applyTemplateId = current?.templateId;
+  if (!approval?.approved && !imported) return <div className="mt-2 text-sm"><p role="status">현재 결과를 다시 검토하고 이 디자인 사용으로 승인해 주세요. {notice}</p><button type="button" disabled={busy} onClick={() => void approveAgain()} className="dd-btn dd-btn-secondary mt-2">이 디자인 사용</button></div>;
   const uncertain = current && ["sending", "unknown", "failed"].includes(current.status);
   const resumable = current && ["in_progress", "ready"].includes(current.status);
   return <div className="mt-3 rounded border border-slate-200 p-3">
     <h5 className="font-bold">Canva 디자인 자산 가져오기</h5>
-    {current?.status === "success" ? <>
+    {imported ? <>
       <p role="status" className="my-2 break-words">디자인을 앱 자산으로 가져왔습니다. {current.assetName}</p>
       {current.duplicate ? <p className="text-sm">기존 앱 자산을 재사용했습니다. Canva 수정본 자동 동기화는 지원하지 않습니다.</p> : null}
       <p className="text-sm">아직 기사에 적용되지 않았습니다. 자산 관리에서 승인한 뒤 기사 디자인에서 직접 선택하세요.</p>
       <a className="text-sm text-blue-800 underline" href={`/projects/${encodeURIComponent(projectSlug)}/design`}>디자인 자산 관리</a>
-      {current.assetId && (templateId ?? approval?.templateId) ? <CanvaArticleApplyControls key={`${articleId}:${templateId ?? approval?.templateId}:${current.assetId}`} projectSlug={projectSlug} articleId={articleId} assetId={current.assetId} templateId={(templateId ?? approval?.templateId)!} /> : null}
-      <button type="button" disabled={busy} className="ml-3 text-sm underline" onClick={() => void run("status")}>등록 상태 확인</button>
+      {current.assetId && applyTemplateId ? <CanvaArticleApplyControls key={`${articleId}:${applyTemplateId}:${current.assetId}`} projectSlug={projectSlug} articleId={articleId} assetId={current.assetId} templateId={applyTemplateId} /> : null}
+      <button type="button" disabled={busy || !approval?.approved} className="ml-3 text-sm underline" onClick={() => void run("status")}>등록 상태 확인</button>
     </> : <>
       <p className="my-2 text-sm">한 페이지 PNG를 프로젝트 자산으로 등록합니다. 기사에 자동으로 배치하지 않습니다.</p>
       <label className="block text-sm">가져올 자산 유형
