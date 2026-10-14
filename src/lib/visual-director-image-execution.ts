@@ -73,7 +73,7 @@ export async function executeDirectorImage(input: { projectId: string; articleId
     try {
       const base64 = await requestArticleImage(plan.payload);
       stage = "validation";
-      const png = validateGeneratedImage(base64, "hero_background", plan.specification.targetSize);
+      const png = validateGeneratedImage(base64, "hero_background", plan.specification.targetSize,plan.specification.maxOutputBytes);
       stage = "registration";
       const asset = await registerGeneratedImageAsset(proof, png.bytes, `${input.article.title.trim().slice(0,130) || "기사"} · 개념 이미지 · GPT Images`, provenance);
       await finishImageProcessingJob(input.projectId, plan.jobId, asset.id);
@@ -82,7 +82,7 @@ export async function executeDirectorImage(input: { projectId: string; articleId
       const unknown = stage === "registration" || (stage === "provider" && (!(error instanceof ImageGenerationError) || error.status >= 500));
       // Persistence ambiguity is deliberately terminal/unknown; never issue another provider request.
       await finishImageProcessingJob(input.projectId, plan.jobId, undefined, unknown).catch(() => undefined);
-      return { ...base, status: unknown ? "unknown" : "failed", message: unknown ? "생성·등록 결과가 미확정입니다. 자동 재시도하지 않습니다." : "생성 결과를 등록하지 못했습니다. 자동 재시도하지 않습니다." };
+      return { ...base, status: unknown ? "unknown" : "failed", message: unknown ? "생성·등록 결과가 미확정입니다. 자동 재시도하지 않습니다." : error instanceof ImageGenerationError ? `${error.message} 자동 재시도하지 않습니다.` : "생성 결과를 등록하지 못했습니다. 자동 재시도하지 않습니다." };
     }
   });
 }

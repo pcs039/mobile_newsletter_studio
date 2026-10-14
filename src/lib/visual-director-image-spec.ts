@@ -6,7 +6,7 @@ import { analyzeArticleVisualNeeds, buildVisualDirectorResult, type VisualDirect
 export type DirectorImageSpec = {
   version: "v1"; qualityVersion: "quality-v1"; stylePreset: DirectorStylePreset; headlineSafeArea: HeadlineSafeArea; variantIndex: number; purpose: "article_visual"; subject: string; context: string; articleType: string;
   reasons: string[]; style: string; composition: string; aspectRatio: "4:5" | "1:1" | "16:9";
-  targetSize: { width: number; height: number }; avoid: string[];
+  targetSize: { width: number; height: number }; maxOutputBytes: number; avoid: string[];
   factualityMode: "conceptual"; textInImage: false; transparentBackground: false;
 };
 const bounded = (value: string, max: number) => safeVisualText(value).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max);
@@ -23,7 +23,7 @@ export function buildDirectorImageSpec(article: VisualDirectorArticle,context?:"
   return { version: "v1", qualityVersion: directorQualityVersion, stylePreset, headlineSafeArea, variantIndex, purpose: "article_visual", subject: bounded(article.title, 200), context: bounded(article.summary, 500), articleType: article.articleType,
     reasons: result.reasons.map(r => bounded(r, 200)), style: directorStylePrompts[stylePreset],
     composition: (context==="hybrid"&&buildHybridVisualPlan(article)?.secondary?.strategy==="ai_generated_image"?"보조용 개념 이미지. ":"")+"모바일 기사 대표 시각물. 중심은 조용하게, 가장자리에 절제된 모티프. HTML 제목·본문을 위한 여백 확보.",
-    aspectRatio, targetSize, avoid: ["이미지 내부 제목·일정·전화번호·URL·CTA", "로고 생성·변형", "워터마크", "기록사진 위장", "실제 인물·사건·시설 재현", "과장된 광고·회화"],
+    aspectRatio, targetSize, maxOutputBytes: 10 * 1024 * 1024, avoid: ["이미지 내부 제목·일정·전화번호·URL·CTA", "로고 생성·변형", "워터마크", "기록사진 위장", "실제 인물·사건·시설 재현", "과장된 광고·회화"],
     factualityMode: "conceptual", textInImage: false, transparentBackground: false };
 }
 export function buildBasePrompt(spec: DirectorImageSpec) {

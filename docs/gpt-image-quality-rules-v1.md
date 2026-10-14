@@ -33,3 +33,7 @@ Local tests cover all five presets, real/urgent exclusions, ratios/safe areas/br
 Five actual React fixture screens checked at 1440/768: compact labels, no raw prompt display, overflow 0, console errors 0. Local fixtures do not generate images.
 
 Fixed Staging actual E2E is pending at initial PR creation. Maximum two provider generations permitted; Production generation/write forbidden. PR remains OPEN and must not merge as part of this task.
+
+## PNG validation budget
+
+The first fixed Staging attempt on edd772c ended in terminal failed before asset registration. The previous UI returned a generic failure, so that observation alone does not prove its exact cause. Investigation found the shared 2.5MB generation validator can reject larger 1536px PNGs. Director specs now explicitly carry a 10MB maxOutputBytes budget, bounded by the existing Design Asset PNG limit; legacy generation/approval keeps its 2.5MB default. MIME/PNG integrity/exact dimensions and no-overwrite registration remain unchanged. Validation policy enters the hash, so it is a new plan, not a retry of the old failed job. Safe known validation errors are surfaced without provider bodies/credentials. Actual provider attempts remain capped at two for this task.
