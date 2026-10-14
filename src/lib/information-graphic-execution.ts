@@ -13,7 +13,7 @@ export function prepareInformationGraphic(projectId:string,articleId:string,arti
   const palette=/^#[a-f0-9]{6}$/i.test(color)?color.toLowerCase():"#092046";
   const source={title:article.title,summary:article.summary,body:article.body,articleType:article.articleType,publicInfo:article.publicInfo,
     blocks:article.blocks.filter(b=>b.isVisible&&b.type==="paragraph").map(b=>({id:b.id,body:b.body,title:b.title})),links:article.links};
-  const generationKey=hash({projectId,articleId,snapshot:hash(source),director:buildVisualDirectorResult(article),spec:plan.specification,rendererVersion:"svg_public_cards_v1",palette});
+  const generationKey=hash({projectId,articleId,snapshot:hash(source),director:buildVisualDirectorResult(article),spec:plan.specification,rendererVersion:"svg_public_cards_v1_1",palette});
   const h=hash(`information-graphic-asset:${generationKey}`),assetId=`${h.slice(0,8)}-${h.slice(8,12)}-5${h.slice(13,16)}-8${h.slice(17,20)}-${h.slice(20,32)}`;
   return{...plan,generationKey,assetId,palette};
 }

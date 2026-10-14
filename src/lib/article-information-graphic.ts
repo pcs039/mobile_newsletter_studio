@@ -59,7 +59,7 @@ export function buildInformationGraphicSpec(article:VisualDirectorArticle,articl
   return{status:issues.length?"needs_review":"ready",specification,issues};
 }
 const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&apos;"}[c]!));
-function wrap(text:string,units:number){const out:string[]=[];let line="",used=0;for(const char of text){const width=/[\x20-\x7e]/.test(char)?1:2;if(used+width>units){out.push(line);line="";used=0;}line+=char;used+=width;}if(line)out.push(line);return out;}
+function wrap(text:string,units:number){const out:string[]=[];let line="",used=0;for(const char of text){const width=2;if(used+width>units){out.push(line);line="";used=0;}line+=char;used+=width;}if(line)out.push(line);return out;}
 export function renderInformationGraphicSvg(spec:InformationGraphicSpec,primaryColor:string){
   if((spec.aspectRatio==="1:1"&&spec.items.length>3)||spec.needsHumanReview||spec.items.length<2||spec.items.length>6||spec.title.length>40||spec.items.some(i=>i.label.length>20||i.description.length>60))throw new Error("Graphic requires review");
   const brand=/^#[a-f0-9]{6}$/i.test(primaryColor)?primaryColor:"#092046",height=spec.aspectRatio==="1:1"?1000:1250;
