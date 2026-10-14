@@ -1,3 +1,4 @@
+import { executeDirectorImage } from "@/lib/visual-director-image-execution";
 import { requireStagingE2E } from "@/lib/staging-environment";
 import { NextResponse } from "next/server";
 import { requireProjectApiAccess } from "@/lib/project-api-access";
@@ -25,13 +26,21 @@ export async function POST(request:Request){
     const chunks:Uint8Array[]=[];let length=0;
     try{while(true){const part=await reader.read();if(part.done)break;length+=part.value.length;if(length>3_500_000){await reader.cancel();throw new ImageGenerationError(413,"미리보기 이미지가 너무 큽니다.");}chunks.push(part.value);}}finally{reader.releaseLock();}
     const p=JSON.parse(Buffer.concat(chunks).toString("utf8")||"null");
-    if(!p||typeof p.projectSlug!=="string"||!uuid.test(p.articleId||"")||!["generate","approve"].includes(p.action)||Object.keys(p).some(k=>!["projectSlug","articleId","action","concept","role","requestKey","base64","proof"].includes(k)))throw new ImageGenerationError(400,"생성 요청을 확인해 주세요.");
+    if(!p||typeof p.projectSlug!=="string"||!uuid.test(p.articleId||"")||!["generate","approve","director_prepare","director_generate","director_status"].includes(p.action)||Object.keys(p).some(k=>!["projectSlug","articleId","action","concept","role","requestKey","base64","proof","generationKey"].includes(k)))throw new ImageGenerationError(400,"생성 요청을 확인해 주세요.");
     const access=await requireProjectApiAccess({projectSlug:p.projectSlug});if(!access.ok)return access.response;
     if(access.user.role!=="admin")throw new ImageGenerationError(403,"관리자만 이미지 생성과 승인을 할 수 있습니다.");
     if(!imageGenerationEnabled())throw new ImageGenerationError(403,"이미지 생성과 등록은 Staging에서만 사용할 수 있습니다.");
     const content=await getProjectContent(access.project.slug);
     const article=content.source==="supabase"?content.articles.find(a=>a.id===p.articleId):null;
     if(!article)throw new ImageGenerationError(404,"현재 프로젝트의 저장된 기사를 선택하세요.");
+    if(p.action.startsWith("director_")){
+      if(Object.keys(p).some(k=>!["projectSlug","articleId","action","generationKey"].includes(k)) ||
+        (p.action!=="director_prepare" && (typeof p.generationKey!=="string" || !/^[a-f0-9]{64}$/.test(p.generationKey)))) throw new ImageGenerationError(400,"생성 계획을 확인해 주세요.");
+      const response=await executeDirectorImage({projectId:access.project.id,articleId:article.id,article,adminId:access.user.id,
+        palette:[access.project.primaryColor],action:p.action.slice(9) as "prepare"|"generate"|"status",expectedKey:p.generationKey});
+      return result({ok:true,...response});
+    }
+    if("generationKey" in p) throw new ImageGenerationError(400,"생성 요청을 확인해 주세요.");
     if(p.action==="approve"){
       const proof=readImageProof(p.proof);
       if(proof.projectId!==access.project.id||proof.articleId!==article.id||proof.adminId!==access.user.id)throw new ImageGenerationError(403,"현재 프로젝트의 생성 결과만 승인할 수 있습니다.");

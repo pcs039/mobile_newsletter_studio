@@ -35,13 +35,13 @@ export function buildImageGenerationRequest(concept: ArticleDesignConcept, role:
   return { specification, family, payload: { model: "gpt-image-2.5-flare", prompt, n: 1, size, quality: "medium", output_format: "png", background: specification.transparentBackground ? "transparent" : "opaque" } };
 }
 
-export function validateGeneratedImage(base64: unknown, role: GeneratableRole) {
+export function validateGeneratedImage(base64: unknown, role: GeneratableRole, dimensions?: { width: number; height: number }) {
   if (typeof base64 !== "string" || base64.length > Math.ceil(generatedImageMaxBytes / 3) * 4 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) throw new ImageGenerationError(413, "PNG 결과가 허용 크기를 초과했거나 올바르지 않습니다.");
   const bytes = Buffer.from(base64, "base64");
   if (bytes.toString("base64") !== base64 || bytes.length > generatedImageMaxBytes) throw new ImageGenerationError(413, "PNG 결과를 확인하지 못했습니다.");
   let info;
   try { info = validateCanvaPng(bytes, "image/png"); } catch { throw new ImageGenerationError(502, "이미지 결과가 유효한 PNG가 아닙니다."); }
-  const expected = role === "hero_background" ? [1152,1536] : [1152,768];
+  const expected = dimensions ? [dimensions.width, dimensions.height] : role === "hero_background" ? [1152,1536] : [1152,768];
   if (info.width !== expected[0] || info.height !== expected[1]) throw new ImageGenerationError(502, "이미지 해상도가 계획과 다릅니다.");
   if (role === "hero_illustration" && !hasTransparentPixels(bytes, info.width, info.height)) throw new ImageGenerationError(502, "투명 배경이 확인되지 않았습니다. 결과를 등록하지 않고 다시 생성할 수 있습니다.");
   return { bytes, ...info };

@@ -15,6 +15,7 @@ export type DesignAssetMetadata = {
   usageTags?: Array<keyof typeof assetUsageTagLabels>;
   reuseScope?: keyof typeof assetReuseScopeLabels;
   transparency?: keyof typeof assetTransparencyLabels;
+  imageGeneration?: { generatedForArticleId: string; visualStrategy: "ai_generated_image"; generationPurpose: "article_visual"; promptVersion: "v1"; generationKey: string; factualityMode: "conceptual"; textInImage: false };
   canvaExport?: { designId: string; format: "png"; articleId?: string; templateId?: string; importedAt?: string };
 };
 
@@ -33,7 +34,15 @@ export function validateDesignAssetMetadata(value: unknown):
   if (value === null) return { ok: true, metadata: null };
   if (!value || typeof value !== "object" || Array.isArray(value)) return invalid;
   const record = value as Record<string, unknown>;
-  if (Object.keys(record).some((key) => !["source", "usageTags", "reuseScope", "transparency", "canvaExport"].includes(key))) return invalid;
+  if (Object.keys(record).some((key) => !["source", "usageTags", "reuseScope", "transparency", "canvaExport", "imageGeneration"].includes(key))) return invalid;
+  if ("imageGeneration" in record) {
+    const p = record.imageGeneration as Record<string, unknown> | null;
+    if (!p || typeof p !== "object" || Array.isArray(p) || record.source !== "openai" ||
+      Object.keys(p).length !== 7 || Object.keys(p).some(k => !["generatedForArticleId", "visualStrategy", "generationPurpose", "promptVersion", "generationKey", "factualityMode", "textInImage"].includes(k)) ||
+      typeof p.generatedForArticleId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(p.generatedForArticleId) ||
+      p.visualStrategy !== "ai_generated_image" || p.generationPurpose !== "article_visual" || p.promptVersion !== "v1" || p.factualityMode !== "conceptual" || p.textInImage !== false ||
+      typeof p.generationKey !== "string" || !/^[a-f0-9]{64}$/.test(p.generationKey)) return invalid;
+  }
   if ("canvaExport" in record) {
     const provenance = record.canvaExport;
     if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) return invalid;
@@ -60,6 +69,7 @@ export function validateDesignAssetMetadata(value: unknown):
     const p = record.canvaExport as NonNullable<DesignAssetMetadata["canvaExport"]>;
     metadata.canvaExport = { designId: p.designId, format: "png", ...(p.articleId ? { articleId: p.articleId, templateId: p.templateId, importedAt: p.importedAt } : {}) };
   }
+  if ("imageGeneration" in record) metadata.imageGeneration = { ...record.imageGeneration as NonNullable<DesignAssetMetadata["imageGeneration"]> };
   return { ok: true, metadata };
 }
 

@@ -149,3 +149,35 @@ export async function validateDesignProcessingInputAsset(projectId: string, inpu
     return { data: false, message: "디자인 원본 확인 중 오류가 발생했습니다.", status: "request_failed" } as const;
   }
 }
+
+// Provider-neutral v1.24 jobs also support AI generation. Unique deterministic IDs
+// are durable claims; an ambiguous insert must never be followed by a provider POST.
+export type ImageProcessingJob = {
+  id: string; project_id: string; status: string; started_at: string | null;
+  request_payload: { articleId: string; generationKey: string };
+  result_payload: { assetId?: string }; error_code: string | null;
+};
+async function imageJobRequest(projectId: string, id: string, method = "GET", body?: unknown) {
+  const headers = getServiceRoleHeaders();
+  const filter = new URLSearchParams({ select: "id,project_id,status,started_at,request_payload,result_payload,error_code", project_id: `eq.${projectId}`, id: `eq.${id}`, provider: "eq.ai", operation: "eq.ai_generate_asset" });
+  if (method === "PATCH") filter.set("status", "eq.processing");
+  const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_design_processing_jobs?${method === "POST" ? "select=id,project_id,status,started_at,request_payload,result_payload,error_code" : filter}`);
+  if (!endpoint || !headers) throw new Error("Image processing repository unavailable");
+  const response = await fetch(endpoint, { method, headers: { ...headers, Prefer: method === "POST" ? "resolution=ignore-duplicates,return=representation" : "return=representation" },
+    body: body === undefined ? undefined : JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(10000) });
+  if (!response.ok) throw new Error("Image processing persistence failed");
+  return await response.json() as ImageProcessingJob[];
+}
+export async function readImageProcessingJob(projectId: string, id: string) {
+  return (await imageJobRequest(projectId, id))[0] ?? null;
+}
+export async function claimImageProcessingJob(projectId: string, id: string, articleId: string, generationKey: string) {
+  const rows = await imageJobRequest(projectId, id, "POST", { id, project_id: projectId, provider: "ai", operation: "ai_generate_asset", status: "processing", started_at: new Date().toISOString(),
+    request_payload: { articleId, generationKey }, result_payload: {} });
+  return rows.length === 1;
+}
+export async function finishImageProcessingJob(projectId: string, id: string, assetId?: string, unknown = false) {
+  const rows = await imageJobRequest(projectId, id, "PATCH", { status: assetId ? "succeeded" : "failed", completed_at: new Date().toISOString(),
+    result_payload: assetId ? { assetId } : {}, error_code: assetId ? null : unknown ? "unknown" : "generation_failed" });
+  if (rows.length !== 1) throw new Error("Image processing completion unconfirmed");
+}
