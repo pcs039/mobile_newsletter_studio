@@ -1,3 +1,4 @@
+import { readDesignAssetMetadata } from "@/lib/design-asset-metadata";
 import { NextResponse } from "next/server";
 import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { requireProjectApiAccess } from "@/lib/project-api-access";
@@ -147,11 +148,12 @@ export async function GET(request: Request) {
   const headers = getStorageHeaders();
 
   // Admin-only ID mapper: new generation thumbnails expose no private Storage path.
+  let trustedInternalSvg = false;
   const designAssetId = searchParams.get("designAssetId");
   if (designAssetId) {
     if (user.role !== "admin" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(designAssetId) || !headers)
       return NextResponse.json({ok:false}, {status:403});
-    const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_project_design_assets?${new URLSearchParams({select:"project_id,storage_bucket,storage_path",id:`eq.${designAssetId}`,is_active:"eq.true",limit:"1"})}`);
+    const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_project_design_assets?${new URLSearchParams({select:"project_id,storage_bucket,storage_path,metadata,mime_type",id:`eq.${designAssetId}`,is_active:"eq.true",limit:"1"})}`);
     if (!endpoint) return NextResponse.json({ok:false}, {status:503});
     const lookup = await fetch(endpoint, {headers,cache:"no-store",signal:AbortSignal.timeout(10000)});
     if (!lookup.ok) return NextResponse.json({ok:false}, {status:503});
@@ -159,6 +161,8 @@ export async function GET(request: Request) {
     if (!asset || asset.storage_bucket !== "design-production-assets") return NextResponse.json({ok:false}, {status:404});
     const access = await requireProjectApiAccess({projectId:asset.project_id});
     if (!access.ok) return access.response;
+    const metadata=readDesignAssetMetadata(asset.metadata);
+    trustedInternalSvg=asset.mime_type==="image/svg+xml"&&metadata?.source==="internal"&&!!metadata.informationGraphic;
     bucket = asset.storage_bucket; path = asset.storage_path;
   }
 
@@ -211,7 +215,7 @@ export async function GET(request: Request) {
       ? fileReference.mimeType
       : "application/octet-stream"
     : responseMimeType;
-  const canRenderInline = !isPrivateDesignAsset || inlineDesignIntakeMimeTypes.has(contentType);
+  const canRenderInline = !isPrivateDesignAsset || inlineDesignIntakeMimeTypes.has(contentType) || trustedInternalSvg;
   const originalFileName = fileReference.originalFileName || path.split("/").pop() || "design-asset";
 
   return new NextResponse(response.body, {
@@ -221,6 +225,7 @@ export async function GET(request: Request) {
       "Content-Disposition": canRenderInline ? "inline" : makeAttachmentContentDisposition(originalFileName),
       "Content-Type": contentType,
       "X-Content-Type-Options": "nosniff",
+      ...(trustedInternalSvg?{"Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; sandbox"}:{}),
     },
   });
 }

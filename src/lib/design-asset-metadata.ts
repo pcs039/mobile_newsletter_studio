@@ -1,5 +1,5 @@
 export const assetSourceLabels = {
-  manual: "직접 업로드", adobe: "Adobe", canva: "Canva", openai: "ChatGPT Images", institution: "기관 제공",
+  internal: "앱 생성", manual: "직접 업로드", adobe: "Adobe", canva: "Canva", openai: "ChatGPT Images", institution: "기관 제공",
 } as const;
 export const assetUsageTagLabels = {
   event: "행사", policy: "정책", interview: "인터뷰", welfare: "복지",
@@ -15,6 +15,7 @@ export type DesignAssetMetadata = {
   usageTags?: Array<keyof typeof assetUsageTagLabels>;
   reuseScope?: keyof typeof assetReuseScopeLabels;
   transparency?: keyof typeof assetTransparencyLabels;
+  informationGraphic?: { articleId: string; graphicType: "steps" | "key_numbers" | "comparison" | "checklist" | "schedule"; specVersion: "v1"; generationKey: string };
   imageGeneration?: { generatedForArticleId: string; visualStrategy: "ai_generated_image"; generationPurpose: "article_visual"; promptVersion: "v1"; generationKey: string; factualityMode: "conceptual"; textInImage: false };
   canvaExport?: { designId: string; format: "png"; articleId?: string; templateId?: string; importedAt?: string };
 };
@@ -34,7 +35,13 @@ export function validateDesignAssetMetadata(value: unknown):
   if (value === null) return { ok: true, metadata: null };
   if (!value || typeof value !== "object" || Array.isArray(value)) return invalid;
   const record = value as Record<string, unknown>;
-  if (Object.keys(record).some((key) => !["source", "usageTags", "reuseScope", "transparency", "canvaExport", "imageGeneration"].includes(key))) return invalid;
+  if (Object.keys(record).some((key) => !["source", "usageTags", "reuseScope", "transparency", "canvaExport", "imageGeneration", "informationGraphic"].includes(key))) return invalid;
+  if ("informationGraphic" in record) {
+    const p=record.informationGraphic as Record<string,unknown>|null;
+    if(!p||typeof p!=="object"||Array.isArray(p)||record.source!=="internal"||Object.keys(p).length!==4||Object.keys(p).some(k=>!["articleId","graphicType","specVersion","generationKey"].includes(k))||
+      typeof p.articleId!=="string"||!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(p.articleId)||
+      !["steps","key_numbers","comparison","checklist","schedule"].includes(String(p.graphicType))||p.specVersion!=="v1"||typeof p.generationKey!=="string"||!/^[a-f0-9]{64}$/.test(p.generationKey))return invalid;
+  }
   if ("imageGeneration" in record) {
     const p = record.imageGeneration as Record<string, unknown> | null;
     if (!p || typeof p !== "object" || Array.isArray(p) || record.source !== "openai" ||
@@ -70,6 +77,7 @@ export function validateDesignAssetMetadata(value: unknown):
     metadata.canvaExport = { designId: p.designId, format: "png", ...(p.articleId ? { articleId: p.articleId, templateId: p.templateId, importedAt: p.importedAt } : {}) };
   }
   if ("imageGeneration" in record) metadata.imageGeneration = { ...record.imageGeneration as NonNullable<DesignAssetMetadata["imageGeneration"]> };
+  if ("informationGraphic" in record) metadata.informationGraphic = {...record.informationGraphic as NonNullable<DesignAssetMetadata["informationGraphic"]>};
   return { ok: true, metadata };
 }
 

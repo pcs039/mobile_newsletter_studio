@@ -11,6 +11,7 @@ import { ArticleVisualAssetGenerator } from "@/components/design/article-visual-
 import { fullLayoutSourceVersion } from "@/lib/article-full-layout";
 import { ArticleTemplateRecommendations } from "@/components/design/article-template-recommendations";
 import { buildVisualDirectorResult, type VisualDirectorArticle } from "@/lib/article-visual-director";
+import { InformationGraphicControls } from "@/components/design/information-graphic-controls";
 import { VisualDirectorImageControls } from "@/components/design/visual-director-image-controls";
 import { ArticleVisualDirectorResult } from "@/components/design/article-visual-director-result";
 
@@ -70,6 +71,7 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, article, di
   }
   return <div className="mt-3 min-w-0 rounded-lg border border-sky-200 p-3 [overflow-wrap:anywhere]">
     <ArticleVisualDirectorResult result={visualDirector}>
+      {visualDirector.primaryStrategy==="information_graphic"&&visualDirector.needsInformationGraphic?<InformationGraphicControls key={JSON.stringify([projectSlug,articleId,fullLayoutSourceVersion(article)])} article={article} articleId={articleId} projectSlug={projectSlug} disabled={disabled||busy||assetBusy} onBusy={setAssetBusy}/>:null}
       <VisualDirectorImageControls key={JSON.stringify([projectSlug,articleId,fullLayoutSourceVersion(article)])} projectSlug={projectSlug} articleId={articleId} article={article} disabled={disabled||busy} onBusy={setAssetBusy}/>
     </ArticleVisualDirectorResult>
     <h3 className="font-black text-[#092046]">AI 디자인 추천</h3>
