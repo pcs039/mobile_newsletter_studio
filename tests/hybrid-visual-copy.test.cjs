@@ -54,5 +54,5 @@ test('changed article reconfirm explains retained assets, button does not imply 
 test('Canva candidate acknowledgment does not claim production or approval', () => {
   const a = { ...article, title: '시민문화축제 현장 안내', body: '행사명: 시민문화축제\n실제 행사 현장에서 축제가 열렸다. 시민 참여 일정과 장소를 안내합니다.', articleType: 'event_festival', publicInfo: { dateTime: '10월 25일', place: '시청광장' }, links: [{ label: '행사 안내', isVisible: true }] };
   const markup = html(harness()({ ...props, article: a }));
-  assert(markup.includes('Canva 템플릿은 추천 후보입니다.')); assert(markup.includes('후보 확인만으로 제작·승인·기사 적용되지 않습니다.')); assert(markup.includes('Canva 후보 확인'));
+  assert(markup.includes('Canva 템플릿은 추천 후보입니다.')); assert(markup.includes('후보를 확인해도 디자인이 자동으로 제작·승인되거나 기사에 적용되지는 않습니다.')); assert(markup.includes('Canva 후보 확인'));
 });

@@ -44,7 +44,7 @@ export function HybridVisualControls({article,articleId,projectSlug,disabled}:{a
     if(strategy==="ai_generated_image")return <VisualDirectorImageControls article={article} articleId={articleId} projectSlug={projectSlug} context="hybrid" disabled={blocked} onBusy={setBusy} onStage={onStage}/>;
     if(strategy==="html_first")return <p className="mt-2 text-xs">기사의 원문 텍스트를 보조 정보로 유지합니다. 별도 이미지 자산은 만들지 않습니다.</p>;
     const candidates=hybridCanvaRecommendations(article);
-    return <div className="mt-2 text-xs"><p>Canva 템플릿은 추천 후보입니다. 작업자가 별도로 확인해야 하며, 후보 확인만으로 제작·승인·기사 적용되지 않습니다.</p><ul className="mt-1 list-disc pl-5">{candidates.map(t=><li key={t.templateId}>{t.displayName}</li>)}</ul><button type="button" className="dd-btn dd-btn-secondary mt-2 max-w-full whitespace-normal" disabled={blocked||!candidates.length} onClick={()=>onStage({status:"completed"})}>Canva 후보 확인</button></div>;
+    return <div className="mt-2 text-xs"><p>Canva 템플릿은 추천 후보입니다. 작업자가 별도로 확인해야 합니다. 후보를 확인해도 디자인이 자동으로 제작·승인되거나 기사에 적용되지는 않습니다.</p><ul className="mt-1 list-disc pl-5">{candidates.map(t=><li key={t.templateId}>{t.displayName}</li>)}</ul><button type="button" className="dd-btn dd-btn-secondary mt-2 max-w-full whitespace-normal" disabled={blocked||!candidates.length} onClick={()=>onStage({status:"completed"})}>Canva 후보 확인</button></div>;
   }
   return <section aria-label="혼합 시각 구성" className="mt-3 min-w-0 rounded border border-slate-200 bg-white p-3 [overflow-wrap:anywhere]">
     <h4 className="font-bold">혼합 시각 구성</h4>
