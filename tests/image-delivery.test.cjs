@@ -24,7 +24,7 @@ test('sizes follow max520 reader and mobile margins; DPR candidates include 960 
 test('picture preserves original PNG fallback, alt, and same-origin AVIF/WebP sources',()=>{
  const {ResponsiveDesignImage}=load('src/components/responsive-design-image.tsx');
  const html=renderToStaticMarkup(React.createElement(ResponsiveDesignImage,{src:'/api/public-files/preview?aiImageBlock=b',alt:'기사 안내',className:'w-full'}));
- assert.match(html,/image\/avif/);assert.match(html,/image\/webp/);assert.match(html,/alt="기사 안내"/);assert.match(html,/src="\/api\/public-files\/preview\?aiImageBlock=b"/);assert.match(html,/loading="lazy"/);assert.doesNotMatch(html,/_next\/image|storage_path/);
+ assert.match(html,/display:contents/);assert.match(html,/image\/avif/);assert.match(html,/image\/webp/);assert.match(html,/alt="기사 안내"/);assert.match(html,/src="\/api\/public-files\/preview\?aiImageBlock=b"/);assert.match(html,/loading="lazy"/);assert.doesNotMatch(html,/_next\/image|storage_path/);
 });
 test('unrelated institution images have no transformed source',()=>{
  const {ResponsiveDesignImage}=load('src/components/responsive-design-image.tsx');
