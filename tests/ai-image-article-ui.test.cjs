@@ -16,7 +16,7 @@ function find(tree,label){if(!tree||typeof tree!=='object')return null;if(Array.
 test('explicit hero apply only, double click one mutation, state and revoke separate from generation/approval',async()=>{
  const h=harness();let tree=await h.mount();assert.deepEqual(h.calls.map(p=>p.action),['state']);assert(renderToStaticMarkup(tree).includes('아직 기사에는 적용되지 않았습니다.'));
  const click=find(tree,'대표 이미지로 적용').props.onClick;click();click();await settle();tree=h.render();assert.equal(h.calls.filter(p=>p.action==='apply').length,1);assert.equal(h.calls[1].expected,'a'.repeat(32));assert(renderToStaticMarkup(tree).includes('대표 이미지로 적용됨'));assert.equal(h.refresh,1);
- find(tree,'대표 이미지 적용 해제').props.onClick();await settle();assert.equal(h.calls.filter(p=>p.action==='revoke').length,1);assert(renderToStaticMarkup(h.render()).includes('원본 자산은 유지됩니다.'));assert(h.calls.every(p=>['state','apply','revoke'].includes(p.action)));
+ assert(find(tree,'대표 이미지 적용 확인'));find(tree,'대표 이미지 적용 해제').props.onClick();await settle();assert.equal(h.calls.filter(p=>p.action==='revoke').length,1);assert(renderToStaticMarkup(h.render()).includes('원본 자산은 유지됩니다.'));assert(h.calls.every(p=>['state','apply','revoke'].includes(p.action)));
 });
 test('draft, stale source and Canva conflict disable apply; reconfirmation is explicit',async()=>{
  for(const patch of [{conflict:true},{candidates:[{id:'draft',approvalStatus:'draft'}]},{candidates:[{id:'old',approvalStatus:'approved',stale:true}]}]){const h=harness(patch),tree=await h.mount();assert(find(tree,'대표 이미지로 적용').props.disabled);assert.equal(h.calls.filter(p=>p.action==='apply').length,0);}

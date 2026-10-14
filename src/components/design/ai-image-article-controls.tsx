@@ -58,8 +58,8 @@ export function AiImageArticleControls({ projectSlug, articleId, revision }: { p
     {candidate.stale ? <label className="mt-2 flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} disabled={busy} onChange={e => setConfirmed(e.target.checked)} />기사 내용 또는 생성 조건이 변경되었습니다. 이미지를 다시 확인했으며 적용하겠습니다.</label> : null}
     {state.conflict ? <p className="mt-2 text-sm">현재 Canva 전체 디자인 또는 이미지형 기사가 적용되어 있습니다. 먼저 해당 적용을 해제하세요.</p> : null}
     <div className="mt-3 flex flex-wrap gap-2">
-      <button type="button" className="dd-btn dd-btn-primary max-w-full whitespace-normal" disabled={disabled || appliedHero} onClick={() => void run("hero")}>{busy ? "처리 중…" : hero && !appliedHero ? "이 시안으로 교체" : "대표 이미지로 적용"}</button>
-      <button type="button" className="dd-btn dd-btn-secondary max-w-full whitespace-normal" disabled={disabled || !!body} onClick={() => void run("body")}>본문 이미지로 삽입</button>
+      <button type="button" className="dd-btn dd-btn-primary max-w-full whitespace-normal" disabled={disabled} onClick={() => void run("hero")}>{busy ? "처리 중…" : appliedHero ? "대표 이미지 적용 확인" : hero ? "이 시안으로 교체" : "대표 이미지로 적용"}</button>
+      <button type="button" className="dd-btn dd-btn-secondary max-w-full whitespace-normal" disabled={disabled} onClick={() => void run("body")}>{body ? "본문 이미지 적용 확인" : "본문 이미지로 삽입"}</button>
       {appliedHero ? <button type="button" className="dd-btn dd-btn-secondary max-w-full whitespace-normal" disabled={busy} onClick={() => void run("hero", true)}>대표 이미지 적용 해제</button> : null}
       {body ? <button type="button" className="dd-btn dd-btn-secondary max-w-full whitespace-normal" disabled={busy} onClick={() => void run("body", true)}>본문 이미지 적용 해제</button> : null}
       <a className="dd-btn dd-btn-secondary max-w-full whitespace-normal" href={`/projects/${encodeURIComponent(projectSlug)}/design`}>자산 관리에서 확인</a>

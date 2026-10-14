@@ -85,7 +85,9 @@ existing image rendering/lightbox; original title/body/CTA stay HTML.
 
 The compact AI image card lists existing variants with one selected candidate,
 approval/stale/application states and explicit apply/replace/remove controls.
-Replacement requires confirmation. Busy locking prevents double clicks. No
+Replacement requires confirmation. Applied candidates expose an explicit
+application-check action that reuses the idempotent RPC result without a new block.
+Busy locking prevents double clicks. No
 generation, approval, apply or publish occurs merely by visiting the UI.
 
 ## Rollout / verification boundary
