@@ -142,9 +142,25 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const bucket = searchParams.get("bucket")?.trim() ?? "";
-  const path = searchParams.get("path")?.trim() ?? "";
+  let bucket = searchParams.get("bucket")?.trim() ?? "";
+  let path = searchParams.get("path")?.trim() ?? "";
   const headers = getStorageHeaders();
+
+  // Admin-only ID mapper: new generation thumbnails expose no private Storage path.
+  const designAssetId = searchParams.get("designAssetId");
+  if (designAssetId) {
+    if (user.role !== "admin" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(designAssetId) || !headers)
+      return NextResponse.json({ok:false}, {status:403});
+    const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_project_design_assets?${new URLSearchParams({select:"project_id,storage_bucket,storage_path",id:`eq.${designAssetId}`,is_active:"eq.true",limit:"1"})}`);
+    if (!endpoint) return NextResponse.json({ok:false}, {status:503});
+    const lookup = await fetch(endpoint, {headers,cache:"no-store",signal:AbortSignal.timeout(10000)});
+    if (!lookup.ok) return NextResponse.json({ok:false}, {status:503});
+    const [asset] = await lookup.json();
+    if (!asset || asset.storage_bucket !== "design-production-assets") return NextResponse.json({ok:false}, {status:404});
+    const access = await requireProjectApiAccess({projectId:asset.project_id});
+    if (!access.ok) return access.response;
+    bucket = asset.storage_bucket; path = asset.storage_path;
+  }
 
   if (!allowedBuckets.has(bucket) || !isSafeStoragePath(path)) {
     return NextResponse.json({ ok: false, message: "파일 경로를 확인하세요." }, { status: 400 });
