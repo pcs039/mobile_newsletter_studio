@@ -7,7 +7,7 @@ module.exports=function loader(overrides={}) {
   const file=path.resolve(root,relative);if(cache.has(file))return cache.get(file).exports;
   const compiled={exports:{}};cache.set(file,compiled);
   const source=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true,jsx:ts.JsxEmit.ReactJSX}}).outputText;
-  const localRequire=name=>Object.hasOwn(overrides,name)?overrides[name]:name==='server-only'?{}:name.startsWith('@/')?load('src/'+name.slice(2)+'.ts'):require(name);
+  const localRequire=name=>Object.hasOwn(overrides,name)?overrides[name]:name==='server-only'?{}:name.startsWith('@/')?load('src/'+name.slice(2)+(fs.existsSync(path.resolve(root,'src/'+name.slice(2)+'.ts'))?'.ts':'.tsx')):require(name);
   vm.runInThisContext('(function(require,module,exports){'+source+'\n})',{filename:file})(localRequire,compiled,compiled.exports);return compiled.exports;
  };
 };

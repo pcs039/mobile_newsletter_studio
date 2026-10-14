@@ -1,5 +1,6 @@
 "use client";
 
+import { ResponsiveDesignImage } from "@/components/responsive-design-image";
 import { ArticleFullLayout } from "@/components/article-full-layout";
 import { readFullLayout } from "@/lib/article-full-layout";
 import { ArticleBodyDesignElement, ArticleDesignedCaption } from "@/components/article-body-design-elements";
@@ -129,8 +130,7 @@ export function CompositionMobilePreview({
     if (block.type === "paragraph") return <section key={block.id}>{block.title ? <h3 className="font-bold">{block.title}</h3> : null}<p data-public-text-scale-target="article-body" className="whitespace-pre-wrap break-words">{block.body}</p></section>;
     if (block.type === "image" && block.body.trim()) return (
       <figure key={block.id}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="h-auto w-full" src={block.body} alt={block.title || article.title} />
+        <ResponsiveDesignImage className="h-auto w-full" src={block.body} alt={block.title || article.title} />
         {textDesign.captionStyled ? <ArticleDesignedCaption text={block.title} /> : block.title ? <figcaption>{block.title}</figcaption> : null}
       </figure>
     );

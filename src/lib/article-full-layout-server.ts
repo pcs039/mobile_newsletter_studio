@@ -1,3 +1,4 @@
+import { deliverAuthorizedPng } from "@/lib/image-delivery-server";
 import "server-only";
 import { NextResponse } from "next/server";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
@@ -32,7 +33,7 @@ export async function mapFullLayouts(projectId:string,slug:string,articles:Proje
     }));return {...article,...(blocks.some(b=>b.isVisible&&readFullLayout(b))?{contentPresentation:"image" as const,showPublicTitle:false}:originalFullLayoutPresentation(article)),blocks};
   }));
 }
-export async function serveFullLayout(projectId:string,slug:string,articleId:string,blockId:string,preview:boolean) {
+export async function serveFullLayout(projectId:string,slug:string,articleId:string,blockId:string,preview:boolean,request?:Request) {
   const headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
-  try{const path=await reference(projectId,slug,articleId,blockId,preview),key=process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();if(!path||!key)throw Error();const url=getSupabaseStorageEndpoint(`/object/design-production-assets/${path.split('/').map(encodeURIComponent).join('/')}`);if(!url)throw Error();const r=await fetch(url,{headers:{apikey:key,Authorization:`Bearer ${key}`},cache:"no-store"});if(!r.ok||!r.body||r.headers.get('content-type')?.split(';')[0]!=="image/png")throw Error();return new NextResponse(r.body,{headers:{...headers,"Content-Type":"image/png"}});}catch{return NextResponse.json({ok:false,message:"이미지를 찾지 못했습니다."},{status:404,headers});}
+  try{const path=await reference(projectId,slug,articleId,blockId,preview),key=process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();if(!path||!key)throw Error();const url=getSupabaseStorageEndpoint(`/object/design-production-assets/${path.split('/').map(encodeURIComponent).join('/')}`);if(!url)throw Error();const r=await fetch(url,{headers:{apikey:key,Authorization:`Bearer ${key}`},cache:"no-store"});if(!r.ok||!r.body||r.headers.get('content-type')?.split(';')[0]!=="image/png")throw Error();return await deliverAuthorizedPng(r,request,"canva",headers);}catch{return NextResponse.json({ok:false,message:"이미지를 찾지 못했습니다."},{status:404,headers});}
 }

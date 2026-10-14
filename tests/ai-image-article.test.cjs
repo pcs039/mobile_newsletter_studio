@@ -49,9 +49,14 @@ test('managed article application alone preserves the original generation key an
 test('private file routes enforce project/admin and pending review access for AI references',async()=>{
  let served=0,admin=false,published=false,review='pending';
  const overrides={'@/lib/ai-image-article-server':{serveAiArticleImage:async()=>{served++;return Response.json({});}},'@/lib/newsletter-repository':{getProjectWorkspace:async()=>({ok:true,project:{id:project,statusCode:published?'published':'draft'}})},'@/lib/project-api-access':{requireProjectApiAccess:async()=>admin?{ok:true}:{ok:false,response:Response.json({}, {status:401})}},'@/lib/client-review-render':{clientReviewResponseHeaders:{},clientReviewAccessStatus:()=>401,getClientReviewSession:async()=>({status:admin?'ok':'expired',message:'denied',data:{project:{id:project},review:{status:review}}})}};
- const url='https://example.com/api/public-files/preview?project=fixture&articleId='+articleId+'&aiImageBlock='+blockId;
+ const url='https://example.com/api/public-files/preview?deliveryWidth=960&deliveryFormat=webp&project=fixture&articleId='+articleId+'&aiImageBlock='+blockId;
  const publicRoute=loader(overrides)('src/app/api/public-files/preview/route.ts');
  assert.equal((await publicRoute.GET(new Request(url))).status,404);assert.equal((await publicRoute.GET(new Request(url+'&preview=admin'))).status,401);assert.equal(served,0);
  admin=true;assert.equal((await publicRoute.GET(new Request(url+'&preview=admin'))).status,200);published=true;assert.equal((await publicRoute.GET(new Request(url))).status,200);
  const reviewRoute=loader(overrides)('src/app/api/client-review/files/route.ts');admin=false;assert.equal((await reviewRoute.GET(new Request(url))).status,401);admin=true;review='approved';assert.equal((await reviewRoute.GET(new Request(url))).status,409);review='pending';assert.equal((await reviewRoute.GET(new Request(url))).status,200);assert.equal(served,3);
+});
+test('optimized AI delivery cannot bypass inactive, unapproved or foreign provenance gates',async()=>{
+ for(const patch of [{approvalStatus:'draft'},{isActive:false},{projectId:'other'},{metadata:{...asset.metadata,imageGeneration:{...asset.metadata.imageGeneration,generatedForArticleId:'other'}}}]){
+  const f=serverFixture(patch);try{const r=await f.server.serveAiArticleImage(project,'slug',articleId,blockId,true,new Request('https://test.invalid/image?deliveryWidth=960&deliveryFormat=avif'));assert.equal(r.status,404);assert.equal(f.calls.length,0);}finally{f.close();}
+ }
 });

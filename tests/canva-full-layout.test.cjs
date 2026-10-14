@@ -36,7 +36,7 @@ test('public/preview/review routes enforce existing project/admin and valid pend
  let served=0,published=false,admin=false,status='ok',review='pending';
  const shared={'@/lib/article-full-layout-server':{serveFullLayout:async()=>{served++;return Response.json({ok:true});}},'@/lib/project-api-access':{requireProjectApiAccess:async()=>admin?{ok:true}:{ok:false,response:Response.json({}, {status:401})}},'@/lib/newsletter-repository':{getProjectWorkspace:async()=>({ok:true,project:{id:'project',statusCode:published?'published':'draft'}})},'@/lib/client-review-render':{clientReviewResponseHeaders:{},clientReviewAccessStatus:()=>410,getClientReviewSession:async()=>({status,message:'denied',data:{review:{status:review},project:{id:'project'}}})}};
  const pub=loader(shared)('src/app/api/public-files/preview/route.ts');
- const url='https://example.com/api/public-files/preview?project=slug&articleId='+articleId+'&fullLayoutBlock='+blockId;
+ const url='https://example.com/api/public-files/preview?deliveryWidth=960&deliveryFormat=webp&project=slug&articleId='+articleId+'&fullLayoutBlock='+blockId;
  assert.equal((await pub.GET(new Request(url))).status,404);assert.equal((await pub.GET(new Request(url+'&preview=admin'))).status,401);assert.equal(served,0);
  admin=true;assert.equal((await pub.GET(new Request(url+'&preview=admin'))).status,200);published=true;assert.equal((await pub.GET(new Request(url))).status,200);
  const rev=loader(shared)('src/app/api/client-review/files/route.ts');for(const blocked of ['expired','revoked']){status=blocked;assert.equal((await rev.GET(new Request(url))).status,410);}status='ok';review='approved';assert.equal((await rev.GET(new Request(url))).status,409);review='pending';assert.equal((await rev.GET(new Request(url))).status,200);assert.equal(served,3);
@@ -49,4 +49,9 @@ test('apply endpoint requires fixed Staging, same origin and project admin befor
  const request=p=>new Request('https://canva-staging.datadiction.co.kr/api/canva/article-apply',{method:'POST',body:JSON.stringify(p)});
  allowed=false;assert.equal((await route.POST(request(input))).status,403);allowed=true;origin=false;assert.equal((await route.POST(request(input))).status,403);origin=true;admin=false;assert.equal((await route.POST(request(input))).status,401);admin=true;
  assert.equal((await route.POST(request({...input,templateId:'unknown'}))).status,403);assert.equal(rpcCalls,0);assert.equal((await route.POST(request(input))).status,200);assert.equal(rpcCalls,1);
+});
+test('optimized full-layout delivery still rejects foreign, inactive and unapproved Canva assets before Storage',async()=>{
+ for(const asset of [{projectId:'other'},{isActive:false},{approvalStatus:'draft'},{metadata:{source:'canva',canvaExport:{articleId:'other',templateId:'event_festival_02',format:'png'}}}]){
+  const f=serverFixture({asset});try{const r=await f.server.serveFullLayout('project','slug',articleId,blockId,true,new Request('https://test.invalid/image?deliveryWidth=960&deliveryFormat=webp'));assert.equal(r.status,404);assert.equal(f.calls.filter(c=>c.url.startsWith('https://storage.invalid')).length,0);}finally{f.cleanup();}
+ }
 });

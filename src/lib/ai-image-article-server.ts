@@ -1,3 +1,4 @@
+import { deliverAuthorizedPng } from "@/lib/image-delivery-server";
 import "server-only";
 import { NextResponse } from "next/server";
 import { getProjectContent, getProjectDesignAssets, type ProjectContentArticle } from "@/lib/newsletter-repository";
@@ -66,7 +67,7 @@ export async function mapAiImageArticles(projectId: string, slug: string, articl
     })}` : "", isVisible: permitted };
   })) })));
 }
-export async function serveAiArticleImage(projectId: string, slug: string, articleId: string, blockId: string, preview: boolean) {
+export async function serveAiArticleImage(projectId: string, slug: string, articleId: string, blockId: string, preview: boolean, request?: Request) {
   const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" };
   try {
     const path = await reference(projectId, slug, articleId, blockId, preview), key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -75,6 +76,6 @@ export async function serveAiArticleImage(projectId: string, slug: string, artic
     if (!url) throw Error();
     const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" });
     if (!r.ok || !r.body || r.headers.get("content-type")?.split(";")[0] !== "image/png") throw Error();
-    return new NextResponse(r.body, { headers: { ...headers, "Content-Type": "image/png" } });
+    return await deliverAuthorizedPng(r, request, "gpt", headers);
   } catch { return NextResponse.json({ ok: false, message: "기사 이미지를 찾지 못했습니다." }, { status: 404, headers }); }
 }
