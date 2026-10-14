@@ -8,6 +8,7 @@ import { hasArticleTextDesign, type ArticleTextDesign } from "@/lib/article-text
 import { articleTextColorStyle } from "@/lib/article-text-colors";
 
 import Link from "next/link";
+import { ResponsiveDesignImage } from "@/components/responsive-design-image";
 import {
   Fragment,
   useEffect,
@@ -1139,8 +1140,7 @@ function renderContentBlock(
               });
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <ResponsiveDesignImage
               src={imageSrc}
               alt={imageAlt}
               className={`block h-auto w-full transition duration-200 group-hover:scale-[1.01] ${

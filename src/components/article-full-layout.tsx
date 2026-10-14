@@ -1,4 +1,5 @@
 "use client";
+import { ResponsiveDesignImage } from "@/components/responsive-design-image";
 import { useState } from "react";
 import type { ProjectContentArticle,ProjectContentBlock } from "@/lib/newsletter-repository";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
@@ -11,8 +12,7 @@ export function ArticleFullLayout({article,block,onFailure,onOpenImage}:{article
  return <section className="min-w-0 [overflow-wrap:anywhere]" aria-label="Canva 기사">
    <h2 className="sr-only">{article.title}</h2>
    {!failed?<button type="button" className="block w-full" aria-label={`${article.title} 이미지 확대 보기`} onClick={()=>onOpenImage?.({src:block.body,alt:article.title})}>
-     {/* eslint-disable-next-line @next/next/no-img-element */}
-     <img src={block.body} alt={`${article.title} 안내 이미지`} className="block h-auto w-full object-contain" onError={()=>{setFailed(true);onFailure?.();}} />
+     <ResponsiveDesignImage src={block.body} alt={`${article.title} 안내 이미지`} className="block h-auto w-full object-contain" onError={()=>{setFailed(true);onFailure?.();}} />
    </button>:<p role="status">이미지를 불러오지 못했습니다. 텍스트로 내용을 확인하세요.</p>}
    <div className="mt-3 flex flex-wrap gap-2">{article.links.filter(l=>l.isVisible).map(l=>{const href=getValidArticleActionHref(l.targetValue,l.actionType);return href?<a key={l.id} href={href.href} className="dd-btn dd-btn-primary max-w-full [overflow-wrap:anywhere]" style={{whiteSpace:"normal"}} target={href.actionType==="phone"?undefined:"_blank"} rel="noopener noreferrer" data-article-id={article.id} data-article-action="button" data-action-type={href.actionType} data-link-action-id={l.id}>{getArticleLinkButtonLabel(l.label,href.actionType)}</a>:null;})}</div>
    <details className="mt-4 rounded-lg border p-3" open={failed||undefined}><summary className="cursor-pointer font-bold">텍스트로 읽기</summary><div className="mt-3"><PublicTextSizeToggle compact/><h3 data-public-text-scale-target="article-body" className="public-article-title mt-3 font-bold">{article.title}</h3>{article.summary?<p data-public-text-scale-target="article-summary" className="mt-2 whitespace-pre-wrap">{article.summary}</p>:null}

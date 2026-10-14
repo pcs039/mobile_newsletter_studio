@@ -175,8 +175,8 @@ export async function GET(request: Request) {
       const access = await requireProjectApiAccess({ projectId: workspace.project.id });
       if (!access.ok) return access.response;
     }
-    if (searchParams.has("aiImageBlock")) return serveAiArticleImage(workspace.project.id,slug,searchParams.get("articleId")??"",searchParams.get("aiImageBlock")??"",preview);
-    if (searchParams.has("fullLayoutBlock")) return serveFullLayout(workspace.project.id,slug,searchParams.get("articleId")??"",searchParams.get("fullLayoutBlock")??"",preview);
+    if (searchParams.has("aiImageBlock")) return serveAiArticleImage(workspace.project.id,slug,searchParams.get("articleId")??"",searchParams.get("aiImageBlock")??"",preview,request);
+    if (searchParams.has("fullLayoutBlock")) return serveFullLayout(workspace.project.id,slug,searchParams.get("articleId")??"",searchParams.get("fullLayoutBlock")??"",preview,request);
     return serveArticleHeroBackground(workspace.project.id, articleId, preview, illustration ? "hero_illustration" : "hero_background");
   }
   const bucket = searchParams.get("bucket")?.trim() ?? "";

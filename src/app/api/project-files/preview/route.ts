@@ -1,3 +1,5 @@
+import { deliverAuthorizedPng } from "@/lib/image-delivery-server";
+import type { ImageDeliveryKind } from "@/lib/image-delivery";
 import { readDesignAssetMetadata } from "@/lib/design-asset-metadata";
 import { NextResponse } from "next/server";
 import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
@@ -165,6 +167,7 @@ export async function GET(request: Request) {
 
   // Admin-only ID mapper: new generation thumbnails expose no private Storage path.
   let trustedInternalSvg = false;
+  let deliveryKind: ImageDeliveryKind | null = null;
   const designAssetId = searchParams.get("designAssetId");
   if (designAssetId && institutionAssetId) return NextResponse.json({ok:false},{status:400});
   if (designAssetId) {
@@ -179,6 +182,7 @@ export async function GET(request: Request) {
     const access = await requireProjectApiAccess({projectId:asset.project_id});
     if (!access.ok) return access.response;
     const metadata=readDesignAssetMetadata(asset.metadata);
+    if (asset.mime_type === "image/png" && ((metadata?.source === "openai" && metadata.imageGeneration) || (metadata?.source === "canva" && metadata.canvaExport))) deliveryKind = metadata.source === "canva" ? "canva" : "gpt";
     trustedInternalSvg=asset.mime_type==="image/svg+xml"&&metadata?.source==="internal"&&!!metadata.informationGraphic;
     bucket = asset.storage_bucket; path = asset.storage_path;
   }
@@ -234,6 +238,11 @@ export async function GET(request: Request) {
     : responseMimeType;
   const canRenderInline = !isPrivateDesignAsset || inlineDesignIntakeMimeTypes.has(contentType) || trustedInternalSvg;
   const originalFileName = fileReference.originalFileName || path.split("/").pop() || "design-asset";
+
+  if (deliveryKind && responseMimeType === "image/png" && !searchParams.has("download")) {
+    try { return await deliverAuthorizedPng(response, request, deliveryKind, {"Cache-Control":"private, no-store", "X-Content-Type-Options":"nosniff", "Referrer-Policy":"no-referrer"}); }
+    catch { return NextResponse.json({ok:false}, {status:404,headers:{"Cache-Control":"private, no-store"}}); }
+  }
 
   return new NextResponse(response.body, {
     status: 200,

@@ -1,4 +1,5 @@
 "use client";
+import { ResponsiveDesignImage } from "@/components/responsive-design-image";
 
 import { useRef, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
@@ -901,8 +902,7 @@ function ProductionAssetCard({
       <div className="flex min-w-0 gap-3">
         <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 design-asset-checkerboard">
           {isPreviewableImage(asset) && asset.previewHref ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={asset.previewHref} alt="" className="h-full w-full object-contain" />
+            <ResponsiveDesignImage src={asset.storageBucket === "design-production-assets" && asset.mimeType === "image/png" && ["openai", "canva"].includes(asset.metadata?.source ?? "") ? `/api/project-files/preview?designAssetId=${asset.id}` : asset.previewHref} alt="" sizes="96px" className="h-full w-full object-contain" />
           ) : (
             <span className="text-sm font-black text-[#184a88]">{getExtension(fileName)}</span>
           )}
