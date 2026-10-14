@@ -9,7 +9,7 @@ function harness(respond,e2e='enabled'){
  const req=n=>n==='react'?hooks:n==='next/image'?{__esModule:true,default:({unoptimized,...p})=>{void unoptimized;return React.createElement('img',p);}}:n==='./staging-e2e-status'?{useStagingE2E:()=>e2e,StagingE2ENotice:()=>React.createElement('p',null,'고정 Staging')}:n.startsWith('@/')?load('src/'+n.slice(2)+'.ts'):require(n);
  const mod={exports:{}};const fetch=async(url,options)=>{const input=JSON.parse(options.body);calls.push(input);return{ok:true,json:async()=>({ok:true,generationKey:'a'.repeat(64),specification:load('src/lib/visual-director-image-spec.ts').buildDirectorImageSpec(article),...await respond(input)})};};
  vm.runInThisContext('(function(require,module,exports,fetch,setTimeout){'+source+'\n})')(req,mod,mod.exports,fetch,fn=>setTimeout(fn,0));
- return{calls,render(p={}){cursor=0;const tree=mod.exports.VisualDirectorImageControls({article,articleId:'saved',projectSlug:'fixture',disabled:false,onBusy(){},...p});mount=true;return tree;},mount(){effects.forEach(fn=>fn());}};
+ return{calls,render(p={}){cursor=0;const tree=mod.exports.VisualDirectorImageControls({article,articleId:'saved',projectSlug:'fixture',disabled:false,onBusy(){},...p});const rendered=tree&&typeof tree.type==='function'?tree.type(tree.props):tree;mount=true;return rendered;},mount(){effects.forEach(fn=>fn());}};
 }
 function find(t,p){if(!t||typeof t!=='object')return[];if(Array.isArray(t))return t.flatMap(x=>find(x,p));return[...(p(t)?[t]:[]),...find(t.props?.children,p)];}
 const button=t=>find(t,e=>e.type==='button')[0],settle=()=>new Promise(r=>setTimeout(r,30));
@@ -20,7 +20,7 @@ test('AI-only execution UI: conceptual visible; real person, HTML and hybrid hid
 });
 test('explicit click only, double-click makes one generate call; success thumbnail/candidate, no automatic approval/apply',async()=>{
  const h=harness(p=>p.action==='director_prepare'?{status:'ready'}:{status:'success',asset:{id:'asset',name:'개념 이미지',previewHref:'/api/project-files/preview?designAssetId=asset'}});
- h.render();h.mount();assert.equal(h.calls.length,0);const b=button(h.render());b.props.onClick();b.props.onClick();await settle();assert.deepEqual(h.calls.map(c=>c.action),['director_prepare','director_generate']);const html=renderToStaticMarkup(h.render());assert(html.includes('자산으로 등록됨'));assert(html.includes('기사 적용 후보'));assert(!button(h.render()));assert(!h.calls.some(c=>c.action.includes('approve')));
+ h.render();h.mount();assert.equal(h.calls.length,0);const b=button(h.render());b.props.onClick();b.props.onClick();await settle();assert.deepEqual(h.calls.map(c=>c.action),['director_prepare','director_generate']);const html=renderToStaticMarkup(h.render());assert(html.includes('자산으로 등록됨'));assert(html.includes('기사 적용 후보'));assert.equal(button(h.render()).props.children,'다른 시안 생성');assert(!h.calls.some(c=>c.action.includes('approve')));
 });
 test('in-progress uses status polling only; success reuse distinctly labeled',async()=>{
  const h=harness(p=>p.action==='director_prepare'?{status:'ready'}:p.action==='director_generate'?{status:'in_progress'}:{status:'success',duplicate:true,asset:{id:'asset',name:'기존',previewHref:'/api/project-files/preview?designAssetId=asset'}});
@@ -28,4 +28,12 @@ test('in-progress uses status polling only; success reuse distinctly labeled',as
 });
 test('unknown only requests status preparation, failed disabled; no second generate',async()=>{
  for(const status of ['unknown','failed']){const h=harness(()=>({status,message:'자동 재시도하지 않습니다.'}));h.render();h.mount();button(h.render()).props.onClick();await settle();assert.equal(h.calls.length,1);assert.equal(h.calls[0].action,'director_prepare');assert(button(h.render()).props.disabled===(status==='failed'));if(status==='unknown'){button(h.render()).props.onClick();await settle();assert(h.calls.every(c=>c.action==='director_prepare'));}}
+});
+
+test('explicit different variant click only after success; index increments once, double click suppressed',async()=>{
+ const h=harness(p=>p.action==='director_prepare'?{status:'ready'}:{status:'success',asset:{id:'asset',name:'시안',previewHref:'/preview'}});
+ h.render();h.mount();button(h.render()).props.onClick();await settle();assert.equal(h.calls.filter(c=>c.action==='director_generate').length,1);
+ const next=button(h.render());assert.equal(next.props.children,'다른 시안 생성');next.props.onClick();next.props.onClick();await settle();
+ assert.deepEqual(h.calls.map(c=>c.variantIndex??1),[1,1,2,2]);assert.equal(h.calls.filter(c=>c.action==='director_generate').length,2);
+ assert(renderToStaticMarkup(h.render()).includes('스타일: 문화·계절형'));assert(renderToStaticMarkup(h.render()).includes('제목 여백: 상단'));
 });

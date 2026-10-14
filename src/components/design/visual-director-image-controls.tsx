@@ -1,4 +1,6 @@
 "use client";
+import { directorStyleLabels, headlineSafeAreaLabels } from "@/lib/director-image-quality";
+import { visualArticleSnapshot } from "@/lib/article-visual-source-snapshot";
 import { stageFromExecution, type HybridStage } from "@/lib/hybrid-visual-plan";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -6,33 +8,37 @@ import { buildDirectorImageSpec, type DirectorGenerationResult } from "@/lib/vis
 import type { VisualDirectorArticle } from "@/lib/article-visual-director";
 import { useStagingE2E, StagingE2ENotice } from "./staging-e2e-status";
 
-export function VisualDirectorImageControls({article,articleId,projectSlug,disabled,onBusy,context,onStage}: {
+function VisualDirectorImageSession({article,articleId,projectSlug,disabled,onBusy,context,onStage}: {
   article: VisualDirectorArticle; articleId:string; projectSlug:string; disabled:boolean; onBusy:(value:boolean)=>void;context?:"hybrid";onStage?:(stage:HybridStage)=>void;
 }) {
-  const spec = buildDirectorImageSpec(article,context);
+  const [variantIndex,setVariantIndex]=useState(1);
+  const spec = buildDirectorImageSpec(article,context,variantIndex);
   const e2e=useStagingE2E();
   const [current,setCurrent]=useState<DirectorGenerationResult|null>(null),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
   const locked=useRef(false),mounted=useRef(true),key=useRef("");
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;onBusy(false);};},[onBusy]);
-  async function call(action:"prepare"|"generate"|"status") {
+  async function call(action:"prepare"|"generate"|"status",index:number) {
     const r=await fetch("/api/project-content/visual-asset-generation",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({projectSlug,articleId,action:`director_${action}`,...(context?{context}:{}),...(action!=="prepare"?{generationKey:key.current}:{})})});
+      body:JSON.stringify({projectSlug,articleId,action:`director_${action}`,...(index>1?{variantIndex:index}:{}),...(context?{context}:{}),...(action!=="prepare"?{generationKey:key.current}:{})})});
     const data=await r.json(); if(!r.ok||!data.ok)throw new Error(data.message||"생성 상태를 확인하지 못했습니다.");
     key.current=data.generationKey;return data as DirectorGenerationResult;
   }
-  async function run(generate:boolean) {
+  async function run(generate:boolean,index=variantIndex) {
     if(locked.current||disabled||e2e!=="enabled"||!spec||!articleId)return;
+    const alive=()=>mounted.current;
     locked.current=true;setBusy(true);onBusy(true);setMessage("");
     try{
-      let value=await call("prepare");
-      if(generate&&value.status==="ready")value=await call("generate");
-      if(mounted.current){setCurrent(value);onStage?.(stageFromExecution(value.status,value.asset?.id,value.generationKey));}
+      let value=await call("prepare",index);
+      if(!alive())return;
+      setVariantIndex(index);
+      if(generate&&value.status==="ready")value=await call("generate",index);
+      if(alive()){setCurrent(value);onStage?.(stageFromExecution(value.status,value.asset?.id,value.generationKey));}
       // Status-only polling; no second generation POST on timeout or uncertainty.
-      for(let count=0;value.status==="in_progress"&&count<30&&mounted.current;count++){
-        await new Promise(resolve=>setTimeout(resolve,3000));if(!mounted.current)break;
-        value=await call("status");if(mounted.current){setCurrent(value);onStage?.(stageFromExecution(value.status,value.asset?.id,value.generationKey));}
+      for(let count=0;value.status==="in_progress"&&count<30&&alive();count++){
+        await new Promise(resolve=>setTimeout(resolve,3000));if(!alive())break;
+        value=await call("status",index);if(alive()){setCurrent(value);onStage?.(stageFromExecution(value.status,value.asset?.id,value.generationKey));}
       }
-    }catch(error){if(mounted.current){onStage?.({status:"needs_input"});setMessage(error instanceof Error?error.message:"생성 결과가 미확정입니다. 진행 상태만 확인하세요.");setCurrent(v=>v?.status==="success"?v:{status:"unknown",generationKey:key.current,specification:spec!});}}
+    }catch(error){if(alive()){onStage?.({status:"needs_input"});setMessage(error instanceof Error?error.message:"생성 결과가 미확정입니다. 진행 상태만 확인하세요.");setVariantIndex(index);setCurrent({status:"unknown",generationKey:key.current,specification:buildDirectorImageSpec(article,context,index)!});}}
     finally{locked.current=false;if(mounted.current){setBusy(false);onBusy(false);}}
   }
   if(!spec)return null;
@@ -40,7 +46,7 @@ export function VisualDirectorImageControls({article,articleId,projectSlug,disab
   return <section aria-label="AI 이미지 생성" className="mt-3 min-w-0 rounded border border-slate-200 bg-white p-3">
     <h4 className="font-bold">AI 이미지 생성</h4>
     <p className="mt-1">실제 기록사진보다 개념 이미지가 적합합니다.</p>
-    <p className="mt-1 text-xs">모바일 기사 대표 이미지 · {spec.aspectRatio} · {spec.style}</p>
+    <p className="mt-1 text-xs">스타일: {directorStyleLabels[spec.stylePreset]} · 비율: {spec.aspectRatio} · 제목 여백: {headlineSafeAreaLabels[spec.headlineSafeArea]} · 개념 표현</p>
     <p className="mt-1 text-xs text-slate-600">텍스트 없는 개념 이미지입니다. 생성 후 미승인 자산으로 등록되며, 승인·기사 적용은 별도입니다.</p>
     {e2e==="blocked"?<StagingE2ENotice/>:null}
     <div role="status" aria-live="polite" className="mt-2">
@@ -52,7 +58,15 @@ export function VisualDirectorImageControls({article,articleId,projectSlug,disab
         <a className="dd-btn dd-btn-secondary mt-2" href={`/projects/${projectSlug}/design`}>자산 관리에서 확인</a>
       </>:current?.message?<p>{current.message}</p>:null}
     </div>
+    {current?.status==="success"&&variantIndex<3?<button type="button" className="dd-btn dd-btn-secondary mt-2 max-w-full whitespace-normal" disabled={disabled||busy||e2e!=="enabled"} onClick={()=>void run(true,variantIndex+1)}>다른 시안 생성</button>:null}
+    <p className="mt-1 text-xs">한 번에 1장 · 다른 시안은 직접 요청할 때만 생성합니다. 최대 3개 시안이며 기존 자산은 유지됩니다.</p>
     {current?.status!=="success"?<button type="button" className="dd-btn dd-btn-primary mt-2 max-w-full whitespace-normal" disabled={disabled||busy||e2e!=="enabled"||!articleId||current?.status==="failed"}
       onClick={()=>void run(!unresolved)}>{unresolved?"진행 상태 확인":"AI 이미지 생성"}</button>:null}
   </section>;
+}
+
+export function VisualDirectorImageControls(props: Parameters<typeof VisualDirectorImageSession>[0]) {
+  if (!buildDirectorImageSpec(props.article,props.context)) return null;
+  const sourceKey=JSON.stringify([props.projectSlug,props.articleId,visualArticleSnapshot(props.article)]);
+  return <VisualDirectorImageSession key={sourceKey} {...props}/>;
 }
