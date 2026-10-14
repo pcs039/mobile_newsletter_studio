@@ -3,7 +3,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto
 import { inflateSync } from "node:zlib";
 import { buildVisualAssetSpecifications } from "@/lib/article-visual-asset-spec";
 import { conceptDirections, type ArticleDesignConcept } from "@/lib/article-design-concept";
-import { validateCanvaPng } from "@/lib/canva-png-export";
+import { canvaPngMaxBytes, validateCanvaPng } from "@/lib/canva-png-export";
 
 export const generatedImageMaxBytes = 2_500_000;
 export class ImageGenerationError extends Error { constructor(public status: number, message: string) { super(message); } }
@@ -35,10 +35,11 @@ export function buildImageGenerationRequest(concept: ArticleDesignConcept, role:
   return { specification, family, payload: { model: "gpt-image-2.5-flare", prompt, n: 1, size, quality: "medium", output_format: "png", background: specification.transparentBackground ? "transparent" : "opaque" } };
 }
 
-export function validateGeneratedImage(base64: unknown, role: GeneratableRole, dimensions?: { width: number; height: number }) {
-  if (typeof base64 !== "string" || base64.length > Math.ceil(generatedImageMaxBytes / 3) * 4 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) throw new ImageGenerationError(413, "PNG 결과가 허용 크기를 초과했거나 올바르지 않습니다.");
+export function validateGeneratedImage(base64: unknown, role: GeneratableRole, dimensions?: { width: number; height: number }, maxBytes = generatedImageMaxBytes) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > canvaPngMaxBytes) throw new ImageGenerationError(400, "이미지 검증 한도가 올바르지 않습니다.");
+  if (typeof base64 !== "string" || base64.length > Math.ceil(maxBytes / 3) * 4 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) throw new ImageGenerationError(413, "PNG 결과가 허용 크기를 초과했거나 올바르지 않습니다.");
   const bytes = Buffer.from(base64, "base64");
-  if (bytes.toString("base64") !== base64 || bytes.length > generatedImageMaxBytes) throw new ImageGenerationError(413, "PNG 결과를 확인하지 못했습니다.");
+  if (bytes.toString("base64") !== base64 || bytes.length > maxBytes) throw new ImageGenerationError(413, "PNG 결과를 확인하지 못했습니다.");
   let info;
   try { info = validateCanvaPng(bytes, "image/png"); } catch { throw new ImageGenerationError(502, "이미지 결과가 유효한 PNG가 아닙니다."); }
   const expected = dimensions ? [dimensions.width, dimensions.height] : role === "hero_background" ? [1152,1536] : [1152,768];

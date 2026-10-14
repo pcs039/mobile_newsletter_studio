@@ -17,8 +17,8 @@ function canonical(value: unknown): unknown {
 }
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
 function uuid(value: string) { const h = hash(value); return `${h.slice(0,8)}-${h.slice(8,12)}-5${h.slice(13,16)}-8${h.slice(17,20)}-${h.slice(20,32)}`; }
-export function prepareDirectorImage(projectId: string, articleId: string, article: VisualDirectorArticle, palette: string[],context?:"hybrid") {
-  const specification = buildDirectorImageSpec(article,context);
+export function prepareDirectorImage(projectId: string, articleId: string, article: VisualDirectorArticle, palette: string[],context?:"hybrid",variantIndex=1) {
+  const specification = buildDirectorImageSpec(article,context,variantIndex);
   if (!specification) throw new ImageGenerationError(409, "현재 기사에는 AI 개념 이미지 생성이 적합하지 않습니다.");
   const colors = palette.filter(isArticleHexColor).slice(0, 4);
   // Hash only stable article inputs. Signed preview URLs/private metadata never
@@ -32,15 +32,23 @@ export function prepareDirectorImage(projectId: string, articleId: string, artic
     payload: { model: "gpt-image-2.5-flare", prompt: buildDirectorImagePrompt(specification, colors), n: 1,
       size: `${specification.targetSize.width}x${specification.targetSize.height}`, quality: "medium", output_format: "png", background: "opaque" } };
 }
-export async function executeDirectorImage(input: { projectId: string; articleId: string; article: VisualDirectorArticle; adminId: string; palette: string[]; action: "prepare" | "generate" | "status"; expectedKey?: string;context?:"hybrid" }): Promise<DirectorGenerationResult> {
+export async function executeDirectorImage(input: { projectId: string; articleId: string; article: VisualDirectorArticle; adminId: string; palette: string[]; action: "prepare" | "generate" | "status"; expectedKey?: string;context?:"hybrid";variantIndex?:number }): Promise<DirectorGenerationResult> {
   if (!imageGenerationEnabled()) throw new ImageGenerationError(403, "고정 Staging에서만 이미지 생성과 등록을 사용할 수 있습니다.");
-  const plan = prepareDirectorImage(input.projectId, input.articleId, input.article, input.palette,input.context);
+  const plan = prepareDirectorImage(input.projectId, input.articleId, input.article, input.palette,input.context,input.variantIndex);
   const base = { specification: plan.specification, generationKey: plan.generationKey };
   if (input.action !== "prepare" && input.expectedKey !== plan.generationKey) throw new ImageGenerationError(409, "기사가 변경되었습니다. 생성 계획을 다시 확인하세요.");
   const provenance = { generatedForArticleId: input.articleId, visualStrategy: "ai_generated_image" as const, generationPurpose: "article_visual" as const,
     promptVersion: "v1" as const, generationKey: plan.generationKey, factualityMode: "conceptual" as const, textInImage: false as const };
   const proof: GeneratedImageProof = { assetId: plan.assetId, projectId: input.projectId, articleId: input.articleId, adminId: input.adminId,
     role: "hero_background", pattern: "event", hash: plan.generationKey, expires: 0, model: "gpt-image-2.5-flare" };
+  if (plan.specification.variantIndex > 1) {
+    const previous = prepareDirectorImage(input.projectId,input.articleId,input.article,input.palette,input.context,plan.specification.variantIndex-1);
+    const job = await readImageProcessingJob(input.projectId,previous.jobId);
+    if (job?.status !== "succeeded" || job.request_payload.articleId !== input.articleId || job.request_payload.generationKey !== previous.generationKey || job.result_payload.assetId !== previous.assetId ||
+      !(await findGeneratedImageAsset({...proof,assetId:previous.assetId,hash:previous.generationKey},{...provenance,generationKey:previous.generationKey}))) {
+      throw new ImageGenerationError(409,"이전 시안의 성공 결과를 먼저 확인하세요. 미확정·실패 결과를 건너뛰어 생성하지 않습니다.");
+    }
+  }
   const resolve = async (): Promise<DirectorGenerationResult | null> => {
     const job = await readImageProcessingJob(input.projectId, plan.jobId);
     if (!job) return null;
@@ -65,7 +73,7 @@ export async function executeDirectorImage(input: { projectId: string; articleId
     try {
       const base64 = await requestArticleImage(plan.payload);
       stage = "validation";
-      const png = validateGeneratedImage(base64, "hero_background", plan.specification.targetSize);
+      const png = validateGeneratedImage(base64, "hero_background", plan.specification.targetSize,plan.specification.maxOutputBytes);
       stage = "registration";
       const asset = await registerGeneratedImageAsset(proof, png.bytes, `${input.article.title.trim().slice(0,130) || "기사"} · 개념 이미지 · GPT Images`, provenance);
       await finishImageProcessingJob(input.projectId, plan.jobId, asset.id);
@@ -74,7 +82,7 @@ export async function executeDirectorImage(input: { projectId: string; articleId
       const unknown = stage === "registration" || (stage === "provider" && (!(error instanceof ImageGenerationError) || error.status >= 500));
       // Persistence ambiguity is deliberately terminal/unknown; never issue another provider request.
       await finishImageProcessingJob(input.projectId, plan.jobId, undefined, unknown).catch(() => undefined);
-      return { ...base, status: unknown ? "unknown" : "failed", message: unknown ? "생성·등록 결과가 미확정입니다. 자동 재시도하지 않습니다." : "생성 결과를 등록하지 못했습니다. 자동 재시도하지 않습니다." };
+      return { ...base, status: unknown ? "unknown" : "failed", message: unknown ? "생성·등록 결과가 미확정입니다. 자동 재시도하지 않습니다." : error instanceof ImageGenerationError ? `${error.message} 자동 재시도하지 않습니다.` : "생성 결과를 등록하지 못했습니다. 자동 재시도하지 않습니다." };
     }
   });
 }

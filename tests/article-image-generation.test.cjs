@@ -2,6 +2,15 @@
 const test=require('node:test'),assert=require('node:assert/strict'),zlib=require('node:zlib');
 const loader=require('./canva-test-loader.cjs'),load=loader();
 const g=load('src/lib/article-image-generation.ts');
+test('Director 1536px PNG budget is bounded by existing 10MB asset limit; legacy 2.5MB limit unchanged',()=>{
+ const w=1536,h=1920,head=Buffer.alloc(13);head.writeUInt32BE(w);head.writeUInt32BE(h,4);head[8]=8;head[9]=2;
+ const pixels=Buffer.alloc((w*3+1)*h);let seed=123;
+ for(let y=0;y<h;y++)for(let x=1;x<=w*3;x++){seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;pixels[y*(w*3+1)+x]=seed&255;}
+ const data=Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',head),chunk('IDAT',zlib.deflateSync(pixels)),chunk('IEND',Buffer.alloc(0))]).toString('base64');
+ assert.throws(()=>g.validateGeneratedImage(data,'hero_background',{width:w,height:h}),e=>e.status===413);
+ const result=g.validateGeneratedImage(data,'hero_background',{width:w,height:h},10*1024*1024);assert(result.size>2500000);assert.equal(result.width,w);
+ assert.throws(()=>g.validateGeneratedImage(data,'hero_background',{width:w,height:h},11*1024*1024),e=>e.status===400);
+});
 const concept={name:'PRIVATE',description:'PRIVATE',rationale:'PRIVATE',pattern:'event',visualTone:'friendly',layoutDirection:'friendly',colorDirection:'brand',assetRole:'both'};
 function crc(bytes){let c=0xffffffff;for(const b of bytes){c^=b;for(let i=0;i<8;i++)c=(c>>>1)^((c&1)?0xedb88320:0);}return (c^0xffffffff)>>>0;}
 function chunk(type,data){const b=Buffer.alloc(data.length+12);b.writeUInt32BE(data.length);b.write(type,4);data.copy(b,8);b.writeUInt32BE(crc(b.subarray(4,8+data.length)),8+data.length);return b;}

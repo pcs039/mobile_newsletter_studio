@@ -30,14 +30,14 @@ test('stable generation key excludes private/temporary URLs, changes on source, 
  const h=harness(),p=h.module.prepareDirectorImage(project,articleId,article,['#092046']);assert.deepEqual(p,h.module.prepareDirectorImage(project,articleId,article,['#092046']));
  assert.equal(p.generationKey,h.module.prepareDirectorImage(project,articleId,{...article,privateMetadata:'SECRET',previewUrl:'temporary'},['#092046']).generationKey);
  for(const q of [h.module.prepareDirectorImage('other',articleId,article,['#092046']),h.module.prepareDirectorImage(project,'other',article,['#092046']),h.module.prepareDirectorImage(project,articleId,{...article,title:article.title+' 이야기'},['#092046']),h.module.prepareDirectorImage(project,articleId,article,['#abcdef'])])assert.notEqual(p.generationKey,q.generationKey);
- assert(!JSON.stringify(p.payload).includes(article.body));assert.equal(p.payload.n,1);assert.equal(p.payload.size,'1024x1280');
+ assert(!JSON.stringify(p.payload).includes(article.body));assert.equal(p.payload.n,1);assert.equal(p.payload.size,'1536x1920');
 });
 test('prepare/status do not generate or register; fresh key mismatch blocks provider',async()=>{
  const h=harness(),p=await h.module.executeDirectorImage(h.input);assert.equal(p.status,'ready');await h.module.executeDirectorImage({...h.input,action:'status',expectedKey:p.generationKey});assert.equal(h.claims,0);assert.equal(h.calls.provider,0);
  await assert.rejects(h.module.executeDirectorImage({...h.input,action:'generate',expectedKey:'0'.repeat(64)}),e=>e.status===409);assert.equal(h.calls.provider,0);
 });
 test('one generation registers draft provenance via shared repository; success reuses asset and private-ID thumbnail; original unchanged',async()=>{
- const h=harness(),before=JSON.stringify(article),r=await h.generate();assert.equal(r.status,'success');assert.equal(h.calls.provider,1);assert.equal(h.calls.registration,1);assert.deepEqual(h.calls.dimensions,{width:1024,height:1280});assert.equal(h.asset.provenance.visualStrategy,'ai_generated_image');assert.equal(h.asset.provenance.factualityMode,'conceptual');assert.equal(h.asset.provenance.generatedForArticleId,articleId);assert(!r.asset.previewHref.includes('projects/'));assert.equal(JSON.stringify(article),before);
+ const h=harness(),before=JSON.stringify(article),r=await h.generate();assert.equal(r.status,'success');assert.equal(h.calls.provider,1);assert.equal(h.calls.registration,1);assert.deepEqual(h.calls.dimensions,{width:1536,height:1920});assert.equal(h.asset.provenance.visualStrategy,'ai_generated_image');assert.equal(h.asset.provenance.factualityMode,'conceptual');assert.equal(h.asset.provenance.generatedForArticleId,articleId);assert(!r.asset.previewHref.includes('projects/'));assert.equal(JSON.stringify(article),before);
  const repeat=await h.module.executeDirectorImage({...h.input,action:'generate',expectedKey:r.generationKey});assert.equal(repeat.duplicate,true);assert.equal(repeat.asset.id,r.asset.id);assert.equal(h.calls.provider,1);
 });
 for(const status of ['processing','failed','unknown'])test(status+' never triggers additional provider request; processing only polls',async()=>{
