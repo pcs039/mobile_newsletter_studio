@@ -147,9 +147,26 @@ export async function GET(request: Request) {
   let path = searchParams.get("path")?.trim() ?? "";
   const headers = getStorageHeaders();
 
+  // Institution candidate thumbnails are scoped to the requested project, not a raw path.
+  const institutionAssetId=searchParams.get("institutionAssetId");
+  if(institutionAssetId) {
+    const projectId=searchParams.get("projectId"),uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if(user.role!=="admin"||!projectId||!uuid.test(projectId)||!uuid.test(institutionAssetId)||!headers)return NextResponse.json({ok:false},{status:403});
+    const access=await requireProjectApiAccess({projectId});if(!access.ok)return access.response;
+    const endpoint=getSupabaseRestEndpoint(`/rest/v1/newsletter_project_design_assets?${new URLSearchParams({select:"project_id,storage_bucket,storage_path,metadata,mime_type,approval_status,is_active",id:`eq.${institutionAssetId}`,project_id:`eq.${projectId}`,is_active:"eq.true",limit:"1"})}`);
+    if(!endpoint)return NextResponse.json({ok:false},{status:503});
+    const lookup=await fetch(endpoint,{headers,cache:"no-store",signal:AbortSignal.timeout(10000)});
+    if(!lookup.ok)return NextResponse.json({ok:false},{status:503});
+    const [asset]=await lookup.json();
+    if(!asset||asset.project_id!==projectId||asset.is_active!==true||!["draft","approved"].includes(asset.approval_status)||readDesignAssetMetadata(asset.metadata)?.source!=="institution"||
+      !["brand-assets","design-intake-assets","design-production-assets"].includes(asset.storage_bucket)||!["image/png","image/jpeg","image/webp"].includes(asset.mime_type))return NextResponse.json({ok:false},{status:404});
+    bucket=asset.storage_bucket;path=asset.storage_path;
+  }
+
   // Admin-only ID mapper: new generation thumbnails expose no private Storage path.
   let trustedInternalSvg = false;
   const designAssetId = searchParams.get("designAssetId");
+  if (designAssetId && institutionAssetId) return NextResponse.json({ok:false},{status:400});
   if (designAssetId) {
     if (user.role !== "admin" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(designAssetId) || !headers)
       return NextResponse.json({ok:false}, {status:403});
