@@ -45,3 +45,8 @@ test('real control shows only information strategy, review disables execution an
  assert(show({...fixtures.steps,title:'긴'.repeat(41)}).includes('확인 필요'));assert(show({...fixtures.steps,title:'긴'.repeat(41)}).includes('disabled'));
  assert.equal(show(article('가을 계절 문화','계절 분위기와 상징으로 문화 이야기를 전달하는 생활정보 개념 배경입니다.')),'');assert.equal(show(article('김민수 시장 인터뷰','기관장 인터뷰 질문과 답변, 주민 의견을 소개합니다.')),'');assert.equal(show(article('긴급 교통 통제','즉시 교통 통제 구간으로 우회하세요.')),'');
 });
+test('wide Latin title/description uses conservative full-em wraps, no guessed half-width overflow',()=>{
+ const p=g.buildInformationGraphicSpec({...fixtures.steps,title:'W'.repeat(40),body:'신청 절차\n1. 신청: '+ 'M'.repeat(60)+'\n2. 심사: '+ 'W'.repeat(60)},id);assert.equal(p.status,'ready');
+ const svg=g.renderInformationGraphicSvg(p.specification,'#092046');const runs=[...svg.matchAll(/<tspan[^>]*>([WM]+)<\/tspan>/g)].map(m=>m[1]);assert(runs.length>=8);assert(runs.every(s=>s.length<=24));assert(runs.some(s=>s.length===17));
+ assert.equal(runs.join('').length,160);
+});
