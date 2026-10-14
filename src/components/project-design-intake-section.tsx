@@ -3,6 +3,7 @@
 import { useRef, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { BulkProductionAssetImport } from "@/components/design/bulk-production-asset-import";
+import { AdobePostProcessingControls } from "@/components/design/adobe-post-processing-controls";
 import {
   approvalStatusLabels,
   productionAssetLabels,
@@ -620,6 +621,7 @@ function IntakeAssetCard({
           ) : null}
         </div>
       </div>
+      <AdobePostProcessingControls asset={asset} />
       <label className="mt-3 block text-xs font-black text-slate-600">
         사용 메모
         <input
@@ -920,6 +922,7 @@ function ProductionAssetCard({
         </div>
       </div>
 
+      <AdobePostProcessingControls asset={asset} />
       <details className="mt-4">
         <summary className="cursor-pointer text-xs font-black text-[#184a88]">추가 정보 · 수정</summary>
         <p className="mt-2 break-all text-xs text-slate-500">{fileName}</p>
