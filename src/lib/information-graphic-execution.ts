@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { buildVisualDirectorResult, type VisualDirectorArticle } from "@/lib/article-visual-director";
-import { buildInformationGraphicSpec, renderInformationGraphicSvg } from "@/lib/article-information-graphic";
+import { buildInformationGraphicSpec, renderInformationGraphicSvg, graphicTypeLabels } from "@/lib/article-information-graphic";
 import { ImageGenerationError } from "@/lib/article-image-generation";
 import { validateDesignAssetMetadata } from "@/lib/design-asset-metadata";
 import { getSupabaseRestEndpoint,getSupabaseStorageEndpoint } from "@/lib/supabase-config";
@@ -46,7 +46,7 @@ export async function executeInformationGraphic(input:{projectId:string;articleI
   if(!r.ok){const b=await r.json().catch(()=>null);if(r.status===409||String(b?.statusCode)==="409"||b?.error==="Duplicate")return{...base,status:"in_progress",message:"동일 그래픽 등록 결과를 확인 중입니다."};throw new ImageGenerationError(502,"파일 등록 결과를 확인하지 못했습니다. 진행 상태를 확인하세요.");}
   const metadata=validateDesignAssetMetadata({source:"internal",usageTags:["common"],reuseScope:"project",transparency:"no",informationGraphic:{articleId:input.articleId,graphicType:plan.specification.graphicType,specVersion:"v1",generationKey:plan.generationKey}});
   if(!metadata.ok)throw new ImageGenerationError(400,metadata.message);
-  const saved=await insertProjectDesignAssetRecord({id:plan.assetId,project_id:input.projectId,name:`${input.article.title.trim()} · ${plan.specification.graphicType} · 정보그래픽`,asset_type:"card_frame",metadata:metadata.metadata,parent_source_asset_id:null,language:"ko",variant:"primary",background_mode:"any",usage_role:"article",approval_status:"draft",is_primary:false,is_active:true,sort_order:0,
+  const saved=await insertProjectDesignAssetRecord({id:plan.assetId,project_id:input.projectId,name:`${input.article.title.trim()} · ${graphicTypeLabels[plan.specification.graphicType]} · 정보그래픽`,asset_type:"card_frame",metadata:metadata.metadata,parent_source_asset_id:null,language:"ko",variant:"primary",background_mode:"any",usage_role:"article",approval_status:"draft",is_primary:false,is_active:true,sort_order:0,
     storage_bucket:bucket,storage_path:path,original_file_name:upload.name,mime_type:upload.type,file_size_bytes:upload.size,alt_text:input.article.title,usage_note:"앱 내부 정보그래픽 · 원문 확인 후 승인 · 자동 기사 적용 없음"},headers,AbortSignal.timeout(10000));
   const asset=await find();if(asset)return{...base,status:"success",asset,duplicate:!saved.ok};
   return{...base,status:"unknown",message:"자산 등록 결과가 미확정입니다. 자동 재생성하지 않습니다."};
