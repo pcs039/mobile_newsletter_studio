@@ -54,6 +54,25 @@ The available Canva evidence is already a 397px-wide PNG. Delivery cannot recove
 - Existing article/block/link/Design Asset/job row counts and complete-row digests, plus both original PNG SHA-256 values, match before/after. No approval, apply, publish, migration, DB/Storage write, GPT or Canva generation call was used.
 - Full suite322/322 (no skips), TypeScript, lint, Webpack build and diff check pass; only the three pre-existing lint warnings remain.
 
-### Remaining live QA / merge decision
+### Additional Staging inventory and merge decision
 
-Keep the PR open until the actual reader/client-review and high-resolution Canva checks can be completed without violating the no-write constraint. The representative GPT asset is draft; neither representative image has an applied reader block, and no active review session exists. Consequently the deployed checks above establish authorized proxy/encoder operation and admin rendering, while shared renderer tests/local fixtures cover markup, aspect ratio and HTML preservation. They are **not** a live public or client-review image E2E. The 2x delivery candidate is available and tested, but the existing 397px Canva source cannot establish 2x text fidelity. No auth bypass or temporary publication is introduced to work around these missing fixtures.
+A paginated, read-only scan of all Staging project Design Asset PNGs and managed full-layout image block references found:
+
+- PNG Design Assets: **6**.
+- Applied full-layout image blocks: **0**.
+- Canva PNG/full-layout candidates: **1**, existing approved active asset `d3401167-8d8a-5466-a78e-d791ef427859`, **397×559**.
+- Existing suitable Canva/full-layout PNGs with intrinsic width at least 1000px: **0**.
+
+Dimensions were read from the existing Storage PNG headers. No Canva API/generation call, DB write, Storage write, approval/apply/publication change or new fixture was used. A larger test image was not fabricated, upscaled or substituted with a GPT image.
+
+**high-resolution Canva live QA pending**
+
+The existing 397px source does not establish high-resolution 1x/2x text, thin-line or icon fidelity. Additional 480/960 AVIF and 960 WebP Retina measurements on a qualifying high-resolution Canva source were therefore not performed. The earlier low-resolution and GPT measurements remain valid within their stated limits.
+
+Per the follow-up acceptance decision, this pending high-resolution QA is **non-blocking for functional merge readiness**. Keep PR #221 OPEN for now; do not merge in this task. The representative GPT asset is still draft and neither representative asset is applied to an article; no active client-review session exists. Thus actual public/client-review image E2E also remains distinct from the successful deployed admin proxy tests and shared renderer tests/local fixtures. No authorization bypass or temporary publication is introduced.
+
+### Backlog
+
+1. Generate one actual high-resolution Canva full-layout result in a separately authorized follow-up, then perform Retina QA: original dimensions; 480/960 AVIF and 960 WebP body bytes/decoded dimensions; text/thin-line/icon quality at 1x/2x and 768/1440px; original enlargement; overflow/console checks.
+2. Review **Storage → Vercel original egress optimization**. Browser delivery bytes are reduced, but the current authorized proxy still reads the current original before looking up the process-local encoded result. Browser savings are not a claim of reduced origin egress.
+3. Review a future **persistent derivative or source-hash-based cache**, retaining per-request authorization/revocation/provenance checks and explicit original/derivative lifecycle rules. No persistent cache, Storage derivative or schema change is added in v1.
