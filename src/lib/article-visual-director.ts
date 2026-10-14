@@ -33,8 +33,8 @@ export type VisualDirectorResult = {
 // metadata are returned. Future LLM reasoning can consume these booleans/counts.
 export function analyzeArticleVisualNeeds(article: VisualDirectorArticle) {
   if (![article.title, article.summary, article.body].every(v => typeof v === "string") || !Array.isArray(article.blocks) || !article.publicInfo) {
-    return { interview: false, record: false, facility: false, suppliedPoster: false, needsRealPhoto: false,
-      information: false, map: false, images: false, urgent: false, canva: false, conceptual: false, insufficient: true, highPriority: false, retouchSuggested: false };
+    return { interview: false, record: false, facility: false, suppliedPoster: false, needsRealPhoto: false, namedPerson: false,
+      information: false, map: false, images: false, urgent: false, canva: false, conceptual: false, insufficient: true, highPriority: false, retouchSuggested: false, htmlCompanion: false, canvaCompanion: false };
   }
   const entries = getArticlePublicInfoEntries(article.publicInfo, article.articleType);
   const text = buildPatternRecommendationInput(article).replace(/^\[(제목|요약|본문|인용|정보|문단)\]\n/gm, "") + "\n" + entries.map(e => e.value.slice(0, 300)).join("\n");
@@ -42,6 +42,7 @@ export function analyzeArticleVisualNeeds(article: VisualDirectorArticle) {
   const quote = visible.some(b => b.type === "paragraph" && readArticleBodyDesign(b.metadata.body_design)?.kind === "quote" && readArticleBodyDesign(b.metadata.body_design)?.enabled !== false);
   const images = visible.some(b => b.type === "image");
   const has = (rule: RegExp) => rule.test(text);
+  const namedPerson = /[가-힣]{2,4}\s+(?:시장|기관장|구청장|군수|작가)(?=\s|의|[,·]|$)/.test(article.title) || /(?:^|\n)\s*(?:성명|인터뷰 대상)\s*[:：]\s*[가-힣]{2,4}/.test(text);
   const interview = has(/인터뷰|대담|인물 소개|프로필/) && (quote || has(/기관장|시장|구청장|군수|작가|주민|인물|화자|질문|답변/));
   const record = has(/현장|취재|실제 행사/) && has(/열렸다|개최됐다|개최되었다|현장 사진|현장사진|기록/);
   const facility = (article.articleType === "tourism_place" && entries.some(e => e.key === "location")) ||
@@ -61,14 +62,17 @@ export function analyzeArticleVisualNeeds(article: VisualDirectorArticle) {
   const layoutEvidence = entries.length >= 2 || article.links?.some(l => l.isVisible) === true || has(/참여|개최|신청|접수|대상|대사|핵심 요약/);
   const conceptual = has(/계절|봄|여름|가을|겨울|추상|생활정보|문화/) && has(/분위기|상징|개념|감성|배경|계절|생활정보/);
   const textLength = [article.title, article.summary, article.body, ...visible.filter(b => b.type === "paragraph").map(b => b.body)].join("").trim().length;
-  return { interview, record, facility, suppliedPoster, needsRealPhoto: interview || record || facility || locality,
+  const prose=(visible.some(b=>b.type==="paragraph")?visible.filter(b=>b.type==="paragraph").map(b=>b.body).join("\n"):article.body).split(/\n/).map(s=>s.trim()).filter(s=>s&&!/^(?:\d+[.)]|[-•✓✔]|[^:]{1,30}:\s)/.test(s));
+  const htmlCompanion = prose.length>=3 && prose.join("").length>=400;
+  return { canvaCompanion: record && entries.length >= 2 && plannedFormat && layoutEvidence, htmlCompanion, namedPerson, interview, record, facility, suppliedPoster, needsRealPhoto: namedPerson || interview || record || facility || locality,
     information, map, images, urgent: timeSensitive || explicitUrgent, canva: plannedFormat && layoutEvidence,
     conceptual, insufficient: textLength < 24 && entries.length < 2, highPriority: (article.institutionPriority ?? 0) >= 4, retouchSuggested: has(/사진 보정|사진보정|잡티|사진 노이즈/) };
 }
 
 export function recommendVisualStrategy(e: ReturnType<typeof analyzeArticleVisualNeeds>): VisualStrategy {
   if (e.urgent) return "html_first";
-  if (e.needsRealPhoto && e.information) return "hybrid";
+  if (e.needsRealPhoto && (e.information || e.htmlCompanion || e.canvaCompanion)) return "hybrid";
+  if (!e.insufficient && e.information && (e.conceptual || e.htmlCompanion)) return "hybrid";
   if (e.needsRealPhoto || e.suppliedPoster) return "institution_asset";
   if (e.information) return "information_graphic";
   if (e.canva && !e.insufficient) return "canva_full_layout";
@@ -85,10 +89,10 @@ export function buildVisualDirectorResult(article: VisualDirectorArticle, contex
   const noCanvaEvidence = primaryStrategy === "canva_full_layout" && canva.length === 0;
   if (noCanvaEvidence) primaryStrategy = "html_first";
   const realPhoto = e.needsRealPhoto && primaryStrategy !== "html_first";
-  const graphic = primaryStrategy === "information_graphic" || primaryStrategy === "hybrid";
-  const institution = primaryStrategy === "institution_asset" || primaryStrategy === "hybrid";
+  const graphic = primaryStrategy === "information_graphic" || (primaryStrategy === "hybrid" && e.information);
+  const institution = primaryStrategy === "institution_asset" || (primaryStrategy === "hybrid" && e.needsRealPhoto);
   const humanInputRequired = e.insufficient || noCanvaEvidence || (institution && (e.needsRealPhoto || !context.institutionVisualAvailable)) || (graphic && e.map);
-  const reasons: string[] = primaryStrategy === "hybrid" ? ["실제 대상을 보여 주는 기관 사진과 정보표·절차 안내가 함께 필요합니다.", "사실 사진과 읽을 수 있는 정보 영역을 분리하세요."] :
+  const reasons: string[] = primaryStrategy === "hybrid" && !e.needsRealPhoto ? ["개념 표현이나 정보그래픽과 읽을 수 있는 정보를 분리해 준비합니다.", "각 요소를 확인한 뒤 조합을 검토하세요."] : primaryStrategy === "hybrid" ? ["실제 대상을 보여 주는 기관 사진을 먼저 확인합니다.", e.information ? "절차·수치는 읽을 수 있는 정보그래픽으로 분리합니다." : e.canvaCompanion ? "안내용 Canva 템플릿은 추천 후보로 확인합니다." : "인터뷰·상세 본문은 HTML로 유지합니다."] :
     primaryStrategy === "institution_asset" ? [e.suppliedPoster ? "기관에서 이미 제작한 포스터·자료를 우선 활용합니다." : "실제 인물·현장·시설의 사실성을 유지해야 합니다.", "실제 대상을 AI 이미지로 대체하지 않습니다."] :
     primaryStrategy === "information_graphic" ? ["절차·수치·비교 정보의 구조가 중요합니다.", "정확한 값과 읽을 수 있는 설명을 먼저 정리하세요."] :
     primaryStrategy === "canva_full_layout" ? ["안내형 기사에 일정·대상·행동 안내가 함께 있습니다.", "검증된 기존 Canva 템플릿을 제작 후보로 활용할 수 있습니다."] :
@@ -96,13 +100,13 @@ export function buildVisualDirectorResult(article: VisualDirectorArticle, contex
     e.urgent ? ["긴급·시간 민감 안내는 정확한 텍스트와 행동 링크 전달이 우선입니다.", "새 이미지 제작을 기다리지 않고 HTML로 안내하세요."] : ["별도 이미지보다 원문과 행동 안내를 우선합니다."];
   if (e.highPriority && !e.insufficient) reasons.push("기관 우선순위가 높아 핵심 정보를 먼저 확인하세요.");
   return {
-    primaryStrategy, ...(primaryStrategy === "hybrid" ? { secondaryStrategy: "institution_asset" as const } : primaryStrategy === "canva_full_layout" ? { secondaryStrategy: "html_first" as const } : {}),
+    primaryStrategy, ...(primaryStrategy === "hybrid" ? { secondaryStrategy: (e.needsRealPhoto ? e.information ? "information_graphic" : e.canvaCompanion ? "canva_full_layout" : "html_first" : e.conceptual ? "information_graphic" : "html_first") as Exclude<VisualStrategy,"hybrid"> } : primaryStrategy === "canva_full_layout" ? { secondaryStrategy: "html_first" as const } : {}),
     // Heuristic confidence, not a calibrated probability.
     confidence: e.insufficient || noCanvaEvidence ? 0.2 : e.urgent ? 0.95 : realPhoto ? 0.9 : graphic ? 0.86 : canva.length ? 0.84 : e.conceptual ? 0.76 : 0.65,
     reasons, needsVisual: primaryStrategy !== "html_first", needsRealPhoto: realPhoto,
-    needsGeneratedImage: primaryStrategy === "ai_generated_image", needsInformationGraphic: graphic,
+    needsGeneratedImage: primaryStrategy === "ai_generated_image" || (primaryStrategy === "hybrid" && !e.needsRealPhoto && e.conceptual), needsInformationGraphic: graphic,
     ...(canva.length ? { canvaFamily: canva[0].family, canvaTemplateCandidates: canva.map(r => r.templateId), canvaRecommendations: canva } : {}),
     adobeTasks: institution && e.retouchSuggested && context.institutionVisualAvailable ? ["retouch"] : [],
-    humanInputRequired, ...(humanInputRequired ? { humanInputReason: e.insufficient || noCanvaEvidence ? "기사의 목적과 핵심 정보를 확인해 주세요." : graphic && e.map ? "지도 원본과 경로 정보를 확인해 주세요." : institution && context.institutionVisualAvailable && e.needsRealPhoto ? "기관 제공 사진이 현재 기사의 실제 대상과 일치하는지 확인해 주세요." : e.suppliedPoster ? "기관 포스터·원본 자료 확인이 필요합니다." : e.images ? "기사 이미지가 실제 인물·현장 사진인지 확인해 주세요." : "실제 인물·현장·시설 사진을 기관에서 제공해 주세요." } : {}),
+    humanInputRequired, ...(humanInputRequired ? { humanInputReason: e.insufficient || noCanvaEvidence ? "기사의 목적과 핵심 정보를 확인해 주세요." : graphic && e.map ? "지도 원본과 경로 정보를 확인해 주세요." : primaryStrategy === "hybrid" && institution ? "기관 사진의 실제 대상·시점·사용 권한을 확인하세요. 없다면 실제 사진을 추가하세요." : institution && context.institutionVisualAvailable && e.needsRealPhoto ? "기관 제공 사진이 현재 기사의 실제 대상과 일치하는지 확인해 주세요." : e.suppliedPoster ? "기관 포스터·원본 자료 확인이 필요합니다." : e.images ? "기사 이미지가 실제 인물·현장 사진인지 확인해 주세요." : "실제 인물·현장·시설 사진을 기관에서 제공해 주세요." } : {}),
   };
 }

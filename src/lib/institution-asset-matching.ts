@@ -1,3 +1,6 @@
+import { hybridStrategyAllowed } from "@/lib/hybrid-visual-plan";
+import { institutionArticleSnapshot, safeVisualText as clean } from "@/lib/article-visual-source-snapshot";
+export { institutionArticleSnapshot } from "@/lib/article-visual-source-snapshot";
 import type { ProjectDesignAsset } from "@/lib/newsletter-repository";
 import { buildVisualDirectorResult, type VisualDirectorArticle } from "@/lib/article-visual-director";
 import { readDesignAssetMetadata } from "@/lib/design-asset-metadata";
@@ -25,7 +28,6 @@ export type InstitutionAssetRecommendation = {
 };
 const raster = new Set(["image/png", "image/jpeg", "image/webp"]);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const clean = (s: string) => s.normalize("NFC").replace(/\S+/g, token => /^https?:/i.test(token)||token.includes("/")||token.includes("\\") ? " " : token).replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, " ").trim();
 const unique = (a: string[]) => [...new Set(a.filter(Boolean))].sort();
 const normalize = (s: string) => clean(s).toLowerCase().replace(/\s+/g, " ");
 const terms = (s: string) => unique((clean(s).match(/[가-힣A-Za-z0-9]{2,}/g) ?? []).filter(t=>t.length<=80)).slice(0, 80);
@@ -38,19 +40,13 @@ function contains(text: string, subject: string) {
   // Exact token/phrase boundaries: 김민수 must not match 김민수진; 2026 must not match 2025.
   return new RegExp(`(?:^|[^가-힣A-Za-z0-9])${subject.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=$|[^가-힣A-Za-z0-9])`, "i").test(text);
 }
-export function institutionArticleSnapshot(a: VisualDirectorArticle) {
-  return { title: clean(a.title), summary: clean(a.summary), body: clean(a.body), articleType: a.articleType,
-    publicInfo: Object.fromEntries(Object.entries(a.publicInfo).sort(([a], [b]) => a.localeCompare(b)).map(([k,v])=>[k,clean(v)])),
-    institutionPriority:a.institutionPriority, urgency:a.urgency, publicationKind:a.publicationKind,
-    blocks: a.blocks.filter(b=>b.type==="paragraph").map(b=>({id:b.id,title:clean(b.title),body:clean(b.body),isVisible:b.isVisible})) };
-}
 export function institutionAssetSnapshot(a: InstitutionMatchAsset) {
   const m=readDesignAssetMetadata(a.metadata);
   return {id:a.id,projectId:a.projectId,assetType:a.assetType,name:clean(a.name),altText:clean(a.altText),usageNote:clean(a.usageNote),language:a.language,variant:a.variant,
     approvalStatus:a.approvalStatus,isActive:a.isActive,mimeType:a.mimeType,updated:a.updated,hasPrivateImage:a.hasPrivateImage,
     metadata:m?{source:m.source,usageTags:m.usageTags?[...m.usageTags].sort():[],reuseScope:m.reuseScope,transparency:m.transparency}:null};
 }
-export function buildInstitutionAssetMatchSpec(article: VisualDirectorArticle, articleId: string): InstitutionAssetMatchSpec {
+export function buildInstitutionAssetMatchSpec(article: VisualDirectorArticle, articleId: string, context?:"hybrid"): InstitutionAssetMatchSpec {
   const director=buildVisualDirectorResult(article),snapshot=institutionArticleSnapshot(article);
   const text=[snapshot.title,snapshot.summary,snapshot.body,...snapshot.blocks.filter(b=>b.isVisible).map(b=>b.body)].join("\n").slice(0,24000);
   const title=clean(article.title),labels=(label:string)=>unique(Array.from(text.matchAll(new RegExp(`(?:^|\\n)\\s*(?:${label})\\s*[:：]\\s*([^\\n]+)`,"g")),m=>m[1].trim()).filter(s=>s.length<=80));
@@ -70,7 +66,7 @@ export function buildInstitutionAssetMatchSpec(article: VisualDirectorArticle, a
   else if(locations.length){subjectType="place";subjects=locations;preferredAssetKinds=["place_photo"];}
   const timeTerms=explicitTimes(text+"\n"+Object.values(article.publicInfo).join("\n"));
   return {version:"v1",articleId,subjectType,subjects,contextTerms:terms(text),locationTerms:locations,timeTerms,
-    preferredAssetKinds,requiresRealPhoto:true,eligible:uuid.test(articleId)&&director.primaryStrategy==="institution_asset"&&director.needsRealPhoto};
+    preferredAssetKinds,requiresRealPhoto:true,eligible:uuid.test(articleId)&&(director.primaryStrategy==="institution_asset"||(context==="hybrid"&&hybridStrategyAllowed(article,"institution_asset")))&&director.needsRealPhoto};
 }
 export function classifyInstitutionAsset(a: InstitutionMatchAsset): InstitutionAssetKind {
   const text=[a.name,a.altText,a.usageNote].map(clean).join(" ");
@@ -111,8 +107,8 @@ export function rankInstitutionAssets(spec:InstitutionAssetMatchSpec,assets:Inst
   const byId=new Map(assets.map(a=>[a.id,a]));
   return [...byId.values()].map(a=>scoreInstitutionAsset(spec,a,projectId)).filter((a):a is InstitutionAssetCandidate=>!!a).sort((a,b)=>b.score-a.score||Number(b.exactSubjectMatch)-Number(a.exactSubjectMatch)||Number(b.approvalStatus==="approved")-Number(a.approvalStatus==="approved")||(byId.get(b.assetId)?.updated??"").localeCompare(byId.get(a.assetId)?.updated??"")||a.assetId.localeCompare(b.assetId)).slice(0,Number.isFinite(limit)?Math.max(1,Math.min(5,Math.floor(limit))):3);
 }
-export function buildInstitutionAssetRecommendation(article:VisualDirectorArticle,articleId:string,assets:InstitutionMatchAsset[],projectId:string,limit=3):InstitutionAssetRecommendation {
-  const spec=buildInstitutionAssetMatchSpec(article,articleId),candidates=rankInstitutionAssets(spec,assets,projectId,limit);
+export function buildInstitutionAssetRecommendation(article:VisualDirectorArticle,articleId:string,assets:InstitutionMatchAsset[],projectId:string,limit=3,context?:"hybrid"):InstitutionAssetRecommendation {
+  const spec=buildInstitutionAssetMatchSpec(article,articleId,context),candidates=rankInstitutionAssets(spec,assets,projectId,limit);
   const eligibleAssets=assets.filter(a=>a.projectId===projectId&&a.isActive&&a.approvalStatus!=="archived"&&readDesignAssetMetadata(a.metadata)?.source==="institution");
   const status=!spec.eligible?"not_supported":candidates.length?(spec.subjectType!=="place"&&candidates[0].exactSubjectMatch&&candidates[0].score>=0.65?"strong_match":"possible_match"):eligibleAssets.length?"missing_required_asset":"no_match";
   return {matcherVersion:"v1",articleId,status,spec,candidates,candidateAssetIds:candidates.map(a=>a.assetId),humanReviewRequired:true,humanReviewReason:"실제 대상·촬영 시점·사용 승인·저작권과 초상권을 최종 확인하세요."};

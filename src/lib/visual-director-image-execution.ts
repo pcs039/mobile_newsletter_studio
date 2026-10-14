@@ -1,4 +1,5 @@
 import "server-only";
+import { visualArticleSnapshot } from "@/lib/article-visual-source-snapshot";
 import { createHash } from "node:crypto";
 import type { VisualDirectorArticle } from "@/lib/article-visual-director";
 import { buildVisualDirectorResult } from "@/lib/article-visual-director";
@@ -16,24 +17,24 @@ function canonical(value: unknown): unknown {
 }
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
 function uuid(value: string) { const h = hash(value); return `${h.slice(0,8)}-${h.slice(8,12)}-5${h.slice(13,16)}-8${h.slice(17,20)}-${h.slice(20,32)}`; }
-export function prepareDirectorImage(projectId: string, articleId: string, article: VisualDirectorArticle, palette: string[]) {
-  const specification = buildDirectorImageSpec(article);
+export function prepareDirectorImage(projectId: string, articleId: string, article: VisualDirectorArticle, palette: string[],context?:"hybrid") {
+  const specification = buildDirectorImageSpec(article,context);
   if (!specification) throw new ImageGenerationError(409, "현재 기사에는 AI 개념 이미지 생성이 적합하지 않습니다.");
   const colors = palette.filter(isArticleHexColor).slice(0, 4);
   // Hash only stable article inputs. Signed preview URLs/private metadata never
   // enter the key, prompt or persisted request; source copy itself is not stored.
-  const sourceSnapshot = hash({ title:article.title,summary:article.summary,body:article.body,articleType:article.articleType,
+  const sourceSnapshot = hash(context==="hybrid"?visualArticleSnapshot(article):{ title:article.title,summary:article.summary,body:article.body,articleType:article.articleType,
     publicInfo:article.publicInfo,institutionPriority:article.institutionPriority,urgency:article.urgency,publicationKind:article.publicationKind,
     blocks:article.blocks.map(b=>({id:b.id,type:b.type,isVisible:b.isVisible,title:b.title,body:b.type==="paragraph"?b.body:undefined})),
     links:article.links?.map(l=>({id:l.id,label:l.label,targetValue:l.targetValue,isVisible:l.isVisible})) });
-  const generationKey = hash({ projectId, articleId, sourceSnapshot, director: buildVisualDirectorResult(article), specification, colors });
+  const generationKey = hash({ projectId, articleId, sourceSnapshot, director: buildVisualDirectorResult(article), specification, colors, ...(context?{context}:{}) });
   return { specification, generationKey, jobId: uuid(`director-job:${generationKey}`), assetId: uuid(`director-asset:${generationKey}`),
     payload: { model: "gpt-image-2.5-flare", prompt: buildDirectorImagePrompt(specification, colors), n: 1,
       size: `${specification.targetSize.width}x${specification.targetSize.height}`, quality: "medium", output_format: "png", background: "opaque" } };
 }
-export async function executeDirectorImage(input: { projectId: string; articleId: string; article: VisualDirectorArticle; adminId: string; palette: string[]; action: "prepare" | "generate" | "status"; expectedKey?: string }): Promise<DirectorGenerationResult> {
+export async function executeDirectorImage(input: { projectId: string; articleId: string; article: VisualDirectorArticle; adminId: string; palette: string[]; action: "prepare" | "generate" | "status"; expectedKey?: string;context?:"hybrid" }): Promise<DirectorGenerationResult> {
   if (!imageGenerationEnabled()) throw new ImageGenerationError(403, "고정 Staging에서만 이미지 생성과 등록을 사용할 수 있습니다.");
-  const plan = prepareDirectorImage(input.projectId, input.articleId, input.article, input.palette);
+  const plan = prepareDirectorImage(input.projectId, input.articleId, input.article, input.palette,input.context);
   const base = { specification: plan.specification, generationKey: plan.generationKey };
   if (input.action !== "prepare" && input.expectedKey !== plan.generationKey) throw new ImageGenerationError(409, "기사가 변경되었습니다. 생성 계획을 다시 확인하세요.");
   const provenance = { generatedForArticleId: input.articleId, visualStrategy: "ai_generated_image" as const, generationPurpose: "article_visual" as const,
