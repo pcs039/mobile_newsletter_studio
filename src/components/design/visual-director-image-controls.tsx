@@ -1,5 +1,6 @@
 "use client";
 import { directorStyleLabels, headlineSafeAreaLabels } from "@/lib/director-image-quality";
+import { AiImageArticleControls } from "./ai-image-article-controls";
 import { visualArticleSnapshot } from "@/lib/article-visual-source-snapshot";
 import { stageFromExecution, type HybridStage } from "@/lib/hybrid-visual-plan";
 import Image from "next/image";
@@ -60,6 +61,7 @@ function VisualDirectorImageSession({article,articleId,projectSlug,disabled,onBu
     </div>
     {current?.status==="success"&&variantIndex<3?<button type="button" className="dd-btn dd-btn-secondary mt-2 max-w-full whitespace-normal" disabled={disabled||busy||e2e!=="enabled"} onClick={()=>void run(true,variantIndex+1)}>다른 시안 생성</button>:null}
     <p className="mt-1 text-xs">한 번에 1장 · 다른 시안은 직접 요청할 때만 생성합니다. 최대 3개 시안이며 기존 자산은 유지됩니다.</p>
+    <AiImageArticleControls projectSlug={projectSlug} articleId={articleId} revision={JSON.stringify([visualArticleSnapshot(article),current?.asset?.id])}/>
     {current?.status!=="success"?<button type="button" className="dd-btn dd-btn-primary mt-2 max-w-full whitespace-normal" disabled={disabled||busy||e2e!=="enabled"||!articleId||current?.status==="failed"}
       onClick={()=>void run(!unresolved)}>{unresolved?"진행 상태 확인":"AI 이미지 생성"}</button>:null}
   </section>;

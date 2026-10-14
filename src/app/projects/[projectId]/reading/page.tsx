@@ -1,4 +1,5 @@
 import { mapFullLayouts } from "@/lib/article-full-layout-server";
+import { mapAiImageArticles } from "@/lib/ai-image-article-server";
 import Link from "next/link";
 import { isArticleProductionPattern } from "@/lib/article-production-pattern";
 import { ArticleWorkspaceTabs, type ArticleWorkspaceTab } from "@/components/article-workspace-tabs";
@@ -94,7 +95,7 @@ export default async function ReadingEditorPage({
   const compositionSourceByArticleId = new Map(
     compositionSourceData?.data.map((source) => [source.articleId, source]) ?? [],
   );
-  const previewArticle = selectedArticle && project ? (await mapFullLayouts(project.id,projectId,[selectedArticle],"preview"))[0] : selectedArticle;
+  const previewArticle = selectedArticle && project ? (await mapAiImageArticles(project.id,projectId,await mapFullLayouts(project.id,projectId,[selectedArticle],"preview"),"preview"))[0] : selectedArticle;
   const mobilePreviewHref = selectedArticle
     ? `/newsletters/${projectId}?preview=admin&articleId=${selectedArticle.id}`
     : `/newsletters/${projectId}?preview=admin`;

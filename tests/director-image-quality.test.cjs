@@ -49,7 +49,7 @@ test('variant requires previous successful durable result, preserves jobs and re
 });
 module.exports={fixtures};
 test('article/project changes remount image session instead of leaking previous result or variant',()=>{
- const {VisualDirectorImageControls}=loader({'./staging-e2e-status':{}})('src/components/design/visual-director-image-controls.tsx');
+ const {VisualDirectorImageControls}=loader({'./staging-e2e-status':{},'./ai-image-article-controls':{AiImageArticleControls:()=>null}})('src/components/design/visual-director-image-controls.tsx');
  const p={article:base,articleId:'saved',projectSlug:'test',disabled:false,onBusy(){}};
  const first=VisualDirectorImageControls(p);assert.equal(first.key,VisualDirectorImageControls({...p}).key);
  for(const changed of [{...p,article:{...base,title:base.title+' 변경'}},{...p,articleId:'other'},{...p,projectSlug:'other'}])assert.notEqual(first.key,VisualDirectorImageControls(changed).key);
