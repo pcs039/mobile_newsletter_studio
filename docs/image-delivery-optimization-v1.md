@@ -37,8 +37,23 @@ Existing fixed Staging assets:
 | GPT `cd2849ee-108c-5e41-8f0b-548ba8f769aa` | 3,384,518 B | 1536×1920 | 11,862 B | 32,942 B | 70,448 B |
 | Canva `d3401167-8d8a-5466-a78e-d791ef427859` | 155,945 B | 397×559 | 6,767 B | 6,767 B (397px cap) | 15,358 B (397px cap) |
 
-These initial byte measurements use the actual Staging originals and the real bundled encoder locally. Deployment measurements must be recorded before merge.
+These initial byte measurements use the actual Staging originals and the real bundled encoder locally. Separate deployed measurements are recorded below.
 
 The existing GPT asset is draft and neither representative asset is currently applied to an article. Read-only QA must not approve/apply/publish them to manufacture a test scenario. Use the existing authenticated admin asset mapper for deployed format/byte checks and local render fixtures using those same originals for 1440/768px layout checks. Invalid/inactive/unapproved article assets, public visibility and expired/revoked review sessions are additionally covered by proxy tests. There is no active client-review session for a live image E2E; do not weaken review access to create one.
 
 The available Canva evidence is already a 397px-wide PNG. Delivery cannot recover missing retina detail or fix its existing template/content-fit issues. Compare encoding fidelity at the original resolution; do not upscale it or claim it is a new high-resolution export.
+
+### Fixed Staging deployed verification
+
+- Vercel staging deployment `3ZRf2t4YEmP83MMfQKL68DDrf9Vg` served `a1fad84242908142e045de815d50f4a450e47673` on the fixed domain; the flex-wrapper correction was then deployed as `1c05857ee859f2da8120ff1820447a66458cc417`.
+- Authenticated browser GET, existing asset ID mapper, `deliveryWidth=960&deliveryFormat=avif`: GPT **33,021 B / 960×1200**; Canva **6,708 B / 397×559**. Actual browser downloads were checked by file byte size and decoded metadata. These are response body bytes, not HTTP/TLS header overhead. The platform encoder output differs slightly from local binaries; do not substitute local estimates for deployed measurements.
+- Thus the measured 960px delivery reduces GPT transfer by 99.0% and Canva by 95.7%, without changing the originals. Native local reader-sized fixtures at 1440/768px and DPR1 selected the 480px AVIF candidate (local 11,862 B GPT / 6,767 B Canva). The real admin thumbnails select240px; both load successfully at 1440/768px. No horizontal overflow or console errors at those requested widths.
+- At source resolution Canva title/date/place/summary/CTA remain readable, but existing content-fit/layout issues are not corrected here. No claim of high-resolution/2x Canva visual QA is made for this low-resolution evidence file.
+- Anonymous network requests encounter Vercel's existing SSO protection (302 to Vercel SSO), not image bytes. Unit/route tests separately exercise application-level public visibility, admin authorization and pending/expired/revoked review policies with delivery parameters, and deny foreign/inactive/unapproved/provenance-invalid references before Storage.
+- The admin thumbnail wrapper needed `display:contents` to preserve the previous flex item's width; this is covered by the picture contract test and verified on the deployed admin screen.
+- Existing article/block/link/Design Asset/job row counts and complete-row digests, plus both original PNG SHA-256 values, match before/after. No approval, apply, publish, migration, DB/Storage write, GPT or Canva generation call was used.
+- Full suite322/322 (no skips), TypeScript, lint, Webpack build and diff check pass; only the three pre-existing lint warnings remain.
+
+### Remaining live QA / merge decision
+
+Keep the PR open until the actual reader/client-review and high-resolution Canva checks can be completed without violating the no-write constraint. The representative GPT asset is draft; neither representative image has an applied reader block, and no active review session exists. Consequently the deployed checks above establish authorized proxy/encoder operation and admin rendering, while shared renderer tests/local fixtures cover markup, aspect ratio and HTML preservation. They are **not** a live public or client-review image E2E. The 2x delivery candidate is available and tested, but the existing 397px Canva source cannot establish 2x text fidelity. No auth bypass or temporary publication is introduced to work around these missing fixtures.
