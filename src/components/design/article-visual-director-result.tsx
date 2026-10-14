@@ -10,7 +10,7 @@ export function ArticleVisualDirectorResult({ result, children }: { result: Visu
     {result.needsRealPhoto ? <p className="mt-2">실제 대상의 사진이 필요합니다. AI 이미지로 대체하지 마세요.</p> : null}
     {result.humanInputRequired ? <p role="status" className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-amber-950">자료 확인 필요 · {result.humanInputReason}</p> : null}
     {result.adobeTasks.length ? <p className="mt-2">후처리 후보: {result.adobeTasks.map(task => adobeTaskLabels[task]).join(", ")}</p> : null}
-    {result.primaryStrategy === "hybrid" ? <p className="mt-2">추가 시각물 생성 가능 · 자료 확인 후 별도로 진행하세요.</p> : null}
+    {result.primaryStrategy === "hybrid" ? <p className="mt-2">정보그래픽 추가 가능 · 자료 확인 후 별도로 진행하세요.</p> : null}
     {children}
     <p className="mt-2 text-xs text-slate-600">저장된 기사 기반의 규칙 추천입니다. 추천만으로 생성·제작·저장하지 않습니다.</p>
   </section>;

@@ -2397,10 +2397,12 @@ function mapProjectDesignKitRow(row: ProjectDesignKitRow): ProjectDesignKit {
 function mapProjectDesignAssetRow(row: ProjectDesignAssetRow): ProjectDesignAsset {
   const assetType = normalizeDesignAssetType(row.asset_type);
   const storageBucket = row.storage_bucket || "brand-assets";
-  const storagePreviewHref = makeStoragePreviewHref(storageBucket, row.storage_path);
+  const metadata=readDesignAssetMetadata(row.metadata);
+  const storagePreviewHref = metadata?.source==="internal"&&metadata.informationGraphic&&storageBucket==="design-production-assets"
+    ? `/api/project-files/preview?designAssetId=${row.id}` : makeStoragePreviewHref(storageBucket, row.storage_path);
 
   return {
-    metadata: readDesignAssetMetadata(row.metadata),
+    metadata,
     id: row.id,
     projectId: row.project_id,
     assetType,
