@@ -23,6 +23,7 @@ import { createPortal } from "react-dom";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { ArticleFullLayout } from "@/components/article-full-layout";
 import { activeFullLayout, originalFullLayoutPresentation } from "@/lib/article-full-layout";
+import { aiImageHero } from "@/lib/ai-image-article";
 import { ArticleHeroBackgroundLayer } from "@/components/article-hero-background-layer";
 import type { ArticleHeroBackground } from "@/lib/article-hero-background";
 import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
@@ -1401,10 +1402,12 @@ function ArticleCard({
   const hasTextDesign = hasArticleTextDesign(textDesign);
   const articleRef = useRef<HTMLElement>(null);
   const visibleBlocks = getVisibleBlocks(article);
+  const generatedHero = aiImageHero(article);
   const publicInfoAction = getPublicInfoAttachedAction(article, visibleBlocks);
   const visibleContentBlocks = publicInfoAction
     ? visibleBlocks.filter((block) => block.id !== publicInfoAction.blockId)
     : visibleBlocks;
+  const bodyContentBlocks = visibleContentBlocks.filter(block => block.id !== generatedHero?.id);
   const articleTitle = getArticleTitle(article, index);
   const motionPreset = normalizeArticleMotionPreset(article.motionPreset);
   const motionSpeed = normalizeArticleMotionSpeed(article.motionSpeed);
@@ -1570,9 +1573,9 @@ function ArticleCard({
           ) : null}
         </section>
       ) : null}
-      {visibleContentBlocks.length > 0 ? (
+      {bodyContentBlocks.length > 0 ? (
         <div className={`public-article-content ${isImageOnly ? "mt-4 space-y-0" : "mt-6 space-y-6"}`}>
-          {visibleContentBlocks.map((block) => {
+          {bodyContentBlocks.map((block) => {
             const content = renderContentBlock(
               article,
               block,
@@ -1664,6 +1667,7 @@ function ArticleCard({
       data-article-body-color={heroBackground?.settings.bodyColor}
       style={{ ...fontStyle, ...articleTextColorStyle(heroBackground?.settings) }}
     >
+      {generatedHero && !fullLayout ? <div className="mb-5">{renderContentBlock(article,generatedHero,motionSettings,onOpenArticleImage,presentation,false)}</div> : null}
       {fullLayout && failedFullLayout !== fullLayout.id ? <ArticleFullLayout article={article} block={fullLayout} onFailure={()=>setFailedFullLayout(fullLayout.id)} onOpenImage={onOpenArticleImage} /> : <ArticleHeroBackgroundLayer
         background={heroBackground?.settings.renderMode === "fluid_frame" || article.showPublicTitle || article.summary || hasTextDesign || shouldShowTypeCue || rollingLabel || urgencyLabel ? heroBackground : undefined}
         body={articleBody}

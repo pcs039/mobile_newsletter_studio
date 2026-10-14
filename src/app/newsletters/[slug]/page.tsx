@@ -1,4 +1,5 @@
 import { mapFullLayouts } from "@/lib/article-full-layout-server";
+import { mapAiImageArticles } from "@/lib/ai-image-article-server";
 import Link from "next/link";
 import { NewsletterViewTracker } from "@/components/newsletter-view-tracker";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
@@ -139,9 +140,9 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     );
   }
 
-  const articles = await mapFullLayouts(project.id,slug,contentData.articles.filter(
+  const articles = await mapAiImageArticles(project.id,slug,await mapFullLayouts(project.id,slug,contentData.articles.filter(
     (article) => hasPublicArticleTitle(article) && (isAdminPreview || isArticlePubliclyVisible(article)),
-  ),isAdminPreview?"preview":"public");
+  ),isAdminPreview?"preview":"public"),isAdminPreview?"preview":"public");
   const [heroBackgrounds, topIllustrations, textDesigns] = await Promise.all([
     getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), isAdminPreview ? "preview" : "public"),
     getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), isAdminPreview ? "preview" : "public", "hero_illustration"),

@@ -1,5 +1,6 @@
 import "server-only";
 import { visualArticleSnapshot } from "@/lib/article-visual-source-snapshot";
+import { aiImageSourceArticle } from "@/lib/ai-image-article";
 import { createHash } from "node:crypto";
 import type { VisualDirectorArticle } from "@/lib/article-visual-director";
 import { buildVisualDirectorResult } from "@/lib/article-visual-director";
@@ -18,6 +19,9 @@ function canonical(value: unknown): unknown {
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
 function uuid(value: string) { const h = hash(value); return `${h.slice(0,8)}-${h.slice(8,12)}-5${h.slice(13,16)}-8${h.slice(17,20)}-${h.slice(20,32)}`; }
 export function prepareDirectorImage(projectId: string, articleId: string, article: VisualDirectorArticle, palette: string[],context?:"hybrid",variantIndex=1) {
+  // Applying an existing result is not a new generation input. Keep the same
+  // duplicate key when only this feature's managed connections were added.
+  article = aiImageSourceArticle(article);
   const specification = buildDirectorImageSpec(article,context,variantIndex);
   if (!specification) throw new ImageGenerationError(409, "현재 기사에는 AI 개념 이미지 생성이 적합하지 않습니다.");
   const colors = palette.filter(isArticleHexColor).slice(0, 4);

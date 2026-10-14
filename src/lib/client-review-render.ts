@@ -1,4 +1,5 @@
 import { mapFullLayouts } from "@/lib/article-full-layout-server";
+import { mapAiImageArticles } from "@/lib/ai-image-article-server";
 import "server-only";
 
 import { getClientReviewCookieToken } from "@/lib/client-review";
@@ -90,7 +91,7 @@ export async function getClientReviewRenderData(slug: string) {
   const publicAudio = audio.files[0]?.filePath
     ? { src: register("audio-files", audio.files[0].filePath), title: audio.files[0].title }
     : undefined;
-  const articles = await mapFullLayouts(project.id,slug,sourceArticles,"review");
+  const articles = await mapAiImageArticles(project.id,slug,await mapFullLayouts(project.id,slug,sourceArticles,"review"),"review");
   const [heroBackgrounds, topIllustrations, textDesigns] = await Promise.all([
     getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review"),
     getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review", "hero_illustration"),
