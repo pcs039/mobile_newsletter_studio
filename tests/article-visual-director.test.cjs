@@ -17,7 +17,7 @@ for(const [key,expected] of Object.entries({festival:'canva_full_layout',intervi
   if(key==='urgent'){assert(!r.needsVisual);assert(!r.needsGeneratedImage);}
   if(key==='procedure')assert(r.needsInformationGraphic);
   if(key==='seasonal')assert(r.needsGeneratedImage);
-  if(key==='hybrid'){assert(r.needsInformationGraphic);assert.equal(r.secondaryStrategy,'institution_asset');}
+  if(key==='hybrid'){assert(r.needsInformationGraphic);assert.equal(r.secondaryStrategy,'information_graphic');}
  });
 }
 test('only Canva strategy delegates; candidates exactly reuse existing verified recommender',()=>{
@@ -60,7 +60,7 @@ test('visual strategy view recalculates on article rerender without persisted re
 
 test('existing draft UI integrates director first and only exposes delegated Canva cards for full-layout strategy',()=>{
  const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');const template=loader({'@/components/design/canva-recommendation-execution-controls':{CanvaRecommendationExecutionControls:()=>null}})('src/components/design/article-template-recommendations.tsx');
- const ui=loader({'@/components/design/institution-asset-match-controls':{InstitutionAssetMatchControls:()=>null},'@/components/design/information-graphic-controls':{InformationGraphicControls:()=>null},'@/components/design/visual-director-image-controls':{VisualDirectorImageControls:()=>null},'@/components/design/article-visual-asset-generator':{ArticleVisualAssetGenerator:()=>null},'@/components/design/article-template-recommendations':template,'@/components/design/article-visual-director-result':load('src/components/design/article-visual-director-result.tsx')})('src/components/design/article-design-draft-controls.tsx').ArticleDesignDraftControls;
+ const ui=loader({'@/components/design/hybrid-visual-controls':{HybridVisualControls:()=>null},'@/components/design/institution-asset-match-controls':{InstitutionAssetMatchControls:()=>null},'@/components/design/information-graphic-controls':{InformationGraphicControls:()=>null},'@/components/design/visual-director-image-controls':{VisualDirectorImageControls:()=>null},'@/components/design/article-visual-asset-generator':{ArticleVisualAssetGenerator:()=>null},'@/components/design/article-template-recommendations':template,'@/components/design/article-visual-director-result':load('src/components/design/article-visual-director-result.tsx')})('src/components/design/article-design-draft-controls.tsx').ArticleDesignDraftControls;
  const show=article=>renderToStaticMarkup(React.createElement(ui,{article,projectSlug:'fixture',articleId:'fixture',composition:{settings:{},assets:[],updatedAt:'test'},onApplied(){},disabled:false}));
  const festival=show(fixtures.festival),person=show(fixtures.interview);assert(festival.indexOf('AI 시각 전략')<festival.indexOf('추천 디자인 Top 3'));assert(festival.includes('행사·축제 02'));assert(!person.includes('추천 디자인 Top 3'));assert(!person.includes('확인할 수 없습니다'));assert(person.includes('디자인 콘셉트 제안받기'));
 });

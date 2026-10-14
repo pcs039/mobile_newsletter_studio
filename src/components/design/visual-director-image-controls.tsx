@@ -1,21 +1,22 @@
 "use client";
+import { stageFromExecution, type HybridStage } from "@/lib/hybrid-visual-plan";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { buildDirectorImageSpec, type DirectorGenerationResult } from "@/lib/visual-director-image-spec";
 import type { VisualDirectorArticle } from "@/lib/article-visual-director";
 import { useStagingE2E, StagingE2ENotice } from "./staging-e2e-status";
 
-export function VisualDirectorImageControls({article,articleId,projectSlug,disabled,onBusy}: {
-  article: VisualDirectorArticle; articleId:string; projectSlug:string; disabled:boolean; onBusy:(value:boolean)=>void;
+export function VisualDirectorImageControls({article,articleId,projectSlug,disabled,onBusy,context,onStage}: {
+  article: VisualDirectorArticle; articleId:string; projectSlug:string; disabled:boolean; onBusy:(value:boolean)=>void;context?:"hybrid";onStage?:(stage:HybridStage)=>void;
 }) {
-  const spec = buildDirectorImageSpec(article);
+  const spec = buildDirectorImageSpec(article,context);
   const e2e=useStagingE2E();
   const [current,setCurrent]=useState<DirectorGenerationResult|null>(null),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
   const locked=useRef(false),mounted=useRef(true),key=useRef("");
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;onBusy(false);};},[onBusy]);
   async function call(action:"prepare"|"generate"|"status") {
     const r=await fetch("/api/project-content/visual-asset-generation",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({projectSlug,articleId,action:`director_${action}`,...(action!=="prepare"?{generationKey:key.current}:{})})});
+      body:JSON.stringify({projectSlug,articleId,action:`director_${action}`,...(context?{context}:{}),...(action!=="prepare"?{generationKey:key.current}:{})})});
     const data=await r.json(); if(!r.ok||!data.ok)throw new Error(data.message||"생성 상태를 확인하지 못했습니다.");
     key.current=data.generationKey;return data as DirectorGenerationResult;
   }
@@ -25,13 +26,13 @@ export function VisualDirectorImageControls({article,articleId,projectSlug,disab
     try{
       let value=await call("prepare");
       if(generate&&value.status==="ready")value=await call("generate");
-      if(mounted.current)setCurrent(value);
+      if(mounted.current){setCurrent(value);onStage?.(stageFromExecution(value.status,value.asset?.id,value.generationKey));}
       // Status-only polling; no second generation POST on timeout or uncertainty.
       for(let count=0;value.status==="in_progress"&&count<30&&mounted.current;count++){
         await new Promise(resolve=>setTimeout(resolve,3000));if(!mounted.current)break;
-        value=await call("status");if(mounted.current)setCurrent(value);
+        value=await call("status");if(mounted.current){setCurrent(value);onStage?.(stageFromExecution(value.status,value.asset?.id,value.generationKey));}
       }
-    }catch(error){if(mounted.current){setMessage(error instanceof Error?error.message:"생성 결과가 미확정입니다. 진행 상태만 확인하세요.");setCurrent(v=>v?.status==="success"?v:{status:"unknown",generationKey:key.current,specification:spec!});}}
+    }catch(error){if(mounted.current){onStage?.({status:"needs_input"});setMessage(error instanceof Error?error.message:"생성 결과가 미확정입니다. 진행 상태만 확인하세요.");setCurrent(v=>v?.status==="success"?v:{status:"unknown",generationKey:key.current,specification:spec!});}}
     finally{locked.current=false;if(mounted.current){setBusy(false);onBusy(false);}}
   }
   if(!spec)return null;

@@ -1,4 +1,5 @@
-import { buildVisualDirectorResult, type VisualDirectorArticle } from "@/lib/article-visual-director";
+import { hybridStrategyAllowed } from "@/lib/hybrid-visual-plan";
+import { analyzeArticleVisualNeeds, buildVisualDirectorResult, type VisualDirectorArticle } from "@/lib/article-visual-director";
 import { getArticlePublicInfoEntries } from "@/lib/article-public-info-fields";
 export const graphicTypeLabels={steps:"신청 절차형",key_numbers:"핵심 숫자형",comparison:"비교형",checklist:"확인 목록형",schedule:"일정형"} as const;
 export type InformationGraphicType=keyof typeof graphicTypeLabels;
@@ -16,9 +17,9 @@ function item(text:string,path:string,blockId?:string):InformationGraphicItem {
 }
 // Extract explicit lists/structured fields only. Never infer a quantity, date or
 // missing step; never summarize or ellipsize an oversized source.
-export function buildInformationGraphicSpec(article:VisualDirectorArticle,articleId:string):GraphicPlan {
+export function buildInformationGraphicSpec(article:VisualDirectorArticle,articleId:string,context?:"hybrid"):GraphicPlan {
   const director=buildVisualDirectorResult(article);
-  if(!uuid.test(articleId)||director.primaryStrategy!=="information_graphic"||!director.needsInformationGraphic)return{status:"not_supported",specification:null,issues:["저장된 정보 시각화 기사에서만 생성할 수 있습니다."]};
+  if(!uuid.test(articleId)||!(director.primaryStrategy==="information_graphic"||(context==="hybrid"&&hybridStrategyAllowed(article,"information_graphic")))||!director.needsInformationGraphic)return{status:"not_supported",specification:null,issues:["저장된 정보 시각화 기사에서만 생성할 수 있습니다."]};
   const paragraphs=article.blocks.filter(b=>b.type==="paragraph");
   const raw:Array<{text:string;path:string;blockId?:string}>=paragraphs.length?paragraphs.filter(b=>b.isVisible).map(b=>({text:b.body,path:"block.body",blockId:b.id})):[{text:article.body,path:"article.body"}];
   if(raw.some(r=>r.text.length>6000))return{status:"not_supported",specification:null,issues:["원자료가 길어 핵심 목록 확인이 필요합니다."]};
@@ -50,7 +51,7 @@ export function buildInformationGraphicSpec(article:VisualDirectorArticle,articl
   if(items.length<2||items.length>6)issues.push("핵심 항목은 2~6개로 확인해 주세요.");
   if(items.some(i=>!i.label||i.label.length>20||i.description.length>60))issues.push("항목 이름 20자·설명 60자 이내로 확인해 주세요.");
   if(raw.some(r=>r.text.length>6000)||items.some(i=>/[\u0000-\u001f\u007f]/.test(i.label+i.description)))issues.push("긴 원자료나 제어 문자가 있어 확인이 필요합니다.");
-  if(director.humanInputRequired)issues.push(director.humanInputReason||"원본 자료 확인이 필요합니다.");
+  if(context==="hybrid" ? analyzeArticleVisualNeeds(article).map || analyzeArticleVisualNeeds(article).insufficient : director.humanInputRequired)issues.push(director.humanInputReason||"원본 자료 확인이 필요합니다.");
   const aspectRatio=graphicType==="key_numbers"&&items.length<=3?"1:1":"4:5";
   const rowHeight=Math.floor(((aspectRatio==="1:1"?1000:1250)-70-282-12*(items.length-1))/Math.max(items.length,1));
   if(items.some(i=>78+Math.max(0,wrap(i.description,48).length-1)*40+10>rowHeight))issues.push("항목 설명의 전체 배치 길이를 확인해 주세요.");

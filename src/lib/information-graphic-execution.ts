@@ -1,4 +1,6 @@
 import "server-only";
+import { visualArticleSnapshot } from "@/lib/article-visual-source-snapshot";
+import { buildHybridVisualPlan } from "@/lib/hybrid-visual-plan";
 import { createHash } from "node:crypto";
 import { buildVisualDirectorResult, type VisualDirectorArticle } from "@/lib/article-visual-director";
 import { buildInformationGraphicSpec, renderInformationGraphicSvg, graphicTypeLabels } from "@/lib/article-information-graphic";
@@ -8,18 +10,18 @@ import { getSupabaseRestEndpoint,getSupabaseStorageEndpoint } from "@/lib/supaba
 import { uploadProjectDesignAssetFile,insertProjectDesignAssetRecord } from "@/lib/project-design-asset-write";
 function stable(value:unknown):unknown{return Array.isArray(value)?value.map(stable):value&&typeof value==="object"?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>[k,stable(v)])):value;}
 const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(stable(v))).digest("hex");
-export function prepareInformationGraphic(projectId:string,articleId:string,article:VisualDirectorArticle,color:string){
-  const plan=buildInformationGraphicSpec(article,articleId);
+export function prepareInformationGraphic(projectId:string,articleId:string,article:VisualDirectorArticle,color:string,context?:"hybrid"){
+  const plan=buildInformationGraphicSpec(article,articleId,context);
   const palette=/^#[a-f0-9]{6}$/i.test(color)?color.toLowerCase():"#092046";
-  const source={title:article.title,summary:article.summary,body:article.body,articleType:article.articleType,publicInfo:article.publicInfo,
+  const source=context==="hybrid"?visualArticleSnapshot(article):{title:article.title,summary:article.summary,body:article.body,articleType:article.articleType,publicInfo:article.publicInfo,
     blocks:article.blocks.filter(b=>b.isVisible&&b.type==="paragraph").map(b=>({id:b.id,body:b.body,title:b.title})),links:article.links};
-  const generationKey=hash({projectId,articleId,snapshot:hash(source),director:buildVisualDirectorResult(article),spec:plan.specification,rendererVersion:"svg_public_cards_v1_1",palette});
+  const generationKey=hash({projectId,articleId,snapshot:hash(source),director:buildVisualDirectorResult(article),spec:plan.specification,rendererVersion:"svg_public_cards_v1_1",palette,...(context?{context}:{})});
   const h=hash(`information-graphic-asset:${generationKey}`),assetId=`${h.slice(0,8)}-${h.slice(8,12)}-5${h.slice(13,16)}-8${h.slice(17,20)}-${h.slice(20,32)}`;
   return{...plan,generationKey,assetId,palette};
 }
-export async function executeInformationGraphic(input:{projectId:string;articleId:string;article:VisualDirectorArticle;color:string;action:"prepare"|"generate"|"status";expectedKey?:string}){
-  const plan=prepareInformationGraphic(input.projectId,input.articleId,input.article,input.color);
-  const base={plan,generationKey:plan.generationKey,recommendedUsage:"image_block"};
+export async function executeInformationGraphic(input:{projectId:string;articleId:string;article:VisualDirectorArticle;color:string;action:"prepare"|"generate"|"status";expectedKey?:string;context?:"hybrid"}){
+  const plan=prepareInformationGraphic(input.projectId,input.articleId,input.article,input.color,input.context);
+  const base={plan,generationKey:plan.generationKey,recommendedUsage:input.context==="hybrid"?(buildHybridVisualPlan(input.article)?.primary.strategy==="information_graphic"?"hero":"supporting"):"image_block"};
   if(plan.status!=="ready"||!plan.specification)return{...base,status:plan.status};
   if(input.action!=="prepare"&&input.expectedKey!==plan.generationKey)throw new ImageGenerationError(409,"기사 정보가 변경되었습니다. 그래픽 계획을 다시 확인하세요.");
   const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
