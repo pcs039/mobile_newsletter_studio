@@ -23,7 +23,7 @@ import { createPortal } from "react-dom";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { ArticleFullLayout } from "@/components/article-full-layout";
 import { activeFullLayout, originalFullLayoutPresentation } from "@/lib/article-full-layout";
-import { aiImageHero } from "@/lib/ai-image-article";
+import { aiImageHero, readAiImageBlock } from "@/lib/ai-image-article";
 import { ArticleHeroBackgroundLayer } from "@/components/article-hero-background-layer";
 import type { ArticleHeroBackground } from "@/lib/article-hero-background";
 import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
@@ -1403,6 +1403,7 @@ function ArticleCard({
   const articleRef = useRef<HTMLElement>(null);
   const visibleBlocks = getVisibleBlocks(article);
   const generatedHero = aiImageHero(article);
+  const hasOriginalVisibleBlocks = visibleBlocks.some(block => !readAiImageBlock(block));
   const publicInfoAction = getPublicInfoAttachedAction(article, visibleBlocks);
   const visibleContentBlocks = publicInfoAction
     ? visibleBlocks.filter((block) => block.id !== publicInfoAction.blockId)
@@ -1575,6 +1576,7 @@ function ArticleCard({
       ) : null}
       {bodyContentBlocks.length > 0 ? (
         <div className={`public-article-content ${isImageOnly ? "mt-4 space-y-0" : "mt-6 space-y-6"}`}>
+          {!hasOriginalVisibleBlocks && article.body ? renderArticleBody(article.body,"mt-3",`article-${article.id}-body`,article.bodyAlignment || article.textAlignment) : null}
           {bodyContentBlocks.map((block) => {
             const content = renderContentBlock(
               article,
@@ -1596,7 +1598,7 @@ function ArticleCard({
             );
           })}
         </div>
-      ) : visibleBlocks.length === 0 ? (
+      ) : !hasOriginalVisibleBlocks ? (
         renderArticleBody(
           getPreviewBody(article),
           "mt-6",

@@ -96,7 +96,7 @@ call a provider. After separate Staging migration approval, use exactly one
 existing Staging article/asset for apply → duplicate → revoke, optionally one body
 insert, and preserve the original asset/file/job. Keep the PR open; do not merge.
 
-Local verification: all 308 tests passed, including both isolated PostgreSQL RPC
+Local verification: all 311 tests passed, including both isolated PostgreSQL RPC
 suites; TypeScript, lint, Webpack production build and diff check passed. Lint has
 the existing three warnings and no new warnings. Browser mock E2E at 1440/768
 confirmed explicit apply/remove, draft blocking, stale reconfirmation and Canva
