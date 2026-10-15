@@ -8,7 +8,7 @@ import type { DashboardProject } from "@/types/newsletter";
 
 const editSteps = [
   { label: "기본 정보", path: "settings", detail: "기관, 담당자, 상품 옵션" },
-  { label: "기사 작성/편집", path: "reading", detail: "문단, 이미지, URL 버튼" },
+  { label: "기사 목록·작성", path: "articles", detail: "기사 순서, 작성과 디자인" },
   { label: "이미지 페이지 편집", path: "pages", detail: "페이지 이미지와 클릭 영역" },
   { label: "사진·이미지 관리", path: "assets", detail: "이미지, URL, 유튜브 소재" },
   { label: "음성 소식지 검수", path: "audio", detail: "음성 파일과 기사 대본 확인" },
@@ -33,7 +33,7 @@ function getRecommendedStep(project: DashboardProject) {
     return editSteps.find((step) => step.path === "pages") ?? editSteps[2];
   }
 
-  return editSteps.find((step) => step.path === "reading") ?? editSteps[1];
+  return editSteps.find((step) => step.path === "articles") ?? editSteps[1];
 }
 
 function getProjectSearchText(project: DashboardProject) {

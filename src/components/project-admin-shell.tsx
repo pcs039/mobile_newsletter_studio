@@ -7,7 +7,7 @@ import { DatadictionBrand } from "@/components/datadiction-brand";
 import { canAccessProject, hasProjectUnlock, requireAppUser } from "@/lib/app-auth";
 import { getProjectWorkspace } from "@/lib/newsletter-repository";
 
-type ProjectSection = "settings" | "design" | "pages" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey" | "analytics";
+type ProjectSection = "settings" | "design" | "pages" | "articles" | "reading" | "assets" | "audio" | "publish" | "distribution" | "survey" | "analytics";
 type ProjectModule = "newsletter" | "ebook" | "engagement" | "common";
 
 const planningNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
@@ -16,7 +16,7 @@ const planningNavigation: Array<{ key: ProjectSection; label: string; path: stri
 ];
 
 const contentProductionNavigation: Array<{ key: ProjectSection; label: string; path: string; guide: string; module: ProjectModule }> = [
-  { key: "reading", label: "모바일 소식지", path: "reading", guide: "기사·미디어·배치", module: "newsletter" },
+  { key: "articles", label: "기사 목록", path: "articles", guide: "작성·순서·디자인", module: "newsletter" },
   { key: "pages", label: "eBook", path: "pages", guide: "페이지·클릭 영역", module: "ebook" },
   { key: "audio", label: "음성 관리", path: "audio", guide: "음성 파일·대본", module: "newsletter" },
 ];
@@ -52,8 +52,8 @@ const workflowStages: Array<{
   {
     label: "기사·페이지 제작",
     detail: "기사·미디어·화면 배치",
-    path: "reading",
-    sections: ["reading", "pages", "audio"],
+    path: "articles",
+    sections: ["articles", "reading", "pages", "audio"],
   },
   {
     label: "내부 검수·발행",
@@ -77,7 +77,8 @@ const workflowStages: Array<{
 
 const nextSteps: Partial<Record<ProjectSection, { label: string; path: ProjectSection; detail: string }>> = {
   settings: { label: "기관 디자인", path: "design", detail: "CI 색상과 스타일 규칙으로 이동합니다." },
-  design: { label: "콘텐츠 제작", path: "reading", detail: "기사와 이미지 작업으로 이동합니다." },
+  design: { label: "콘텐츠 제작", path: "articles", detail: "기사와 이미지 작업으로 이동합니다." },
+  articles: { label: "검수·발행", path: "publish", detail: "기사 목록에서 편집을 마친 뒤 검수합니다." },
   reading: { label: "검수·발행", path: "publish", detail: "공개 전 상태를 확인합니다." },
   pages: { label: "검수·발행", path: "publish", detail: "페이지 이미지 상태를 확인합니다." },
   assets: { label: "검수·발행", path: "publish", detail: "소재 상태를 확인합니다." },
@@ -195,11 +196,11 @@ export async function ProjectAdminShell({
     (item) => isNavigationItemVisible(item.module, capabilities) || item.key === active,
   );
   const isPlanningToolActive = visiblePlanningNavigation.some((item) => item.key === active);
-  const isContentProductionToolActive = visibleContentProductionNavigation.some((item) => item.key === active);
+  const isContentProductionToolActive = active === "reading" || visibleContentProductionNavigation.some((item) => item.key === active);
   const isPublishingToolActive = visiblePublishingNavigation.some((item) => item.key === active);
   const isAnalyticsToolActive = visibleAnalyticsNavigation.some((item) => item.key === active);
 
-  const WorkflowContainer = active === "reading" || active === "publish" ? "details" : "section";
+  const WorkflowContainer = active === "articles" || active === "reading" || active === "publish" ? "details" : "section";
 
   return (
     <main className="admin-workspace min-h-screen bg-[#f3f7fc] text-slate-950" data-print-scope={printScope}>
@@ -259,7 +260,7 @@ export async function ProjectAdminShell({
           </header>
 
           <WorkflowContainer className="mb-5 min-w-0 rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4 shadow-sm" data-admin-workflow>
-            {active === "reading" || active === "publish" ? <summary className="cursor-pointer text-sm font-black text-[#092046]">프로젝트 관리·자료 준비</summary> : null}
+            {active === "articles" || active === "reading" || active === "publish" ? <summary className="cursor-pointer text-sm font-black text-[#092046]">프로젝트 관리·자료 준비</summary> : null}
             <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">프로젝트 운영 현황</p>
@@ -363,7 +364,7 @@ export async function ProjectAdminShell({
                 <summary className="cursor-pointer text-xs font-black text-slate-600">콘텐츠 제작</summary>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {visibleContentProductionNavigation.map((item) => {
-                    const isActive = active === item.key;
+                    const isActive = active === item.key || (item.key === "articles" && active === "reading");
 
                     return (
                       <Link

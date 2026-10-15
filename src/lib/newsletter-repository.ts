@@ -1926,7 +1926,7 @@ function mapProjectRowToDashboardProject(
       total: formatCount(stats.total),
     },
     actions: {
-      editHref: `/projects/${project.slug}/pages`,
+      editHref: `/projects/${project.slug}/${getProjectCapabilities(project.project_type).hasNewsletter ? "articles" : getProjectCapabilities(project.project_type).hasEbook ? "pages" : "survey"}`,
       previewHref: `/newsletters/${project.slug}?preview=admin`,
       analyticsHref: `/projects/${project.slug}/analytics`,
       duplicateHref: `/projects/new?copyFrom=${project.slug}`,

@@ -19,7 +19,6 @@ type ArticleWorkspaceTabsProps = {
   previewHref: string;
   publishHref: string;
   review: ReactNode;
-  totalArticleCount: number;
 };
 
 const tabs: Array<{ description: string; label: string; value: ArticleWorkspaceTab }> = [
@@ -47,7 +46,6 @@ export function ArticleWorkspaceTabs({
   previewHref,
   publishHref,
   review,
-  totalArticleCount,
 }: ArticleWorkspaceTabsProps) {
   const [activeTab, setActiveTab] = useState<ArticleWorkspaceTab>(articleId ? initialTab : "content");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -89,27 +87,14 @@ export function ArticleWorkspaceTabs({
           </div>
 
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center 2xl:justify-end">
-            <div className="grid w-full grid-cols-3 gap-2 text-center text-xs font-bold text-slate-600 sm:min-w-[240px] sm:flex-1">
-              <div className="rounded-lg bg-[#eef6ff] px-3 py-2">
-                기사
-                <strong className="mt-1 block text-base text-[#092046]">{totalArticleCount}</strong>
-              </div>
-              <div className="rounded-lg bg-[#eef6ff] px-3 py-2">
-                블록
-                <strong className="mt-1 block text-base text-[#092046]">{blockCount}</strong>
-              </div>
-              <div className="rounded-lg bg-[#eef6ff] px-3 py-2">
-                링크
-                <strong className="mt-1 block text-base text-[#092046]">{linkCount}</strong>
-              </div>
-            </div>
+            <p className="text-xs font-semibold text-slate-500">저장본 · 블록 {blockCount}개 · 링크 {linkCount}개</p>
             <button
               type="button"
               disabled={!articleId}
               onClick={() => setIsPreviewOpen(true)}
               className="h-12 max-w-full shrink-0 rounded-lg border border-[#2f73b7] bg-white px-4 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
             >
-              모바일 확인
+              저장본 미리보기
             </button>
           </div>
         </div>

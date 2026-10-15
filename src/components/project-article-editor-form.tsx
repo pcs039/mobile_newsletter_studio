@@ -3,6 +3,7 @@
 import { readArticleBodyDesign, type ArticleBodyDesign } from "@/lib/article-body-design";
 
 import Link from "next/link";
+import { articlePublicInfoTypeOptions } from "@/lib/article-type-options";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
@@ -165,18 +166,6 @@ const articleTextAlignmentOptions: Array<{ value: ArticleTextAlignment; label: s
   { value: "center", label: "가운데 정렬" },
   { value: "right", label: "오른쪽 정렬" },
   { value: "justify", label: "양쪽 정렬" },
-];
-
-const articlePublicInfoTypeOptions: Array<{ value: ArticlePublicInfoType; label: string }> = [
-  { value: "general", label: "일반형" },
-  { value: "welfare_health", label: "복지·건강형" },
-  { value: "application_recruitment", label: "신청·모집형" },
-  { value: "event_festival", label: "축제·행사형" },
-  { value: "tourism_place", label: "관광·장소형" },
-  { value: "life_civil", label: "생활·민원형" },
-  { value: "government_major", label: "시정·군정 주요소식형" },
-  { value: "local_news", label: "읍면동·지역소식형" },
-  { value: "emergency", label: "긴급·안전형" },
 ];
 
 const articleUrgencyOptions: Array<{ value: ArticleUrgency; label: string; description: string }> = [
@@ -1482,7 +1471,7 @@ export function ProjectArticleEditorForm({
       }
 
       setMessage("기사를 삭제했습니다.");
-      router.push(`/projects/${projectSlug}/reading`);
+      router.push(`/projects/${projectSlug}/articles`);
       router.refresh();
     } catch {
       setError("기사 삭제 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.");
@@ -1565,6 +1554,7 @@ export function ProjectArticleEditorForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} onInvalidCapture={clearArticleSave} className="space-y-5">
+      <input type="hidden" name="sortOrder" value={article?.sortOrder ?? 0} />
       <ProjectArticleAiAssistant
         getCurrentContent={getCurrentContentForAi}
         onApplyDraft={applyAiDraft}
@@ -2349,16 +2339,6 @@ export function ProjectArticleEditorForm({
                 </select>
               </div>
               <div>
-                <FieldLabel>기사 순서</FieldLabel>
-                <input
-                  name="sortOrder"
-                  type="number"
-                  min="0"
-                  defaultValue={article?.sortOrder ?? 0}
-                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-                />
-              </div>
-              <div>
                 <FieldLabel>기관 중요도</FieldLabel>
                 <select
                   name="institutionPriority"
@@ -2741,13 +2721,13 @@ export function ProjectArticleEditorForm({
         </div>
       ) : null}
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <div className="sticky bottom-0 z-20 flex flex-col-reverse gap-3 rounded-lg border border-slate-200 bg-white/95 p-3 shadow-sm sm:flex-row sm:justify-end">
         <button
           type="button"
-          onClick={() => router.push(`/projects/${projectSlug}/reading`)}
+          onClick={() => router.push(`/projects/${projectSlug}/articles`)}
           className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
-          새 기사 입력
+          기사 목록으로
         </button>
         {showReviewActions ? (
           <button
