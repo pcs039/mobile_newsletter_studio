@@ -21,7 +21,7 @@ function setup(){
 }
 test('source digest deterministic, stable across order; body/title/link changes invalidate without mutating source',()=>{
  const h=setup();try{const source=structuredClone(h.state.articles),m=h.mod;assert.equal(m.demoSnapshot(source),m.demoSnapshot([...source].reverse()));
- for(const change of [x=>x.title='새 제목',x=>x.blocks[0].body='새 본문',x=>x.links.push({id:'l',targetValue:'https://example.com'})]){const copy=structuredClone(source);change(copy[0]);assert.notEqual(m.demoSnapshot(copy),m.demoSnapshot(source));}assert.deepEqual(source,h.state.articles);
+ for(const change of [x=>x.title='새 제목',x=>x.blocks[0].body='새 본문',x=>x.contactPhone='02-000-0000',x=>x.links.push({id:'l',targetValue:'https://example.com'})]){const copy=structuredClone(source);change(copy[0]);assert.notEqual(m.demoSnapshot(copy),m.demoSnapshot(source));}assert.deepEqual(source,h.state.articles);
  }finally{h.close();}
 });
 test('selection rejects missing, duplicate, foreign and invalid IDs; regular draft requires explicit selection',()=>{const h=setup();try{for(const ids of [[],[a,a],['bad'],[sid]])assert.throws(()=>h.mod.selectDemoArticles(h.state.articles,ids));assert.deepEqual(h.mod.selectDemoArticles(h.state.articles,[a]).map(x=>x.id),[a]);}finally{h.close();}});

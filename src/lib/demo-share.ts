@@ -15,10 +15,10 @@ export function demoCookieName(slug: string) { return `datadiction_demo_${create
 export function demoSnapshot(articles: ProjectContentArticle[]) {
   // Stable saved source only; not request-time signed URLs or audio availability.
   const source = [...articles].sort((a,b)=>a.id.localeCompare(b.id)).map(a=>({
-    id:a.id,title:a.title,displayTitle:a.displayTitle,summary:a.summary,body:a.body,publicInfo:a.publicInfo,
-    status:a.status,publicationKind:a.publicationKind,validFrom:a.validFrom,validUntil:a.validUntil,
-    contentPresentation:a.contentPresentation,showPublicTitle:a.showPublicTitle,
-    blocks:a.blocks,links:a.links,audioId:a.audioId,aiAudioId:a.aiAudioId,
+    ...Object.fromEntries(Object.entries(a).filter(([key])=>!["createdAt","updated","audioFile"].includes(key))),
+    audioFile:a.audioFile?{id:a.audioFile.id,title:a.audioFile.title,sourceType:a.audioFile.sourceType,
+      aiTtsVoice:a.audioFile.aiTtsVoice,transcriptText:a.audioFile.transcriptText,transcriptType:a.audioFile.transcriptType,
+      transcriptReviewStatus:a.audioFile.transcriptReviewStatus}:null,
   }));
   return createHash("sha256").update(JSON.stringify(source)).digest("hex");
 }
