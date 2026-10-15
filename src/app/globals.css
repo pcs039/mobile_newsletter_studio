@@ -1507,3 +1507,12 @@ html[data-public-text-scale="xlarge"] :is(.article-design-info, .article-design-
   background-size: 12px 12px;
   background-position: 0 0, 6px 6px;
 }
+
+/* The editor viewport is narrower than the browser: match reader viewport units
+   without changing the saved/public reader's typography. */
+.composition-reader-viewport .public-article-title {
+  font-size: clamp(1.5rem, 7.5cqw, 2.5rem);
+}
+.composition-reader-viewport .public-article-card {
+  padding: clamp(1.5rem, 5cqw, 1.75rem);
+}

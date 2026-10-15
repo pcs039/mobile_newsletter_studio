@@ -1361,7 +1361,8 @@ function ArticlePublicInfoCard({
   );
 }
 
-function ArticleCard({
+// Shared by the saved reader and the local Composition preview.
+export function ArticleCard({
   textDesign,
   heroBackground,
   topIllustration,
