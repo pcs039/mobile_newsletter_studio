@@ -4,6 +4,8 @@ import { ArticleCanvaTemplates } from "@/components/design/article-canva-templat
 import { ArticleProductionPatternControls } from "@/components/design/article-production-pattern-controls";
 import { ArticleTextDesignControls } from "@/components/design/article-text-design-controls";
 import { ArticleColorInput } from "@/components/design/article-color-input";
+import { useCompositionSaveState } from "@/components/design/use-composition-save-state";
+import { DesignSaveSummary } from "@/components/design/design-save-summary";
 import { articleTextColorDefaults } from "@/lib/article-text-colors";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -232,6 +234,15 @@ function PlacementControls({
   const [sortOrder, setSortOrder] = useState(placement.sortOrder);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settingsRef = useRef(settings);
+  const incomingSettings = JSON.stringify({ ...defaultSettingsForSlot(placement.slot), ...initialSettings });
+
+  useEffect(() => {
+    if (saveTimerRef.current) return;
+    const next = JSON.parse(incomingSettings) as ArticleCompositionPlacementSettings;
+    settingsRef.current = next;
+    setSettings(next);
+    setSortOrder(placement.sortOrder);
+  }, [incomingSettings, placement.sortOrder]);
 
   useEffect(() => {
     return () => {
@@ -582,7 +593,11 @@ function DesignReusePanel({
   );
 }
 
-export function ArticleCompositionEditor({
+export function ArticleCompositionEditor(props: ArticleCompositionEditorProps) {
+  return <ArticleCompositionEditorSession key={`${props.projectSlug}:${props.article.id}`} {...props} />;
+}
+
+function ArticleCompositionEditorSession({
   article,
   assets,
   initialComposition,
@@ -591,7 +606,8 @@ export function ArticleCompositionEditor({
   recommendedPattern,
   reuseSources,
 }: ArticleCompositionEditorProps) {
-  const [composition, setComposition] = useState(initialComposition);
+  const saveState = useCompositionSaveState(initialComposition, article.id);
+  const { composition } = saveState;
   const [recommendationApplied, setRecommendationApplied] = useState(false);
   const [busyKey, setBusyKey] = useState("");
   const [notice, setNotice] = useState<Notice>(null);
@@ -604,7 +620,11 @@ export function ArticleCompositionEditor({
     [assets],
   );
   const assetById = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
-  const isBusy = Boolean(busyKey);
+  const isBusy = saveState.busy;
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("article-design-save-state", { detail: { articleId: article.id, unsettled: saveState.hasUnsaved || isBusy } }));
+    return () => { window.dispatchEvent(new CustomEvent("article-design-save-state", { detail: { articleId: article.id, unsettled: false } })); };
+  }, [article.id, saveState.hasUnsaved, isBusy]);
 
   async function mutate(method: "POST" | "PATCH" | "DELETE", payload: Record<string, unknown>, key: string) {
     setBusyKey(key);
@@ -613,25 +633,36 @@ export function ArticleCompositionEditor({
     const requestUrl = method === "DELETE"
       ? `/api/project-article-composition?${new URLSearchParams(payload as Record<string, string>).toString()}`
       : "/api/project-article-composition";
-    const response = await fetch(requestUrl, {
-      method,
-      headers: method === "DELETE" ? undefined : { "Content-Type": "application/json" },
-      body: method === "DELETE" ? undefined : JSON.stringify(payload),
-    }).catch(() => null);
-    const result = response
-      ? ((await response.json().catch(() => null)) as CompositionApiResponse | null)
-      : null;
+    const result = await saveState.save({
+      key: key.startsWith("status:") ? "status" : key,
+      signature: JSON.stringify(payload),
+      kind: key === "text-design" ? "text" : "layout",
+      replacesText: key === "production-pattern",
+      placementId: typeof payload.placementId === "string" ? payload.placementId : undefined,
+      retryable: method === "PATCH",
+      perform: async () => {
+        const currentPayload = payload.placementId && method === "PATCH" ? {
+          ...payload, ...saveState.placementPatch(String(payload.placementId)),
+        } : payload;
+        const response = await fetch(requestUrl, {
+          method,
+          headers: method === "DELETE" ? undefined : { "Content-Type": "application/json" },
+          body: method === "DELETE" ? undefined : JSON.stringify(currentPayload),
+        }).catch(() => null);
+        const result = response
+          ? ((await response.json().catch(() => null)) as CompositionApiResponse | null)
+          : null;
 
+        if (!response || !response.ok || !result?.ok || !result.composition) {
+          throw new Error(result?.message ?? "기사 화면 구성을 저장하지 못했습니다.");
+        }
+        return { composition: result.composition, message: result.message };
+      },
+    });
     setBusyKey("");
-
-    if (!response || !response.ok || !result?.ok || !result.composition) {
-      setNotice({ kind: "error", message: result?.message ?? "기사 화면 구성을 저장하지 못했습니다." });
-      return;
-    }
-
+    if (!result) return;
     if (key === "production-pattern") setRecommendationApplied(true);
-    setComposition(result.composition);
-    setNotice({ kind: "success", message: result.message ?? "기사 화면 구성을 저장했습니다." });
+    if (key === "production-pattern") setNotice({ kind: "success", message: result.message ?? "제작 패턴을 저장했습니다." });
   }
 
   async function createComposition() {
@@ -675,6 +706,7 @@ export function ArticleCompositionEditor({
     patch: { isVisible?: boolean; settings?: ArticleCompositionPlacementSettings; sortOrder?: number },
   ) {
     if (!composition) return;
+    saveState.previewPatch(placement.id, patch);
     await mutate(
       "PATCH",
       {
@@ -696,12 +728,8 @@ export function ArticleCompositionEditor({
     placementId: string,
     settings: ArticleCompositionPlacementSettings,
   ) {
-    setComposition((currentComposition) => currentComposition ? {
-      ...currentComposition,
-      assets: currentComposition.assets.map((candidate) =>
-        candidate.id === placementId ? { ...candidate, settings } : candidate,
-      ),
-    } : currentComposition);
+    setNotice(null);
+    saveState.previewPlacement(placementId, settings);
   }
 
   async function removePlacement(placement: ProjectArticleCompositionAsset) {
@@ -728,7 +756,7 @@ export function ArticleCompositionEditor({
   }
 
   async function applyReusedDesign() {
-    if (!reuseSourceId || reuseSourceId === article.id || isBusy) return;
+    if (!reuseSourceId || reuseSourceId === article.id || isBusy || saveState.layoutStatus !== "saved") return;
 
     const source = reuseSources.find((candidate) => candidate.id === reuseSourceId && candidate.hasComposition);
     if (!source) {
@@ -744,33 +772,22 @@ export function ArticleCompositionEditor({
     setBusyKey(`copy:${source.id}`);
     setReuseState({ status: "loading", message: "선택한 기사 디자인을 적용하고 있습니다." });
 
-    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-
-    const response = await fetch("/api/project-article-composition", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "copy_composition",
-        articleId: article.id,
-        projectSlug,
-        sourceArticleId: source.id,
-      }),
-    }).catch(() => null);
-    const result = response
-      ? ((await response.json().catch(() => null)) as CompositionApiResponse | null)
-      : null;
-
+    const result = await saveState.save({
+      key: "copy", kind: "layout", signature: source.id, perform: async () => {
+        const response = await fetch("/api/project-article-composition", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "copy_composition", articleId: article.id, projectSlug, sourceArticleId: source.id }),
+        }).catch(() => null);
+        const result = response ? await response.json().catch(() => null) as CompositionApiResponse | null : null;
+        if (!response || !response.ok || !result?.ok || !result.composition) {
+          throw new Error(result?.message ?? "기사 디자인을 불러오지 못했습니다.");
+        }
+        return { composition: result.composition, message: result.message };
+      },
+    });
     setBusyKey("");
-
-    if (!response || !response.ok || !result?.ok || !result.composition) {
-      setReuseState({
-        status: "error",
-        message: `${result?.message ?? "기사 디자인을 불러오지 못했습니다."} 현재 디자인은 그대로 유지됩니다.`,
-      });
-      return;
-    }
-
-    setComposition(result.composition);
+    if (!result) { setReuseState({ status: "error", message: "디자인 불러오기에 실패했습니다. 저장본을 다시 확인하세요." }); return; }
     setSelectedPlacementId(null);
     setReuseState({
       status: "success",
@@ -781,7 +798,7 @@ export function ArticleCompositionEditor({
   const availableReuseSources = reuseSources.filter((source) => source.id !== article.id);
   const reusePanel = (
     <DesignReusePanel
-      disabled={isBusy}
+      disabled={isBusy || saveState.layoutStatus !== "saved"}
       onApply={() => void applyReusedDesign()}
       onSourceChange={(sourceId) => {
         setReuseSourceId(sourceId);
@@ -810,6 +827,7 @@ export function ArticleCompositionEditor({
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
           기관 디자인 자산을 기사 배경, 이미지, 장식에 배치합니다. 기사 내용은 기존 편집 데이터가 기준입니다.
         </p>
+        {saveState.error ? <p role="alert" className="mt-3 text-sm font-bold text-rose-800">{saveState.error} 저장본을 확인한 뒤 다시 시도하세요.</p> : null}
         {recommendedPattern ? <p className="mt-3 text-sm font-bold">기사 작성 단계의 AI 추천을 확인하려면 디자인 조정을 시작하세요. 추천은 자동 적용되지 않습니다.</p> : null}
         {initialStatus !== "not_found" ? (
           <p className="mt-3 text-sm font-bold text-rose-700">기사 화면 구성 정보를 불러오지 못했습니다.</p>
@@ -874,20 +892,23 @@ export function ArticleCompositionEditor({
         </p>
       ) : null}
 
+      <DesignSaveSummary state={saveState} assets={assets} />
+
       <div className="mt-5 grid min-w-0 gap-5 2xl:grid-cols-[minmax(0,1fr)_390px] 2xl:items-start">
         <div className="min-w-0">
       <ArticleCanvaTemplates key={`${article.id}:${String(composition.settings.productionPattern ?? "manual")}`} projectSlug={projectSlug} articleId={article.id} pattern={composition.settings.productionPattern} />
       <ArticleProductionPatternControls
         institutionVisualAvailable={assets.some(asset => asset.isActive && asset.approvalStatus === "approved" && asset.metadata?.source === "institution" && ["background", "illustration", "card_frame", "banner"].includes(asset.assetType))} article={article} key={String(composition.settings.productionPattern ?? "manual")} pattern={composition.settings.productionPattern}
-        composition={composition} onDraftApplied={value => { setComposition(value); setRecommendationApplied(true); }}
-        recommendedPattern={recommendationApplied ? undefined : recommendedPattern} projectSlug={projectSlug} articleId={article.id} textDesign={composition.settings.textDesign} disabled={isBusy}
+        composition={composition} onDraftApplied={value => { saveState.acceptApplied(value); setRecommendationApplied(true); }}
+        recommendedPattern={recommendationApplied ? undefined : recommendedPattern} projectSlug={projectSlug} articleId={article.id} textDesign={composition.settings.textDesign} disabled={isBusy || saveState.hasUnsaved}
         onApply={productionPattern => void mutate("PATCH", { action: "apply_production_pattern", projectSlug, articleId: article.id, compositionId: composition.id, productionPattern, textDesign: composition.settings.textDesign ?? {} }, "production-pattern")} />
 
           <details className="mt-5 min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <summary className="cursor-pointer text-sm font-black text-[#092046]">세부 디자인 조정 · 배경·장식·글자</summary>
             <p className="mt-3 text-xs leading-5 text-slate-600">배경·장식 변경은 항목별로 바로 저장됩니다. 텍스트 디자인은 저장 버튼으로 반영합니다. 준비 완료 상태의 승인된 배경판과 상단 장식만 검토·공개 화면에 표시되며, 다른 장식은 아직 반영되지 않습니다.</p>
-      <ArticleTextDesignControls value={composition.settings.textDesign} disabled={isBusy}
-        onChange={(textDesign) => setComposition({ ...composition, settings: { ...composition.settings, textDesign: { ...textDesign } } })}
+      {saveState.hasUnsaved ? <p className="mt-3 text-sm text-amber-900">편집 중인 변경사항을 저장한 뒤 패턴·초안을 적용하세요.</p> : null}
+      <ArticleTextDesignControls value={composition.settings.textDesign} disabled={false} saveDisabled={isBusy} saveStatus={saveState.textStatus}
+        onChange={next => { setNotice(null); saveState.changeText(next); }}
         onSave={() => void mutate("PATCH", { action: "update_text_design", projectSlug, articleId: article.id, compositionId: composition.id, textDesign: composition.settings.textDesign ?? {} }, "text-design")} />
 
       <div className="mt-4">{reusePanel}</div>
@@ -933,6 +954,7 @@ export function ArticleCompositionEditor({
               <span className={`mt-1 block text-[10px] font-bold ${isActive ? "text-sky-100" : "text-slate-500"}`}>
                 {count > 0 ? `${count}개 배치됨` : "비어 있음"}
               </span>
+              {!["hero_background", "hero_illustration"].includes(definition.slot) ? <span className={`mt-1 block text-[10px] ${isActive ? "text-sky-100" : "text-amber-900"}`}>편집용 · 공개 미반영</span> : null}
             </button>
           );
         })}
@@ -949,6 +971,7 @@ export function ArticleCompositionEditor({
               <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">현재 작업 영역</p>
               <h4 className="mt-1 text-lg font-black text-[#092046]">{activeDefinition.label}</h4>
               <p className="mt-1 text-sm leading-6 text-slate-600">{activeDefinition.description}</p>
+              {!["hero_background", "hero_illustration"].includes(activeSlot) ? <p className="mt-2 text-sm font-bold text-amber-900">이 영역은 편집·저장할 수 있지만 현재 공개·검토 화면에는 반영되지 않습니다.</p> : null}
             </div>
             <CompositionAssetPicker
               assets={compatibleAssets}
@@ -967,7 +990,7 @@ export function ArticleCompositionEditor({
             <div className="mt-5 space-y-3">
               {activePlacements.map((placement) => (
                 <PlacementControls
-                  key={`${placement.id}:${placement.updatedAt}`}
+                  key={placement.id}
                   asset={assetById.get(placement.assetId)}
                   disabled={isBusy}
                   placement={placement}
@@ -990,6 +1013,8 @@ export function ArticleCompositionEditor({
           </details>
         </div>
         <div className="min-w-0 2xl:sticky 2xl:top-4">
+          <p className="mb-2 text-sm font-bold text-[#184a88]">즉시 미리보기 · 편집 중인 상태</p>
+          <p className="mb-3 text-xs leading-5 text-slate-600">{saveState.hasUnsaved || isBusy ? "미저장·저장 중인 변경사항은 저장본 미리보기에 반영되지 않을 수 있습니다." : "저장본 미리보기에서 실제 독자 표시 조건도 확인하세요."} 기사 제목·본문은 마지막 기사 저장 기준입니다.</p>
           <CompositionMobilePreview
             article={article}
             assets={assets}

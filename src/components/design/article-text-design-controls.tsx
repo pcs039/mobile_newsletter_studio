@@ -1,7 +1,10 @@
 import { readArticleTextDesign, type ArticleTextDesign } from "@/lib/article-text-design";
+import { designSaveLabels } from "@/components/design/design-save-summary";
+import type { DesignSaveStatus } from "@/components/design/use-composition-save-state";
 
-export function ArticleTextDesignControls({ value, disabled, onChange, onSave }: {
+export function ArticleTextDesignControls({ value, disabled, onChange, onSave, saveDisabled, saveStatus }: {
   value: unknown; disabled: boolean; onChange: (value: ArticleTextDesign) => void; onSave: () => void;
+  saveDisabled?: boolean; saveStatus?: DesignSaveStatus;
 }) {
   const settings = { ...readArticleTextDesign(value), ...(value as ArticleTextDesign | undefined) };
   const change = (patch: Partial<ArticleTextDesign>) => onChange({ ...settings, ...patch });
@@ -33,6 +36,7 @@ export function ArticleTextDesignControls({ value, disabled, onChange, onSave }:
       </select>
     </label>
     <p className="mt-1 text-sm text-slate-600">기사에 이미 있는 정보박스·인용문만 강조합니다. 새 내용은 만들지 않습니다.</p>
-    <button type="button" onClick={onSave} className="dd-btn dd-btn-primary mt-4">텍스트 디자인 저장</button>
+    {saveStatus ? <p role="status" className="mt-3 text-sm font-bold">{designSaveLabels[saveStatus]}</p> : null}
+    <button type="button" disabled={saveDisabled} onClick={onSave} className="dd-btn dd-btn-primary mt-4">{saveStatus === "error" ? "텍스트 디자인 다시 저장" : "텍스트 디자인 저장"}</button>
   </fieldset>;
 }
