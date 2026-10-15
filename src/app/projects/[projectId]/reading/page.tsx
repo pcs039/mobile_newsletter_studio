@@ -14,6 +14,7 @@ import {
   getProjectArticleCompositionSources,
 } from "@/lib/article-composition-repository";
 import {
+  getFontAssets,
   getProjectAssetFiles,
   getProjectContent,
   getProjectDesignAssets,
@@ -60,13 +61,14 @@ export default async function ReadingEditorPage({
   const { projectId } = await params;
   await requireAppUser(`/projects/${projectId}/reading`);
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const [workspace, pageImageData, assetData, contentData, surveyData, designAssetData] = await Promise.all([
+  const [workspace, pageImageData, assetData, contentData, surveyData, designAssetData, fontData] = await Promise.all([
     getProjectWorkspace(projectId),
     getProjectPageImages(projectId),
     getProjectAssetFiles(projectId),
     getProjectContent(projectId),
     getProjectSurveys(projectId),
     getProjectDesignAssets(projectId),
+    getFontAssets({ activeOnly: true }),
   ]);
   const project = workspace.project;
   const articles = contentData.articles;
@@ -154,6 +156,14 @@ export default async function ReadingEditorPage({
                   summary: selectedArticle.summary,
                   title: selectedArticle.title,
                   showPublicTitle: selectedArticle.showPublicTitle,
+                }}
+                previewArticle={previewArticle ?? selectedArticle}
+                previewContext={{
+                  fontAssets: fontData.fonts,
+                  projectBodyFontAssetId: project?.bodyFontAssetId,
+                  projectTitleFontAssetId: project?.titleFontAssetId,
+                  slug: projectId,
+                  survey: surveyData.surveys.find(survey => survey.id === selectedArticle.surveyId),
                 }}
                 assets={designAssetData.ok ? designAssetData.assets : []}
                 initialComposition={compositionData.data}

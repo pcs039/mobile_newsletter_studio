@@ -1,236 +1,78 @@
 "use client";
 
-import { ResponsiveDesignImage } from "@/components/responsive-design-image";
-import { ArticleFullLayout } from "@/components/article-full-layout";
-import { readFullLayout } from "@/lib/article-full-layout";
-import { ArticleBodyDesignElement, ArticleDesignedCaption } from "@/components/article-body-design-elements";
-import { readArticleBodyDesign } from "@/lib/article-body-design";
-import type { CSSProperties } from "react";
-import {
-  articleCompositionSlotDefaultZIndex,
-  type ArticleCompositionAnchor,
-  type ArticleCompositionPlacementSettings,
-  type ArticleCompositionSlot,
-  type ProjectArticleComposition,
-  type ProjectArticleCompositionAsset,
-} from "@/lib/article-composition";
-import type { ProjectDesignAsset } from "@/lib/newsletter-repository";
-import { articleTextColorStyle } from "@/lib/article-text-colors";
+import { useState } from "react";
+import { ArticleCard } from "@/components/public-mobile-article-reader";
+import { PublicFontFaceStyle } from "@/components/public-font-face-style";
+import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
-import { ArticleTextDesignElements } from "@/components/article-text-design-elements";
-import { readArticleTextDesign, hasArticleTextDesign } from "@/lib/article-text-design";
-import { ArticleHeroBackgroundLayer } from "@/components/article-hero-background-layer";
-import { validateArticleCompositionPlacementSettings } from "@/lib/article-composition";
+import { readArticleTextDesign } from "@/lib/article-text-design";
+import { validateArticleCompositionPlacementSettings, type ProjectArticleComposition } from "@/lib/article-composition";
+import type { ArticleHeroBackground } from "@/lib/article-hero-background";
+import type { FontAsset, ProjectContentArticle, ProjectDesignAsset, ProjectSurveyItem } from "@/lib/newsletter-repository";
+
+export type CompositionPreviewContext = {
+  fontAssets?: FontAsset[];
+  projectBodyFontAssetId?: string | null;
+  projectTitleFontAssetId?: string | null;
+  slug?: string;
+  survey?: ProjectSurveyItem | null;
+};
 
 type CompositionMobilePreviewProps = {
-  article: {
-    body: string;
-    summary: string;
-    title: string;
-    showPublicTitle?: boolean;
-    articleType?: import("@/lib/newsletter-repository").ProjectContentArticle["articleType"]; publicInfo?: Record<string,string>; links?: import("@/lib/newsletter-repository").ProjectLinkAction[];
-    blocks?: import("@/lib/newsletter-repository").ProjectContentBlock[];
-  };
+  article: ProjectContentArticle;
   assets: ProjectDesignAsset[];
   composition: ProjectArticleComposition;
   selectedPlacementId: string | null;
+  context?: CompositionPreviewContext;
 };
 
-const anchorPosition: Record<ArticleCompositionAnchor, CSSProperties> = {
-  center: { left: "50%", top: "50%" },
-  top: { left: "50%", top: 0 },
-  bottom: { bottom: 0, left: "50%" },
-  left: { left: 0, top: "50%" },
-  right: { right: 0, top: "50%" },
-  top_left: { left: 0, top: 0 },
-  top_right: { right: 0, top: 0 },
-  bottom_left: { bottom: 0, left: 0 },
-  bottom_right: { bottom: 0, right: 0 },
-};
-
-function getSettings(placement: ProjectArticleCompositionAsset) {
-  return placement.settings as ArticleCompositionPlacementSettings;
-}
-
-function getTransform(anchor: ArticleCompositionAnchor, settings: ArticleCompositionPlacementSettings) {
-  const anchorX = anchor === "center" || anchor === "top" || anchor === "bottom" ? "-50%" : "0";
-  const anchorY = anchor === "center" || anchor === "left" || anchor === "right" ? "-50%" : "0";
-  const offsetX = settings.offsetX ?? 0;
-  const offsetY = settings.offsetY ?? 0;
-  const rotation = settings.rotation ?? 0;
-  const scale = settings.scale ?? 1;
-
-  return `translate(${anchorX}, ${anchorY}) translate(${offsetX}px, ${offsetY}px) rotate(${rotation}deg) scale(${scale})`;
-}
-
-function layerStyle(placement: ProjectArticleCompositionAsset, asset: ProjectDesignAsset): CSSProperties {
-  const settings = getSettings(placement);
-  const anchor = settings.anchor ?? "center";
-
-  return {
-    ...anchorPosition[anchor],
-    backgroundImage: `url(${JSON.stringify(asset.previewHref)})`,
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-    backgroundSize: settings.fit ?? "contain",
-    opacity: settings.opacity ?? 1,
-    transform: getTransform(anchor, settings),
-    transformOrigin: "center",
-    zIndex: Math.min(settings.zIndex ?? articleCompositionSlotDefaultZIndex[placement.slot], 25),
-  };
-}
-
-function AssetLayer({
-  asset,
-  className,
-  placement,
-  selected,
-}: {
-  asset: ProjectDesignAsset;
-  className: string;
-  placement: ProjectArticleCompositionAsset;
-  selected: boolean;
-}) {
-  return (
-    <span
-      role={asset.altText ? "img" : undefined}
-      aria-label={asset.altText || undefined}
-      aria-hidden={asset.altText ? undefined : true}
-      className={`absolute pointer-events-none ${className}`}
-      style={{
-        ...layerStyle(placement, asset),
-        outline: selected ? "3px solid #2f73b7" : undefined,
-        outlineOffset: selected ? "-3px" : undefined,
-      }}
-    />
-  );
-}
-
-const slotLabels: Record<ArticleCompositionSlot, string> = {
-  hero_background: "배경판",
-  hero_illustration: "상단 이미지·장식",
-  title_icon: "제목 옆 아이콘",
-  body_decoration: "본문 주변 장식",
-  footer_banner: "하단 이미지·배너",
-};
-
-export function CompositionMobilePreview({
-  article,
-  assets,
-  composition,
-  selectedPlacementId,
-}: CompositionMobilePreviewProps) {
-  const fullLayout = article.blocks?.find(b=>b.isVisible&&readFullLayout(b)&&b.body.includes("fullLayoutBlock="));
-  if(fullLayout)return <ArticleFullLayout article={{...article,blocks:article.blocks??[],articleType:article.articleType??"general",publicInfo:article.publicInfo??{},links:article.links??[]}} block={fullLayout}/>;
-  const textDesign = readArticleTextDesign(composition.settings.textDesign);
-  const hasBodyElements = article.blocks?.some(b => b.isVisible && (readArticleBodyDesign(b.metadata.body_design) || (b.type === "image" && textDesign.captionStyled)));
-  const bodyElements = hasBodyElements ? article.blocks?.filter(b => b.isVisible).map(block => {
-    const design = block.type === "paragraph" ? readArticleBodyDesign(block.metadata.body_design) : undefined;
-    if (design) return <ArticleBodyDesignElement key={block.id} design={design} title={block.title} body={block.body} emphasis={textDesign.bodyEmphasis} />;
-    if (block.type === "paragraph") return <section key={block.id}>{block.title ? <h3 className="font-bold">{block.title}</h3> : null}<p data-public-text-scale-target="article-body" className="whitespace-pre-wrap break-words">{block.body}</p></section>;
-    if (block.type === "image" && block.body.trim()) return (
-      <figure key={block.id}>
-        <ResponsiveDesignImage className="h-auto w-full" src={block.body} alt={block.title || article.title} />
-        {textDesign.captionStyled ? <ArticleDesignedCaption text={block.title} /> : block.title ? <figcaption>{block.title}</figcaption> : null}
-      </figure>
-    );
-    return null;
-  }) : null;
-  const assetById = new Map(assets.map((asset) => [asset.id, asset]));
-  const visiblePlacements = composition.assets.filter((placement) => placement.isVisible && assetById.has(placement.assetId));
-  const placementsFor = (slot: ArticleCompositionSlot) =>
-    visiblePlacements.filter((placement) => placement.slot === slot).sort((a, b) => a.sortOrder - b.sortOrder);
-  const heroBackgrounds = placementsFor("hero_background");
-  const heroIllustrations = placementsFor("hero_illustration");
-  const titleIcons = placementsFor("title_icon");
-  const bodyDecorations = placementsFor("body_decoration");
-  const footerBanners = placementsFor("footer_banner");
-  const selectedPlacement = composition.assets.find((placement) => placement.id === selectedPlacementId);
-  const selectedAsset = selectedPlacement ? assetById.get(selectedPlacement.assetId) : undefined;
-  const framePlacement = heroBackgrounds[0];
-  const frameSettings = framePlacement ? validateArticleCompositionPlacementSettings(framePlacement.settings, "hero_background") : null;
-  if (framePlacement && frameSettings?.ok && (frameSettings.settings.renderMode === "fluid_frame" || hasArticleTextDesign(textDesign) || hasBodyElements)) {
-    const illustration = heroIllustrations[0];
-    const illustrationAsset = illustration ? assetById.get(illustration.assetId) : undefined;
-    return (
-      <div data-article-title-color={frameSettings.settings.titleColor} data-article-body-color={frameSettings.settings.bodyColor} style={articleTextColorStyle(frameSettings.settings)} className="mx-auto w-full max-w-[390px] rounded-lg border border-[#b8d7ff] bg-white p-4 shadow-lg">
-        <p className="mb-3 text-xs font-black text-[#184a88]">현재 디자인 미리보기</p>
-        <div className="mb-3"><PublicTextSizeToggle compact /></div>
-        <ArticleHeroBackgroundLayer background={{ url: assetById.get(framePlacement.assetId)?.previewHref ?? "", visible: true, settings: frameSettings.settings }}
-          illustration={illustration && illustrationAsset ? { url: illustrationAsset.previewHref, visible: true, settings: getSettings(illustration) } : undefined}
-          body={hasBodyElements ? <div className="mt-6 space-y-6">{bodyElements}</div> : <p data-public-text-scale-target="article-body" className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}{article.body.length > 360 ? "…" : ""}</p>}>
-          <ArticleTextDesignElements settings={textDesign} accentColor={frameSettings?.ok ? frameSettings.settings.accentColor : undefined} position="before-title" />
-          <h3 hidden={article.showPublicTitle === false} className="public-article-title break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
-          <ArticleTextDesignElements settings={textDesign} accentColor={frameSettings?.ok ? frameSettings.settings.accentColor : undefined} position="after-title" />
-          {article.summary ? <p data-public-text-scale-target="article-summary" className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
-        </ArticleHeroBackgroundLayer>
-      </div>
-    );
+// Local drafts intentionally remain visible regardless of ready/approval state.
+// Use the same single supported layer per slot and validation as the saved reader;
+// the saved-preview route independently enforces approval/active/ready permissions.
+export function localPreviewLayer(composition: ProjectArticleComposition, assets: ProjectDesignAsset[], slot: "hero_background" | "hero_illustration"): ArticleHeroBackground | undefined {
+  const placements = composition.assets
+    .filter(placement => placement.slot === slot && placement.isVisible)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
+  const validTypes = slot === "hero_background" ? ["background", "pattern"] : ["illustration", "decoration"];
+  for (const placement of placements) {
+    const asset = assets.find(a => a.id === placement.assetId);
+    const validation = validateArticleCompositionPlacementSettings(placement.settings, slot);
+    if (asset?.previewHref && validTypes.includes(asset.assetType) && validation.ok) return { url: asset.previewHref, visible: true, settings: validation.settings };
   }
+}
+
+export function CompositionMobilePreview({ article, assets, composition, selectedPlacementId, context = {} }: CompositionMobilePreviewProps) {
+  const [width, setWidth] = useState(390);
+  const [lightbox, setLightbox] = useState<PublicArticleLightboxImage | null>(null);
+  const selected = composition.assets.find(p => p.id === selectedPlacementId);
+  const selectedAsset = selected && assets.find(a => a.id === selected.assetId);
 
   return (
-    <div data-article-title-color={frameSettings?.ok ? frameSettings.settings.titleColor : undefined} data-article-body-color={frameSettings?.ok ? frameSettings.settings.bodyColor : undefined} style={articleTextColorStyle(frameSettings?.ok ? frameSettings.settings : undefined)} className="mx-auto w-full max-w-[390px] overflow-hidden rounded-lg border border-[#b8d7ff] bg-white shadow-lg">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#d8e8ff] bg-[#092046] px-4 py-3 text-xs font-black text-white">
-        <span>현재 디자인 미리보기</span>
-        {selectedPlacement && selectedAsset ? (
-          <span className="max-w-full truncate rounded-full bg-white/15 px-2 py-1 text-[10px] text-sky-50">
-            선택: {selectedAsset.name} · {slotLabels[selectedPlacement.slot]}
-          </span>
-        ) : (
-          <span className="text-[10px] text-sky-100">배치 요소를 선택하면 강조됩니다.</span>
-        )}
+    <div className="min-w-0" data-composition-preview="">
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+        <label className="font-bold">화면 폭 <select aria-label="즉시 미리보기 화면 폭" value={width} onChange={event => setWidth(Number(event.target.value))} className="rounded border border-slate-300 bg-white p-1">
+          <option value={390}>모바일 390px</option><option value={520}>독자 화면 최대 520px</option>
+        </select></label>
+        <span>작업창보다 넓으면 가용 폭에 맞춥니다.</span>
+        {selectedAsset ? <span className="w-full break-words">선택: {selectedAsset.name}</span> : null}
       </div>
-
-      <div className="px-4 py-3"><PublicTextSizeToggle compact /></div>
-      <div className="relative min-h-64 overflow-hidden bg-[#eef6ff] px-6 py-10">
-        <span className="absolute left-3 top-3 z-40 rounded bg-white/90 px-2 py-1 text-[10px] font-black text-[#184a88] shadow-sm">
-          기사 제목 영역
-        </span>
-        {heroBackgrounds.map((placement) => {
-          const asset = assetById.get(placement.assetId);
-          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-full w-full" selected={placement.id === selectedPlacementId} /> : null;
-        })}
-        {heroIllustrations.map((placement) => {
-          const asset = assetById.get(placement.assetId);
-          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-40 w-40" selected={placement.id === selectedPlacementId} /> : null;
-        })}
-        {titleIcons.map((placement) => {
-          const asset = assetById.get(placement.assetId);
-          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-16 w-16" selected={placement.id === selectedPlacementId} /> : null;
-        })}
-
-        <div className="relative z-30 mx-auto max-w-[290px] text-center">
-          <p className="text-[11px] font-black uppercase tracking-wide text-[#184a88]">Mobile Newsletter</p>
-          <ArticleTextDesignElements settings={textDesign} accentColor={frameSettings?.ok ? frameSettings.settings.accentColor : undefined} position="before-title" />
-          <h3 hidden={article.showPublicTitle === false} className="public-article-title mt-3 break-words text-2xl font-black leading-tight text-[#092046]">{article.title}</h3>
-          <ArticleTextDesignElements settings={textDesign} accentColor={frameSettings?.ok ? frameSettings.settings.accentColor : undefined} position="after-title" />
-          {article.summary ? <p data-public-text-scale-target="article-summary" className="mt-4 text-sm font-semibold leading-6 text-slate-700">{article.summary}</p> : null}
+      <p className="mb-3 text-xs leading-5 text-slate-600">편집 중인 배경·상단 장식과 HTML 디자인을 공용 기사 카드로 표시합니다. draft·미승인 자산도 편집용으로 보일 수 있습니다. 제목 옆 아이콘·본문 주변 장식·하단 배너는 공개 미지원으로 여기에도 표시하지 않습니다.</p>
+      <div className="composition-reader-viewport mx-auto w-full min-w-0" style={{ maxWidth: width, containerType: "inline-size" }}>
+        <div className="max-h-[75dvh] overflow-y-auto rounded-lg ring-1 ring-inset ring-[#b8d7ff] bg-[#edf4fb]" aria-label="편집 중인 기사 미리보기">
+          <div className="public-newsletter-screen public-mobile-article-reader min-w-0">
+            <PublicFontFaceStyle fonts={context.fontAssets ?? []} />
+            <div className="px-5 pt-5"><PublicTextSizeToggle compact /></div>
+            <ArticleCard key={article.id} article={article} index={0} slug={context.slug ?? ""} analyticsDisabled
+              fontAssets={context.fontAssets ?? []} projectBodyFontAssetId={context.projectBodyFontAssetId} projectTitleFontAssetId={context.projectTitleFontAssetId}
+              survey={context.survey} showAdminPreviewControls={false}
+              heroBackground={localPreviewLayer(composition, assets, "hero_background")}
+              topIllustration={localPreviewLayer(composition, assets, "hero_illustration")}
+              textDesign={readArticleTextDesign(composition.settings.textDesign)}
+              className="mx-5 my-5" onOpenArticleImage={setLightbox} />
+          </div>
         </div>
       </div>
-
-      <div className="relative overflow-hidden px-6 py-8">
-        <span className="absolute left-3 top-3 z-40 rounded bg-white/90 px-2 py-1 text-[10px] font-black text-[#184a88] shadow-sm">
-          기사 본문 영역
-        </span>
-        {bodyDecorations.map((placement) => {
-          const asset = assetById.get(placement.assetId);
-          return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-28 w-28" selected={placement.id === selectedPlacementId} /> : null;
-        })}
-        <p hidden={Boolean(hasBodyElements)} data-public-text-scale-target="article-body" className="relative z-30 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
-          {article.body.slice(0, 360) || "기사 본문이 이 영역에 표시됩니다."}
-          {article.body.length > 360 ? "…" : ""}
-        </p>
-      </div>
-
-      {hasBodyElements ? <div className="space-y-6 px-6 pb-6">{bodyElements}</div> : null}
-      {footerBanners.length > 0 ? (
-        <div className="relative min-h-28 overflow-hidden border-t border-slate-100 bg-slate-50">
-          {footerBanners.map((placement) => {
-            const asset = assetById.get(placement.assetId);
-            return asset ? <AssetLayer key={placement.id} placement={placement} asset={asset} className="h-24 w-[90%]" selected={placement.id === selectedPlacementId} /> : null;
-          })}
-        </div>
-      ) : null}
+      <PublicArticleImageLightbox image={lightbox} onClose={() => setLightbox(null)} />
     </div>
   );
 }

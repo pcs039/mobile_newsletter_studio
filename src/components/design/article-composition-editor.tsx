@@ -39,6 +39,8 @@ type ArticleCompositionEditorProps = {
     articleType: import("@/lib/newsletter-repository").ProjectContentArticle["articleType"];
     publicInfo: import("@/lib/article-public-info-fields").ArticlePublicInfo;
   };
+  previewArticle: import("@/lib/newsletter-repository").ProjectContentArticle;
+  previewContext?: import("@/components/design/composition-mobile-preview").CompositionPreviewContext;
   assets: ProjectDesignAsset[];
   initialComposition: ProjectArticleComposition | null;
   initialStatus: ArticleCompositionRepositoryStatus;
@@ -603,6 +605,8 @@ function ArticleCompositionEditorSession({
   initialComposition,
   initialStatus,
   projectSlug,
+  previewContext,
+  previewArticle,
   recommendedPattern,
   reuseSources,
 }: ArticleCompositionEditorProps) {
@@ -894,7 +898,7 @@ function ArticleCompositionEditorSession({
 
       <DesignSaveSummary state={saveState} assets={assets} />
 
-      <div className="mt-5 grid min-w-0 gap-5 2xl:grid-cols-[minmax(0,1fr)_390px] 2xl:items-start">
+      <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,520px)] xl:items-start">
         <div className="min-w-0">
       <ArticleCanvaTemplates key={`${article.id}:${String(composition.settings.productionPattern ?? "manual")}`} projectSlug={projectSlug} articleId={article.id} pattern={composition.settings.productionPattern} />
       <ArticleProductionPatternControls
@@ -1012,11 +1016,12 @@ function ArticleCompositionEditorSession({
 
           </details>
         </div>
-        <div className="min-w-0 2xl:sticky 2xl:top-4">
+        <div className="min-w-0 xl:sticky xl:top-4">
           <p className="mb-2 text-sm font-bold text-[#184a88]">즉시 미리보기 · 편집 중인 상태</p>
           <p className="mb-3 text-xs leading-5 text-slate-600">{saveState.hasUnsaved || isBusy ? "미저장·저장 중인 변경사항은 저장본 미리보기에 반영되지 않을 수 있습니다." : "저장본 미리보기에서 실제 독자 표시 조건도 확인하세요."} 기사 제목·본문은 마지막 기사 저장 기준입니다.</p>
           <CompositionMobilePreview
-            article={article}
+            article={previewArticle}
+            context={previewContext}
             assets={assets}
             composition={composition}
             selectedPlacementId={activeSelectedPlacementId}
