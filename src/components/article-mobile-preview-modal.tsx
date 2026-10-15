@@ -7,6 +7,7 @@ type ArticleMobilePreviewModalProps = {
   isOpen: boolean;
   onClose: () => void;
   previewHref: string;
+  designUnsettled?: boolean;
 };
 
 const focusableSelector = [
@@ -19,7 +20,7 @@ const focusableSelector = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
-export function ArticleMobilePreviewModal({ isOpen, onClose, previewHref }: ArticleMobilePreviewModalProps) {
+export function ArticleMobilePreviewModal({ isOpen, onClose, previewHref, designUnsettled }: ArticleMobilePreviewModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -100,6 +101,7 @@ export function ArticleMobilePreviewModal({ isOpen, onClose, previewHref }: Arti
           </button>
         </div>
 
+        {designUnsettled ? <p role="status" className="mb-3 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-950">편집 중인 디자인 변경사항은 아직 저장본에 반영되지 않았을 수 있습니다. 디자인 영역에서 저장 상태를 확인하세요.</p> : null}
         <AdminMobilePreviewFrame
           allowCollapse={false}
           previewHref={previewHref}

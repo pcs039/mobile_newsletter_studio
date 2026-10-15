@@ -49,7 +49,17 @@ export function ArticleWorkspaceTabs({
 }: ArticleWorkspaceTabsProps) {
   const [activeTab, setActiveTab] = useState<ArticleWorkspaceTab>(articleId ? initialTab : "content");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [designUnsettled, setDesignUnsettled] = useState(false);
   const closePreview = useCallback(() => setIsPreviewOpen(false), []);
+
+  useEffect(() => {
+    function handleDesignState(event: Event) {
+      const detail = (event as CustomEvent<{ articleId: string; unsettled: boolean }>).detail;
+      if (detail?.articleId === articleId && typeof detail.unsettled === "boolean") setDesignUnsettled(detail.unsettled);
+    }
+    window.addEventListener("article-design-save-state", handleDesignState);
+    return () => window.removeEventListener("article-design-save-state", handleDesignState);
+  }, [articleId]);
 
   useEffect(() => {
     function handlePopState() {
@@ -88,6 +98,7 @@ export function ArticleWorkspaceTabs({
 
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center 2xl:justify-end">
             <p className="text-xs font-semibold text-slate-500">저장본 · 블록 {blockCount}개 · 링크 {linkCount}개</p>
+            {designUnsettled ? <p className="max-w-sm text-xs font-bold text-amber-900">편집 중인 디자인 변경사항은 저장본 미리보기에 반영되지 않을 수 있습니다.</p> : null}
             <button
               type="button"
               disabled={!articleId}
@@ -156,7 +167,7 @@ export function ArticleWorkspaceTabs({
       </div>
 
       {articleId ? (
-        <ArticleMobilePreviewModal isOpen={isPreviewOpen} onClose={closePreview} previewHref={previewHref} />
+        <ArticleMobilePreviewModal isOpen={isPreviewOpen} onClose={closePreview} previewHref={previewHref} designUnsettled={designUnsettled} />
       ) : null}
     </section>
   );
