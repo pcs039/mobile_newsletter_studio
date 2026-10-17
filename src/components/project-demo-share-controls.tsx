@@ -9,7 +9,7 @@ export function ProjectDemoShareControls({projectSlug}:{projectSlug:string}){
  const [selected,setSelected]=useState<string[]>([]),[days,setDays]=useState(1),[confirmed,setConfirmed]=useState(false);
  const [busy,setBusy]=useState(false),[loaded,setLoaded]=useState(false),[message,setMessage]=useState("");
  const [hasLink,setHasLink]=useState(false),[now,setNow]=useState(0);
- const loadVersion=useRef(0);
+ const loadVersion=useRef(0),requestKey=useRef<string|null>(null);
  const link=useRef(""),lock=useRef(false),alive=useRef(false),clearTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const clearLink=useCallback(()=>{link.current="";setHasLink(false);if(clearTimer.current)clearTimeout(clearTimer.current);},[]);
  const load=useCallback(async()=>{
@@ -27,11 +27,12 @@ export function ProjectDemoShareControls({projectSlug}:{projectSlug:string}){
    if(action==="create"){
     const prepared=await post({action:"prepare",articleIds:selected,snapshots:Object.fromEntries(articles.filter(a=>selected.includes(a.id)).map(a=>[a.id,a.snapshot]))});
     if(!alive.current)return;
-    const d=await post({action,articleIds:selected,snapshot:prepared.snapshot,days,confirmed});
+    requestKey.current??=crypto.randomUUID();
+    const d=await post({action,articleIds:selected,snapshot:prepared.snapshot,days,confirmed,requestKey:requestKey.current});
     if(!alive.current)return;
     link.current=d.url;setHasLink(true);clearTimer.current=setTimeout(clearLink,300000);
-    setMessage("시연 링크를 발급했습니다. 정식 발행 상태는 변경하지 않았습니다.");
-   }else{await post({action,shareId});if(alive.current)setMessage("링크를 회수했습니다. 새 접속과 파일 요청이 차단됩니다.");}
+    setMessage(d.duplicate?"이전 발급 결과를 재사용했습니다. 새 링크는 만들지 않았습니다.":"시연 링크를 발급했습니다. 정식 발행 상태는 변경하지 않았습니다.");
+   }else{await post({action,shareId});requestKey.current=null;if(alive.current)setMessage("링크를 회수했습니다. 새 접속과 파일 요청이 차단됩니다.");}
    await load();
   }catch(e){if(alive.current){setMessage(`${e instanceof Error?e.message:"처리 실패"} 자동 재시도하지 않습니다. 링크 목록을 다시 확인하세요.`);setLoaded(false);}}
   finally{lock.current=false;if(alive.current)setBusy(false);}
@@ -48,10 +49,10 @@ export function ProjectDemoShareControls({projectSlug}:{projectSlug:string}){
   <fieldset disabled={busy||!loaded} className="mt-3 min-w-0">
    <legend className="text-sm font-bold">공유할 기사 선택 · 최대 100개</legend>
    <div className="mt-2 max-h-64 space-y-2 overflow-y-auto rounded border border-amber-200 bg-white p-3">
-    {articles.map(a=><label key={a.id} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={selected.includes(a.id)} onChange={e=>{setSelected(ids=>e.target.checked?[...ids,a.id]:ids.filter(id=>id!==a.id));setConfirmed(false);clearLink();}} className="mt-1 shrink-0"/><span>{a.title}<span className="ml-2 text-xs text-slate-500">{({draft:"작성 중",review:"검수 요청",in_review:"검수 중",approved:"검수 완료",published:"발행됨"} as Record<string,string>)[a.status]??"상태 확인 필요"}</span></span></label>)}
+    {articles.map(a=><label key={a.id} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={selected.includes(a.id)} onChange={e=>{setSelected(ids=>e.target.checked?[...ids,a.id]:ids.filter(id=>id!==a.id));setConfirmed(false);requestKey.current=null;clearLink();}} className="mt-1 shrink-0"/><span>{a.title}<span className="ml-2 text-xs text-slate-500">{({draft:"작성 중",review:"검수 요청",in_review:"검수 중",approved:"검수 완료",published:"발행됨"} as Record<string,string>)[a.status]??"상태 확인 필요"}</span></span></label>)}
     {loaded&&!articles.length?<p>시연할 기사가 없습니다.</p>:null}
    </div>
-   <label className="mt-3 block text-sm font-bold">링크 유효기간 <select aria-label="시연 링크 유효기간" value={days} onChange={e=>setDays(Number(e.target.value))} className="rounded border p-2"><option value={1}>1일</option><option value={3}>3일</option><option value={7}>7일</option></select></label>
+   <label className="mt-3 block text-sm font-bold">링크 유효기간 <select aria-label="시연 링크 유효기간" value={days} onChange={e=>{setDays(Number(e.target.value));setConfirmed(false);requestKey.current=null;clearLink();}} className="rounded border p-2"><option value={1}>1일</option><option value={3}>3일</option><option value={7}>7일</option></select></label>
    <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} className="mt-1 shrink-0"/><span>선택한 기사와 이미지를 확인했으며 외부 담당자에게 시연용으로 공유해도 됩니다.</span></label>
   </fieldset>
   <div className="mt-3 flex flex-wrap gap-2">

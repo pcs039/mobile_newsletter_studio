@@ -1,7 +1,7 @@
 import "server-only";
-import { createHash } from "crypto";
+import { createHash, createHmac } from "crypto";
 import { cookies } from "next/headers";
-import { createClientReviewToken, hashClientReviewToken, isClientReviewToken } from "@/lib/client-review";
+import { hashClientReviewToken, isClientReviewToken } from "@/lib/client-review";
 import { getProjectContent, getProjectWorkspace, type ProjectContentArticle } from "@/lib/newsletter-repository";
 import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { isArticlePubliclyVisible } from "@/lib/article-publication";
@@ -27,7 +27,7 @@ export async function demoRows(query: URLSearchParams, method = "GET", body?: un
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) throw new DemoError(503,"시연 공유 서버 설정을 확인하세요.");
   const response = await fetch(url,{method,cache:"no-store",headers:{apikey:key,Authorization:`Bearer ${key}`,"Content-Type":"application/json",Prefer:"return=representation"},...(body?{body:JSON.stringify(body)}:{})});
-  if (!response.ok) throw new DemoError(response.status===404?503:502,response.status===404?"시연용 발행 기능을 준비 중입니다. 관리자에게 문의하세요.":"시연 링크 상태를 확인하지 못했습니다. 자동 재시도하지 말고 목록을 확인하세요.");
+  if (!response.ok) throw new DemoError(response.status===404?503:response.status===409?409:502,response.status===404?"시연용 발행 기능을 준비 중입니다. 관리자에게 문의하세요.":"시연 링크 상태를 확인하지 못했습니다. 자동 재시도하지 말고 목록을 확인하세요.");
   return response.json();
 }
 export async function demoSource(slug: string) {
@@ -42,20 +42,37 @@ export function selectDemoArticles(articles: ProjectContentArticle[], ids: unkno
   if (chosen.length!==ids.length) throw new DemoError(409,"현재 프로젝트의 시연 가능한 기사만 선택하세요.");
   return chosen;
 }
-export async function issueDemoShare(slug:string, projectId:string, userId:string, ids:unknown, snapshot:unknown, days:unknown, confirmed:unknown) {
+export async function issueDemoShare(slug:string, projectId:string, userId:string, ids:unknown, snapshot:unknown, days:unknown, confirmed:unknown, requestKey:unknown) {
+  if(typeof requestKey!=="string"||!demoUuid.test(requestKey))throw new DemoError(400,"시연 요청 식별자를 확인하세요.");
   if (![1,3,7].includes(days as number)||confirmed!==true) throw new DemoError(400,"공유할 자료 확인과 유효기간 선택이 필요합니다.");
   const source=await demoSource(slug);
   if(source.project.id!==projectId) throw new DemoError(403,"프로젝트를 확인하세요.");
   const selected=selectDemoArticles(source.articles,ids);
   if(snapshot!==demoSnapshot(selected)) throw new DemoError(409,"기사 내용이 변경되었습니다. 목록을 다시 확인하세요.");
-  const token=createClientReviewToken();
-  const rows=await demoRows(new URLSearchParams({select:columns}),"POST",{
-    project_id:projectId,article_ids:selected.map(a=>a.id),source_snapshot:snapshot,created_by:userId,
-    token_hash:hashClientReviewToken(token),expires_at:new Date(Date.now()+Number(days)*86400000).toISOString(),
-  });
-  if(!rows[0]?.id) throw new DemoError(502,"링크 발급 결과가 불확실합니다. 목록을 확인하세요.");
-  return {share:rows[0],token};
+  const secret=process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if(!secret)throw new DemoError(503,"서버 설정을 확인하세요.");
+  const token=createHmac("sha256",secret).update(`demo-v1:${projectId}:${userId}:${requestKey}`).digest("base64url");
+  const lookup=()=>demoRows(new URLSearchParams({select:columns,id:`eq.${requestKey}`,project_id:`eq.${projectId}`,token_hash:`eq.${hashClientReviewToken(token)}`,limit:"1"}));
+  const reuse=(share:DemoShare)=>{
+    if(share.source_snapshot!==snapshot||JSON.stringify(share.article_ids)!==JSON.stringify(selected.map(a=>a.id))||Math.round((Date.parse(share.expires_at)-Date.parse(share.created_at))/86400000)!==days)throw new DemoError(409,"요청 내용이 달라졌습니다. 다시 선택해 새 요청을 준비하세요.");
+    if(share.revoked_at||Date.parse(share.expires_at)<=Date.now())throw new DemoError(410,"이 요청은 종료되었습니다. 새 요청을 준비하세요.");
+    return {share,token,duplicate:true};
+  };
+  const [existing]=await lookup();if(existing)return reuse(existing);
+  try{
+    const [share]=await demoRows(new URLSearchParams({select:columns}),"POST",{
+      id:requestKey,project_id:projectId,article_ids:selected.map(a=>a.id),source_snapshot:snapshot,created_by:userId,
+      token_hash:hashClientReviewToken(token),expires_at:new Date(Date.now()+Number(days)*86400000).toISOString(),
+    });
+    if(!share?.id)throw new DemoError(502,"발급 응답을 확인하지 못했습니다. 같은 요청으로 다시 확인하세요.");
+    return {share,token,duplicate:false};
+  }catch(error){
+    // A lost response or concurrent retry may have committed. The same key recovers the same token.
+    const [saved]=await lookup();if(saved)return reuse(saved);
+    throw error;
+  }
 }
+
 export async function getDemoAccess(token: string, slug?:string) {
   if(!isClientReviewToken(token)) throw new DemoError(404,"유효한 시연 링크가 필요합니다.");
   const [share]=await demoRows(new URLSearchParams({select:columns,token_hash:`eq.${hashClientReviewToken(token)}`,limit:"1"}));

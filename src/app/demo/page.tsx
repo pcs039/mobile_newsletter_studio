@@ -1,4 +1,5 @@
 import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
+import {DemoShareEntry} from "@/components/demo-share-entry";
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { DemoShareSession } from "@/components/demo-share-session";
 import { getDemoRenderData } from "@/lib/demo-share-render";
@@ -6,7 +7,7 @@ export const dynamic="force-dynamic";
 export const metadata={title:"소식지 시연용 보기",referrer:"no-referrer" as const,robots:{index:false,follow:false}};
 export default async function DemoPage({searchParams}:{searchParams:Promise<{project?:string}>}){
  const {project:slug}=await searchParams;
- if(!slug)return <main className="p-8 text-center">유효한 시연 링크로 접속해 주세요.</main>;
+ if(!slug)return <DemoShareEntry/>;
  const result=await getDemoRenderData(slug).catch(()=>null);
  if(!result)return <main className="p-8 text-center">시연 링크가 만료·회수되었거나 자료가 변경되었습니다. 새 링크를 요청하세요.</main>;
  const {access,data}=result;

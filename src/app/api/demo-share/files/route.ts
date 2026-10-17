@@ -47,7 +47,8 @@ export async function GET(request: Request) {
       : bucket === "audio-files" ? "newsletter_audio_files" : "newsletter_project_design_assets";
     const column = bucket === "page-images" ? "image_path" : bucket === "brand-assets" ? "storage_path" : "file_path";
     const query = new URLSearchParams({ select: "id", project_id: `eq.${access.project.id}`, [column]: `eq.${path}`, limit: "1" });
-    if (bucket === "brand-assets") { query.set("storage_bucket", "eq.brand-assets"); query.set("is_active", "eq.true"); }
+    if (bucket === "mobile-assets") query.set("is_approved", "eq.true");
+    if (bucket === "brand-assets") { query.set("storage_bucket", "eq.brand-assets"); query.set("is_active", "eq.true"); query.set("approval_status", "eq.approved"); }
     const endpoint = getSupabaseRestEndpoint(`/rest/v1/${table}?${query}`);
     if (!endpoint) return failure("시연 파일을 사용할 수 없습니다.", 503);
     const response = await fetch(endpoint, { headers, cache: "no-store" });

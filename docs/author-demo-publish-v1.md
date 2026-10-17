@@ -14,7 +14,7 @@ Production 무안군 `muan-26-09`는 읽기 전용 조사 당시 제작 중/미�
 - 기존 프로젝트 담당 작업자/관리자 권한과 프로젝트 잠금 검증 재사용. same-origin mutation만 허용.
 - 선택 기사 목록의 snapshot을 prepare 시 확인하고 create 직전에 다시 검사한다. 자동 발급/자동 재시도/정식 발행 호출 없음. double click 동기 lock, 성공 링크가 있는 동안 발급 버튼 잠금.
 - 원본 링크는 서버 DB에는 SHA-256 hash만 저장. 클라이언트 ref에서 5분만 유지하며 React state/DOM/localStorage에 원문 토큰을 저장하지 않는다. 새로고침 후 토큰 복구 불가. 발급 목록에서는 회수 가능.
-- `/demo/{token}`은 별도 토큰 저장소를 서버 검증하고 demo 전용 HttpOnly/Secure/SameSite=Strict cookie를 설정, 토큰 없는 `/demo?project=…`로 redirect.
+- `/demo#…` fragment는 HTTP URL·referrer·호스팅 접근 로그로 전송하지 않는다. 진입 시 주소에서 즉시 제거하고 same-origin POST body로 서버 검증하여 demo 전용 HttpOnly/Secure/SameSite=Strict cookie를 설정한 뒤 토큰 없는 `/demo?project=…`로 이동한다. StrictMode effect 재실행도 처리한다.
 - 표시: **시연용 · 정식 발행 전**. 기관 승인·수정 요청·편집·발행 버튼 없음. analytics 비활성, noindex/nofollow 및 no-referrer.
 - 회수 후 새 page/file/audio/session 요청 차단. 이미 열린 화면은 15초 주기/포커스 복귀/만료 시 확인 후 숨김. 이미 전달/다운로드된 bytes나 스크린샷을 회수할 수는 없다.
 
@@ -25,18 +25,18 @@ Production 무안군 `muan-26-09`는 읽기 전용 조사 당시 제작 중/미�
 - 원문 digest 검사한 article snapshot을 reader mapper에 직접 넘겨 두 번째 원문 조회의 변경값을 그대로 노출하지 않는다. Composition 표현/자산 승인 상태는 기존 현재 서버 검증을 따르므로 이 기능은 전체 파일/디자인 버전의 영구 snapshot 배포가 아니다.
 - 프로젝트 전체 표지/e-book 페이지/공통 음성/다른 기사/설문을 자동 포함하지 않는다. 선택 기사 HTML·이미지·CTA·기사 음성은 공통 reader/기존 helper 재사용.
 - 파일 요청마다 demo 세션 + 선택 기사/참조 파일 allowlist + project ownership 재검증. 섞인 hero/article 참조를 거부한다. AI/Canva 파일은 기존 approved/active/provenance 검증 helper를 false(includeDraft)로 호출하며 private design Storage path는 HTML에 노출하지 않는다.
-- 일반 image/audio도 기존 프로젝트 소유 row가 있어야 한다. SVG는 기존 sandbox CSP 유지. 파일 캐시 private/no-store, normal image 원본 전달 및 기존 lightbox 유지. demo managed PNG는 기존 이미지 최적화 allowlist 밖이면 PNG fallback이며 성능 최적화는 이번 범위 아님.
+- 일반 image/audio도 기존 프로젝트 소유 row가 있어야 한다. 일반 image는 is_approved=true, brand asset은 approved+active를 추가 검증한다. SVG는 기존 sandbox CSP 유지. 파일 캐시 private/no-store, normal image 원본 전달 및 기존 lightbox 유지. demo managed PNG는 기존 이미지 최적화 allowlist 밖이면 PNG fallback이며 성능 최적화는 이번 범위 아님.
 - 기관 검토 cookie/token과 demo cookie/token은 분리. demo 발급/회수는 검토 승인/최종 발행 RPC를 호출하지 않는다. 정식 public reader의 공개 조건도 변경하지 않는다.
 - bearer 링크이므로 받은 사람이 재전달할 수 있다. 시연 대상 자료의 선택과 전달 대상 확인은 작업자의 명시적 책임이다. 자동 이메일 발송 없음.
 
 ## 데이터와 rollout 승인 경계
 
-`supabase/schema_v1_39_author_demo_shares.sql` 정의만 추가한다. **Staging/Production 모두 미적용**.
+`supabase/schema_v1_39_author_demo_shares.sql` 정의만 추가한다. **Staging만 승인 후 적용, Production 미적용**.
 
 - 새 table `newsletter_project_demo_shares` 1개: project FK, token hash, article ID allowlist, source digest, creator, expiry, revoked timestamp.
 - 새 보조 index 1개 + PK/unique 제약에 따른 index, RLS/service_role-only 정책/권한. anon/authenticated 직접 접근 금지.
 - 기존 table/column/index/policy/함수 변경 없음. project/article/block/link/review/Storage 데이터 mutation 없음.
-- 미래 링크 발급은 새 demo row INSERT, 회수는 해당 project demo row PATCH뿐이다. project status/published_at은 쓰지 않는다.
+- 발급 requestKey를 기존 PK로 사용하고 서버 HMAC으로 동일 요청의 토큰을 복구한다. 응답 유실·동시 재요청은 같은 row/링크를 재사용하며 변경된 입력은 거부한다. 링크 발급은 새 demo row INSERT, 회수는 해당 project demo row PATCH뿐이다. project status/published_at은 쓰지 않는다.
 - 기존 검수 link infra의 난수/hash 패턴, 서버 권한 helper, reader/file serving helper를 재사용하되 독립 storage/세션으로 승인 자격을 분리한다.
 - 기존 client-review mapper는 선택 source/route를 받는 선택적 옵션만 추가하며 default 경로는 그대로다. full-layout 판별 URL allowlist에 권한 보호된 demo file route 하나만 추가했다. `ArticleCard` 자체와 public visibility/승인 RPC는 수정하지 않았다.
 
