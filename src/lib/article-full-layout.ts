@@ -9,7 +9,7 @@ export function readFullLayout(block: ProjectContentBlock) {
   return { assetId: m.design_asset_id, templateId: m.template_id };
 }
 export function activeFullLayout(article: ProjectContentArticle) {
-  return article.blocks.find(b => b.isVisible && readFullLayout(b) && /^\/api\/(public-files\/preview|client-review\/files)\?/.test(b.body) && b.body.includes("fullLayoutBlock=")) ?? null;
+  return article.blocks.find(b => b.isVisible && readFullLayout(b) && /^\/api\/(public-files\/preview|client-review\/files|demo-share\/files)\?/.test(b.body) && b.body.includes("fullLayoutBlock=")) ?? null;
 }
 
 export function originalFullLayoutPresentation(article: ProjectContentArticle) {

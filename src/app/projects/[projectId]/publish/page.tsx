@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProjectDemoShareControls } from "@/components/project-demo-share-controls";
 import { headers } from "next/headers";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectClientReviewWorkflow } from "@/components/project-client-review-workflow";
@@ -418,6 +419,8 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
               ))}
             </div>
           </article>
+
+          <ProjectDemoShareControls key={`demo:${projectId}`} projectSlug={projectId} />
 
           <ProjectClientReviewWorkflow
             key={projectId}

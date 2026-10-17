@@ -44,7 +44,7 @@ export function parseRenderStorageHref(value: string) {
   return { bucket, path };
 }
 
-export async function getClientReviewRenderData(slug: string) {
+export async function getClientReviewRenderData(slug: string, options?: { articleIds: string[]; routeBase: "/api/demo-share"; articleOnly: true; sourceArticles: import("@/lib/newsletter-repository").ProjectContentArticle[] }) {
   const [workspace, content, pageData, audio, hotspots, fonts] = await Promise.all([
     getProjectWorkspace(slug), getProjectContent(slug), getProjectPageImages(slug),
     getProjectAudioFiles(slug), getProjectPageHotspotLinks(slug), getFontAssets({ activeOnly: true }),
@@ -56,7 +56,7 @@ export async function getClientReviewRenderData(slug: string) {
   const files = new Set<string>();
   const register = (bucket: string, path: string) => {
     files.add(`${bucket}:${path}`);
-    return makeClientReviewFileHref(slug, bucket, path);
+    return makeClientReviewFileHref(slug, bucket, path).replace("/api/client-review/", `${options?.routeBase ?? "/api/client-review"}/`);
   };
   const transform = (value: string) => {
     const reference = parseRenderStorageHref(value);
@@ -64,8 +64,8 @@ export async function getClientReviewRenderData(slug: string) {
     // Keep external images/links, but never route a reviewer through an admin API.
     return value.startsWith("/") ? "" : value;
   };
-  const sourceArticles = content.articles
-    .filter((article) => getDisplayArticleTitle(article, "").trim() && isArticlePubliclyVisible(article))
+  const sourceArticles = (options?.sourceArticles ?? content.articles)
+    .filter((article) => (!options || options.articleIds.includes(article.id)) && getDisplayArticleTitle(article, "").trim() && isArticlePubliclyVisible(article))
     .map((article) => ({
       ...article,
       blocks: article.blocks.filter((block) => block.isVisible).map((block) => ({
@@ -76,26 +76,29 @@ export async function getClientReviewRenderData(slug: string) {
         ...article.audioFile,
         previewHref: transform(article.audioFile.previewHref),
         ...(article.audioFile.sourceType === "ai_tts" ? {
-          manifestHref: `/api/client-review/audio?${new URLSearchParams({ project: slug, article: article.id })}`,
+          manifestHref: `${options?.routeBase ?? "/api/client-review"}/audio?${new URLSearchParams({ project: slug, article: article.id })}`,
         } : {}),
       } : null,
     }));
-  const pages = getUsableEbookPages(pageData.pages).map((page) => ({
+  const pages = getUsableEbookPages(options?.articleOnly ? [] : pageData.pages).map((page) => ({
     ...page,
     previewHref: register("page-images", page.imagePath!),
     publicHref: makeClientReviewFileHref(slug, "page-images", page.imagePath!),
   }));
-  const coverImageSrc = project.coverEnabled
+  const coverImageSrc = !options?.articleOnly && project.coverEnabled
     ? project.coverImagePath ? register("mobile-assets", project.coverImagePath) : transform(project.coverImageUrl)
     : "";
-  const publicAudio = audio.files[0]?.filePath
+  const publicAudio = !options?.articleOnly && audio.files[0]?.filePath
     ? { src: register("audio-files", audio.files[0].filePath), title: audio.files[0].title }
     : undefined;
-  const articles = await mapAiImageArticles(project.id,slug,await mapFullLayouts(project.id,slug,sourceArticles,"review"),"review");
+  const mappedArticles = await mapAiImageArticles(project.id,slug,await mapFullLayouts(project.id,slug,sourceArticles,"review"),"review");
   const [heroBackgrounds, topIllustrations, textDesigns] = await Promise.all([
-    getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review"),
-    getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), "review", "hero_illustration"),
-    getArticleTextDesigns(project.id, articles.map((article) => article.id), false),
+    getArticleHeroBackgrounds(project.id, slug, mappedArticles.map((article) => article.id), "review"),
+    getArticleHeroBackgrounds(project.id, slug, mappedArticles.map((article) => article.id), "review", "hero_illustration"),
+    getArticleTextDesigns(project.id, mappedArticles.map((article) => article.id), false),
   ]);
-  return { project, articles, pages, coverImageSrc, publicAudio, files, fonts: fonts.fonts, hotspots: hotspots.links, heroBackgrounds, topIllustrations, textDesigns };
+  const rewrite = (url: string) => options ? url.replace(/^\/api\/client-review\//, `${options.routeBase}/`) : url;
+  const articles = options ? mappedArticles.map(a=>({...a,blocks:a.blocks.map(b=>({...b,body:rewrite(b.body)}))})) : mappedArticles;
+  const layers = (value: typeof heroBackgrounds) => options ? Object.fromEntries(Object.entries(value).map(([id,layer])=>[id,{...layer,url:rewrite(layer.url)}])) : value;
+  return { project, articles, pages, coverImageSrc, publicAudio, files, fonts: fonts.fonts, hotspots: options?.articleOnly ? [] : hotspots.links, heroBackgrounds: layers(heroBackgrounds), topIllustrations: layers(topIllustrations), textDesigns };
 }
