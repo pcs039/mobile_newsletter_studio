@@ -68,3 +68,48 @@ test('legacy approval HTTP repository uses real caller/assignee, never synthetic
 test('unchanged public file authorization blocks private project after cancellation without Storage fetch',async()=>{const old=global.fetch,oldKey=process.env.SUPABASE_SERVICE_ROLE_KEY;process.env.SUPABASE_SERVICE_ROLE_KEY='fixture';let storage=0;const route=load({'@/lib/supabase-config':{getSupabaseRestEndpoint:p=>'https://fixture.invalid'+p,getSupabaseStorageEndpoint:p=>'https://storage.invalid'+p},'@/lib/project-api-access':{requireProjectApiAccess:async()=>({ok:false,response:Response.json({ok:false},{status:401})})},'@/lib/newsletter-repository':{},'@/lib/article-full-layout-server':{},'@/lib/ai-image-article-server':{},'@/lib/article-hero-background-file':{}})('src/app/api/public-files/preview/route.ts');global.fetch=async url=>{if(url.startsWith('https://storage.invalid')){storage++;return new Response('bytes');}if(url.includes('cover_image_path='))return Response.json([]);if(url.includes('newsletter_assets'))return Response.json([{project_id:p}]);return Response.json([{id:p,status:'private'}]);};try{const r=await route.GET(new Request('https://app.invalid/api/public-files/preview?bucket=mobile-assets&path=fixture.png'));assert.equal(r.status,404);assert.equal(storage,0);}finally{global.fetch=old;if(oldKey===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=oldKey;}});
 test('actual isolated concurrent same-key calls serialize to one event and one timestamp',{skip:!runtime},async()=>{const db=await database();try{const revision=(await state(db)).revision;const results=await Promise.all([run(db,{revision}),run(db,{revision})]);assert.equal(results.filter(r=>r.duplicate).length,1);assert.equal(results[0].published_at,results[1].published_at);assert.equal(await count(db),1);}finally{await db.close();}});
 test('actual isolated distinct-key requests prepared from same revision cannot both publish',{skip:!runtime},async()=>{const db=await database();try{const revision=(await state(db)).revision;const results=await Promise.allSettled([run(db,{revision}),run(db,{revision,key:other})]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(results.filter(r=>r.status==='rejected').length,1);assert.equal(await count(db),1);}finally{await db.close();}});
+
+test('v1.40 domain conflicts expose PT409 and never append publication events', { skip: !runtime }, async () => {
+ const db = await database();
+ const conflict = (message) => (error) => error.code === 'PT409' && error.message === message;
+ try {
+  await assert.rejects(run(db, { assignee: 'changed' }), conflict('publication_assignee_conflict'));
+  await assert.rejects(run(db, { revision: '0'.repeat(32) }), conflict('publication_stale'));
+  await assert.rejects(run(db, { action: 'unpublish' }), conflict('publication_not_published'));
+  await assert.rejects(run(db, { action: 'status', mode: 'legacy', target: 'published' }), conflict('publication_status_conflict'));
+  assert.equal(await count(db), 0);
+  const revision = (await state(db)).revision;
+  await run(db, { revision });
+  await assert.rejects(run(db, { revision: '0'.repeat(32) }), conflict('publication_key_conflict'));
+  assert.equal((await run(db, { revision })).duplicate, true);
+  assert.equal(await count(db), 1);
+ } finally { await db.close(); }
+});
+
+test('existing-install correction replaces only five domain codes, preserving signature, ACL and source rows', { skip: !runtime }, async () => {
+ const db = await database();
+ const signature = 'public.transition_project_publication_atomic(uuid,text,text,text,text,uuid,text,text,text,boolean,text)';
+ const inspect = async () => (await db.query('select pg_get_functiondef($1::regprocedure) definition, proacl::text acl, prorettype::regtype::text result from pg_proc where oid=$1::regprocedure', [signature])).rows[0];
+ try {
+  const corrected = await inspect();
+  const messages = ['publication_assignee_conflict', 'publication_key_conflict', 'publication_stale', 'publication_not_published', 'publication_status_conflict'];
+  let legacy = corrected.definition;
+  for (const message of messages) legacy = legacy.replace(`raise exception '${message}' using errcode='PT409'`, `raise exception '${message}' using errcode='40001'`);
+  // Real engine serialization/deadlock codes must survive the maintenance patch.
+  legacy = legacy.replace('begin\n', "begin\n -- engine errors retain SQLSTATE 40001 / 40P01\n");
+  await db.exec(legacy);
+  const before = await inspect();
+  const source = (await db.query('select to_jsonb(a) row from newsletter_articles a order by id')).rows;
+  const patch = fs.readFileSync('supabase/patch_v1_40_publication_conflict_http409.sql', 'utf8');
+  await db.exec(patch);
+  const after = await inspect();
+  assert.equal(after.definition, corrected.definition.replace('begin\n', "begin\n -- engine errors retain SQLSTATE 40001 / 40P01\n"));
+  assert.equal(after.acl, before.acl);
+  assert.equal(after.result, before.result);
+  assert.deepEqual((await db.query('select to_jsonb(a) row from newsletter_articles a order by id')).rows, source);
+  assert.equal(await count(db), 0);
+  await db.exec(patch);
+  assert.deepEqual(await inspect(), after);
+  await assert.rejects(run(db, { revision: '0'.repeat(32) }), e => e.code === 'PT409' && e.message === 'publication_stale');
+ } finally { await db.close(); }
+});

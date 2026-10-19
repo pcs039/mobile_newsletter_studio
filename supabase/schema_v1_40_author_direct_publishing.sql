@@ -74,19 +74,19 @@ begin
  perform pg_advisory_xact_lock(hashtextextended(p_request_key::text,40));
  select * into p from public.newsletter_projects where id=p_project_id and deleted_at is null for update;
  if not found then raise exception 'publication_not_found' using errcode='P0002'; end if;
- if coalesce(nullif(btrim(p.assignee_name),''),'담당자 미지정') is distinct from p_expected_assignee then raise exception 'publication_assignee_conflict' using errcode='40001'; end if;
+ if coalesce(nullif(btrim(p.assignee_name),''),'담당자 미지정') is distinct from p_expected_assignee then raise exception 'publication_assignee_conflict' using errcode='PT409'; end if;
  if p_actor_role<>'admin' and (nullif(btrim(p.assignee_name),'') is null or
   regexp_replace(lower(p.assignee_name),'[[:space:]]','','g') not in (regexp_replace(lower(p_actor_id),'[[:space:]]','','g'),regexp_replace(lower(coalesce(p_actor_name,'')),'[[:space:]]','','g'))) then raise exception 'publication_forbidden' using errcode='42501'; end if;
  request_hash:=md5(jsonb_build_array(p_project_id,p_actor_id,p_actor_name,p_actor_role,p_action,p_mode,p_expected_revision,p_target_status)::text);
  select * into event from public.newsletter_project_publication_events where request_key=p_request_key;
  if found then
-  if event.project_id<>p_project_id or event.actor_id<>p_actor_id or event.request_hash<>request_hash then raise exception 'publication_key_conflict' using errcode='40001'; end if;
+  if event.project_id<>p_project_id or event.actor_id<>p_actor_id or event.request_hash<>request_hash then raise exception 'publication_key_conflict' using errcode='PT409'; end if;
   -- This is a receipt, not a claim that the project is still public now.
   return event.result||jsonb_build_object('duplicate',true,'current_status',p.status);
  end if;
  if p.status='archived' then raise exception 'publication_archived' using errcode='23514'; end if;
  state:=public.project_publication_state(p_project_id);
- if state->>'revision'<>p_expected_revision then raise exception 'publication_stale' using errcode='40001'; end if;
+ if state->>'revision'<>p_expected_revision then raise exception 'publication_stale' using errcode='PT409'; end if;
  if p_action='publish' then
   if not (state->>'canPublish')::boolean then raise exception 'publication_not_ready' using errcode='23514'; end if;
   if p_mode='client_review' then
@@ -96,11 +96,11 @@ begin
   elsif p_mode<>'author_direct' then raise exception 'publication_invalid' using errcode='22023'; end if;
   target:='published';publication_time:=clock_timestamp();
  elsif p_action='unpublish' then
-  if p.status<>'published' then raise exception 'publication_not_published' using errcode='40001'; end if;
+  if p.status<>'published' then raise exception 'publication_not_published' using errcode='PT409'; end if;
   target:='private';publication_time:=p.published_at;
  else
   -- Legacy status controls cannot publish or silently unpublish.
-  if p_mode<>'legacy' or p.status='published' or p_target_status is null or p_target_status not in ('draft','private','in_review','archived') then raise exception 'publication_status_conflict' using errcode='40001'; end if;
+  if p_mode<>'legacy' or p.status='published' or p_target_status is null or p_target_status not in ('draft','private','in_review','archived') then raise exception 'publication_status_conflict' using errcode='PT409'; end if;
   target:=p_target_status::public.project_status;publication_time:=p.published_at;
  end if;
  update public.newsletter_projects set status=target,published_at=publication_time,updated_at=clock_timestamp() where id=p_project_id;

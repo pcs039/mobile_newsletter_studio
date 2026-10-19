@@ -45,3 +45,16 @@ revision은 project 및 기존 article/block/link/pages/assets/Composition 등 �
 - 브라우저 QA는 원격 연결이 없는 **로컬 mock API**와 실제 신규 React controls를 사용했다. 390/768/1440 CSS px 실측 overflow 없음, console error 없음. 확인 전 비활성, 명시 동작/결과, 비공개 전환, 기관 승인 미완료 gate 확인. 의도적인 응답 유실 mock에서도 같은 key의 HTTP 확인 2회에 event 1개만 존재하며 결과를 재사용했다. URL 복사/QR 다운로드/e-book 동선은 기존 공통 결과 패널을 재사용한다. mock은 실제 공식 발행 증거가 아니다.
 - 실제 Staging migration/공식 발행 E2E, 실제 public reader와 e-book/파일의 통합 확인은 **미수행**. 승인된 disposable Staging project로 migration 적용 → snapshot 기록 → 발행/중복/취소/검토 응답/복구 E2E가 필요하다.
 - Production migration/데이터/Storage/무안군 발행 및 외부 GPT/Canva/Adobe 생성 호출 없음. PR #226/#229와 기존 stash 원본 두 개 보존. 이 구현 PR은 OPEN 유지하며 merge하지 않는다.
+
+## Staging v1.40 보정: 업무 충돌 HTTP 409
+
+실제 Staging에서 `publication_stale`에 사용한 SQLSTATE `40001` 때문에 PostgREST가 업무상 충돌을 직렬화 실패로 재시도하여 timeout을 유발했다. 다음 다섯 명시적 업무 예외만 `PT409`로 바꾼다: `publication_assignee_conflict`, `publication_key_conflict`, `publication_stale`, `publication_not_published`, `publication_status_conflict`. 실제 PostgreSQL 직렬화 실패/교착상태 코드는 바꾸지 않는다. 서버/UI의 uncertain 처리 및 동일 request key 복구 계약은 유지한다.
+
+설치 경로:
+
+- **신규 환경**: 수정된 `schema_v1_40_author_direct_publishing.sql`을 선행 v1.29/v1.30 이후 한 번 적용한다.
+- **이미 v1.40 적용된 환경**: 전체 migration을 재실행하지 않는다. `patch_v1_40_publication_conflict_http409.sql`만 적용한다. 이 파일은 기존 단일 transition 함수의 다섯 정확한 raise 구문을 검사하고 `CREATE OR REPLACE`로 교체한다. 이미 보정되었으면 no-op, 함수 누락/예상 밖 정의면 transaction을 중단한다. signature/owner/execute ACL, table/column/index/policy와 데이터는 변경하지 않는다.
+- 적용 전후 `pg_get_functiondef`, signature/ACL, schema/data/Storage digest를 비교하고 PostgREST의 실제 HTTP 409/code/message를 확인한다. patch는 schema reload notify만 추가한다.
+- 이번 원격 보정은 **Staging `mvrkpmffuhcqwisqvpqi`만 승인**되었다. Production migration/rollout과 PR 병합은 별도 승인 대상이다.
+
+보정 검증 (2026-10-19): Staging의 잔여 transition 실행 세션 0건을 확인했다. patch 전후에는 transition 함수 정의 1개만 변경되었고 signature/ACL과 36개 데이터·Storage 집계 digest는 동일했다. 새 격리 프로젝트의 실제 Supabase REST에서 다섯 오류 모두 HTTP 409 / PT409 / 정확한 오류명으로 반환되었다(18~41ms, stale 24ms). 충돌 호출은 이력을 추가하지 않았고 정상 발행→동일 key duplicate→취소 및 다른 담당자/프로젝트 403도 확인했다. 보정 포함 전체 416/416, 전용 31/31, TypeScript/lint/Webpack build/diff check 통과(기존 lint warning 3개, 신규 0). 실제 관리자 UI/공개 reader의 추가 결과와 fixture 정리 증거는 PR 검증 기록에 구분해서 남긴다.
