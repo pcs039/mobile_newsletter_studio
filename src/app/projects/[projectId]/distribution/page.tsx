@@ -63,8 +63,8 @@ export default async function ProjectDistributionPage({ params }: { params: Prom
         </div>
       }
     >
-      <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
-        <section className="space-y-5">
+      <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="min-w-0 space-y-5">
           <section className="grid gap-4 md:grid-cols-3">
             {[
               { label: "대상 그룹", value: distribution.groups.length, detail: "등록 그룹" },
@@ -201,7 +201,7 @@ export default async function ProjectDistributionPage({ params }: { params: Prom
           </section>
         </section>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <ProjectDistributionCopyTools projectTitle={project?.title ?? "모바일 소식지"} publicUrl={publicUrl} />
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
