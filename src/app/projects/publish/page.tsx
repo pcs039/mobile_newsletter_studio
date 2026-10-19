@@ -45,11 +45,7 @@ export default async function PublishProjectsPage() {
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">
             <DatadictionBrand theme="light" />
-            <h1 className="mt-6 text-2xl font-bold leading-tight">
-              미리보기
-              <br />
-              발행 관리
-            </h1>
+            <h1 className="mt-6 text-2xl font-bold leading-tight">검수·발행</h1>
             <p className="mt-3 text-sm leading-6 text-slate-300 [word-break:keep-all]">
               프로젝트를 먼저 선택한 뒤 모바일 보기, PC e-book, 공개 URL, QR 상태를 확인합니다.
             </p>

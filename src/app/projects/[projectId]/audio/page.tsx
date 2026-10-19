@@ -52,13 +52,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
       projectId={projectId}
       title="음성 소식지 검수"
       description="MP3, WAV, M4A와 대본 상태를 확인합니다."
-      sidebarTitle={
-        <>
-          음성 소식지
-          <br />
-          검수
-        </>
-      }
+      sidebarTitle="음성 소식지 검수"
       sidebarDescription="음성 파일, 대본, 재생 상태를 검수합니다."
       sidebarNoteTitle="운영 기준"
       sidebarNote="음성은 모바일 읽기를 보완하는 콘텐츠입니다."

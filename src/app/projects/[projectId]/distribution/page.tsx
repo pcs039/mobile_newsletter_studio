@@ -36,13 +36,7 @@ export default async function ProjectDistributionPage({ params }: { params: Prom
       projectId={projectId}
       title="배포 관리"
       description="공개 URL과 QR 코드를 어디에, 누구에게, 어떤 채널로 배포했는지 기록합니다."
-      sidebarTitle={
-        <>
-          배포
-          <br />
-          관리
-        </>
-      }
+      sidebarTitle="배포 관리"
       sidebarDescription="발행 완료 후 수신 대상, QR 공유, 문자·이메일·알림톡 발송 기록을 관리합니다."
       sidebarNoteTitle="운영 기준"
       sidebarNote="이 화면은 직접 발송 시스템이 아니라 배포 기록 관리 화면입니다. 외부 발송 연동 전까지 기록용으로 사용합니다."
@@ -69,8 +63,8 @@ export default async function ProjectDistributionPage({ params }: { params: Prom
         </div>
       }
     >
-      <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
-        <section className="space-y-5">
+      <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="min-w-0 space-y-5">
           <section className="grid gap-4 md:grid-cols-3">
             {[
               { label: "대상 그룹", value: distribution.groups.length, detail: "등록 그룹" },
@@ -207,7 +201,7 @@ export default async function ProjectDistributionPage({ params }: { params: Prom
           </section>
         </section>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <ProjectDistributionCopyTools projectTitle={project?.title ?? "모바일 소식지"} publicUrl={publicUrl} />
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

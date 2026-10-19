@@ -27,13 +27,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
       projectId={projectId}
       title="참여 콘텐츠"
       description="모바일 기사에 연결할 설문·이벤트를 만들고 응답 현황을 확인합니다."
-      sidebarTitle={
-        <>
-          참여
-          <br />
-          콘텐츠
-        </>
-      }
+      sidebarTitle="참여 콘텐츠"
       sidebarDescription="프로젝트별 설문·이벤트 문항을 구성하고 기사 연결 상태를 확인합니다."
       sidebarNoteTitle="참여 기준"
       sidebarNote="참여 콘텐츠를 만든 뒤 기사 작성 화면에서 연결하면 공개 기사 하단에 참여 버튼이 표시됩니다."

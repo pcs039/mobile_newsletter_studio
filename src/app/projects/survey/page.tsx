@@ -31,11 +31,7 @@ export default async function SurveyProjectsPage() {
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">
             <DatadictionBrand theme="light" />
-            <h1 className="mt-6 text-2xl font-bold leading-tight">
-              참여
-              <br />
-              콘텐츠
-            </h1>
+            <h1 className="mt-6 text-2xl font-bold leading-tight">참여 콘텐츠</h1>
             <p className="mt-3 text-sm leading-6 text-slate-300 [word-break:keep-all]">
               공개 소식지와 연결할 만족도 조사, 신청 접수, 참여 이벤트를 프로젝트별로 관리합니다.
             </p>

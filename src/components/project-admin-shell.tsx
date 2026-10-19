@@ -131,7 +131,7 @@ export async function ProjectAdminShell({
   sidebarDescription: string;
   sidebarNote: string;
   sidebarNoteTitle: string;
-  sidebarTitle: ReactNode;
+  sidebarTitle: string;
   showDefaultHeaderActions?: boolean;
   printScope?: "analytics-report";
   title: string;
@@ -209,7 +209,7 @@ export async function ProjectAdminShell({
         <aside className="bg-[#071f46] px-6 py-7 text-white" data-admin-sidebar>
           <div className="mb-9">
             <DatadictionBrand theme="light" />
-            <h1 className="mt-6 text-2xl font-bold leading-tight">{sidebarTitle}</h1>
+            <h1 className="mt-6 break-words text-2xl font-bold leading-tight [word-break:keep-all]">{sidebarTitle}</h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">{sidebarDescription}</p>
           </div>
 

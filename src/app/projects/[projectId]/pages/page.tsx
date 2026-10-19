@@ -73,13 +73,7 @@ export default async function ProjectPagesPage({ params }: { params: Promise<{ p
       projectId={projectId}
       title="이미지 페이지 편집"
       description="페이지 이미지와 클릭 영역을 관리합니다."
-      sidebarTitle={
-        <>
-          이미지 페이지
-          <br />
-          편집
-        </>
-      }
+      sidebarTitle="이미지 페이지 편집"
       sidebarDescription="페이지 이미지와 클릭 영역을 정리합니다."
       sidebarNoteTitle="운영 기준"
       sidebarNote="URL과 영상은 이미지 위 클릭 영역으로 연결합니다."

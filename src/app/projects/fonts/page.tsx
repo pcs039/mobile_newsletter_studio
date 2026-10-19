@@ -19,11 +19,7 @@ export default async function FontLibraryPage() {
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">
             <DatadictionBrand theme="light" />
-            <h1 className="mt-6 text-2xl font-bold leading-tight">
-              폰트
-              <br />
-              라이브러리
-            </h1>
+            <h1 className="mt-6 text-2xl font-bold leading-tight">폰트 라이브러리</h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">공개 화면에 사용할 웹폰트를 관리합니다.</p>
           </div>
 
