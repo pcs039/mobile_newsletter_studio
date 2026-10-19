@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { previewArticleContext, previewAudioNotice, readPreviewArticleMessage } from "@/lib/admin-article-preview";
 
 const previewSizePresets = [
   { label: "소형", width: 360, height: 740 },
@@ -9,6 +11,7 @@ const previewSizePresets = [
 ];
 
 type AdminMobilePreviewFrameProps = {
+  articleIds?: string[];
   allowCollapse?: boolean;
   previewHref: string;
   title?: string;
@@ -16,13 +19,14 @@ type AdminMobilePreviewFrameProps = {
   iframeTitle?: string;
 };
 
-function appendEmbeddedPreviewParams(previewHref: string, previewVersion: number) {
+function appendEmbeddedPreviewParams(previewHref: string, previewVersion: number, channel: string) {
   const separator = previewHref.includes("?") ? "&" : "?";
 
-  return `${previewHref}${separator}embedded=adminPreview&previewReload=${previewVersion}`;
+  return `${previewHref}${separator}embedded=adminPreview&previewReload=${previewVersion}&previewChannel=${encodeURIComponent(channel)}`;
 }
 
 export function AdminMobilePreviewFrame({
+  articleIds = [],
   allowCollapse = true,
   previewHref,
   title = "모바일 미리보기",
@@ -32,11 +36,32 @@ export function AdminMobilePreviewFrame({
   const [previewVersion, setPreviewVersion] = useState(0);
   const [previewSize, setPreviewSize] = useState(previewSizePresets[1]);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(true);
-  const iframeSrc = appendEmbeddedPreviewParams(previewHref, previewVersion);
+  const context = useMemo(() => previewArticleContext(previewHref), [previewHref]);
+  const bridgeId = useId();
+  const channel = `${bridgeId}:${previewVersion}:${context?.articleId ?? "all"}`;
+  const scope = `${previewHref}:${channel}`;
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [seen, setSeen] = useState<{ scope: string; articleId: string | null } | null>(null);
+  const currentId = seen?.scope === scope ? seen.articleId : context?.articleId ?? null;
+  const validCurrentId = currentId && articleIds.includes(currentId) ? currentId : null;
+  const currentPreviewHref = context
+    ? `/newsletters/${encodeURIComponent(context.project)}?preview=admin${validCurrentId ? `&articleId=${validCurrentId}` : ""}` : previewHref;
+  const iframeSrc = appendEmbeddedPreviewParams(previewHref, previewVersion, channel);
   const frameWidth = Math.min(previewSize.width + 56, 480);
   const frameHeight = Math.min(previewSize.height + 70, 920);
   const frameContainerRef = useRef<HTMLDivElement>(null);
   const [compactWidth, setCompactWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!context || !isPreviewExpanded) return;
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return;
+      const message = readPreviewArticleMessage(event.data, context!.project, channel, articleIds);
+      if (message) setSeen({ scope, articleId: message.articleId });
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [context, channel, scope, articleIds, isPreviewExpanded]);
 
   useEffect(() => {
     const container = frameContainerRef.current;
@@ -64,6 +89,8 @@ export function AdminMobilePreviewFrame({
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">저장본 기준</p>
           <h3 className="mt-1 text-lg font-bold text-[#092046]">{title}</h3>
           <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{description}</p>
+          {context ? <p className="mt-2 text-xs leading-5 text-slate-500">{previewAudioNotice}</p> : null}
+          {context ? <p className="mt-1 text-xs leading-5 text-slate-500">현재 기사 편집은 새 창에서 열어 기존 편집 입력을 유지합니다.</p> : null}
         </div>
         <div className="flex flex-wrap gap-2 sm:justify-end">
           {allowCollapse ? (
@@ -84,13 +111,14 @@ export function AdminMobilePreviewFrame({
             미리보기 새로고침
           </button>
           <a
-            href={previewHref}
+            href={currentPreviewHref}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-lg bg-[#092046] px-3 py-2 text-xs font-black text-white transition hover:bg-[#123a78]"
           >
             큰 창으로 보기
           </a>
+          {context && validCurrentId ? <Link href={`/projects/${encodeURIComponent(context.project)}/reading?articleId=${validCurrentId}`} target="_blank" rel="noopener noreferrer" className="dd-btn dd-btn-secondary dd-btn-sm">현재 기사 편집</Link> : null}
         </div>
       </div>
 
@@ -149,6 +177,7 @@ export function AdminMobilePreviewFrame({
                   </div>
                   <div className="min-h-0 flex-1 overflow-hidden rounded-[22px] border border-slate-800 bg-white">
                     <iframe
+                      ref={iframeRef}
                       key={previewVersion}
                       title={iframeTitle}
                       src={iframeSrc}

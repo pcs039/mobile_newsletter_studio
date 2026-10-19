@@ -11,6 +11,7 @@ import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import { getUsableEbookPages } from "@/lib/ebook-pages";
 import { isArticlePubliclyVisible } from "@/lib/article-publication";
 import { requireProjectAdminPreviewAccess } from "@/lib/project-admin-preview-access";
+import { mapAdminArticleAudio } from "@/lib/admin-article-preview";
 import {
   getProjectAudioFiles,
   getProjectContent,
@@ -28,7 +29,7 @@ import {
 
 type PublicNewsletterPageProps = {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ articleId?: string | string[]; embedded?: string | string[]; preview?: string | string[] }>;
+  searchParams?: Promise<{ articleId?: string | string[]; embedded?: string | string[]; preview?: string | string[]; previewChannel?: string | string[] }>;
 };
 
 function hasSearchParamValue(value: string | string[] | undefined, expectedValue: string) {
@@ -140,9 +141,11 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     );
   }
 
-  const articles = await mapAiImageArticles(project.id,slug,await mapFullLayouts(project.id,slug,contentData.articles.filter(
+  const mappedArticles = await mapAiImageArticles(project.id,slug,await mapFullLayouts(project.id,slug,contentData.articles.filter(
     (article) => hasPublicArticleTitle(article) && (isAdminPreview || isArticlePubliclyVisible(article)),
   ),isAdminPreview?"preview":"public"),isAdminPreview?"preview":"public");
+  const articles = isAdminPreview ? mapAdminArticleAudio(slug, mappedArticles) : mappedArticles;
+  const previewChannel = resolvedSearchParams?.previewChannel;
   const [heroBackgrounds, topIllustrations, textDesigns] = await Promise.all([
     getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), isAdminPreview ? "preview" : "public"),
     getArticleHeroBackgrounds(project.id, slug, articles.map((article) => article.id), isAdminPreview ? "preview" : "public", "hero_illustration"),
@@ -181,7 +184,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
     <main className="public-newsletter-screen min-h-screen bg-[#edf4fb] text-slate-950">
       <PublicFontFaceStyle fonts={fontData.fonts} />
       <NewsletterViewTracker slug={slug} viewMode="reading" disabled={isAdminPreview || !isPublished} />
-      {showAdminPreviewControls && (
+      {showAdminPreviewControls && !useArticleReaderShell && (
         <div className="border-b border-slate-300 bg-white px-3 py-2 shadow-sm md:sticky md:top-0 md:z-20 md:bg-white/95 md:px-4 md:py-3 md:backdrop-blur">
           <div className="mx-auto flex max-w-[520px] items-center justify-between gap-2 md:flex-row">
             <p className="shrink-0 text-[11px] font-black uppercase tracking-wide text-[#184a88] md:text-xs">관리자 미리보기</p>
@@ -299,6 +302,7 @@ export default async function PublicNewsletterPage({ params, searchParams }: Pub
             </section>
           ) : useArticleReaderShell ? (
             <PublicMobileArticleReader
+              adminPreview={isAdminPreview ? { embedded: isEmbeddedAdminPreview, channel: typeof previewChannel === "string" && previewChannel.length <= 200 ? previewChannel : undefined } : undefined}
               analyticsDisabled={isAdminPreview}
               articles={articles}
               heroBackgrounds={heroBackgrounds} textDesigns={textDesigns}

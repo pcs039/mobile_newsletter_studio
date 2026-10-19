@@ -292,7 +292,7 @@ export function PublicArticleAudioPlayer({
         }}
         onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
         preload="metadata"
-        src={currentSrc}
+        src={currentSrc || undefined}
       />
       <div className="flex min-w-0 items-center gap-1.5">
         <button
