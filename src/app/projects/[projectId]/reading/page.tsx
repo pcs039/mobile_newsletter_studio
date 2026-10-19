@@ -128,6 +128,9 @@ export default async function ReadingEditorPage({
               key={selectedArticle?.id ?? "new"}
               article={selectedArticle}
               assets={assetData.assets}
+              fonts={fontData.fonts}
+              projectTitleFontAssetId={project?.titleFontAssetId}
+              projectBodyFontAssetId={project?.bodyFontAssetId}
               pages={pageImageData.pages}
               surveys={surveyData.surveys}
               projectPageCount={project?.pageCount ?? 0}
