@@ -105,13 +105,7 @@ export default async function ReadingEditorPage({
       projectId={projectId}
       title={selectedArticle ? "기사 수정" : "새 기사 작성"}
       description="원본자료를 바탕으로 기사 내용과 미디어를 만들고 모바일 디자인을 조정합니다."
-      sidebarTitle={
-        <>
-          콘텐츠
-          <br />
-          제작
-        </>
-      }
+      sidebarTitle="콘텐츠 제작"
       sidebarDescription="발행호의 기사, 미디어와 화면 구성을 제작합니다."
       sidebarNoteTitle="작성 기준"
       sidebarNote="공개 화면은 저장된 기사 블록 기준입니다."

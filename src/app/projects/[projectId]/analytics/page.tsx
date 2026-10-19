@@ -871,7 +871,7 @@ export default async function ProjectAnalyticsPage({
         projectId={projectId}
         title="반응 통계"
         description="기간별 전체 접속과 기사 열람·후속 행동을 확인합니다."
-        sidebarTitle={<>반응<br />통계</>}
+        sidebarTitle="반응 통계"
         sidebarDescription="공개 화면 접속과 기사별 열람·행동 이벤트를 운영 관점에서 집계합니다."
         sidebarNoteTitle="집계 기준"
         sidebarNote="수치는 개인 수가 아닌 이벤트 수입니다. 반응도는 기사 열람 100회당 후속 행동 건수이며 음성 재생은 제외합니다."

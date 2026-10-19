@@ -36,13 +36,7 @@ export default async function ProjectDistributionPage({ params }: { params: Prom
       projectId={projectId}
       title="배포 관리"
       description="공개 URL과 QR 코드를 어디에, 누구에게, 어떤 채널로 배포했는지 기록합니다."
-      sidebarTitle={
-        <>
-          배포
-          <br />
-          관리
-        </>
-      }
+      sidebarTitle="배포 관리"
       sidebarDescription="발행 완료 후 수신 대상, QR 공유, 문자·이메일·알림톡 발송 기록을 관리합니다."
       sidebarNoteTitle="운영 기준"
       sidebarNote="이 화면은 직접 발송 시스템이 아니라 배포 기록 관리 화면입니다. 외부 발송 연동 전까지 기록용으로 사용합니다."

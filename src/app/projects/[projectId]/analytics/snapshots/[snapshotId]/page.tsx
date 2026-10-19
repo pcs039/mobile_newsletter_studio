@@ -59,7 +59,7 @@ export default async function OperationsReportSnapshotPage({
       projectId={projectId}
       title="저장된 운영 리포트"
       description="저장 시점의 집계 결과를 변경 없이 확인합니다. 현재 실시간 통계는 다시 조회하지 않습니다."
-      sidebarTitle={<>저장<br />리포트</>}
+      sidebarTitle="저장 리포트"
       sidebarDescription="운영 리포트 저장 시점의 수치와 해설을 읽기 전용으로 확인합니다."
       sidebarNoteTitle="보존 기준"
       sidebarNote="저장본은 생성 이후 갱신되지 않으며, 현재 통계와 값이 다를 수 있습니다."

@@ -48,11 +48,7 @@ export default async function DistributionProjectsPage() {
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">
             <DatadictionBrand theme="light" />
-            <h1 className="mt-6 text-2xl font-bold leading-tight">
-              배포
-              <br />
-              운영 관리
-            </h1>
+            <h1 className="mt-6 text-2xl font-bold leading-tight">배포 관리</h1>
             <p className="mt-3 text-sm leading-6 text-slate-300 [word-break:keep-all]">
               발행 완료된 소식지의 공개 주소, QR, 접속 현황, 후속 관리 이동을 한곳에서 확인합니다.
             </p>

@@ -340,13 +340,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       projectId={projectId}
       title="검수·발행"
       description="저장된 공개 자료를 확인한 뒤 직접 발행하세요. 기관 검수와 시연 공유도 선택할 수 있습니다."
-      sidebarTitle={
-        <>
-          검수
-          <br />
-          발행
-        </>
-      }
+      sidebarTitle="검수·발행"
       sidebarDescription="화면, URL, QR 상태를 확인합니다."
       sidebarNoteTitle="공개 기준"
       sidebarNote="모바일은 기사, e-book은 프로젝트 제공 방식 기준입니다."

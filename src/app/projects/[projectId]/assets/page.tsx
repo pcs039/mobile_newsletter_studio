@@ -18,13 +18,7 @@ export default async function ImageAssetsPage({ params }: { params: Promise<{ pr
       projectId={projectId}
       title="사진·이미지 관리"
       description="기사용 이미지 소재를 관리합니다."
-      sidebarTitle={
-        <>
-          사진·이미지
-          <br />
-          관리
-        </>
-      }
+      sidebarTitle="사진·이미지 관리"
       sidebarDescription="사진, 이미지, 링크 소재를 정리합니다."
       sidebarNoteTitle="운영 기준"
       sidebarNote="기사와 이미지 페이지에 붙는 소재 보관함입니다."

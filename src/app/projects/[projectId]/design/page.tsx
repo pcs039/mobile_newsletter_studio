@@ -62,11 +62,7 @@ export default async function ProjectDesignKitPage({ params }: { params: Promise
       projectId={projectId}
       title="디자인 워크스페이스"
       description="기관 공통 기준을 정하고 이번 발행호의 디자인 밑작업을 준비한 뒤, 기사별 디자인 조정으로 이어갑니다."
-      sidebarTitle={
-        <>
-          디자인 작업
-        </>
-      }
+      sidebarTitle="디자인 작업"
       sidebarDescription="기관 공통 디자인, 이번 호 디자인, 개별 기사 디자인을 작업 순서에 따라 구분합니다."
       sidebarNoteTitle="디자인 계층"
       sidebarNote="기관 기준은 공통 규칙으로, 이번 호 자산은 발행호 밑작업으로, Composition은 기사별 예외 조정으로 사용합니다."

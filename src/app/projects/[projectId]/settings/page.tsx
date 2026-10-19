@@ -14,11 +14,7 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
       projectId={projectId}
       title="기본 정보"
       description="기관명, 발행월, 담당자, 공개 주소처럼 제작 기준이 되는 정보를 확인하고 수정합니다."
-      sidebarTitle={
-        <>
-          기본 정보
-        </>
-      }
+      sidebarTitle="기본 정보"
       sidebarDescription="작업을 시작하기 전 기관명, 발행 표기, 담당자, 제작 방식을 먼저 확인합니다."
       sidebarNoteTitle="수정 기준"
       sidebarNote="공개 주소 slug를 바꾸면 모바일 보기와 PC e-book의 공개 URL도 함께 바뀝니다."

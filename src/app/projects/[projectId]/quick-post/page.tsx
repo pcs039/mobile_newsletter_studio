@@ -13,7 +13,7 @@ export default async function ProjectQuickPostPage({ params }: { params: Promise
       projectId={projectId}
       title="빠른 소식 등록"
       description="수시 안내와 긴급 정보를 빠르게 등록합니다."
-      sidebarTitle={<>빠른 소식<br />등록</>}
+      sidebarTitle="빠른 소식 등록"
       sidebarDescription="정기호 발행 사이의 공지와 긴급 정보를 게시합니다."
       sidebarNoteTitle="공개 기준"
       sidebarNote="즉시 게시한 수시 소식은 설정한 노출 기간에만 공개됩니다."

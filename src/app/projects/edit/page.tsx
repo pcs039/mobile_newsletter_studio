@@ -16,11 +16,7 @@ export default async function EditProjectsPage() {
         <aside className="bg-[#071f46] px-6 py-7 text-white">
           <div className="mb-9">
             <DatadictionBrand theme="light" />
-            <h1 className="mt-6 text-2xl font-bold leading-tight">
-              작성/수정
-              <br />
-              작업 관리
-            </h1>
+            <h1 className="mt-6 text-2xl font-bold leading-tight">작성·수정 관리</h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">
               아직 발행 완료되지 않은 프로젝트만 모아 실제 제작 작업으로 진입합니다.
             </p>
