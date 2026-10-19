@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FontAsset } from "@/lib/newsletter-repository";
+import { FontBatchUpload } from "@/components/font-batch-upload";
 
 type SubmitState =
   | { status: "idle"; message: string }
@@ -169,7 +170,7 @@ export function FontAssetManager({ fonts }: { fonts: FontAsset[] }) {
                       <p className="text-base font-black text-[#092046]">{representative.name}</p>
                       <p className="mt-1 text-xs font-semibold text-slate-500">{formatLicense(representative)}</p>
                       <p className="mt-2 text-xs font-bold text-[#184a88]">
-                        ZIP 패키지 · {familyFonts.length}개 파일 ·{" "}
+                        폰트 패밀리 · {familyFonts.length}개 파일 ·{" "}
                         {familyFonts.map((font) => `${font.weight}${font.style === "italic" ? "i" : ""}`).join(", ")}
                       </p>
                     </div>
@@ -252,6 +253,7 @@ export function FontAssetManager({ fonts }: { fonts: FontAsset[] }) {
       </section>
 
       <aside className="space-y-5">
+        <FontBatchUpload />
         <form onSubmit={handlePackageUpload} className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5 shadow-sm">
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">ZIP Package Upload</p>
           <h2 className="mt-1 text-xl font-black text-[#092046]">ZIP 패키지 등록</h2>
