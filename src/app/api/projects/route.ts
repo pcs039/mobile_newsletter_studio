@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { requireImageSameOrigin } from "@/lib/article-image-api-origin";
+import { PublicationError, transitionProjectPublication } from "@/lib/project-publication";
 import { requireApiUser, unauthorizedJsonResponse } from "@/lib/app-auth";
 import { publishProjectIfClientApproved } from "@/lib/client-review-repository";
 import { getValidExternalEbookUrl, normalizeEbookSource } from "@/lib/ebook-source";
@@ -6,7 +8,6 @@ import {
   archiveNewsletterProject,
   createNewsletterProject,
   updateNewsletterProject,
-  updateNewsletterProjectStatus,
   type CreateNewsletterProjectInput,
   type UpdateNewsletterProjectInput,
 } from "@/lib/newsletter-repository";
@@ -62,6 +63,7 @@ function resolveEbookSourceInput(payload: Record<string, unknown>) {
 }
 
 export async function POST(request: Request) {
+  try { requireImageSameOrigin(request); } catch { return NextResponse.json({ ok: false, message: "현재 관리자 화면에서 요청하세요." }, { status: 403 }); }
   const user = await requireApiUser();
 
   if (!user) {
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
 
   if (payload.status === "published") {
     return NextResponse.json(
-      { ok: false, message: "새 프로젝트는 작성 또는 검수 상태로 만든 뒤 기관 승인 후 발행해 주세요." },
+      { ok: false, message: "새 프로젝트를 저장한 뒤 발행 관리 화면에서 공개 자료를 확인하세요." },
       { status: 409 },
     );
   }
@@ -176,6 +178,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  try { requireImageSameOrigin(request); } catch { return NextResponse.json({ ok: false, message: "현재 관리자 화면에서 요청하세요." }, { status: 403 }); }
   const user = await requireApiUser();
 
   if (!user) {
@@ -220,7 +223,7 @@ export async function PATCH(request: Request) {
     }
 
     if (requestedStatus === "published") {
-      const publishResult = await publishProjectIfClientApproved(access.project.id);
+      const publishResult = await publishProjectIfClientApproved(access.project.id, { project: access.project, user: access.user });
 
       if (publishResult.status !== "ok") {
         return NextResponse.json({ ok: false, message: publishResult.message }, {
@@ -238,19 +241,15 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ ok: true, project: publishResult.data });
     }
 
-    const result = await updateNewsletterProjectStatus(access.project.slug, requestedStatus);
-    if (!result.ok) {
-      return NextResponse.json(result, {
-        status:
-          result.status === "not_configured"
-            ? 503
-            : result.status === "not_found"
-              ? 404
-              : result.httpStatus ?? 500,
+    try {
+      const receipt = await transitionProjectPublication(access.project, access.user, {
+        requestKey: payload.requestKey, revision: payload.revision, confirmed: payload.confirmed,
+        action: "status", mode: "legacy", targetStatus: requestedStatus,
       });
+      return NextResponse.json({ ok: true, project: receipt });
+    } catch (error) {
+      return NextResponse.json({ ok: false, message: error instanceof PublicationError ? error.message : "상태를 확인하지 못했습니다." }, { status: error instanceof PublicationError ? error.status : 503 });
     }
-
-    return NextResponse.json(result);
   }
 
   const title = asOptionalText(payload.title);
@@ -296,9 +295,9 @@ export async function PATCH(request: Request) {
     );
   }
 
-  if (payload.status === "published" && access.project.statusCode !== "published") {
+  if (payload.status !== access.project.statusCode) {
     return NextResponse.json(
-      { ok: false, message: "기관 승인 완료 후 발행 관리 화면에서 최종 발행해 주세요." },
+      { ok: false, message: "공개 상태 변경은 발행 관리 화면에서 진행하세요." },
       { status: 409 },
     );
   }
@@ -353,6 +352,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  try { requireImageSameOrigin(request); } catch { return NextResponse.json({ ok: false, message: "현재 관리자 화면에서 요청하세요." }, { status: 403 }); }
   const user = await requireApiUser();
 
   if (!user) {
@@ -378,6 +378,7 @@ export async function DELETE(request: Request) {
     return access.response;
   }
 
+  if (access.project.statusCode === "published") return NextResponse.json({ ok: false, message: "발행 관리에서 먼저 비공개로 전환하세요." }, { status: 409 });
   const result = await archiveNewsletterProject(access.project.id);
 
   if (!result.ok) {

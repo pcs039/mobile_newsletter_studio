@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 export type ProjectPublishCompletionPanelProps = {
   canPublish: boolean;
+  resultOnly?: boolean;
   currentStatus: string;
   ebookUrl: string;
   hasChecklistIssues: boolean;
@@ -67,6 +68,7 @@ function downloadBlob(blob: Blob, fileName: string) {
 
 export function ProjectPublishCompletionPanel({
   canPublish,
+  resultOnly = false,
   currentStatus,
   ebookUrl,
   hasChecklistIssues,
@@ -211,7 +213,7 @@ export function ProjectPublishCompletionPanel({
 
   return (
     <article className="rounded-2xl border border-[#b8d7ff] bg-[#f7fbff] p-5 shadow-sm">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      {!resultOnly ? <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">최종 발행</p>
           <h3 className="mt-1 text-xl font-black text-[#092046]">발행하기</h3>
@@ -241,9 +243,9 @@ export function ProjectPublishCompletionPanel({
         >
           {isPublishing ? "발행 중..." : published ? "다시 발행하기" : "최종 발행"}
         </button>
-      </div>
+      </div> : null}
 
-      {!canPublish ? (
+      {!resultOnly && !canPublish ? (
         <p id="client-review-publish-gate" className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-800">
           기관 승인 완료 후 최종 발행할 수 있습니다. 위 기관 검토 영역에서 최신 상태를 확인하세요.
         </p>

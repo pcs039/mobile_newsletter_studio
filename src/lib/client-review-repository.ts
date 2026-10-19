@@ -1,4 +1,8 @@
 import "server-only";
+import { randomUUID } from "crypto";
+import type { AppUser } from "@/lib/app-auth";
+import type { ProjectWorkspaceInfo } from "@/lib/newsletter-repository";
+import { prepareProjectPublication, transitionProjectPublication, PublicationError } from "@/lib/project-publication";
 
 import { hashClientReviewToken, isClientReviewToken } from "@/lib/client-review";
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
@@ -290,7 +294,18 @@ export async function revokeClientReview(projectId: string): Promise<ClientRevie
 
 export async function publishProjectIfClientApproved(
   projectId: string,
+  actor?: { project: ProjectWorkspaceInfo; user: AppUser },
 ): Promise<ClientReviewRepositoryResult<ApprovedPublishProject>> {
+  if (actor) {
+    try {
+      if (actor.project.id !== projectId) return { data: null, status: "conflict", message: "프로젝트를 확인하세요." };
+      const state = await prepareProjectPublication(projectId);
+      const receipt = await transitionProjectPublication(actor.project, actor.user, { action: "publish", mode: "client_review", requestKey: randomUUID(), revision: state.revision, confirmed: true });
+      return { status: "ok", message: "기관 승인 확인 후 발행했습니다.", data: { id: receipt.project_id, slug: receipt.slug, title: receipt.title, status: "published", publishedAt: receipt.published_at! } };
+    } catch (error) {
+      return { data: null, status: error instanceof PublicationError && error.status === 409 ? "conflict" : "request_failed", httpStatus: error instanceof PublicationError ? error.status : 503, message: error instanceof PublicationError ? error.message : "발행 결과를 확인하지 못했습니다." };
+    }
+  }
   const result = await callRpc("publish_project_if_client_approved_atomic", { p_project_id: projectId });
   if (result.status !== "ok") return result;
 

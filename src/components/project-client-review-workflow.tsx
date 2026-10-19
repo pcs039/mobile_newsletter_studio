@@ -7,6 +7,9 @@ import type { ClientReview } from "@/lib/client-review-repository";
 import { ProjectPublishCompletionPanel, type ProjectPublishCompletionPanelProps } from "@/components/project-publish-completion-panel";
 
 type Props = Omit<ProjectPublishCompletionPanelProps, "canPublish" | "onPublishComplete" | "onPublishingChange"> & {
+  hidePublicationPanel?: boolean;
+  externalBusy?: boolean;
+  onReviewBusyChange?: (busy: boolean) => void;
   initialReview: ClientReview | null;
   initialReviewHistory: ClientReview[];
   initialReviewError: string;
@@ -20,7 +23,7 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Seoul" }).format(new Date(value));
 }
 
-export function ProjectClientReviewWorkflow({ initialReview, initialReviewHistory, initialReviewError, projectStatusCode, ...publishProps }: Props) {
+export function ProjectClientReviewWorkflow({ initialReview, initialReviewHistory, initialReviewError, projectStatusCode, hidePublicationPanel = false, externalBusy = false, onReviewBusyChange, ...publishProps }: Props) {
   const router = useRouter();
   const [review, setReview] = useState(initialReview);
   const [history, setHistory] = useState(initialReviewHistory);
@@ -110,7 +113,9 @@ export function ProjectClientReviewWorkflow({ initialReview, initialReviewHistor
     if (operation.current) return;
     if (action === "cancel" && !window.confirm("기관 검토 요청을 취소할까요? 기존 링크로 더 이상 검토할 수 없습니다.")) return;
     if (action === "request" && review?.status === "pending" && !window.confirm("검토 링크를 재발급할까요? 기존 링크는 즉시 취소됩니다.")) return;
+    if (externalBusy) return;
     operation.current = true;
+    onReviewBusyChange?.(true);
     lookup.current?.abort();
     setChecking(false);
     setBusy(action);
@@ -143,6 +148,7 @@ export function ProjectClientReviewWorkflow({ initialReview, initialReviewHistor
       if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "기관 검토 요청 중 오류가 발생했습니다.");
     } finally {
       operation.current = false;
+      onReviewBusyChange?.(false);
       if (!controller.signal.aborted) {
         setBusy(null);
         // Reconcile even ambiguous network failures; never retry a mutation automatically.
@@ -167,7 +173,7 @@ export function ProjectClientReviewWorkflow({ initialReview, initialReviewHistor
   const labels = { none: "검토 요청 전", pending: "기관 검토 중", approved: "승인 완료", changes_requested: "기관 수정 요청", revoked: "취소됨", expired: "만료됨" };
   const previousChanges = history.filter((item) => item.id !== review?.id && item.status === "changes_requested");
   const tone = status === "approved" ? "bg-emerald-100 text-emerald-800" : status === "pending" ? "bg-sky-100 text-sky-800" : status === "changes_requested" || status === "expired" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700";
-  const disabled = Boolean(busy) || checking || publishing || projectStatusCode === "archived";
+  const disabled = externalBusy || Boolean(busy) || checking || publishing || projectStatusCode === "archived";
   const canPublish = !error && !busy && !checking && status === "approved" && ["in_review", "published"].includes(projectStatusCode);
 
   return (
@@ -183,6 +189,7 @@ export function ProjectClientReviewWorkflow({ initialReview, initialReviewHistor
         <p className="mt-3 text-sm font-bold leading-6 text-slate-700">
           {status === "approved" ? "기관 승인 완료. 최종 발행할 수 있습니다." : status === "changes_requested" ? "기관에서 수정 요청했습니다. 기사 작성/편집 화면에서 수정 후 새 검토를 요청하세요." : status === "revoked" ? "검토 요청이 취소되었습니다. 필요하면 새 검토 링크를 생성하세요." : status === "expired" ? "검토 링크가 만료되었습니다. 재발급 후 새 링크를 전달하세요." : status === "pending" ? "기관 검토 중입니다. 응답 상태는 30초마다, 화면으로 돌아올 때 갱신됩니다." : "검토 요청을 생성하면 프로젝트가 검수 중으로 전환됩니다."}
         </p>
+        {projectStatusCode === "published" ? <p className="mt-2 text-sm text-amber-800">공개 중에는 새 검토 요청을 만들지 않습니다. 기존 검토 응답은 기록되며 공개 상태는 유지됩니다. 새 요청이 필요하면 먼저 비공개로 전환하세요.</p> : null}
         <ProjectClientReviewRecipient key={publishProps.projectSlug} projectSlug={publishProps.projectSlug} readOnly />
         {review ? (
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -218,7 +225,7 @@ export function ProjectClientReviewWorkflow({ initialReview, initialReviewHistor
               {[1, 3, 7, 14, 30].map((days) => <option key={days} value={days}>{days}일</option>)}
             </select>
           </label>
-          <button type="button" disabled={disabled || Boolean(error)} onClick={() => void mutate("request")} className="dd-btn dd-btn-primary dd-btn-sm">{busy === "request" ? "링크 생성 중..." : review?.status === "pending" ? "링크 재발급" : "기관 검토 요청"}</button>
+          <button type="button" disabled={disabled || Boolean(error) || projectStatusCode === "published"} onClick={() => void mutate("request")} className="dd-btn dd-btn-primary dd-btn-sm">{busy === "request" ? "링크 생성 중..." : review?.status === "pending" ? "링크 재발급" : "기관 검토 요청"}</button>
           {review?.status === "pending" ? <button type="button" disabled={disabled || Boolean(error)} onClick={() => void mutate("cancel")} className="dd-btn dd-btn-secondary dd-btn-sm">{busy === "cancel" ? "취소 중..." : "검토 요청 취소"}</button> : null}
           <button type="button" disabled={disabled} onClick={() => void loadReview(true)} className="dd-btn dd-btn-secondary dd-btn-sm">{checking ? "확인 중..." : "상태 새로고침"}</button>
         </div>
@@ -232,7 +239,7 @@ export function ProjectClientReviewWorkflow({ initialReview, initialReviewHistor
         <div aria-live="polite" role="status">{message ? <p className="mt-4 rounded-xl bg-sky-50 p-3 text-sm font-bold leading-6 text-[#184a88]">{message}</p> : null}</div>
         {error ? <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm font-bold leading-6 text-rose-700">{error} 상태 새로고침 후 다시 시도하세요.</p> : null}
       </article>
-      <ProjectPublishCompletionPanel key={projectStatusCode} {...publishProps} canPublish={canPublish} onPublishingChange={setPublishing} onPublishComplete={() => { void loadReview(true); router.refresh(); }} />
+      {!hidePublicationPanel ? <ProjectPublishCompletionPanel key={projectStatusCode} {...publishProps} canPublish={canPublish} onPublishingChange={setPublishing} onPublishComplete={() => { void loadReview(true); router.refresh(); }} /> : null}
     </>
   );
 }

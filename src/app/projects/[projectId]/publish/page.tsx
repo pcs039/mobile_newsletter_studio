@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ProjectDemoShareControls } from "@/components/project-demo-share-controls";
 import { headers } from "next/headers";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
-import { ProjectClientReviewWorkflow } from "@/components/project-client-review-workflow";
+import { ProjectPublishingWorkspace } from "@/components/project-publishing-workspace";
 import { getClientReviewHistory } from "@/lib/client-review-repository";
 import { StatusPill } from "@/components/status-pill";
 import { getValidExternalEbookUrl } from "@/lib/ebook-source";
@@ -339,7 +339,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
       active="publish"
       projectId={projectId}
       title="검수·발행"
-      description="모바일 화면과 기관 승인을 확인한 뒤 최종 발행하세요."
+      description="저장된 공개 자료를 확인한 뒤 직접 발행하세요. 기관 검수와 시연 공유도 선택할 수 있습니다."
       sidebarTitle={
         <>
           검수
@@ -386,10 +386,10 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">발행 상태 요약</p>
                 <h3 className="mt-1 text-xl font-black text-[#092046]">
-                  {project?.statusCode === "published" ? "발행 완료" : clientReview?.data?.[0]?.status !== "approved" ? "기관 승인 대기" : hasBlockingChecklistIssues ? "발행 전 확인 필요" : "발행 가능 상태"}
+                  {project?.statusCode === "published" ? "발행 완료" : hasBlockingChecklistIssues ? "발행 전 확인 필요" : "발행 가능 상태"}
                 </h3>
                 <p className="mt-2 text-sm font-semibold leading-6 text-slate-600 [word-break:keep-all]">
-                  자동 검수와 기관 승인을 확인한 뒤 최종 발행하면 공개 URL과 QR코드가 활성화됩니다.
+                  공개 자료를 확인하고 작성자 직접 발행 또는 기관 검수 후 발행을 선택하세요.
                 </p>
               </div>
               <span
@@ -401,7 +401,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
                       : "bg-emerald-100 text-emerald-800"
                 }`}
               >
-                {project?.statusCode === "published" ? "발행 완료" : clientReview?.data?.[0]?.status !== "approved" ? "기관 승인 필요" : hasBlockingChecklistIssues ? "검수 필요" : "발행 가능"}
+                {project?.statusCode === "published" ? "발행 완료" : hasBlockingChecklistIssues ? "검수 필요" : "발행 가능"}
               </span>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -420,9 +420,7 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
             </div>
           </article>
 
-          <ProjectDemoShareControls key={`demo:${projectId}`} projectSlug={projectId} />
-
-          <ProjectClientReviewWorkflow
+          <ProjectPublishingWorkspace
             key={projectId}
             initialReview={clientReview?.data?.[0] ?? null}
             initialReviewHistory={clientReview?.data ?? []}
@@ -438,6 +436,8 @@ export default async function PublishPage({ params }: { params: Promise<{ projec
             publicUrl={publicUrl}
             publicUrlAbsolute={publicUrlAbsolute}
           />
+
+          <details className="rounded-2xl border border-slate-200 p-4"><summary className="cursor-pointer font-bold">시연용 발행 · 정식 공개와 별도</summary><div className="mt-4"><ProjectDemoShareControls key={`demo:${projectId}`} projectSlug={projectId} /></div></details>
 
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

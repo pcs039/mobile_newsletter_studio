@@ -1,3 +1,4 @@
+import { preventRevocableFileCaching } from "@/lib/revocable-file-cache";
 import { NextResponse } from "next/server";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
@@ -91,7 +92,7 @@ async function findProjectPage(projectId: string, pageId: string, headers: Recor
   return rows[0] ?? null;
 }
 
-export async function GET(_request: Request, { params }: PublicEbookPageImageRouteProps) {
+async function serveFile(_request: Request, { params }: PublicEbookPageImageRouteProps) {
   const { pageId, slug } = await params;
   const headers = getServiceHeaders();
 
@@ -136,9 +137,13 @@ export async function GET(_request: Request, { params }: PublicEbookPageImageRou
   return new NextResponse(response.body, {
     status: 200,
     headers: {
-      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": "inline",
       "Content-Type": response.headers.get("Content-Type") ?? "application/octet-stream",
     },
   });
+}
+
+export async function GET(request: Request, context: PublicEbookPageImageRouteProps) {
+  return preventRevocableFileCaching(await serveFile(request, context));
 }
