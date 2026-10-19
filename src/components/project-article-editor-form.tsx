@@ -16,7 +16,7 @@ import type { ArticleAiDraft, ArticleAiPhotoApplyInput } from "@/lib/article-ai-
 import { getArticleContactPhoneStatus } from "@/lib/article-contact-phone";
 import { recommendedArticleInterestTags } from "@/lib/article-interest-tags";
 import { getArticlePublicInfoFieldGroup, normalizeArticlePublicInfoValue } from "@/lib/article-public-info-fields";
-import { getSelectableFontAssets } from "@/lib/font-css";
+import { SearchableFontSelect } from "@/components/searchable-font-select";
 import { toDatetimeLocalValue, toIsoFromDatetimeLocal } from "@/lib/datetime-local";
 import type { ImportedWordArticle } from "@/lib/word-document-import";
 import {
@@ -692,43 +692,6 @@ function ElementMotionSettingRow({
           ))}
         </select>
       </div>
-    </div>
-  );
-}
-
-function FontSelect({
-  defaultValue,
-  fonts,
-  help,
-  inheritLabel,
-  label,
-  name,
-}: {
-  defaultValue?: string | null;
-  fonts: FontAsset[];
-  help?: string;
-  inheritLabel: string;
-  label: string;
-  name: string;
-}) {
-  const selectableFonts = getSelectableFontAssets(fonts);
-
-  return (
-    <div>
-      <FieldLabel>{label}</FieldLabel>
-      <select
-        name={name}
-        defaultValue={defaultValue ?? ""}
-        className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
-      >
-        <option value="">{inheritLabel}</option>
-        {selectableFonts.map((font) => (
-          <option key={font.id} value={font.id}>
-            {font.name}
-          </option>
-        ))}
-      </select>
-      {help ? <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{help}</p> : null}
     </div>
   );
 }
@@ -2442,32 +2405,40 @@ export function ProjectArticleEditorForm({
             </div>
             <input type="hidden" name="textAlignment" defaultValue={article?.textAlignment ?? "left"} />
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <FontSelect
+              <SearchableFontSelect
                 name="titleFontAssetId"
+                inheritedId={projectTitleFontAssetId}
+                preferredIds={[projectTitleFontAssetId, projectBodyFontAssetId].filter((id): id is string => !!id)}
                 label="제목 글꼴"
                 fonts={fonts}
                 defaultValue={article?.titleFontAssetId}
                 inheritLabel={projectTitleFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
                 help="공개 모바일 기사 제목에 적용됩니다."
               />
-              <FontSelect
+              <SearchableFontSelect
                 name="bodyFontAssetId"
+                inheritedId={projectBodyFontAssetId}
+                preferredIds={[projectTitleFontAssetId, projectBodyFontAssetId].filter((id): id is string => !!id)}
                 label="본문 글꼴"
                 fonts={fonts}
                 defaultValue={article?.bodyFontAssetId}
                 inheritLabel={projectBodyFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
                 help="요약과 기사 본문 문단에 적용됩니다."
               />
-              <FontSelect
+              <SearchableFontSelect
                 name="captionFontAssetId"
+                inheritedId={article?.bodyFontAssetId || projectBodyFontAssetId}
+                preferredIds={[projectTitleFontAssetId, projectBodyFontAssetId].filter((id): id is string => !!id)}
                 label="이미지 캡션 글꼴"
                 fonts={fonts}
                 defaultValue={article?.captionFontAssetId}
                 inheritLabel="본문 글꼴 사용"
                 help="이미지 블록의 캡션 문구에 적용됩니다."
               />
-              <FontSelect
+              <SearchableFontSelect
                 name="buttonFontAssetId"
+                inheritedId={article?.bodyFontAssetId || projectBodyFontAssetId}
+                preferredIds={[projectTitleFontAssetId, projectBodyFontAssetId].filter((id): id is string => !!id)}
                 label="행동 버튼 글꼴"
                 fonts={fonts}
                 defaultValue={article?.buttonFontAssetId}
