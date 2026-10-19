@@ -22,6 +22,7 @@ export function FontBatchUpload() {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [rights, setRights] = useState({ webfontAllowed: false, commercialAllowed: false, active: false });
   const lock = useRef(false);
   function update(id: number, patch: Partial<Row>) { setRows((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row)); }
@@ -32,6 +33,7 @@ export function FontBatchUpload() {
 
   async function choose(files: FileList | null) {
     if (!files || lock.current) return;
+    setUnprocessedCount(Math.max(0, files.length - 500));
     lock.current = true; setBusy(true); setMessage("선택한 파일을 분석하는 중입니다.");
     try {
       const { classifyFont, defaultFontSelection, fontFormat, normalizeFontPath, MAX_BATCH_FONT_BYTES } = await import("@/lib/font-batch");
@@ -59,7 +61,7 @@ export function FontBatchUpload() {
         if (!row.selected) row.message = "동일 글꼴의 대체 형식 후보 — 기본 선택 제외";
       });
       setRows(next);
-      setMessage(`${next.length}개 분석 · ${valid.filter((row) => row.selected).length}개 기본 선택${files.length > 500 ? " · 한 번에 500개까지 선택하세요." : ""}`);
+      setMessage(`${next.length}개 분석 · ${valid.filter((row) => row.selected).length}개 기본 선택`);
     } catch { setMessage("파일 분석을 완료하지 못했습니다. 파일을 다시 선택하세요."); }
     finally { lock.current = false; setBusy(false); }
   }
@@ -105,6 +107,7 @@ export function FontBatchUpload() {
       <label className="dd-btn dd-btn-secondary cursor-pointer">폴더 선택<input aria-label="폰트 폴더 선택" className="sr-only" type="file" multiple {...({ webkitdirectory: "" } as InputHTMLAttributes<HTMLInputElement>)} disabled={busy} onChange={(event) => void choose(event.target.files)} /></label>
     </div>
     <p className="mt-2 text-xs text-slate-500">폴더 선택을 지원하지 않는 브라우저에서는 파일 선택을 이용하세요. 같은 글꼴은 WOFF2 → WOFF → TTF → OTF 순으로 하나를 기본 선택합니다.</p>
+    {unprocessedCount > 0 && <p role="alert" className="mt-3 break-words text-sm font-semibold text-amber-800">처음 500개 파일만 분석했습니다. 나머지 {unprocessedCount}개 파일은 분석·등록 대상에 포함되지 않았습니다. 해당 파일은 500개 이하로 나누어 다시 선택하세요.</p>}
     {rows.length > 0 && <>
       <div className="mt-4 max-h-[32rem] space-y-2 overflow-y-auto">
         {rows.map((row) => <div key={row.id} className="min-w-0 rounded border border-slate-200 bg-white p-3">

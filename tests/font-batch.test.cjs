@@ -126,6 +126,14 @@ test('unconfirmed classification edits blocked before public copy',async()=>{
 test('upload bounds and traversal blocked',async()=>{
   const s=server();try{for(const patch of [{name:'../a.ttf'},{name:'a.zip'},{hash:'invalid'},{size:model.MAX_BATCH_FONT_BYTES+1}])await assert.rejects(s.lib.prepareFontUpload({...s.input,...patch},'admin'),e=>e.status===400);}finally{s.close();}
 });
+test('public intake bucket configuration blocks capability issuance before any upload',async()=>{
+  const s=server(),configuredFetch=global.fetch;
+  try{
+    global.fetch=async(url,options)=>String(url).endsWith('/bucket/design-intake-assets')?Response.json({public:true,file_size_limit:50*1024*1024,allowed_mime_types:['application/octet-stream']}):configuredFetch(url,options);
+    await assert.rejects(s.lib.prepareFontUpload(s.input,'admin'),e=>e.status===503);
+    assert(!s.calls.some(([path])=>path.includes('/object/')));assert.equal(s.assets.size,0);
+  }finally{s.close();}
+});
 test('API requires admin and same-origin before issuing any capability',async()=>{
   let user=null,blocked=false,calls=0;
   const route=loader({'@/lib/app-auth':{requireApiUser:async()=>user},'@/lib/article-image-api-origin':{requireImageSameOrigin(){if(blocked)throw {status:403};}},'@/lib/font-batch-server':{FontBatchError:class extends Error{},prepareFontUpload:async()=>{calls++;return{ok:true};}}})('src/app/api/font-batch/route.ts');

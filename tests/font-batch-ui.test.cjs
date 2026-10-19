@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- UI event harness, no remote writes. */
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const loader=require('./canva-test-loader.cjs');
+const {renderToStaticMarkup}=require('react-dom/server');
 function nodes(tree,predicate){if(!tree||typeof tree!=='object')return[];if(Array.isArray(tree))return tree.flatMap(t=>nodes(t,predicate));return[...(predicate(tree)?[tree]:[]),...nodes(tree.props?.children,predicate)];}
 const settle=()=>new Promise(resolve=>setTimeout(resolve,40));
 function harness(respond){
@@ -33,4 +34,25 @@ test('article editor receives the existing font library and project defaults',()
  const css=loader()('src/lib/font-css.ts');const base={isActive:true,webfontAllowed:true,fileUrl:'/font',familyId:'family',familyIsActive:true,familyWebfontAllowed:true,name:'Nanum',cssFamily:'Test',fileFormat:'ttf',style:'normal'};
  const fonts=[{...base,id:'regular',weight:'400'},{...base,id:'bold',weight:'700'}];
  assert.equal(css.getSelectableFontAssets(fonts).length,1);const faces=css.getFontFaceCss(fonts);assert(faces.includes('font-weight: 400'));assert(faces.includes('font-weight: 700'));
+});
+test('more than 500 files explicitly show unprocessed count, including after registration',async()=>{
+ const h=harness(()=>({ok:true,status:'success',duplicate:true,assetId:'existing'}));
+ try{
+  await choose(h,['A.ttf',...Array.from({length:501},(_,i)=>`ignored-${i}.zip`)]);
+  const alert=()=>nodes(h.render(),e=>e.props?.role==='alert')[0];
+  assert.match(renderToStaticMarkup(alert()),/처음 500개/);
+  assert.match(renderToStaticMarkup(alert()),/나머지 2개 파일/);
+  register(h.render()).props.onClick();await settle();assert.equal(h.calls.length,1);
+  assert.match(renderToStaticMarkup(alert()),/나머지 2개 파일/);
+  await choose(h,['A.ttf']);assert.equal(alert(),undefined);
+ }finally{h.close();}
+});
+test('over 16MiB is excluded with reason before reading or uploading',async()=>{
+ const h=harness(()=>({ok:true}));let reads=0;
+ try{
+  const input=nodes(h.render(),e=>e.type==='input'&&e.props['aria-label']==='폰트 파일 선택')[0];
+  input.props.onChange({target:{files:[{name:'too-large.ttf',size:16*1024*1024+1,arrayBuffer(){reads++;throw Error('must not read');}}]}});
+  await settle();assert.equal(reads,0);assert.match(JSON.stringify(h.render()),/파일당 16MiB를 초과합니다/);
+  assert(register(h.render()).props.disabled);assert.equal(h.calls.length,0);
+ }finally{h.close();}
 });
