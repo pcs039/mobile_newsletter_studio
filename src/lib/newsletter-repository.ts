@@ -7180,7 +7180,6 @@ export async function updateNewsletterProject(
     slug: input.slug,
     description: input.description || null,
     primary_color: input.primaryColor || "#092046",
-    status: input.status,
     package_tier: input.packageTier,
     production_mode: input.productionMode,
     project_type: normalizeProjectType(input.projectType),
@@ -7578,7 +7577,7 @@ export async function updateProjectAudioArticleLink({
 export async function archiveNewsletterProject(projectId: string): Promise<ArchiveNewsletterProjectResult> {
   const encodedProjectId = encodeURIComponent(projectId);
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_projects?id=eq.${encodedProjectId}&select=id,slug,title`,
+    `/rest/v1/newsletter_projects?id=eq.${encodedProjectId}&status=neq.published&select=id,slug,title`,
   );
   const headers = getRequestHeaders(true);
 
