@@ -1,6 +1,6 @@
 import "server-only";
 import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
-import { articleOrderUuid, type ArticleOrderState } from "@/lib/article-order";
+import { compareArticleBaseOrder, articleOrderUuid, type ArticleOrderState } from "@/lib/article-order";
 
 export class ArticleOrderError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -27,5 +27,7 @@ export async function articleOrderRpc(projectId: string, ids?: string[], expecte
   if (!data || typeof data.snapshot !== "string" || !/^[a-f0-9]{32}$/.test(data.snapshot) || !Array.isArray(data.articles) || data.articles.some((row: ArticleOrderState["articles"][number]) => !row || !articleOrderUuid.test(row.id) || !Number.isInteger(row.sortOrder) || typeof row.updatedAt !== "string")) {
     throw new ArticleOrderError(502, "목록 응답을 확인하지 못했습니다.");
   }
-  return data;
+  // The deployed RPC uses updated_at for legacy ties; normalize its display rows
+  // without changing its conflict snapshot, receipts, or database ordering values.
+  return { ...data, articles: [...data.articles].sort(compareArticleBaseOrder) };
 }

@@ -1,3 +1,4 @@
+import { articleBaseOrderQuery, compareArticleBaseOrder } from "@/lib/article-order";
 import { readFullLayout } from "@/lib/article-full-layout";
 import { readDesignAssetMetadata, type DesignAssetMetadata } from "@/lib/design-asset-metadata";
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
@@ -6498,7 +6499,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   const endpoint = getSupabaseRestEndpoint(
     `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,interest_tags,article_type,institution_priority,urgency,publication_kind,valid_from,valid_until,public_info,survey_id,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
       workspace.project.id,
-    )}&order=sort_order.asc&order=updated_at.desc`,
+    )}&order=${articleBaseOrderQuery}`,
   );
   const headers = getRequestHeaders(true);
 
@@ -6547,7 +6548,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
           audioByArticleId,
           audioById,
         ),
-      ),
+      ).sort(compareArticleBaseOrder),
       source: "supabase",
       message:
         articleRows.length > 0

@@ -18,3 +18,13 @@ export function sameArticleOrder(a: readonly string[], b: readonly string[]) {
 }
 
 export const articleOrderUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// Base placement is editorial state. A content/asset save must never change it.
+// Legacy duplicate sort_order values use immutable IDs, never updated_at.
+export const articleBaseOrderQuery = "sort_order.asc,id.asc";
+export function compareArticleBaseOrder(
+  left: { id: string; sortOrder: number },
+  right: { id: string; sortOrder: number },
+) {
+  return left.sortOrder - right.sortOrder || (left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
+}
