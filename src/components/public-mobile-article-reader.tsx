@@ -28,6 +28,7 @@ import { aiImageHero, readAiImageBlock } from "@/lib/ai-image-article";
 import { ArticleHeroBackgroundLayer } from "@/components/article-hero-background-layer";
 import type { ArticleHeroBackground } from "@/lib/article-hero-background";
 import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
+import { AdminPreviewArticleNavigation } from "@/components/admin-preview-article-navigation";
 import { PublicAudioTextSyncPlayer } from "@/components/public-audio-text-sync-player";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import { ScrollMotionReveal } from "@/components/scroll-motion-reveal";
@@ -79,6 +80,7 @@ import {
 import { trackArticleEvent, type ArticleEventType } from "@/lib/public-article-analytics";
 
 type PublicMobileArticleReaderProps = {
+  adminPreview?: { embedded: boolean; channel?: string };
   heroBackgrounds?: Record<string, ArticleHeroBackground>;
   textDesigns?: Record<string, ArticleTextDesign>;
   topIllustrations?: Record<string, ArticleHeroBackground>;
@@ -1664,6 +1666,7 @@ export function ArticleCard({
         isImageOnly ? "overflow-hidden" : ""
       } ${className}`}
       data-article-text-alignment={article.textAlignment || "left"}
+      data-reader-article-id={article.id}
       data-motion-preset={motionPreset}
       data-motion-speed={motionSpeed}
       data-article-title-color={heroBackground?.settings.titleColor}
@@ -1798,6 +1801,7 @@ export function ArticleCard({
 }
 
 export function PublicMobileArticleReader({
+  adminPreview,
   heroBackgrounds = {},
   textDesigns = {},
   topIllustrations = {},
@@ -2427,6 +2431,7 @@ export function PublicMobileArticleReader({
   return (
     <>
       {arrowOverlayPortal}
+      {adminPreview ? <AdminPreviewArticleNavigation slug={slug} articleIds={articles.map(article => article.id)} articleId={isCoverView ? null : currentArticle?.id ?? null} mobile={isMobileReader} embedded={adminPreview.embedded} channel={adminPreview.channel} /> : null}
       {isMobileReader ? (
         <section
           className={`public-mobile-article-reader pb-[calc(3.75rem+env(safe-area-inset-bottom))] ${

@@ -113,6 +113,6 @@ export function ProjectArticleList({ projectSlug, rows }: { projectSlug: string;
         </li>;
       })}
     </ol>}
-    {preview && <ArticleMobilePreviewModal isOpen onClose={closePreview} previewHref={`/newsletters/${projectSlug}?preview=admin&articleId=${preview}`} />}
+    {preview && <ArticleMobilePreviewModal isOpen onClose={closePreview} articleIds={rows.map(row => row.id)} previewHref={`/newsletters/${projectSlug}?preview=admin&articleId=${preview}`} />}
   </section>;
 }

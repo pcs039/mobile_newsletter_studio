@@ -113,6 +113,7 @@ export default async function ReadingEditorPage({
     >
       <div className="min-w-0">
         <ArticleWorkspaceTabs
+          articleIds={contentData.articles.map(article => article.id)}
           key={`${selectedArticle?.id ?? "new"}:${initialTab}:${isArticleProductionPattern(resolvedSearchParams.recommendedPattern) ? resolvedSearchParams.recommendedPattern : ""}`}
           articleId={selectedArticle?.id ?? null}
           articleStatus={selectedArticle ? getArticleStatusLabel(selectedArticle.status) : "신규 작성"}

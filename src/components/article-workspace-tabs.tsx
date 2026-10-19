@@ -8,6 +8,7 @@ import { StatusPill } from "@/components/status-pill";
 export type ArticleWorkspaceTab = "content" | "composition" | "review";
 
 type ArticleWorkspaceTabsProps = {
+  articleIds?: string[];
   articleId: string | null;
   articleStatus: string;
   articleTitle: string;
@@ -35,6 +36,7 @@ function getTabFromLocation(articleId: string | null): ArticleWorkspaceTab {
 }
 
 export function ArticleWorkspaceTabs({
+  articleIds,
   articleId,
   articleStatus,
   articleTitle,
@@ -167,7 +169,7 @@ export function ArticleWorkspaceTabs({
       </div>
 
       {articleId ? (
-        <ArticleMobilePreviewModal isOpen={isPreviewOpen} onClose={closePreview} previewHref={previewHref} designUnsettled={designUnsettled} />
+        <ArticleMobilePreviewModal isOpen={isPreviewOpen} onClose={closePreview} previewHref={previewHref} designUnsettled={designUnsettled} articleIds={articleIds} />
       ) : null}
     </section>
   );
