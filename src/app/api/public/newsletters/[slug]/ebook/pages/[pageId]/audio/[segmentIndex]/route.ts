@@ -1,3 +1,4 @@
+import { preventRevocableFileCaching } from "@/lib/revocable-file-cache";
 import { NextResponse } from "next/server";
 import { downloadPublicEbookPageAudioSegment } from "@/lib/ebook-tts-audio";
 
@@ -12,7 +13,7 @@ type PublicEbookPageAudioSegmentRouteProps = {
   }>;
 };
 
-export async function GET(_request: Request, { params }: PublicEbookPageAudioSegmentRouteProps) {
+async function serveFile(_request: Request, { params }: PublicEbookPageAudioSegmentRouteProps) {
   const { pageId, segmentIndex, slug } = await params;
   const parsedSegmentIndex = Number(segmentIndex);
   const result = await downloadPublicEbookPageAudioSegment(slug, pageId, parsedSegmentIndex);
@@ -24,10 +25,14 @@ export async function GET(_request: Request, { params }: PublicEbookPageAudioSeg
   return new NextResponse(result.body, {
     status: 200,
     headers: {
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": "inline",
       "Content-Type": "audio/mpeg",
       ...(result.contentLength ? { "Content-Length": result.contentLength } : {}),
     },
   });
+}
+
+export async function GET(request: Request, context: PublicEbookPageAudioSegmentRouteProps) {
+  return preventRevocableFileCaching(await serveFile(request, context));
 }

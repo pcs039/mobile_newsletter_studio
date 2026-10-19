@@ -1,3 +1,4 @@
+import { preventRevocableFileCaching } from "@/lib/revocable-file-cache";
 import { NextResponse } from "next/server";
 import { downloadPublicArticleAudioSegment } from "@/lib/article-tts-audio";
 
@@ -12,7 +13,7 @@ type PublicArticleAudioSegmentRouteProps = {
   }>;
 };
 
-export async function GET(_request: Request, { params }: PublicArticleAudioSegmentRouteProps) {
+async function serveFile(_request: Request, { params }: PublicArticleAudioSegmentRouteProps) {
   const { articleId, segmentIndex, slug } = await params;
   const result = await downloadPublicArticleAudioSegment(slug, articleId, Number(segmentIndex));
 
@@ -23,10 +24,14 @@ export async function GET(_request: Request, { params }: PublicArticleAudioSegme
   return new NextResponse(result.body, {
     status: 200,
     headers: {
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": "inline",
       "Content-Type": "audio/mpeg",
       ...(result.contentLength ? { "Content-Length": result.contentLength } : {}),
     },
   });
+}
+
+export async function GET(request: Request, context: PublicArticleAudioSegmentRouteProps) {
+  return preventRevocableFileCaching(await serveFile(request, context));
 }

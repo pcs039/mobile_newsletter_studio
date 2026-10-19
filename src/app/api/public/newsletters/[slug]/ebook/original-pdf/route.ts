@@ -1,3 +1,4 @@
+import { preventRevocableFileCaching } from "@/lib/revocable-file-cache";
 import { NextResponse } from "next/server";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
@@ -71,7 +72,7 @@ async function findPublishedProject(slug: string, headers: Record<string, string
   return project?.status === "published" ? project : null;
 }
 
-export async function GET(_request: Request, { params }: PublicEbookOriginalPdfRouteProps) {
+async function serveFile(_request: Request, { params }: PublicEbookOriginalPdfRouteProps) {
   const { slug } = await params;
   const headers = getServiceHeaders();
 
@@ -110,9 +111,13 @@ export async function GET(_request: Request, { params }: PublicEbookOriginalPdfR
   return new NextResponse(response.body, {
     status: 200,
     headers: {
-      "Cache-Control": "public, max-age=300",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": `attachment; filename="${encodeURIComponent(makeSafeFileName(project.pdf_original_file_name, slug))}"`,
       "Content-Type": response.headers.get("Content-Type") ?? "application/pdf",
     },
   });
+}
+
+export async function GET(request: Request, context: PublicEbookOriginalPdfRouteProps) {
+  return preventRevocableFileCaching(await serveFile(request, context));
 }

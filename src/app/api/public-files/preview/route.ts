@@ -1,3 +1,4 @@
+import { preventRevocableFileCaching } from "@/lib/revocable-file-cache";
 import { serveFullLayout } from "@/lib/article-full-layout-server";
 import { serveAiArticleImage } from "@/lib/ai-image-article-server";
 import { NextResponse } from "next/server";
@@ -141,7 +142,7 @@ async function authorizePublicFile(
   }
 
   if (project.status === "published") {
-    return { ok: true, cacheControl: "public, max-age=300" };
+    return { ok: true, cacheControl: "private, no-store" };
   }
 
   const access = await requireProjectApiAccess({ projectId: project.id });
@@ -160,7 +161,7 @@ async function authorizePublicFile(
   return { ok: true, cacheControl: "private, no-store" };
 }
 
-export async function GET(request: Request) {
+async function serveFile(request: Request) {
   const { searchParams } = new URL(request.url);
   if (searchParams.has("heroArticle") || searchParams.has("topArticle") || searchParams.has("fullLayoutBlock") || searchParams.has("aiImageBlock")) {
     const slug = searchParams.get("project")?.trim() ?? "";
@@ -226,4 +227,13 @@ export async function GET(request: Request) {
       "Content-Type": response.headers.get("Content-Type") ?? "application/octet-stream",
     },
   });
+}
+
+export async function GET(request: Request) {
+  const response = await serveFile(request);
+  // Fonts are shared application resources, not project publication files.
+  const params = new URL(request.url).searchParams;
+  const sharedFont = params.get("bucket") === "fonts" &&
+    !["heroArticle", "topArticle", "fullLayoutBlock", "aiImageBlock"].some(key => params.has(key));
+  return sharedFont ? response : preventRevocableFileCaching(response);
 }
