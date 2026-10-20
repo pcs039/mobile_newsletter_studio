@@ -27,9 +27,9 @@ test('partial failure preserves success and retries completion first with no sec
  const h=harness(input=>input.action==='prepare'?{ok:true,status:'ready',token:'signed-'+input.name,uploadUrl:'https://staging.example/signed'}:input.action==='storage'?{ok:true}:++completes===1?{ok:false,message:'응답 유실'}:{ok:true,status:'success',assetId:'asset'});
  try{await choose(h,['A.ttf','B.ttf']);register(h.render()).props.onClick();await settle();assert.match(JSON.stringify(h.render()),/응답 유실/);assert.equal(h.calls.filter(c=>c.action==='storage').length,2);register(h.render()).props.onClick();await settle();assert.equal(h.calls.filter(c=>c.action==='storage').length,2);assert.equal(h.calls.filter(c=>c.action==='prepare').length,2);assert(register(h.render()).props.disabled);}finally{h.close();}
 });
-test('article editor receives the existing font library and project defaults',()=>{
+test('design font settings receive the existing font library and project defaults',()=>{
  const page=fs.readFileSync('src/app/projects/[projectId]/reading/page.tsx','utf8');
- const props=page.slice(page.indexOf('<ProjectArticleEditorForm'),page.indexOf('/>',page.indexOf('<ProjectArticleEditorForm')));
+ const props=page.slice(page.indexOf('<ArticleFontSettings'),page.indexOf('/>',page.indexOf('<ArticleFontSettings')));
  for(const prop of ['fonts={fontData.fonts}','projectTitleFontAssetId={project?.titleFontAssetId}','projectBodyFontAssetId={project?.bodyFontAssetId}'])assert(props.includes(prop));
  const css=loader()('src/lib/font-css.ts');const base={isActive:true,webfontAllowed:true,fileUrl:'/font',familyId:'family',familyIsActive:true,familyWebfontAllowed:true,name:'Nanum',cssFamily:'Test',fileFormat:'ttf',style:'normal'};
  const fonts=[{...base,id:'regular',weight:'400'},{...base,id:'bold',weight:'700'}];

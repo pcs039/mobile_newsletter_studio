@@ -5,7 +5,7 @@ import { readArticleBodyDesign, type ArticleBodyDesign } from "@/lib/article-bod
 import Link from "next/link";
 import { articlePublicInfoTypeOptions } from "@/lib/article-type-options";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ArticleMotionPreviewCard } from "@/components/article-motion-preview-card";
 import { clearArticleSave, getSavedArticleId, rememberArticleSave, subscribeArticleSave } from "@/lib/article-save-session";
 import { ArticleSavedDesignRecommendation } from "@/components/article-saved-design-recommendation";
@@ -16,7 +16,8 @@ import type { ArticleAiDraft, ArticleAiPhotoApplyInput } from "@/lib/article-ai-
 import { getArticleContactPhoneStatus } from "@/lib/article-contact-phone";
 import { recommendedArticleInterestTags } from "@/lib/article-interest-tags";
 import { getArticlePublicInfoFieldGroup, normalizeArticlePublicInfoValue } from "@/lib/article-public-info-fields";
-import { SearchableFontSelect } from "@/components/searchable-font-select";
+import { createArticleSubmitGate } from "@/lib/article-submit-gate";
+import { articleEditorFormId } from "@/lib/article-editor-form-id";
 import { toDatetimeLocalValue, toIsoFromDatetimeLocal } from "@/lib/datetime-local";
 import type { ImportedWordArticle } from "@/lib/word-document-import";
 import {
@@ -31,7 +32,6 @@ import type {
   ArticleMotionSpeed,
   ArticlePublicInfo,
   ArticlePublicInfoType,
-  FontAsset,
   ArticleTextAlignment,
   ArticleUrgency,
   ProjectAssetFile,
@@ -46,9 +46,6 @@ type ProjectArticleEditorFormProps = {
   pages: ProjectPageImage[];
   surveys?: ProjectSurveyItem[];
   assets: ProjectAssetFile[];
-  fonts?: FontAsset[];
-  projectBodyFontAssetId?: string | null;
-  projectTitleFontAssetId?: string | null;
   projectPageCount?: number;
   article: ProjectContentArticle | null;
   showReviewActions?: boolean;
@@ -701,19 +698,25 @@ export function ProjectArticleEditorForm({
   pages,
   surveys = [],
   assets,
-  fonts = [],
-  projectBodyFontAssetId,
-  projectTitleFontAssetId,
   projectPageCount = 0,
   article,
   showReviewActions = true,
 }: ProjectArticleEditorFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const submitGate = useRef(createArticleSubmitGate());
+  useEffect(() => {
+    const gate = submitGate.current;
+    gate.activate();
+    return () => gate.invalidate();
+  }, []);
   const [message, setMessage] = useState("");
   const savedArticleId = useSyncExternalStore(subscribeArticleSave, () => getSavedArticleId(projectSlug, article?.id), () => null);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  useEffect(() => {
+    if (article?.id) window.dispatchEvent(new CustomEvent("article-editor-save-state", { detail: { articleId: article.id, saving: isSaving, error } }));
+  }, [article?.id, isSaving, error]);
   const [isDeletingArticle, setIsDeletingArticle] = useState(false);
   const [uploadingImageBlockId, setUploadingImageBlockId] = useState("");
   const [blocks, setBlocks] = useState<EditorBlock[]>(() => makeInitialBlocks(article));
@@ -1377,21 +1380,24 @@ export function ProjectArticleEditorForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submission = submitGate.current.begin();
+    if (!submission) return;
     setError("");
     setMessage("");
     setIsSaving(true);
     clearArticleSave();
 
-    const formData = new FormData(event.currentTarget);
     let savedArticle: { id: string; title: string } | null = null;
 
     try {
+      const formData = new FormData(event.currentTarget);
       savedArticle = await persistArticle(buildArticlePayload(formData));
     } finally {
-      setIsSaving(false);
+      if (submission.isCurrent()) setIsSaving(false);
+      submission.finish();
     }
 
-    if (!savedArticle) {
+    if (!submission.isCurrent() || !savedArticle) {
       return;
     }
 
@@ -1516,7 +1522,7 @@ export function ProjectArticleEditorForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} onInvalidCapture={clearArticleSave} className="space-y-5">
+    <form id={articleEditorFormId(article?.id)} ref={formRef} onSubmit={handleSubmit} onInvalidCapture={clearArticleSave} className="space-y-5">
       <input type="hidden" name="sortOrder" value={article?.sortOrder ?? 0} />
       <ProjectArticleAiAssistant
         getCurrentContent={getCurrentContentForAi}
@@ -2404,48 +2410,6 @@ export function ProjectArticleEditorForm({
               </p>
             </div>
             <input type="hidden" name="textAlignment" defaultValue={article?.textAlignment ?? "left"} />
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <SearchableFontSelect
-                name="titleFontAssetId"
-                inheritedId={projectTitleFontAssetId}
-                preferredIds={[projectTitleFontAssetId, projectBodyFontAssetId].filter((id): id is string => !!id)}
-                label="제목 글꼴"
-                fonts={fonts}
-                defaultValue={article?.titleFontAssetId}
-                inheritLabel={projectTitleFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
-                help="공개 모바일 기사 제목에 적용됩니다."
-              />
-              <SearchableFontSelect
-                name="bodyFontAssetId"
-                inheritedId={projectBodyFontAssetId}
-                preferredIds={[projectTitleFontAssetId, projectBodyFontAssetId].filter((id): id is string => !!id)}
-                label="본문 글꼴"
-                fonts={fonts}
-                defaultValue={article?.bodyFontAssetId}
-                inheritLabel={projectBodyFontAssetId ? "프로젝트 기본값 따름" : "시스템 기본 글꼴"}
-                help="요약과 기사 본문 문단에 적용됩니다."
-              />
-              <SearchableFontSelect
-                name="captionFontAssetId"
-                inheritedId={article?.bodyFontAssetId || projectBodyFontAssetId}
-                preferredIds={[projectTitleFontAssetId, projectBodyFontAssetId].filter((id): id is string => !!id)}
-                label="이미지 캡션 글꼴"
-                fonts={fonts}
-                defaultValue={article?.captionFontAssetId}
-                inheritLabel="본문 글꼴 사용"
-                help="이미지 블록의 캡션 문구에 적용됩니다."
-              />
-              <SearchableFontSelect
-                name="buttonFontAssetId"
-                inheritedId={article?.bodyFontAssetId || projectBodyFontAssetId}
-                preferredIds={[projectTitleFontAssetId, projectBodyFontAssetId].filter((id): id is string => !!id)}
-                label="행동 버튼 글꼴"
-                fonts={fonts}
-                defaultValue={article?.buttonFontAssetId}
-                inheritLabel="본문 글꼴 사용"
-                help="행동 버튼 블록의 버튼 문구에 적용됩니다."
-              />
-            </div>
             <div className="mt-4 rounded-2xl border border-[#d8e8ff] bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-black text-[#184a88]">모바일 제목 미리보기</p>
