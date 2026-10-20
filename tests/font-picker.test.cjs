@@ -29,8 +29,10 @@ test('600 families search deterministically and UI limits results, with explicit
  const many=Array.from({length:600},(_,i)=>({...base,id:String(i),familyId:String(i),familyDisplayName:`패밀리 ${i}`}));
  const before=JSON.stringify(many), groups=api.getFontPickerFamilies(many);
  assert.equal(groups.length,600);assert.equal(JSON.stringify(groups),JSON.stringify(api.getFontPickerFamilies(many)));assert.equal(JSON.stringify(many),before);
- const h=harness({fonts:many});let tree=h.render();assert.equal(nodes(tree,e=>e.type==='option').length,41);
- nodes(tree,e=>e.type==='button'&&e.props.children==='40개 더 보기')[0].props.onClick();assert.equal(nodes(h.render(),e=>e.type==='option').length,81);
+ const h=harness({fonts:many});let tree=h.render();assert.equal(nodes(tree,e=>e.type==='option').length,21);
+ const firstIds=nodes(tree,e=>e.type==='option').map(e=>e.props.value);
+ nodes(tree,e=>e.type==='button'&&e.props.children==='다음 패밀리')[0].props.onClick();assert.equal(nodes(h.render(),e=>e.type==='option').length,21);assert.notDeepEqual(nodes(h.render(),e=>e.type==='option').map(e=>e.props.value),firstIds);
+ nodes(h.render(),e=>e.type==='button'&&e.props.children==='이전 패밀리')[0].props.onClick();assert.deepEqual(nodes(h.render(),e=>e.type==='option').map(e=>e.props.value),firstIds);
 });
 test('legacy Bold ID preserved through search; explicit family choice saves representative; inheritance empty',()=>{
  const h=harness({defaultValue:'bold'});let tree=h.render();
@@ -75,4 +77,9 @@ test('compact mode preserves one named input, starts closed and keeps choice thr
  assert.equal(nodes(t,e=>e.type==='input'&&e.props.name==='titleFontAssetId').length,1);assert.equal(nodes(t,e=>e.props.name==='titleFontAssetId')[0].props.form,'article-editor-a');assert.equal(nodes(t,e=>e.type==='details')[0].props.open,undefined);
  nodes(t,e=>e.type==='select')[0].props.onChange({target:{value:'regular'}});assert.equal(changed,'regular');t=h.render();nodes(t,e=>e.type==='details')[0].props.onToggle({currentTarget:{open:false}});
  assert.equal(nodes(h.render(),e=>e.props.name==='titleFontAssetId')[0].props.value,'regular');
+});
+
+test('family browsing and registration styles never imply a CSS weight change or write',()=>{
+ let changes=[];const h=harness({defaultValue:'bold',onValueChange:v=>changes.push(v)});let t=h.render();assert.match(JSON.stringify(t),/기사 CSS 굵기를 변경하지는/);assert.match(JSON.stringify(t),/400 \/ normal/);assert.equal(nodes(t,e=>e.type==='input'&&e.props.type==='hidden')[0].props.value,'bold');assert.equal(changes.length,0);
+ nodes(t,e=>e.props.type==='search')[0].props.onChange({target:{value:'나눔'}});assert.equal(changes.length,0);assert.equal(nodes(h.render(),e=>e.type==='input'&&e.props.type==='hidden')[0].props.value,'bold');
 });

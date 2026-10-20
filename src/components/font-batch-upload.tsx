@@ -20,6 +20,8 @@ async function api(body: object): Promise<Result> {
 export function FontBatchUpload() {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
+  const [resultOpen, setResultOpen] = useState(true);
+  const [attempted, setAttempted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [unprocessedCount, setUnprocessedCount] = useState(0);
@@ -33,6 +35,7 @@ export function FontBatchUpload() {
 
   async function choose(files: FileList | null) {
     if (!files || lock.current) return;
+    setResultOpen(true); setAttempted(false);
     setUnprocessedCount(Math.max(0, files.length - 500));
     lock.current = true; setBusy(true); setMessage("선택한 파일을 분석하는 중입니다.");
     try {
@@ -69,7 +72,8 @@ export function FontBatchUpload() {
     if (lock.current) return;
     const targets = rows.filter((row) => row.selected && row.font && row.confirmed && row.status !== "success");
     if (!targets.length) return;
-    lock.current = true; setBusy(true);
+    lock.current = true; setBusy(true); setAttempted(true); setResultOpen(true);
+    let failures = 0;
     let success = 0;
     try {
       for (const row of targets) {
@@ -92,12 +96,14 @@ export function FontBatchUpload() {
           }
           update(row.id, { status: "success", assetId: result.assetId, message: result.duplicate ? "기존 등록 파일 재사용" : "등록 완료" });
           success++;
-        } catch (error) { update(row.id, { status: "error", message: error instanceof Error ? error.message : "등록 실패 — 다시 확인하세요." }); }
+        } catch (error) { failures++; update(row.id, { status: "error", message: error instanceof Error ? error.message : "등록 실패 — 다시 확인하세요." }); }
       }
       setMessage(`${success}개 등록 확인 · 실패 파일은 선택 상태를 유지한 채 다시 시도할 수 있습니다.`);
+      if (!failures && !rows.some(row => row.status === "excluded")) setResultOpen(false);
       router.refresh();
     } finally { lock.current = false; setBusy(false); }
   }
+  const counts = { success: rows.filter(row => row.status === "success").length, error: rows.filter(row => row.status === "error").length, excluded: rows.filter(row => row.status === "excluded").length };
   const eligible = rows.filter((row) => row.selected && row.font && row.confirmed && row.status !== "success").length;
   return <section className="min-w-0 rounded-lg border border-sky-200 bg-sky-50/40 p-5">
     <h2 className="text-xl font-black text-[#092046]">폰트 일괄 등록</h2>
@@ -109,6 +115,9 @@ export function FontBatchUpload() {
     <p className="mt-2 text-xs text-slate-500">폴더 선택을 지원하지 않는 브라우저에서는 파일 선택을 이용하세요. 같은 글꼴은 WOFF2 → WOFF → TTF → OTF 순으로 하나를 기본 선택합니다.</p>
     {unprocessedCount > 0 && <p role="alert" className="mt-3 break-words text-sm font-semibold text-amber-800">처음 500개 파일만 분석했습니다. 나머지 {unprocessedCount}개 파일은 분석·등록 대상에 포함되지 않았습니다. 해당 파일은 500개 이하로 나누어 다시 선택하세요.</p>}
     {rows.length > 0 && <>
+      {attempted ? <p role="status" className="mt-3 text-sm font-bold">등록 성공 {counts.success}개 · 실패 {counts.error}개 · 제외 {counts.excluded}개{busy ? " · 처리 중" : ""}</p> : null}
+      <details open={resultOpen} onToggle={event => setResultOpen(event.currentTarget.open)} className="mt-3">
+        <summary className="cursor-pointer text-sm font-bold text-[#184a88]">{attempted ? "파일별 등록 결과 상세" : "분석 결과 및 등록할 파일 확인"}</summary>
       <div className="mt-4 max-h-[32rem] space-y-2 overflow-y-auto">
         {rows.map((row) => <div key={row.id} className="min-w-0 rounded border border-slate-200 bg-white p-3">
           <label className="flex items-start gap-2 text-sm font-bold"><input type="checkbox" className="mt-1 shrink-0" checked={row.selected} disabled={busy || !row.font || row.status === "success"} onChange={(event) => update(row.id, { selected: event.target.checked })} /><span className="min-w-0 break-all">{row.path}</span></label>
@@ -122,6 +131,7 @@ export function FontBatchUpload() {
           </div>}
         </div>)}
       </div>
+      </details>
       <div className="mt-4 space-y-2 text-sm">
         <label className="flex gap-2"><input type="checkbox" disabled={busy} checked={rights.webfontAllowed} onChange={(event) => changeRights({ ...rights, webfontAllowed: event.target.checked, active: rights.active && event.target.checked })} />기존 사용 조건: 웹폰트 사용 허용</label>
         <label className="flex gap-2"><input type="checkbox" disabled={busy} checked={rights.commercialAllowed} onChange={(event) => changeRights({ ...rights, commercialAllowed: event.target.checked })} />상업/납품 사용 허용</label>

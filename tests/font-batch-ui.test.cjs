@@ -56,3 +56,8 @@ test('over 16MiB is excluded with reason before reading or uploading',async()=>{
   assert(register(h.render()).props.disabled);assert.equal(h.calls.length,0);
  }finally{h.close();}
 });
+
+test('successful results collapse, partial failure and analysis exclusions stay visible; disclosure never retries',async()=>{
+ for(const failure of [false,true]){const h=harness(input=>input.action==='prepare'?failure?{ok:false,message:'QA failure'}:{ok:true,status:'success',duplicate:true,assetId:'existing'}:{ok:true});try{await choose(h,['A.ttf']);register(h.render()).props.onClick();await settle();let t=h.render();assert.equal(nodes(t,e=>e.type==='details')[0].props.open,failure);assert.match(JSON.stringify(t),failure?/실패/:/등록 성공/);const count=h.calls.length;nodes(t,e=>e.type==='details')[0].props.onToggle({currentTarget:{open:true}});h.render();assert.equal(h.calls.length,count);}finally{h.close();}}
+ const h=harness(()=>({ok:true,status:'success',assetId:'existing'}));try{await choose(h,['A.ttf','readme.zip']);register(h.render()).props.onClick();await settle();assert.equal(nodes(h.render(),e=>e.type==='details')[0].props.open,true);assert.match(JSON.stringify(h.render()),/등록 대상/);}finally{h.close();}
+});
