@@ -33,8 +33,10 @@ export function ArticleCanvaTemplates({ projectSlug, articleId, pattern }: { pro
     } catch (e) { if (version === generation.current) setNotice(e instanceof Error ? e.message : "미리보기를 불러오지 못했습니다."); } finally { pending.current = false; setBusy(false); }
   }
   const matches = templates.filter(t => t.productionPattern === pattern || t.productionPattern === "common");
-  return <details className="my-4 min-w-0 rounded border border-slate-200 p-3"><summary className="cursor-pointer font-bold">Canva 제작 · 추천 템플릿 {matches.length}개</summary>
-    <p className="mt-2 text-sm text-slate-600">먼저 기사 데이터를 확인하세요. Canva 연결 후 글자와 승인된 GPT 배경으로 새 디자인을 만들 수 있습니다.</p>
+  return <details className="my-4 min-w-0 rounded border border-slate-200 p-3"><summary className="cursor-pointer font-bold">등록된 Canva 템플릿 사용 · 패턴 일치 {matches.length}개
+    {busy ? <span className="ml-2 text-xs text-sky-800">입력 확인 중</span> : selected ? <span className="ml-2 text-xs text-sky-800">선택한 템플릿 있음 · 펼쳐 확인</span> : null}
+    {notice ? <span className="mt-1 block text-xs text-rose-800">{notice}</span> : null}</summary>
+    <p className="mt-2 text-sm text-slate-600">프로젝트에 등록한 템플릿입니다. 입력 내용을 확인한 뒤 제작하며, 승인·가져오기·기사 적용은 별도 작업입니다.</p>
     <Link className="text-sm text-blue-800 underline" href={`/projects/${projectSlug}/design#canva-templates`}>Canva 템플릿 관리</Link>
     <p role="status" className="my-2 text-sm">{notice}</p>
     <label className="block text-sm">템플릿 선택<select className="mt-1 w-full min-w-0 rounded border border-slate-300 p-2" value={selected} disabled={busy} onChange={e => { setSelected(e.target.value); setFields(null); }}><option value="">템플릿을 선택하세요</option>{templates.map(t => <option key={t.id} value={t.id}>{matches.includes(t) ? "추천 · " : ""}{t.name} · {canvaTemplatePatterns[t.productionPattern]}</option>)}</select></label>

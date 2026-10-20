@@ -71,20 +71,20 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, article, di
       setMessage(error instanceof Error && error.name !== "AbortError" ? error.message : "요청 결과를 확인하지 못했습니다. 새로고침 후 현재 디자인을 확인해 주세요.");
     } finally { clearTimeout(timeout); inFlight.current = null; setBusy(false); }
   }
-  return <div className="mt-3 min-w-0 rounded-lg border border-sky-200 p-3 [overflow-wrap:anywhere]">
+  return <div className="mt-3 min-w-0 space-y-3 [overflow-wrap:anywhere]">
     <ArticleVisualDirectorResult result={visualDirector}>
       <HybridVisualControls article={article} articleId={articleId} projectSlug={projectSlug} disabled={disabled||busy||assetBusy}/>
       {visualDirector.primaryStrategy === "institution_asset" && visualDirector.needsRealPhoto ? <InstitutionAssetMatchControls key={JSON.stringify([projectSlug,articleId,fullLayoutSourceVersion(article)])} article={article} articleId={articleId} projectSlug={projectSlug} disabled={disabled||busy||assetBusy}/> : null}
       {visualDirector.primaryStrategy==="information_graphic"&&visualDirector.needsInformationGraphic?<InformationGraphicControls key={JSON.stringify([projectSlug,articleId,fullLayoutSourceVersion(article)])} article={article} articleId={articleId} projectSlug={projectSlug} disabled={disabled||busy||assetBusy} onBusy={setAssetBusy}/>:null}
       <VisualDirectorImageControls key={JSON.stringify([projectSlug,articleId,fullLayoutSourceVersion(article)])} projectSlug={projectSlug} articleId={articleId} article={article} disabled={disabled||busy} onBusy={setAssetBusy}/>
     </ArticleVisualDirectorResult>
-    <h3 className="font-black text-[#092046]">AI 디자인 추천</h3>
+    <h4 className="font-black text-[#092046]">{visualDirector.primaryStrategy === "canva_full_layout" ? "기사 맞춤 Canva 후보" : "디자인 콘셉트·초안"}</h4>
     {visualDirector.primaryStrategy === "canva_full_layout" ? <ArticleTemplateRecommendations key={articleId} projectSlug={projectSlug} articleId={articleId} articleVersion={fullLayoutSourceVersion(article)} recommendations={templateRecommendations} disabled={disabled || busy || assetBusy} /> :
-      <p className="mt-2 text-sm text-slate-600">기사 내용과 자료를 확인한 뒤, 아래에서 콘셉트와 제작 패턴을 직접 조정할 수 있습니다.</p>}
+      <p className="mt-2 text-sm text-slate-600">AI 시각 전략을 참고해 콘셉트를 선택하거나 현재 디자인을 유지할 수 있습니다.</p>}
     <button type="button" className="dd-btn dd-btn-primary mt-4 max-w-full" style={{ whiteSpace: "normal" }} disabled={disabled || busy || assetBusy} onClick={() => void perform("concepts")}>
       {busy ? "처리 중…" : "디자인 콘셉트 제안받기"}
     </button>
-    <p className="mt-2 text-sm text-slate-600">저장된 기사와 디자인 기준입니다. 편집 중인 설정은 먼저 저장하세요. 변경 예정 항목을 확인한 뒤에만 적용됩니다.</p>
+    <p className="mt-2 text-sm text-slate-600">저장된 기사·디자인 기준의 제안입니다. 편집 설정을 먼저 저장하고, 초안의 변경 예정 항목을 확인하세요.</p>
     <div role="status" aria-live="polite" aria-busy={busy}>
       {message ? <p className="mt-2 text-sm">{message}</p> : null}
       {concepts.length ? <section className="mt-3" aria-label="디자인 콘셉트 선택">
