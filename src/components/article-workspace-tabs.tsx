@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { type ReactNode, type ReactElement, cloneElement, useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { ArticleMobilePreviewModal } from "@/components/article-mobile-preview-modal";
-import type { ArticleFontSettingsWorkspaceProps } from "@/components/article-font-settings";
+import { ArticleFontSettingsContext } from "@/components/article-font-settings-context";
 import { StatusPill } from "@/components/status-pill";
 
 export type ArticleWorkspaceTab = "content" | "composition" | "review";
@@ -14,7 +14,7 @@ type ArticleWorkspaceTabsProps = {
   articleStatus: string;
   articleTitle: string;
   blockCount: number;
-  fontSettings?: ReactElement<ArticleFontSettingsWorkspaceProps>;
+  fontSettings?: ReactNode;
   composition: ReactNode;
   content: ReactNode;
   initialTab: ArticleWorkspaceTab;
@@ -172,7 +172,9 @@ export function ArticleWorkspaceTabs({
         hidden={activeTab !== "composition"}
       >
         <div key="article-font-settings">
-          {fontSettings ? cloneElement(fontSettings, { compositionUnsettled: designUnsettled, articleSaving, articleError, onDirtyChange: setFontDirty, onInvalidArticle: () => selectTab("content") }) : null}
+          <ArticleFontSettingsContext.Provider value={{ compositionUnsettled: designUnsettled, articleSaving, articleError, onDirtyChange: setFontDirty, onInvalidArticle: () => selectTab("content") }}>
+            {fontSettings}
+          </ArticleFontSettingsContext.Provider>
         </div>
         <div key="article-composition">{composition}</div>
       </div>

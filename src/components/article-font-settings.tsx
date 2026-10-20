@@ -2,27 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { SearchableFontSelect } from "@/components/searchable-font-select";
+import { useArticleFontSettingsWorkspace } from "@/components/article-font-settings-context";
 import { articleEditorFormId } from "@/lib/article-editor-form-id";
 import type { FontAsset } from "@/lib/newsletter-repository";
 
 type FontValues = { title: string; body: string; caption: string; button: string };
-export type ArticleFontSettingsWorkspaceProps = {
-  compositionUnsettled?: boolean;
-  articleSaving?: boolean;
-  articleError?: string;
-  onDirtyChange?: (dirty: boolean) => void;
-  onInvalidArticle?: () => void;
-};
-
 export function ArticleFontSettings({ articleId, fonts, initialValues, projectTitleFontAssetId, projectBodyFontAssetId,
-  compositionUnsettled = false, articleSaving = false, articleError = "", onDirtyChange, onInvalidArticle,
-}: ArticleFontSettingsWorkspaceProps & {
+}: {
   articleId: string;
   fonts: FontAsset[];
   initialValues: FontValues;
   projectTitleFontAssetId?: string | null;
   projectBodyFontAssetId?: string | null;
 }) {
+  const { compositionUnsettled = false, articleSaving = false, articleError = "", onDirtyChange, onInvalidArticle } = useArticleFontSettingsWorkspace();
   const [values, setValues] = useState(initialValues);
   const [localError, setLocalError] = useState("");
   const dirty = (Object.keys(values) as Array<keyof FontValues>).some(key => values[key] !== initialValues[key]);

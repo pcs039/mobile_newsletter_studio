@@ -5,7 +5,7 @@ const nodes=(tree,p)=>!tree||typeof tree!=='object'?[]:Array.isArray(tree)?tree.
 function harness(props={}){
  const states=[],effects=[];let cursor=0;
  const hooks={...React,useState(initial){const i=cursor++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return[states[i],v=>states[i]=typeof v==='function'?v(states[i]):v];},useEffect(fn){effects.push(fn);}};
- const load=loader({react:hooks}),{ArticleFontSettings}=load('src/components/article-font-settings.tsx');
+ const load=loader({react:hooks,'@/components/article-font-settings-context':{useArticleFontSettingsWorkspace:()=>current}}),{ArticleFontSettings}=load('src/components/article-font-settings.tsx');
  let current={articleId:'a',fonts:[],initialValues:{title:'bold',body:'body',caption:'',button:'cta'},...props};
  return{render(){cursor=0;return ArticleFontSettings(current);},effects,update(p){current={...current,...p};}};
 }
@@ -41,10 +41,36 @@ test('workspace preserves panels, combines font dirty with Composition notice, s
  const oldWindow=global.window,listeners=new Map();global.window={addEventListener:(k,v)=>listeners.set(k,v),removeEventListener:k=>listeners.delete(k)};
  try{const states=[];let cursor=0;const hooks={...React,useState(v){const i=cursor++;if(!(i in states))states[i]=v;return[states[i],v=>states[i]=v];},useCallback:fn=>fn,useEffect(fn){const i=cursor++;if(!states[i]){states[i]=true;fn();}}};
  const {ArticleWorkspaceTabs}=loader({react:hooks})('src/components/article-workspace-tabs.tsx');const fontSettings=React.createElement('font-settings',{marker:true});const props={articleId:'a',initialTab:'composition',fontSettings,content:'content',composition:'composition',review:null};const render=()=>{cursor=0;return ArticleWorkspaceTabs(props);};
- let t=render();const font=()=>nodes(render(),e=>e.props?.marker)[0];font().props.onDirtyChange(true);assert(nodes(render(),e=>e.props?.isOpen!==undefined)[0].props.designUnsettled);
- listeners.get('article-editor-save-state')({detail:{articleId:'other',saving:true,error:'other'}});assert.equal(font().props.articleSaving,false);
- listeners.get('article-editor-save-state')({detail:{articleId:'a',saving:true,error:''}});assert(font().props.articleSaving);
- listeners.get('article-design-save-state')({detail:{articleId:'a',unsettled:true}});assert(font().props.compositionUnsettled);
+ let t=render();const font=()=>nodes(render(),e=>e.props?.value?.onDirtyChange)[0].props.value;font().onDirtyChange(true);assert(nodes(render(),e=>e.props?.isOpen!==undefined)[0].props.designUnsettled);
+ listeners.get('article-editor-save-state')({detail:{articleId:'other',saving:true,error:'other'}});assert.equal(font().articleSaving,false);
+ listeners.get('article-editor-save-state')({detail:{articleId:'a',saving:true,error:''}});assert(font().articleSaving);
+ listeners.get('article-design-save-state')({detail:{articleId:'a',unsettled:true}});assert(font().compositionUnsettled);
  t=render();assert.equal(nodes(t,e=>e.props?.id==='article-workspace-panel-content')[0].props.children,'content');
  }finally{global.window=oldWindow;}
+});
+
+test('deferred RSC font slot stays intact while client context carries save state',async()=>{
+ const {PassThrough}=require('node:stream');
+ const {createFromNodeStream}=require('next/dist/compiled/react-server-dom-webpack/client.node');
+ const {renderToStaticMarkup}=require('react-dom/server');
+ const stream=new PassThrough();
+ const root=createFromNodeStream(stream,{moduleMap:{},serverModuleMap:{},moduleLoading:null});
+ stream.write('0:{"fontSettings":"$L1"}\n');
+ const {fontSettings}=await root;
+ assert.equal(fontSettings.$$typeof,Symbol.for('react.lazy'));
+ assert.equal(React.isValidElement(fontSettings),false);
+ // Prior implementation creates an element with undefined type, the production #130.
+ assert.equal(React.cloneElement(fontSettings,{}).type,undefined);
+ assert.throws(()=>renderToStaticMarkup(React.cloneElement(fontSettings,{})),/Element type is invalid/);
+ stream.end('1:["$","section",null,{"children":"deferred font settings"}]\n');
+ await new Promise(resolve=>setImmediate(resolve));
+ const hooks={...React,useState:v=>[v,()=>{}],useEffect:()=>{},useCallback:fn=>fn};
+ const {ArticleWorkspaceTabs}=loader({react:hooks})('src/components/article-workspace-tabs.tsx');
+ const tree=ArticleWorkspaceTabs({articleId:null,initialTab:'content',fontSettings,content:'article content',composition:'composition',review:'review',publishHref:'/publish'});
+ const provider=nodes(tree,e=>e.props?.value?.onDirtyChange)[0];
+ assert.equal(provider.props.children,fontSettings);
+ assert.equal(provider.props.value.articleSaving,false);
+ const html=renderToStaticMarkup(tree);
+ assert.match(html,/deferred font settings/);
+ assert.match(html,/article content/);
 });
