@@ -113,14 +113,14 @@ test('existing concept/draft container calculates cards without requests, catche
   global.fetch = () => { throw Error('unexpected provider request'); };
   try {
     const tree = render(props);
-    assert.equal(find(tree, t => t.type === 'h3' && t.props.children === 'AI 디자인 추천').length, 1);
+    assert.equal(find(tree, t => t.type === 'h4' && t.props.children === '기사 맞춤 Canva 후보').length, 1);
     const cards = find(tree, t => t.type === CardsMarker)[0];
     assert.deepEqual(cards.props.recommendations, recommend(base));
     assert(find(tree, t => t.type === 'button').some(t => t.props.children === '디자인 콘셉트 제안받기'));
     const failed = render({ ...props, article: { ...base, title: null } });
     assert.equal(find(failed, t => t.type === CardsMarker).length, 0);
     assert(html(failed).includes('자료 확인 필요'));
-    assert(html(failed).includes('콘셉트와 제작 패턴을 직접 조정'));
+    assert(html(failed).includes('콘셉트를 선택하거나 현재 디자인을 유지'));
     assert.equal(find(failed, t => t.type === 'button' && t.props.disabled === false).length, 1);
   } finally { global.fetch = originalFetch; }
 });

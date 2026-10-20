@@ -5,7 +5,7 @@ import { ArticleProductionPatternControls } from "@/components/design/article-pr
 import { ArticleTextDesignControls } from "@/components/design/article-text-design-controls";
 import { ArticleColorInput } from "@/components/design/article-color-input";
 import { useCompositionSaveState } from "@/components/design/use-composition-save-state";
-import { DesignSaveSummary } from "@/components/design/design-save-summary";
+import { DesignSaveSummary, designSaveLabels } from "@/components/design/design-save-summary";
 import { articleTextColorDefaults } from "@/lib/article-text-colors";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -826,10 +826,9 @@ function ArticleCompositionEditorSession({
   if (!composition) {
     return (
       <section className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-5">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">2. 디자인</p>
-        <h3 className="mt-2 text-xl font-black text-[#092046]">기사 디자인 조정을 시작합니다</h3>
+        <h3 className="text-lg font-black text-[#092046]">1. 디자인 선택</h3>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          기관 디자인 자산을 기사 배경, 이미지, 장식에 배치합니다. 기사 내용은 기존 편집 데이터가 기준입니다.
+          디자인 조정을 시작하거나 등록된 Canva 템플릿을 선택하세요. 기존 기사 내용은 유지됩니다.
         </p>
         {saveState.error ? <p role="alert" className="mt-3 text-sm font-bold text-rose-800">{saveState.error} 저장본을 확인한 뒤 다시 시도하세요.</p> : null}
         {recommendedPattern ? <p className="mt-3 text-sm font-bold">기사 작성 단계의 AI 추천을 확인하려면 디자인 조정을 시작하세요. 추천은 자동 적용되지 않습니다.</p> : null}
@@ -867,9 +866,8 @@ function ArticleCompositionEditorSession({
     <section className="rounded-lg border border-[#b8d7ff] bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">2. 디자인</p>
-          <h3 className="mt-1 text-xl font-black text-[#092046]">기사 디자인 조정</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">추천 디자인과 현재 미리보기를 확인한 뒤, 필요하면 세부 디자인을 조정하세요.</p>
+          <h3 className="text-lg font-black text-[#092046]">1. 디자인 선택</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600">추천이나 기존 디자인을 확인하세요. 이미 만든 디자인은 아래에서 바로 조정할 수 있습니다.</p>
         </div>
         <div className="flex rounded-lg border border-[#b8d7ff] bg-[#eef6ff] p-1">
           {(["draft", "ready"] as const).map((status) => (
@@ -908,8 +906,12 @@ function ArticleCompositionEditorSession({
         onApply={productionPattern => void mutate("PATCH", { action: "apply_production_pattern", projectSlug, articleId: article.id, compositionId: composition.id, productionPattern, textDesign: composition.settings.textDesign ?? {} }, "production-pattern")} />
 
           <details className="mt-5 min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <summary className="cursor-pointer text-sm font-black text-[#092046]">세부 디자인 조정 · 배경·장식·글자</summary>
-            <p className="mt-3 text-xs leading-5 text-slate-600">배경·장식 변경은 항목별로 바로 저장됩니다. 텍스트 디자인은 저장 버튼으로 반영합니다. 준비 완료 상태의 승인된 배경판과 상단 장식만 검토·공개 화면에 표시되며, 다른 장식은 아직 반영되지 않습니다.</p>
+            <summary className="cursor-pointer text-sm font-black text-[#092046]">2. 세부 디자인 조정
+              <span className="mt-1 block text-xs font-normal text-slate-600">글자·배경·장식 조정 · {composition.assets.length}개 배치</span>
+              {saveState.textStatus !== "saved" ? <span className="mt-1 block text-xs text-amber-900">텍스트: {designSaveLabels[saveState.textStatus]}</span> : null}
+              {saveState.layoutStatus !== "saved" ? <span className="mt-1 block text-xs text-amber-900">배치: {designSaveLabels[saveState.layoutStatus]}</span> : null}
+            </summary>
+            <p className="mt-3 text-xs leading-5 text-slate-600">배치·표시는 자동 저장, 글자 디자인은 버튼으로 저장합니다. 공개 반영 조건은 위의 ‘독자 화면 표시 조건 확인’에서 볼 수 있습니다.</p>
       {saveState.hasUnsaved ? <p className="mt-3 text-sm text-amber-900">편집 중인 변경사항을 저장한 뒤 패턴·초안을 적용하세요.</p> : null}
       <ArticleTextDesignControls value={composition.settings.textDesign} disabled={false} saveDisabled={isBusy} saveStatus={saveState.textStatus}
         onChange={next => { setNotice(null); saveState.changeText(next); }}
@@ -919,8 +921,8 @@ function ArticleCompositionEditorSession({
 
       <div className="mt-6 flex flex-col gap-3 border-y border-slate-200 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">1. 디자인 자산</p>
-          <p className="mt-1 text-sm font-bold text-[#092046]">이번 호에 준비된 자산을 선택해 이 기사에 배치합니다.</p>
+          <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">배경·상단 장식</p>
+          <p className="mt-1 text-sm font-bold text-[#092046]">사용할 자산과 배치 영역을 선택하세요.</p>
           <p className="mt-1 text-xs font-semibold text-slate-500">사용 가능 {selectableAssets.length}개 · 업로드와 승인 관리는 디자인 워크스페이스에서 합니다.</p>
         </div>
         <Link href={`/projects/${projectSlug}/design`} className="text-sm font-black text-[#184a88] underline decoration-sky-200 underline-offset-4">
@@ -929,9 +931,8 @@ function ArticleCompositionEditorSession({
       </div>
 
       <div className="mt-6">
-        <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">2. 기본 배치</p>
-        <h4 className="mt-1 text-base font-black text-[#092046]">작업할 영역을 선택하세요</h4>
-        <p className="mt-1 text-sm leading-6 text-slate-600">한 번에 한 영역만 열어 자산을 선택하고 배치합니다. 제목과 본문은 HTML 텍스트로 유지되며 시각 요소보다 앞쪽에 보호됩니다.</p>
+        <h4 className="text-sm font-black text-[#092046]">배치 영역</h4>
+        <p className="mt-1 text-sm leading-6 text-slate-600">제목·본문은 HTML로 유지됩니다. 공개 미지원 영역은 각 항목에 표시합니다.</p>
       </div>
 
       <div role="tablist" aria-label="기사 디자인 배치 영역" className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -1017,8 +1018,9 @@ function ArticleCompositionEditorSession({
           </details>
         </div>
         <div className="min-w-0 xl:sticky xl:top-4">
-          <p className="mb-2 text-sm font-bold text-[#184a88]">즉시 미리보기 · 편집 중인 상태</p>
-          <p className="mb-3 text-xs leading-5 text-slate-600">{saveState.hasUnsaved || isBusy ? "미저장·저장 중인 변경사항은 저장본 미리보기에 반영되지 않을 수 있습니다." : "저장본 미리보기에서 실제 독자 표시 조건도 확인하세요."} 기사 제목·본문은 마지막 기사 저장 기준입니다.</p>
+          <h3 className="mb-2 text-base font-black text-[#092046]">3. 미리보기·확인</h3>
+          <p className="mb-1 text-sm font-bold text-[#184a88]">즉시 미리보기 · 편집 중</p>
+          <p className="mb-3 text-xs leading-5 text-slate-600">{saveState.hasUnsaved || isBusy ? "미저장·저장 중인 변경사항은 저장본 미리보기에 반영되지 않을 수 있습니다." : "저장본은 화면 상단의 ‘저장본 미리보기’에서 확인하세요."} 기사 제목·본문은 마지막 기사 저장 기준입니다.</p>
           <CompositionMobilePreview
             article={previewArticle}
             context={previewContext}
@@ -1028,7 +1030,7 @@ function ArticleCompositionEditorSession({
           />
           {selectableAssets.length === 0 ? (
             <p className="mt-3 text-center text-xs font-bold leading-5 text-slate-500">
-              사용할 이번 호 디자인 자산이 없습니다. <Link href={`/projects/${projectSlug}/design`} className="text-[#184a88] underline">디자인 워크스페이스</Link>에서 먼저 등록하세요.
+              배치할 자산이 없습니다. 세부 디자인 조정의 ‘자산 업로드·관리’에서 등록할 수 있습니다.
             </p>
           ) : null}
         </div>
