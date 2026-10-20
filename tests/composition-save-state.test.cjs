@@ -80,7 +80,7 @@ test('all three unsupported slots remain individually identified without deletin
 });
 test('workspace receives only its article save notice and forwards it to the saved preview modal',()=>{
  const oldWindow=global.window,listeners=new Map();global.window={addEventListener:(key,fn)=>listeners.set(key,fn),removeEventListener:key=>listeners.delete(key)};
- try{const states=[];let cursor=0;const hooks={useState(v){const i=cursor++;if(!(i in states))states[i]=v;return[states[i],v=>states[i]=v];},useCallback:fn=>fn,useEffect(fn){const i=cursor++;if(!states[i]){states[i]=true;fn();}}};
+ try{const states=[];let cursor=0;const hooks={...React,useState(v){const i=cursor++;if(!(i in states))states[i]=v;return[states[i],v=>states[i]=v];},useCallback:fn=>fn,useEffect(fn){const i=cursor++;if(!states[i]){states[i]=true;fn();}}};
  const load=loader({react:hooks}),{ArticleWorkspaceTabs}=load('src/components/article-workspace-tabs.tsx'),props={articleId:'a',initialTab:'composition',articleTitle:'기사',articleStatus:'작성 중',blockCount:0,linkCount:0,previewHref:'/saved',publishHref:'#',content:null,composition:null,review:null};const render=()=>{cursor=0;return ArticleWorkspaceTabs(props);};
  const find=(t,p)=>Array.isArray(t)?t.map(x=>find(x,p)).find(Boolean):t&&typeof t==='object'?(p(t)?t:find(t.props?.children,p)):null;
  render();listeners.get('article-design-save-state')({detail:{articleId:'other',unsettled:true}});assert(!find(render(),t=>t.props?.previewHref&&t.props?.isOpen!==undefined).props.designUnsettled);
