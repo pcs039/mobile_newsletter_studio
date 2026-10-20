@@ -1,4 +1,5 @@
 "use client";
+import type { InstitutionPlacementLink } from "@/lib/institution-asset-placement";
 
 import { useEffect, useRef, useState } from "react";
 import { articleProductionPatterns, isArticleProductionPattern, productionPatternDescriptions, type ArticleProductionPattern } from "@/lib/article-production-pattern";
@@ -9,7 +10,8 @@ import type { ProjectArticleComposition } from "@/lib/article-composition";
 
 import type { VisualDirectorArticle } from "@/lib/article-visual-director";
 
-export function ArticleProductionPatternControls({ pattern, textDesign, disabled, onApply, projectSlug, articleId, recommendedPattern, composition, onDraftApplied, article, institutionVisualAvailable }: {
+export function ArticleProductionPatternControls({ pattern, textDesign, disabled, onApply, projectSlug, articleId, recommendedPattern, composition, onDraftApplied, article, institutionVisualAvailable, institutionPlacement }: {
+  institutionPlacement?: InstitutionPlacementLink;
   article: VisualDirectorArticle;
   institutionVisualAvailable?: boolean;
   composition: ProjectArticleComposition;
@@ -62,7 +64,7 @@ export function ArticleProductionPatternControls({ pattern, textDesign, disabled
   return <fieldset disabled={disabled} className="mt-5 min-w-0 border-t border-slate-200 pt-4">
     <legend className="px-2 font-black text-[#092046]">추천과 제작 패턴</legend>
     <p className="text-sm text-slate-600">현재 제작 패턴: {productionPatternDescriptions[saved].name} · 필요할 때만 변경하세요.</p>
-    <ArticleDesignDraftControls institutionVisualAvailable={institutionVisualAvailable} article={article} projectSlug={projectSlug} articleId={articleId} composition={composition} disabled={disabled || analysis === "loading"}
+    <ArticleDesignDraftControls institutionPlacement={institutionPlacement} institutionVisualAvailable={institutionVisualAvailable} article={article} projectSlug={projectSlug} articleId={articleId} composition={composition} disabled={disabled || analysis === "loading"}
       recommendation={recommendation} onApplied={onDraftApplied} />
     {isArticleProductionPattern(recommendedPattern) ? <div className="mt-3 rounded-lg bg-sky-50 p-3 text-sm [overflow-wrap:anywhere]">
       <p>기사 작성 단계에서 AI가 {productionPatternDescriptions[recommendedPattern].name}을 추천했습니다. 아래 변경 예정 항목을 확인하세요. 아직 적용되지 않았습니다.</p>

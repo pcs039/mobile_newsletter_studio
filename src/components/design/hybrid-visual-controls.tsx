@@ -1,4 +1,5 @@
 "use client";
+import type { InstitutionPlacementLink } from "@/lib/institution-asset-placement";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { VisualDirectorArticle } from "@/lib/article-visual-director";
 import { visualStrategies } from "@/lib/article-visual-director";
@@ -21,7 +22,7 @@ function update(c:Context,field:"primary"|"secondary",stage:HybridStage) {
   if(previous.recommendationKey&&stage.recommendationKey&&previous.recommendationKey!==stage.recommendationKey)return {...c,stale:true};
   return {...c,[field]:stage};
 }
-export function HybridVisualControls({article,articleId,projectSlug,disabled}:{article:VisualDirectorArticle;articleId:string;projectSlug:string;disabled:boolean}) {
+export function HybridVisualControls({article,articleId,projectSlug,disabled,institutionPlacement}:{institutionPlacement?:InstitutionPlacementLink;article:VisualDirectorArticle;articleId:string;projectSlug:string;disabled:boolean}) {
   const sourceKey=JSON.stringify([projectSlug,articleId,visualArticleSnapshot(article)]);
   const binding=useMemo(()=>{const plan=buildHybridVisualPlan(article);return plan&&articleId?initial(article,articleId,plan,sourceKey):null;},[article,articleId,sourceKey]);
   const [context,setContext]=useState<Context|null>(binding),[hybridKey,setHybridKey]=useState(""),[busy,setBusy]=useState(false);
@@ -39,7 +40,7 @@ export function HybridVisualControls({article,articleId,projectSlug,disabled}:{a
   const secondaryAllowed=active.primary.status==="completed"||active.primary.status==="needs_input"||(active.plan.primary.strategy==="institution_asset"&&active.primary.status==="ready");
   function controls(strategy:string,secondary:boolean) {
     const onStage=secondary?onSecondary:onPrimary,blocked=disabled||busy||(secondary&&!secondaryAllowed);
-    if(strategy==="institution_asset")return <InstitutionAssetMatchControls article={article} articleId={articleId} projectSlug={projectSlug} context="hybrid" disabled={blocked} onStage={onStage}/>;
+    if(strategy==="institution_asset")return <InstitutionAssetMatchControls institutionPlacement={institutionPlacement} article={article} articleId={articleId} projectSlug={projectSlug} context="hybrid" disabled={blocked} onStage={onStage}/>;
     if(strategy==="information_graphic")return <InformationGraphicControls article={article} articleId={articleId} projectSlug={projectSlug} context="hybrid" disabled={blocked} onBusy={setBusy} onStage={onStage}/>;
     if(strategy==="ai_generated_image")return <VisualDirectorImageControls article={article} articleId={articleId} projectSlug={projectSlug} context="hybrid" disabled={blocked} onBusy={setBusy} onStage={onStage}/>;
     if(strategy==="html_first")return <p className="mt-2 text-xs">기사의 원문 텍스트를 보조 정보로 유지합니다. 별도 이미지 자산은 만들지 않습니다.</p>;
