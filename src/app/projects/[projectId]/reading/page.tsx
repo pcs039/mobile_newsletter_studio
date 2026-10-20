@@ -7,6 +7,7 @@ import { isArticleProductionPattern } from "@/lib/article-production-pattern";
 import { ArticleWorkspaceTabs, type ArticleWorkspaceTab } from "@/components/article-workspace-tabs";
 import { ArticleCompositionEditor } from "@/components/design/article-composition-editor";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
+import { ArticleFontSettings } from "@/components/article-font-settings";
 import { ProjectArticleEditorForm } from "@/components/project-article-editor-form";
 import { StatusPill } from "@/components/status-pill";
 import {
@@ -128,9 +129,6 @@ export default async function ReadingEditorPage({
               key={selectedArticle?.id ?? "new"}
               article={selectedArticle}
               assets={assetData.assets}
-              fonts={fontData.fonts}
-              projectTitleFontAssetId={project?.titleFontAssetId}
-              projectBodyFontAssetId={project?.bodyFontAssetId}
               pages={pageImageData.pages}
               surveys={surveyData.surveys}
               projectPageCount={project?.pageCount ?? 0}
@@ -138,6 +136,11 @@ export default async function ReadingEditorPage({
               showReviewActions={false}
             />
           }
+          fontSettings={selectedArticle ? <ArticleFontSettings
+            key={selectedArticle.id} articleId={selectedArticle.id} fonts={fontData.fonts}
+            projectTitleFontAssetId={project?.titleFontAssetId} projectBodyFontAssetId={project?.bodyFontAssetId}
+            initialValues={{ title: selectedArticle.titleFontAssetId ?? "", body: selectedArticle.bodyFontAssetId ?? "", caption: selectedArticle.captionFontAssetId ?? "", button: selectedArticle.buttonFontAssetId ?? "" }}
+          /> : undefined}
           composition={
             selectedArticle && compositionData ? (
               <ArticleCompositionEditor

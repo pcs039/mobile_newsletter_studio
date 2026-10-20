@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, type ReactElement, cloneElement, useCallback, useEffect, useState } from "react";
 import { ArticleMobilePreviewModal } from "@/components/article-mobile-preview-modal";
+import type { ArticleFontSettingsWorkspaceProps } from "@/components/article-font-settings";
 import { StatusPill } from "@/components/status-pill";
 
 export type ArticleWorkspaceTab = "content" | "composition" | "review";
@@ -13,6 +14,7 @@ type ArticleWorkspaceTabsProps = {
   articleStatus: string;
   articleTitle: string;
   blockCount: number;
+  fontSettings?: ReactElement<ArticleFontSettingsWorkspaceProps>;
   composition: ReactNode;
   content: ReactNode;
   initialTab: ArticleWorkspaceTab;
@@ -42,6 +44,7 @@ export function ArticleWorkspaceTabs({
   articleTitle,
   blockCount,
   composition,
+  fontSettings,
   content,
   initialTab,
   linkCount,
@@ -52,6 +55,9 @@ export function ArticleWorkspaceTabs({
   const [activeTab, setActiveTab] = useState<ArticleWorkspaceTab>(articleId ? initialTab : "content");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [designUnsettled, setDesignUnsettled] = useState(false);
+  const [fontDirty, setFontDirty] = useState(false);
+  const [articleSaving, setArticleSaving] = useState(false);
+  const [articleError, setArticleError] = useState("");
   const closePreview = useCallback(() => setIsPreviewOpen(false), []);
 
   useEffect(() => {
@@ -59,8 +65,15 @@ export function ArticleWorkspaceTabs({
       const detail = (event as CustomEvent<{ articleId: string; unsettled: boolean }>).detail;
       if (detail?.articleId === articleId && typeof detail.unsettled === "boolean") setDesignUnsettled(detail.unsettled);
     }
+    function handleArticleSave(event: Event) {
+      const detail = (event as CustomEvent<{ articleId: string; saving: boolean; error: string }>).detail;
+      if (detail?.articleId !== articleId || typeof detail.saving !== "boolean" || typeof detail.error !== "string") return;
+      setArticleSaving(detail.saving);
+      setArticleError(detail.error);
+    }
+    window.addEventListener("article-editor-save-state", handleArticleSave);
     window.addEventListener("article-design-save-state", handleDesignState);
-    return () => window.removeEventListener("article-design-save-state", handleDesignState);
+    return () => { window.removeEventListener("article-editor-save-state", handleArticleSave); window.removeEventListener("article-design-save-state", handleDesignState); };
   }, [articleId]);
 
   useEffect(() => {
@@ -100,7 +113,7 @@ export function ArticleWorkspaceTabs({
 
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center 2xl:justify-end">
             <p className="text-xs font-semibold text-slate-500">저장본 · 블록 {blockCount}개 · 링크 {linkCount}개</p>
-            {designUnsettled ? <p className="max-w-sm text-xs font-bold text-amber-900">편집 중인 디자인 변경사항은 저장본 미리보기에 반영되지 않을 수 있습니다.</p> : null}
+            {designUnsettled || fontDirty || articleSaving ? <p className="max-w-sm text-xs font-bold text-amber-900">편집 중인 디자인 변경사항은 저장본 미리보기에 반영되지 않을 수 있습니다.</p> : null}
             <button
               type="button"
               disabled={!articleId}
@@ -157,7 +170,10 @@ export function ArticleWorkspaceTabs({
         aria-labelledby="article-workspace-tab-composition"
         hidden={activeTab !== "composition"}
       >
-        {composition}
+        <div key="article-font-settings">
+          {fontSettings ? cloneElement(fontSettings, { compositionUnsettled: designUnsettled, articleSaving, articleError, onDirtyChange: setFontDirty, onInvalidArticle: () => selectTab("content") }) : null}
+        </div>
+        <div key="article-composition">{composition}</div>
       </div>
       <div
         id="article-workspace-panel-review"
@@ -169,7 +185,7 @@ export function ArticleWorkspaceTabs({
       </div>
 
       {articleId ? (
-        <ArticleMobilePreviewModal isOpen={isPreviewOpen} onClose={closePreview} previewHref={previewHref} designUnsettled={designUnsettled} articleIds={articleIds} />
+        <ArticleMobilePreviewModal isOpen={isPreviewOpen} onClose={closePreview} previewHref={previewHref} designUnsettled={designUnsettled || fontDirty || articleSaving} articleIds={articleIds} />
       ) : null}
     </section>
   );

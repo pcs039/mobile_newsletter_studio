@@ -70,3 +70,9 @@ test('article transition remount isolates field state; reader CSS contract uncha
  const css=loader()('src/lib/font-css.ts');assert.equal(css.getFontAssetById(fonts,'bold').cssFamily,'Nanum');assert.match(css.getFontFaceCss(fonts),/font-weight: 700/);
  assert.equal(css.getFontAssetById([{...base,id:'off',isActive:false}],'off'),null);
 });
+test('compact mode preserves one named input, starts closed and keeps choice through collapse',()=>{
+ let changed;const h=harness({compact:true,form:'article-editor-a',defaultValue:'bold',onValueChange:v=>changed=v});let t=h.render();
+ assert.equal(nodes(t,e=>e.type==='input'&&e.props.name==='titleFontAssetId').length,1);assert.equal(nodes(t,e=>e.props.name==='titleFontAssetId')[0].props.form,'article-editor-a');assert.equal(nodes(t,e=>e.type==='details')[0].props.open,undefined);
+ nodes(t,e=>e.type==='select')[0].props.onChange({target:{value:'regular'}});assert.equal(changed,'regular');t=h.render();nodes(t,e=>e.type==='details')[0].props.onToggle({currentTarget:{open:false}});
+ assert.equal(nodes(h.render(),e=>e.props.name==='titleFontAssetId')[0].props.value,'regular');
+});
