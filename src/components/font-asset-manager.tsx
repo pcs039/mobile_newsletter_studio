@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FontAsset } from "@/lib/newsletter-repository";
+import { FontLibraryList } from "@/components/font-library-list";
 import { FontBatchUpload } from "@/components/font-batch-upload";
 
 type SubmitState =
@@ -19,12 +20,6 @@ type PackageUploadResult = {
   message?: string;
 };
 
-function formatLicense(font: FontAsset) {
-  return [font.licenseType, font.commercialAllowed ? "상업 사용 가능" : "상업 사용 확인 필요", font.webfontAllowed ? "웹폰트 허용" : "웹폰트 미허용"]
-    .filter(Boolean)
-    .join(" · ");
-}
-
 export function FontAssetManager({ fonts }: { fonts: FontAsset[] }) {
   const router = useRouter();
   const [submitState, setSubmitState] = useState<SubmitState>({
@@ -33,25 +28,6 @@ export function FontAssetManager({ fonts }: { fonts: FontAsset[] }) {
   });
   const [updatingFontId, setUpdatingFontId] = useState("");
   const [packageResult, setPackageResult] = useState<PackageUploadResult | null>(null);
-  const familyGroups = Array.from(
-    fonts
-      .filter((font) => font.familyId)
-      .reduce((groups, font) => {
-        const current = groups.get(font.familyId) ?? [];
-
-        groups.set(font.familyId, [...current, font]);
-
-        return groups;
-      }, new Map<string, FontAsset[]>()),
-  )
-    .map(([familyId, familyFonts]) => ({
-      familyId,
-      fonts: familyFonts.sort((first, second) => Number(first.weight) - Number(second.weight) || first.style.localeCompare(second.style)),
-      representative: familyFonts[0],
-    }))
-    .sort((first, second) => first.representative.name.localeCompare(second.representative.name, "ko"));
-  const legacyFonts = fonts.filter((font) => !font.familyId);
-
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -149,108 +125,7 @@ export function FontAssetManager({ fonts }: { fonts: FontAsset[] }) {
 
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">Font Library</p>
-            <h2 className="mt-1 text-xl font-black text-[#092046]">등록된 폰트</h2>
-          </div>
-          <span className="rounded-full bg-[#eaf2ff] px-3 py-1 text-xs font-black text-[#184a88]">
-            패밀리 {familyGroups.length}개 · 단일 {legacyFonts.length}개
-          </span>
-        </div>
-
-        <div className="mt-5 space-y-3">
-          {fonts.length > 0 ? (
-            <>
-              {familyGroups.map(({ familyId, fonts: familyFonts, representative }) => (
-                <article key={familyId} className="rounded-lg border border-[#b8d7ff] bg-[#f7fbff] p-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0">
-                      <p className="text-base font-black text-[#092046]">{representative.name}</p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">{formatLicense(representative)}</p>
-                      <p className="mt-2 text-xs font-bold text-[#184a88]">
-                        폰트 패밀리 · {familyFonts.length}개 파일 ·{" "}
-                        {familyFonts.map((font) => `${font.weight}${font.style === "italic" ? "i" : ""}`).join(", ")}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-wrap items-center gap-2">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-black ${
-                          representative.familyIsActive && representative.familyWebfontAllowed
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-slate-200 text-slate-600"
-                        }`}
-                      >
-                        {representative.familyIsActive && representative.familyWebfontAllowed ? "사용 가능" : "비활성"}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={!representative.familyWebfontAllowed || updatingFontId === familyId}
-                        onClick={() => updateFamilyActive(familyId, !representative.familyIsActive)}
-                        className="dd-btn dd-btn-secondary dd-btn-sm"
-                      >
-                        {representative.familyIsActive ? "패밀리 비활성화" : "패밀리 활성화"}
-                      </button>
-                    </div>
-                  </div>
-                  <p
-                    className="mt-4 rounded-lg bg-white px-4 py-3 text-xl font-black text-[#092046]"
-                    style={{ fontFamily: representative.familyIsActive ? `"${representative.cssFamily}", sans-serif` : undefined }}
-                  >
-                    가나다라마바사 ABC 123 <span className="font-normal">Regular</span> <span className="font-bold">Bold</span>
-                  </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {familyFonts.map((font) => (
-                      <p key={font.id} className="rounded-md bg-white px-3 py-2 text-xs font-bold text-slate-600">
-                        {font.sourceFileName || font.filePath.split("/").pop()} · {font.weight} · {font.style}
-                      </p>
-                    ))}
-                  </div>
-                </article>
-              ))}
-              {legacyFonts.map((font) => (
-                <article key={font.id} className="rounded-lg border border-slate-200 bg-[#f8fbff] p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-base font-black text-[#092046]">{font.name}</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">{formatLicense(font)}</p>
-                    <p className="mt-2 break-all text-xs font-semibold text-slate-500">{font.filePath}</p>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-black ${
-                        font.isActive && font.webfontAllowed
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-slate-200 text-slate-600"
-                      }`}
-                    >
-                      {font.isActive && font.webfontAllowed ? "사용 가능" : "비활성"}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={!font.webfontAllowed || updatingFontId === font.id}
-                      onClick={() => updateActive(font, !font.isActive)}
-                      className="dd-btn dd-btn-secondary dd-btn-sm"
-                    >
-                      {font.isActive ? "비활성화" : "활성화"}
-                    </button>
-                  </div>
-                </div>
-                <p className="mt-4 rounded-lg bg-white px-4 py-3 text-xl font-black text-[#092046]" style={{ fontFamily: font.isActive ? `"${font.cssFamily}", sans-serif` : undefined }}>
-                  가나다라마바사 ABC 123
-                </p>
-                </article>
-              ))}
-            </>
-          ) : (
-            <div className="rounded-lg border border-dashed border-[#b8d7ff] bg-[#f7fbff] px-4 py-8 text-center">
-              <p className="text-sm font-black text-[#092046]">등록된 폰트가 없습니다.</p>
-              <p className="mt-2 text-xs font-semibold text-slate-500">오른쪽 업로드 영역에서 폰트를 추가하세요.</p>
-            </div>
-          )}
-        </div>
-      </section>
+      <FontLibraryList fonts={fonts} updatingFontId={updatingFontId} onAssetActive={(font, active) => void updateActive(font, active)} onFamilyActive={(id, active) => void updateFamilyActive(id, active)} />
 
       <aside className="space-y-5">
         <FontBatchUpload />
@@ -310,9 +185,11 @@ export function FontAssetManager({ fonts }: { fonts: FontAsset[] }) {
           </button>
           {packageResult ? (
             <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
-              <p>{packageResult.family.displayName} 등록 완료</p>
+              <p>{packageResult.family.displayName} · 폰트 {packageResult.fonts.length}개 등록 완료</p>
+              <details className="mt-2"><summary className="cursor-pointer">등록 결과 상세</summary>
               <p className="mt-2">폰트: {packageResult.fonts.map((font) => `${font.fileName}(${font.weight}/${font.style})`).join(", ")}</p>
               <p className="mt-1">라이선스 문서: {packageResult.licenses.length > 0 ? packageResult.licenses.map((file) => file.fileName).join(", ") : "없음"}</p>
+              </details>
             </div>
           ) : null}
         </form>
