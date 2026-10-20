@@ -1,4 +1,5 @@
 "use client";
+import type { InstitutionPlacementLink } from "@/lib/institution-asset-placement";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ArticlePatternRecommendation } from "@/lib/article-pattern-recommendation";
 import type { ArticleDesignDraft } from "@/lib/article-design-draft";
@@ -18,7 +19,8 @@ import { VisualDirectorImageControls } from "@/components/design/visual-director
 import { ArticleVisualDirectorResult } from "@/components/design/article-visual-director-result";
 
 type Proposal = Pick<ArticleDesignDraft, "pattern" | "changes" | "preserved" | "placements"> & { confirmation: string };
-export function ArticleDesignDraftControls({ projectSlug, articleId, article, disabled, composition, onApplied, institutionVisualAvailable = false }: {
+export function ArticleDesignDraftControls({ projectSlug, articleId, article, disabled, composition, onApplied, institutionVisualAvailable = false, institutionPlacement }: {
+  institutionPlacement?: InstitutionPlacementLink;
   article: VisualDirectorArticle;
   institutionVisualAvailable?: boolean;
   projectSlug: string; articleId: string; disabled: boolean; composition: ProjectArticleComposition;
@@ -73,8 +75,8 @@ export function ArticleDesignDraftControls({ projectSlug, articleId, article, di
   }
   return <div className="mt-3 min-w-0 space-y-3 [overflow-wrap:anywhere]">
     <ArticleVisualDirectorResult result={visualDirector}>
-      <HybridVisualControls article={article} articleId={articleId} projectSlug={projectSlug} disabled={disabled||busy||assetBusy}/>
-      {visualDirector.primaryStrategy === "institution_asset" && visualDirector.needsRealPhoto ? <InstitutionAssetMatchControls key={JSON.stringify([projectSlug,articleId,fullLayoutSourceVersion(article)])} article={article} articleId={articleId} projectSlug={projectSlug} disabled={disabled||busy||assetBusy}/> : null}
+      <HybridVisualControls institutionPlacement={institutionPlacement} article={article} articleId={articleId} projectSlug={projectSlug} disabled={disabled||busy||assetBusy}/>
+      {visualDirector.primaryStrategy === "institution_asset" && visualDirector.needsRealPhoto ? <InstitutionAssetMatchControls institutionPlacement={institutionPlacement} key={JSON.stringify([projectSlug,articleId,fullLayoutSourceVersion(article)])} article={article} articleId={articleId} projectSlug={projectSlug} disabled={disabled||busy||assetBusy}/> : null}
       {visualDirector.primaryStrategy==="information_graphic"&&visualDirector.needsInformationGraphic?<InformationGraphicControls key={JSON.stringify([projectSlug,articleId,fullLayoutSourceVersion(article)])} article={article} articleId={articleId} projectSlug={projectSlug} disabled={disabled||busy||assetBusy} onBusy={setAssetBusy}/>:null}
       <VisualDirectorImageControls key={JSON.stringify([projectSlug,articleId,fullLayoutSourceVersion(article)])} projectSlug={projectSlug} articleId={articleId} article={article} disabled={disabled||busy} onBusy={setAssetBusy}/>
     </ArticleVisualDirectorResult>

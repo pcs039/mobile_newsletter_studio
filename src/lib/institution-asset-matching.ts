@@ -99,7 +99,7 @@ export function scoreInstitutionAsset(spec:InstitutionAssetMatchSpec,a:Instituti
     }
   }
   const scores={subjectMatch:exact?45:0,assetKindMatch:20,contextMatch:Math.min(10,overlap(spec.contextTerms,text)*2),locationMatch:Math.min(8,overlap(spec.locationTerms,text)*4),timeMatch:Math.min(8,overlap(spec.timeTerms,text)*4),usageTagMatch:metadata?.usageTags?.includes(spec.subjectType==="person"?"interview":spec.subjectType==="event"?"event":"culture")?5:0,recencyBonus:0};
-  const warnings=["대상·촬영 시점·회차와 저작권·초상권을 사람이 확인하세요.",...(a.approvalStatus==="draft"?["미승인 자산입니다. 사용 전에 자산 승인이 필요합니다."]:[]),...(spec.subjectType==="event"&&!assetTimes.length?["촬영 시점·행사 회차 정보가 없습니다."]:[])];
+  const warnings=["대상·촬영 시점·회차와 저작권·초상권을 사람이 확인하세요.",...(a.approvalStatus==="draft"?["미승인 자산입니다. 편집 배치는 가능하지만 공개 표시에는 자산 승인이 필요합니다."]:[]),...(spec.subjectType==="event"&&!assetTimes.length?["촬영 시점·행사 회차 정보가 없습니다."]:[])];
   return {assetId:a.id,name:clean(a.name),assetType:a.assetType,kind,approvalStatus:a.approvalStatus as "draft"|"approved",score:Math.min(1,Object.values(scores).reduce((s,n)=>s+n,0)/100),exactSubjectMatch:exact,
     scores,reasons:[exact?"기사에 명시된 대상명과 자산 설명이 일치합니다.":"기사 장소와 관련된 사진 후보입니다.",`${institutionAssetKindLabels[kind]} 유형이 기사에 적합합니다.`,...(scores.locationMatch?["장소 정보가 일치합니다."]:[]),...(scores.timeMatch?["기사의 시점 정보가 일치합니다."]:[])],warnings};
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { InstitutionAssetPlacementConfirm } from "@/components/design/institution-asset-placement-confirm";
+import { institutionAssetPlacementSlots } from "@/lib/institution-asset-placement";
 import { ArticleCanvaTemplates } from "@/components/design/article-canva-templates";
 import { ArticleProductionPatternControls } from "@/components/design/article-production-pattern-controls";
 import { ArticleTextDesignControls } from "@/components/design/article-text-design-controls";
@@ -612,6 +614,7 @@ function ArticleCompositionEditorSession({
 }: ArticleCompositionEditorProps) {
   const saveState = useCompositionSaveState(initialComposition, article.id);
   const { composition } = saveState;
+  const [institutionAssetId, setInstitutionAssetId] = useState<string | null>(null);
   const [recommendationApplied, setRecommendationApplied] = useState(false);
   const [busyKey, setBusyKey] = useState("");
   const [notice, setNotice] = useState<Notice>(null);
@@ -667,6 +670,7 @@ function ArticleCompositionEditorSession({
     if (!result) return;
     if (key === "production-pattern") setRecommendationApplied(true);
     if (key === "production-pattern") setNotice({ kind: "success", message: result.message ?? "제작 패턴을 저장했습니다." });
+    return result;
   }
 
   async function createComposition() {
@@ -680,7 +684,7 @@ function ArticleCompositionEditorSession({
       ? 0
       : placements.reduce((highest, placement) => Math.max(highest, placement.sortOrder), -1) + 1;
 
-    await mutate(
+    return await mutate(
       "POST",
       {
         action: "add_placement",
@@ -900,10 +904,20 @@ function ArticleCompositionEditorSession({
         <div className="min-w-0">
       <ArticleCanvaTemplates key={`${article.id}:${String(composition.settings.productionPattern ?? "manual")}`} projectSlug={projectSlug} articleId={article.id} pattern={composition.settings.productionPattern} />
       <ArticleProductionPatternControls
+        institutionPlacement={{ assetIds: assets.filter(asset => institutionAssetPlacementSlots(asset, composition.projectId).length > 0).map(asset => asset.id), onRequest: setInstitutionAssetId }}
         institutionVisualAvailable={assets.some(asset => asset.isActive && asset.approvalStatus === "approved" && asset.metadata?.source === "institution" && ["background", "illustration", "card_frame", "banner"].includes(asset.assetType))} article={article} key={String(composition.settings.productionPattern ?? "manual")} pattern={composition.settings.productionPattern}
         composition={composition} onDraftApplied={value => { saveState.acceptApplied(value); setRecommendationApplied(true); }}
         recommendedPattern={recommendationApplied ? undefined : recommendedPattern} projectSlug={projectSlug} articleId={article.id} textDesign={composition.settings.textDesign} disabled={isBusy || saveState.hasUnsaved}
         onApply={productionPattern => void mutate("PATCH", { action: "apply_production_pattern", projectSlug, articleId: article.id, compositionId: composition.id, productionPattern, textDesign: composition.settings.textDesign ?? {} }, "production-pattern")} />
+
+          {institutionAssetId ? <InstitutionAssetPlacementConfirm key={`${article.id}:${institutionAssetId}`} assetId={institutionAssetId} assets={assets} composition={composition} disabled={isBusy || saveState.hasUnsaved}
+            onClose={() => setInstitutionAssetId(null)} onApply={async (slot, assetId) => {
+              const asset = assets.find(a => a.id === assetId);
+              if (isBusy || saveState.hasUnsaved || !institutionAssetPlacementSlots(asset, composition.projectId).includes(slot)) return false;
+              if (composition.assets.some(p => p.slot === slot && p.assetId === assetId)) return true;
+              selectSlot(slot);
+              return !!(await selectAsset(slot, assetId));
+            }} /> : null}
 
           <details className="mt-5 min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <summary className="cursor-pointer text-sm font-black text-[#092046]">2. 세부 디자인 조정

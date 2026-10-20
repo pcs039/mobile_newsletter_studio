@@ -1,4 +1,5 @@
 "use client";
+import type { InstitutionPlacementLink } from "@/lib/institution-asset-placement";
 import { hybridStrategyAllowed, type HybridStage } from "@/lib/hybrid-visual-plan";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -6,14 +7,14 @@ import { buildVisualDirectorResult, type VisualDirectorArticle } from "@/lib/art
 import { institutionArticleSnapshot, institutionAssetKindLabels, type InstitutionAssetRecommendation } from "@/lib/institution-asset-matching";
 
 type MatchResult=Omit<InstitutionAssetRecommendation,"candidates"> & {matchKey:string;candidates:Array<InstitutionAssetRecommendation["candidates"][number]&{previewHref:string}>};
-type Props={article:VisualDirectorArticle;articleId:string;projectSlug:string;disabled:boolean;context?:"hybrid";onStage?:(stage:HybridStage)=>void};
+type Props={institutionPlacement?:InstitutionPlacementLink;article:VisualDirectorArticle;articleId:string;projectSlug:string;disabled:boolean;context?:"hybrid";onStage?:(stage:HybridStage)=>void};
 export function InstitutionAssetMatchControls(props:Props) {
   const director=buildVisualDirectorResult(props.article);
   if(!props.articleId||!(director.primaryStrategy==="institution_asset"||(props.context==="hybrid"&&hybridStrategyAllowed(props.article,"institution_asset")))||!director.needsRealPhoto)return null;
   const sourceKey=JSON.stringify([props.projectSlug,props.articleId,institutionArticleSnapshot(props.article)]);
   return <InstitutionAssetCandidates key={sourceKey} {...props}/>;
 }
-function InstitutionAssetCandidates({articleId,projectSlug,disabled,context,onStage}:Props) {
+function InstitutionAssetCandidates({articleId,projectSlug,disabled,context,onStage,institutionPlacement}:Props) {
   const [result,setResult]=useState<MatchResult|null>(null),[error,setError]=useState(""),[loading,setLoading]=useState(true),[selected,setSelected]=useState<string|null>(null),[refresh,setRefresh]=useState(0);
   const previousKey=useRef(""),selectedRef=useRef<string|null>(null);
   useEffect(()=>{
@@ -33,6 +34,7 @@ function InstitutionAssetCandidates({articleId,projectSlug,disabled,context,onSt
       <h5 className="mt-2 font-bold">{a.name}</h5><p className="text-xs">{institutionAssetKindLabels[a.kind]} · {a.approvalStatus==="approved"?"승인됨":"승인 필요"} · 관련도 {Math.round(a.score*100)}점</p>
       <ul className="mt-2 list-disc pl-4 text-xs">{a.reasons.map(r=><li key={r}>{r}</li>)}</ul><ul className="mt-2 text-xs text-amber-900">{a.warnings.map(w=><li key={w}>{w}</li>)}</ul>
       <button type="button" aria-pressed={selected===a.assetId} disabled={disabled||loading} onClick={()=>{setSelected(a.assetId);selectedRef.current=a.assetId;onStage?.({status:"completed",assetId:a.assetId,recommendationKey:result.matchKey});}} className="dd-btn dd-btn-secondary mt-2 max-w-full whitespace-normal">{selected===a.assetId?"선택됨":"이 자산 선택"}</button>
+      {selected===a.assetId&&institutionPlacement ? institutionPlacement.assetIds.includes(a.assetId) ? <button type="button" disabled={disabled||loading} onClick={()=>institutionPlacement.onRequest(a.assetId)} className="dd-btn dd-btn-secondary mt-2 max-w-full whitespace-normal">배치 위치 확인</button> : <p className="mt-2 text-xs text-amber-900">이 후보는 현재 공개 지원 배치와 호환되는 웹용 제작 자산이 아닙니다. 자산 관리에서 확인하세요.</p> : null}
     </article>)}</div>:null}
     {selected?<p className="mt-2 text-xs">확인 후보로 선택했습니다. 기사에는 적용되지 않았습니다.</p>:null}
     <p className="mt-2 text-xs">대상·촬영 시점·회차·사용 승인·저작권과 초상권은 사람이 최종 확인해야 합니다.</p>
