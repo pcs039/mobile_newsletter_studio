@@ -16,6 +16,7 @@ import type { ArticleAiDraft, ArticleAiPhotoApplyInput } from "@/lib/article-ai-
 import { getArticleContactPhoneStatus } from "@/lib/article-contact-phone";
 import { recommendedArticleInterestTags } from "@/lib/article-interest-tags";
 import { getArticlePublicInfoFieldGroup, normalizeArticlePublicInfoValue } from "@/lib/article-public-info-fields";
+import { createArticleSubmitGate } from "@/lib/article-submit-gate";
 import { articleEditorFormId } from "@/lib/article-editor-form-id";
 import { toDatetimeLocalValue, toIsoFromDatetimeLocal } from "@/lib/datetime-local";
 import type { ImportedWordArticle } from "@/lib/word-document-import";
@@ -703,6 +704,12 @@ export function ProjectArticleEditorForm({
 }: ProjectArticleEditorFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const submitGate = useRef(createArticleSubmitGate());
+  useEffect(() => {
+    const gate = submitGate.current;
+    gate.activate();
+    return () => gate.invalidate();
+  }, []);
   const [message, setMessage] = useState("");
   const savedArticleId = useSyncExternalStore(subscribeArticleSave, () => getSavedArticleId(projectSlug, article?.id), () => null);
   const [error, setError] = useState("");
@@ -1373,21 +1380,24 @@ export function ProjectArticleEditorForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submission = submitGate.current.begin();
+    if (!submission) return;
     setError("");
     setMessage("");
     setIsSaving(true);
     clearArticleSave();
 
-    const formData = new FormData(event.currentTarget);
     let savedArticle: { id: string; title: string } | null = null;
 
     try {
+      const formData = new FormData(event.currentTarget);
       savedArticle = await persistArticle(buildArticlePayload(formData));
     } finally {
-      setIsSaving(false);
+      if (submission.isCurrent()) setIsSaving(false);
+      submission.finish();
     }
 
-    if (!savedArticle) {
+    if (!submission.isCurrent() || !savedArticle) {
       return;
     }
 

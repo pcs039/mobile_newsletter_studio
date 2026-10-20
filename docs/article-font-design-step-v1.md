@@ -26,10 +26,10 @@
 
 ## 검증
 
-- 신규 6개 테스트 + 기존 관련 회귀(입력 소유권 이동에 맞춘 배선 테스트 갱신). 전체 482/482, TypeScript/lint/Webpack build/diff check. lint 기존 warning 3개, 신규 0개.
+- 신규 6개 테스트 + 기존 관련 회귀(입력 소유권 이동에 맞춘 배선 테스트 갱신). 전체 486/486, TypeScript/lint/Webpack build/diff check. lint 기존 warning 3개, 신규 0개.
 - 로컬 PR 코드 + Staging 연결로 기존 기사 `27fa46d7-cc52-450f-99a8-ba164dba8b19`를 사용했다. 작성→디자인→작성 이동, 네 named input이 기존 폼에 각각 한 번 연결됨을 실제 DOM에서 확인했다.
 - 작성 중 임시 문장과 제목 폰트를 디자인 저장 버튼으로 함께 저장해 DB 확인 후, 다음 저장에서 임시 본문을 원복했다. 본문/캡션/행동 버튼의 독립 변경과 버튼의 본문 상속도 저장·재진입 확인했다.
-- 최종 샘플 글꼴: 제목/본문 NanumMyeongjo, 캡션 NanumGothic, 행동 버튼은 본문 상속. 원래 본문·다른 기사·프로젝트 상태는 유지했다.
+- 최종 샘플 글꼴: 제목 NanumGothic / 본문 NanumMyeongjo, 캡션 NanumGothic, 행동 버튼은 본문 상속. 원래 본문·다른 기사·프로젝트 상태는 유지했다.
 - Composition 소제목 로컬 초안이 있을 때 글꼴 저장 disabled 및 안내 확인. 해당 Composition 초안은 저장하지 않고 reload로 폐기했다.
 - 제목 누락 시 API 저장 없이 작성 탭 복귀 확인. 실패 보존/다른 기사 이벤트 차단은 자동화 테스트로 검증했다.
 - 390/768/1440px overflow 0. 실제 저장본 iframe의 NanumMyeongjo CSS family 및 최대 글자 크기 확인. 공개 reader와 font-css 구현은 변경하지 않는다.
@@ -39,3 +39,13 @@
 ## 안전 범위
 
 Production 접근·DB/Storage write·migration·새 API·dependency·폰트 등록·외부 생성 API 호출 없음. Staging의 기사 저장만 기존 경로로 수행했으며 발행·승인·Composition 적용 계약은 변경하지 않았다. PR은 OPEN으로 유지하고 병합하지 않는다.
+
+## PR 최종 QA 보정
+
+- 같은 tick의 중복 제출을 동기 ticket으로 차단한다. article form unmount 때 세대를 무효화해 이전 요청의 늦은 응답이 저장 확인 상태나 router 이동을 실행하지 않게 했다. 효과 setup/cleanup/setup 후에도 이전 요청이 새 요청의 잠금을 해제할 수 없다.
+- 저장 중 workspace의 작성·디자인·검수 입력과 탭 전환을 잠근다. 기존 기사 저장 API, Composition queue, 서버 권한 검사는 그대로다.
+- 보정 회귀 4개를 추가했다. 전체 486/486, TS/lint/Webpack/diff check 통과. 신규 warning 0.
+- Staging 전용 빌드 + 로컬 QA 프록시에서 첫 저장을 DB 전달 전 503 처리했다. 본문 초안/글꼴 보존 후 최신 입력으로 명시 재시도했다. 더블클릭 포함 집계 2 POST 중 1건만 DB 전달(나머지 1건은 의도한 실패).
+- 이어 응답을 5초 지연한 별도 저장 중 기사 목록→다른 기사로 SPA 이동했다. 늦은 응답 뒤에도 다른 기사 및 그 로컬 초안이 유지됐다. 전체 집계 3 POST / 2 DB 전달 / 1 의도한 실패. 테스트 임시 문장은 DB에 남지 않았다.
+- 정상 저장 뒤 미저장 경고 해제, 다른 기사 ID/상속 격리, 실제 저장본 폰트·최대 글자 크기, 정상 세션 390/768/1440 overflow 0 및 console error/warning 0 확인. 의도한 503 실패의 브라우저 네트워크 오류는 정상 세션 결과와 구분했다.
+- Composition 미저장 상태 차단은 실제 UI로 검증했고 저장 중/실패·미확정 상태는 기존 hook의 hasUnsaved/isBusy와 workspace 회귀 테스트로 검증했다. 실제 Composition API 실패를 만들지는 않았다.

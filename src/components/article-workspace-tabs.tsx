@@ -139,7 +139,7 @@ export function ArticleWorkspaceTabs({
                 role="tab"
                 aria-controls={`article-workspace-panel-${tab.value}`}
                 aria-selected={isActive}
-                disabled={isDisabled}
+                disabled={isDisabled || articleSaving}
                 onClick={() => selectTab(tab.value)}
                 className={`min-h-11 rounded-lg px-4 py-2 text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-sky-100 ${
                   isActive
@@ -156,6 +156,7 @@ export function ArticleWorkspaceTabs({
         </div>
       </article>
 
+      <fieldset disabled={articleSaving} className="min-w-0">
       <div
         id="article-workspace-panel-content"
         role="tabpanel"
@@ -183,6 +184,8 @@ export function ArticleWorkspaceTabs({
       >
         {review}
       </div>
+
+      </fieldset>
 
       {articleId ? (
         <ArticleMobilePreviewModal isOpen={isPreviewOpen} onClose={closePreview} previewHref={previewHref} designUnsettled={designUnsettled || fontDirty || articleSaving} articleIds={articleIds} />
