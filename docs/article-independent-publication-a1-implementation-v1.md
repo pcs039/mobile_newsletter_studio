@@ -148,7 +148,7 @@ ARTICLE_PUBLICATION_SQL_RUNTIME=/absolute/path/to/isolated/node_modules \
 
 A1 PR은 OPEN으로 유지한다. 위 조건을 충족하기 전 원격 SQL 실행·공개 기능 활성화는 금지한다.
 
-## 실행 결과
+## 최초 구현 실행 결과
 
 - A1 실제 격리 PostgreSQL: **38/38**, 실패/skip 0.
 - 전체 기존+신규 테스트: **544/544**, 실패/skip 0. 기존 SQL 회귀에는 격리 PGlite도 사용했다.
@@ -156,3 +156,36 @@ A1 PR은 OPEN으로 유지한다. 위 조건을 충족하기 전 원격 SQL 실�
 - PR #244는 문서 3개만 merge commit으로 병합, 동일 SHA Production Ready/Latest/Current 확인.
 - 이슈 #245는 보정 증거·실제 업로드/브라우저 쓰기 E2E 미검증을 기록하고 completed 종료.
 - Production/원격 Staging DB·Storage·인증·환경변수 변경 0. PR #226/#229 및 기존 stash 2개 보존.
+
+## A1 최종 재검토 및 최소 보정
+
+검토 시작 head `7857fcd7147e4c3c796d6db65c609fd9e5de27d4`에서 다음을 재현했다.
+
+1. 신규 표의 직접 INSERT 검증은 article에 FOR KEY SHARE를 사용했다. 이 잠금은
+   project_id의 NO KEY UPDATE와 호환되므로, 프로젝트 이동과 신규 상태 INSERT가 둘 다
+   성공하여 소유권이 불일치할 수 있었다. 일반 service_role의 직접 table write는 기존 ACL로
+   이미 거부됐지만 DB 소유권 불변성의 방어 결함이다. 양방향 실제 연결 테스트에서 재현했다.
+2. preparation 만료를 now()와 비교하여 오래 열린 트랜잭션 시작 시각 기준으로 판정했다.
+   이미 만료된 후보의 finalize/transition이 통과하는 경우를 재현했다.
+3. source child의 project_id가 기사와 다를 때에도 문단을 포함할 수 있어, 이러한 불일치
+   데이터를 후보 전체 차단 조건에 추가했다. 다른 프로젝트의 문단을 보존하지 않는다.
+
+보정은 신규 validator의 FOR SHARE, clock_timestamp() 만료 비교, child 소속 검사로 제한했다.
+오래된 REPEATABLE READ snapshot이 잠금 대기 뒤 새 메타데이터를 못 보는 경우를 피하기 위해
+신규 RPC/신규 표 write 및 원본 article.project_id 이동은 READ COMMITTED만 지원하고 다른
+격리 수준은 PT409로 거부한다. 기존 일반 기사 저장·삭제 RPC 정의와 ACL은 그대로다.
+이 project_id 이동 제한은 원격 적용 전에 기존 운영 경로와 호환성 확인이 필요하다.
+
+SECURITY DEFINER의 search_path에 pg_temp를 마지막으로 명시했다. 신규 표는 public으로
+명시 참조한다. 임시 shadow table·위조 auth.role claim만으로 ACL이나 실행 가드를 통과하지
+못하는지 확인했다. service_role/owner를 신뢰 경계로 쓰며 superuser의 DDL·trigger 비활성화나
+Storage 관리자 키 오용까지 막는 보안 sandbox라고 주장하지 않는다. loopback DB 이름과
+테스트 GUC는 오적용 방어이며 원격 활성화·앱 인증의 대체물이 아니다.
+
+보정 후 실제 PostgreSQL **45/45**, 전체 **551/551**, 실패/skip 0.
+기존 삭제 RPC의 준비-only article/project 삭제와 고아 revision/ledger 보존,
+공개 이력 보호·소유권 경합·요청 재사용·미디어 차단·권한을 다시 확인했다.
+고아 정리는 여전히 미구현이며 임의 삭제하지 않는다. 원격 설치/Storage 변경도 수행하지 않았다.
+
+A2는 [snapshot·미디어 설계 및 테스트 계약](article-independent-publication-a2-contract-v1.md)에
+정리했다. A2 실행 코드·SQL·URL·UI는 이 PR에 없으며 실제 구현은 별도 브랜치·PR로 분리한다.

@@ -119,10 +119,13 @@ create index article_publication_preparations_article on public.newsletter_artic
 create index article_publication_media_preparation on public.newsletter_article_publication_media(preparation_id);
 
 create function public.article_publication_a1_guard() returns void
-language plpgsql security definer set search_path = pg_catalog, public as $$
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
 begin
   if coalesce(auth.role(), '') <> 'service_role' then
     raise exception 'service_role_required' using errcode = '42501';
+  end if;
+  if current_setting('transaction_isolation') <> 'read committed' then
+    raise exception 'article_publication_read_committed_required' using errcode = 'PT409';
   end if;
   if current_database() !~ '^mns_a1_[a-z0-9_]+$'
     or inet_server_addr() is null
@@ -138,7 +141,7 @@ language sql immutable strict set search_path = pg_catalog as $$
 $$;
 
 create function public.article_publication_owned_row() returns trigger
-language plpgsql set search_path = pg_catalog, public as $$
+language plpgsql set search_path = pg_catalog, public, pg_temp as $$
 declare actual_project uuid;
 begin
   if tg_op = 'UPDATE' and (new.article_id is distinct from old.article_id or new.project_id is distinct from old.project_id) then
@@ -159,8 +162,12 @@ begin
       raise exception 'article_publication_ownership_mismatch' using errcode = '23514';
     end if;
   end if;
-  -- KEY SHARE also makes direct INSERT race safely with article delete/move.
-  select project_id into actual_project from public.newsletter_articles where id = new.article_id for key share;
+  if current_setting('transaction_isolation') <> 'read committed' then
+    raise exception 'article_publication_read_committed_required' using errcode = 'PT409';
+  end if;
+  -- SHARE conflicts with project_id NO KEY UPDATE; KEY SHARE does not.
+  -- New writes and project moves require READ COMMITTED (see source guard).
+  select project_id into actual_project from public.newsletter_articles where id = new.article_id for share;
   if actual_project is distinct from new.project_id then
     raise exception 'article_publication_ownership_mismatch' using errcode = '23514';
   end if;
@@ -168,20 +175,27 @@ begin
 end $$;
 
 create function public.article_publication_immutable_row() returns trigger
-language plpgsql set search_path = pg_catalog, public as $$
+language plpgsql set search_path = pg_catalog, public, pg_temp as $$
 begin
   -- No cleanup/delete escape hatch in A1. Unpublished orphan candidates remain.
   raise exception 'article_publication_history_immutable' using errcode = '23514';
 end $$;
 
 create function public.article_publication_source_guard() returns trigger
-language plpgsql security definer set search_path = pg_catalog, public as $$
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
 begin
   if tg_op = 'DELETE' then
     if exists (select 1 from public.newsletter_article_publication_events where article_id = old.id) then
       raise exception 'article_publication_history_protected' using errcode = 'PT409';
     end if;
     return old;
+  end if;
+  -- An old REPEATABLE READ snapshot could miss metadata committed while this
+  -- UPDATE waited on SHARE. Fail closed instead of claiming all isolation
+  -- levels are covered. This restriction affects only project_id moves.
+  if new.project_id is distinct from old.project_id
+    and current_setting('transaction_isolation') <> 'read committed' then
+    raise exception 'article_publication_read_committed_required' using errcode = 'PT409';
   end if;
   if new.project_id is distinct from old.project_id and (
     exists (select 1 from public.newsletter_article_publications where article_id = old.id)
@@ -218,7 +232,7 @@ create trigger article_publication_event_immutable before update or delete on pu
 create function public.article_publication_lock_authorize(
   p_project uuid, p_article uuid, p_actor text, p_name text, p_role text, p_assignee text,
   p_allow_inactive boolean default false
-) returns void language plpgsql security definer set search_path = pg_catalog, public as $$
+) returns void language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
 declare p public.newsletter_projects; a public.newsletter_articles;
 begin
   perform public.article_publication_a1_guard();
@@ -248,7 +262,7 @@ end $$;
 -- that do not update article.updated_at. Raw dependency hashes are private;
 -- only allowlisted text is retained. No signed/provider/auth payload is copied.
 create function public.article_publication_capture(p_project uuid, p_article uuid) returns jsonb
-language sql stable security definer set search_path = pg_catalog, public set timezone = 'UTC' as $$
+language sql stable security definer set search_path = pg_catalog, public, pg_temp set timezone = 'UTC' as $$
 with source as (
   select to_jsonb(a) article,
     (select jsonb_object_agg(key, value) from jsonb_each(to_jsonb(p))
@@ -287,6 +301,8 @@ with source as (
     or article->>'survey_id' is not null or article->>'page_id' is not null
     or (article->'public_info' is not null and article->'public_info' <> 'null'
       and jsonb_typeof(article->'public_info') <> 'object')
+    or exists (select 1 from jsonb_array_elements(blocks || links) child
+      where child->>'project_id' is distinct from article->>'project_id')
     or exists(select 1 from (select * from jsonb_each(article)
       union all select * from jsonb_each(coalesce(project, '{}'))) e
       where (e.key like '%asset_id' or e.key like '%audio%' or e.key like '%image%' or e.key like '%tts%')
@@ -310,7 +326,7 @@ $$;
 create function public.prepare_article_publication(
   p_project uuid, p_article uuid, p_actor text, p_name text, p_role text, p_assignee text,
   p_intent text, p_preparation_key uuid, p_historical_revision uuid default null
-) returns jsonb language plpgsql security definer set search_path = pg_catalog, public as $$
+) returns jsonb language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
 declare s public.newsletter_article_publications; prep public.newsletter_article_publication_preparations;
   capture jsonb; request_hash text; selection text;
 begin
@@ -326,7 +342,7 @@ begin
   select * into prep from public.newsletter_article_publication_preparations where preparation_key = p_preparation_key for update;
   if found then
     if prep.request_hash <> request_hash then raise exception 'article_publication_key_conflict' using errcode = 'PT409'; end if;
-    if prep.expires_at <= now() or prep.status = 'committed' then raise exception 'article_publication_preparation_expired' using errcode = 'PT409'; end if;
+    if prep.expires_at <= clock_timestamp() or prep.status = 'committed' then raise exception 'article_publication_preparation_expired' using errcode = 'PT409'; end if;
     return jsonb_build_object('preparationId',prep.id,'sourceHash',prep.source_hash,'revisionId',prep.revision_id,
       'expectedStateVersion',prep.expected_state_version,'status',prep.status,'blockers',prep.blockers,'duplicate',true);
   end if;
@@ -353,7 +369,7 @@ end $$;
 
 create function public.finalize_article_publication_preparation(
   p_project uuid, p_article uuid, p_actor text, p_name text, p_role text, p_assignee text, p_preparation uuid
-) returns jsonb language plpgsql security definer set search_path = pg_catalog, public as $$
+) returns jsonb language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
 declare prep public.newsletter_article_publication_preparations; capture jsonb; revision uuid; version bigint;
 begin
   perform public.article_publication_lock_authorize(p_project,p_article,p_actor,p_name,p_role,p_assignee);
@@ -361,7 +377,7 @@ begin
   select * into prep from public.newsletter_article_publication_preparations
     where id = p_preparation and article_id = p_article and project_id = p_project and actor_id = p_actor for update;
   if not found then raise exception 'article_publication_not_found' using errcode = 'PT404'; end if;
-  if prep.expires_at <= now() or prep.status = 'committed' then raise exception 'article_publication_preparation_expired' using errcode = 'PT409'; end if;
+  if prep.expires_at <= clock_timestamp() or prep.status = 'committed' then raise exception 'article_publication_preparation_expired' using errcode = 'PT409'; end if;
   if prep.expected_state_version <> version then raise exception 'article_publication_stale' using errcode = 'PT409'; end if;
   capture := public.article_publication_capture(p_project,p_article);
   if prep.selection = 'current_draft' and capture->>'sourceHash' <> prep.source_hash then
@@ -388,7 +404,7 @@ create function public.transition_article_publication_atomic(
   p_project uuid, p_article uuid, p_actor text, p_name text, p_role text, p_assignee text,
   p_request_key uuid, p_action text, p_expected_version bigint, p_preparation uuid,
   p_expected_source_hash text, p_confirmed boolean
-) returns jsonb language plpgsql security definer set search_path = pg_catalog, public as $$
+) returns jsonb language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
 declare s public.newsletter_article_publications; prep public.newsletter_article_publication_preparations;
   event public.newsletter_article_publication_events; r public.newsletter_article_publication_revisions;
   request_hash text; capture jsonb; result jsonb; new_status text;
@@ -420,7 +436,7 @@ begin
     select * into prep from public.newsletter_article_publication_preparations
       where id = p_preparation and article_id = p_article and project_id = p_project and actor_id = p_actor for update;
     if not found then raise exception 'article_publication_not_found' using errcode = 'PT404'; end if;
-    if prep.status <> 'ready' or prep.expires_at <= now() or prep.intent <> p_action
+    if prep.status <> 'ready' or prep.expires_at <= clock_timestamp() or prep.intent <> p_action
       or prep.expected_state_version <> s.state_version or prep.source_hash <> p_expected_source_hash then
       raise exception 'article_publication_preparation_conflict' using errcode = 'PT409';
     end if;

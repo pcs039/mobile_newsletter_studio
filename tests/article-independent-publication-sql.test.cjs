@@ -400,6 +400,84 @@ test('A1 actual PostgreSQL: isolated state, ownership, immutable receipts and mu
       await db.query("select respond_client_review_atomic($1,'changes_requested','검수 회귀')",['a'.repeat(64)]);
       assert.equal((await db.query('select status from newsletter_projects where id=$1',[project])).rows[0].status,'published');
     });
+    await t.test('ownership move-first: direct new state INSERT waits and rejects changed project', async () => {
+      const a=await article();await second.query('begin');
+      await second.query('update newsletter_articles set project_id=$2 where id=$1',[a,foreignProject]);
+      const pending=db.query('insert into newsletter_article_publications(article_id,project_id) values($1,$2)',[a,project])
+        .then(value=>({value}),error=>({error}));
+      let waitError;
+      try{await waitForLock(db.processID);}catch(e){waitError=e;}finally{await second.query('commit');}
+      const result=await pending;
+      assert.equal(result.error?.code,'23514','changed owner must not accept old-project metadata');
+      assert.ifError(waitError);assert.equal(await state(a),undefined);
+    });
+    await t.test('ownership insert-first: project move waits and sees committed new state', async () => {
+      const a=await article();await db.query('begin');
+      await db.query('insert into newsletter_article_publications(article_id,project_id) values($1,$2)',[a,project]);
+      const pending=second.query('update newsletter_articles set project_id=$2 where id=$1',[a,foreignProject])
+        .then(value=>({value}),error=>({error}));
+      let waitError;
+      try{await waitForLock(second.processID);}catch(e){waitError=e;}finally{await db.query('commit');}
+      const result=await pending;assert.equal(result.error?.code,'PT409','new state must protect source ownership');assert.ifError(waitError);
+      assert.equal((await db.query('select project_id from newsletter_articles where id=$1',[a])).rows[0].project_id,project);
+    });
+    await t.test('preparation expiry uses wall clock inside an older transaction', async () => {
+      for(const operation of ['finalize','transition']){
+        const a=await article(),p=await ready(a);await db.query('begin');
+        const expires=(await db.query("select (transaction_timestamp()+interval '1 microsecond')::text expires")).rows[0].expires;
+        await second.query('update newsletter_article_publication_preparations set expires_at=$2 where id=$1',[p.preparationId,expires]);
+        try{
+          assert((await db.query('select $1::timestamptz < clock_timestamp() expired',[expires])).rows[0].expired);
+          await assert.rejects(operation==='finalize'?finalize(a,p):transition(request(a,p)),conflict(operation==='finalize'?'article_publication_preparation_expired':'article_publication_preparation_conflict'));
+        }finally{await db.query('rollback');}
+        assert.equal(await count(a),0);
+      }
+    });
+    await t.test('repeatable-read cannot bypass ownership validation with an old snapshot', async () => {
+      const a=await article();await db.query('begin isolation level repeatable read');
+      try{
+        await assert.rejects(prepare(a),conflict('article_publication_read_committed_required'));
+      }finally{await db.query('rollback');}
+      await db.query('begin isolation level repeatable read');
+      try{
+        await assert.rejects(db.query('insert into newsletter_article_publications(article_id,project_id) values($1,$2)',[a,project]),conflict('article_publication_read_committed_required'));
+      }finally{await db.query('rollback');}
+      await db.query('begin isolation level repeatable read');
+      try{
+        await assert.rejects(db.query('update newsletter_articles set project_id=$2 where id=$1',[a,foreignProject]),conflict('article_publication_read_committed_required'));
+      }finally{await db.query('rollback');}
+      assert.equal(await state(a),undefined);
+    });
+    await t.test('temporary shadow tables and forged role claim do not bypass ACL or isolated guard', async () => {
+      const a=await article();
+      await db.query("create temp table newsletter_articles(id uuid,project_id uuid);create temp table newsletter_projects(id uuid,assignee_name text)");
+      try{
+        const p=await ready(a);assert(p.revisionId);
+        await db.query('set role anon');
+        try{await assert.rejects(prepare(a),e=>e.code==='42501');}
+        finally{await db.query('reset role');}
+        const c=await connect('postgres');
+        assert.equal((await c.query("select current_setting('newsletter.a1_isolated_test') s")).rows[0].s,'on');
+        const helper=(await db.query("select pg_get_functiondef('article_publication_a1_guard()'::regprocedure) definition")).rows[0].definition;
+        await c.query('create schema auth;create function auth.role() returns text language sql as $$select current_setting(\'request.jwt.claim.role\',true)$$');
+        await c.query(helper);await assert.rejects(c.query('select public.article_publication_a1_guard()'),e=>e.code==='42501');
+      }finally{await db.query('drop table pg_temp.newsletter_articles;drop table pg_temp.newsletter_projects');}
+    });
+    await t.test('source child from another project blocks candidate instead of entering snapshot', async () => {
+      const a=await article();await db.query('update newsletter_content_blocks set project_id=$2 where article_id=$1',[a,foreignProject]);
+      const p=await prepare(a);assert(p.blockers.length);
+      await assert.rejects(finalize(a,p),conflict('article_publication_media_not_ready'));assert.equal(await count(a),0);
+    });
+    await t.test('preparation-only project delete preserves orphan revision and pending ledger', async () => {
+      const p=randomUUID();await db.query("insert into newsletter_projects(id,assignee_name) values($1,'writer')",[p]);
+      const a=await article(p),prep=await prepare(a,'publish',null,db,{project:p});
+      const revision=(await db.query("select finalize_article_publication_preparation($1,$2,'writer','writer','user','writer',$3) r",[p,a,prep.preparationId])).rows[0].r.revisionId;
+      const media=(await db.query("insert into newsletter_article_publication_media(article_id,project_id,preparation_id,role,source_descriptor) values($1,$2,$3,'pending','{}') returning id",[a,p,prep.preparationId])).rows[0].id;
+      await db.query('delete from newsletter_projects where id=$1',[p]);
+      assert.equal((await db.query('select count(*)::int n from newsletter_article_publication_revisions where id=$1',[revision])).rows[0].n,1);
+      const ledger=(await db.query('select * from newsletter_article_publication_media where id=$1',[media])).rows[0];
+      assert.equal(ledger.preparation_id,null);assert.equal(ledger.project_id,p);assert.equal(ledger.status,'pending');
+    });
   } finally {
     await Promise.all(clients.map(async c=>{try{await c.query('rollback');await c.end();}catch{}}));
     await server.stop();
