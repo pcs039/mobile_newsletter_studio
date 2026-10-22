@@ -7,8 +7,8 @@ const {publicationCanonical,publicationHash,publicationRenderHash}=load('src/lib
 const {buildArticlePublicationSnapshot}=load('src/lib/article-publication-snapshot.ts');
 test('A2 actual PostgreSQL: snapshot, private preservation, authorization, fault and concurrency contracts',{skip:!runtime,timeout:120000},async t=>{
  const h=await require('./article-publication-a2-postgres.cjs')(runtime),{db,second,observer}=h;
- const png=await require('next/dist/server/image-optimizer').getSharp(1,false)({create:{width:4,height:5,channels:3,background:'#335577'}}).png().toBuffer();
- const otherPng=await require('next/dist/server/image-optimizer').getSharp(1,false)({create:{width:4,height:5,channels:3,background:'#ff0000'}}).png().toBuffer();
+ const png=await require('sharp')({create:{width:4,height:5,channels:3,background:'#335577'}}).png().toBuffer();
+ const otherPng=await require('sharp')({create:{width:4,height:5,channels:3,background:'#ff0000'}}).png().toBuffer();
  const digest=b=>createHash('sha256').update(b).digest('hex');
  const sql=async(q,args=[])=>(await db.query(q,args)).rows;
  async function sample({image=true}={}){

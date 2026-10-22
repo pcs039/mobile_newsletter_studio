@@ -1,3 +1,4 @@
+import { isPublicationStorageReference } from "@/lib/article-publication-storage-policy";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
 export type ProjectFileUploadKind = "pdf_original" | "page_image" | "asset_image" | "audio_mp3";
@@ -275,7 +276,7 @@ async function findProjectBySlug(projectSlug: string, headers: Record<string, st
 }
 
 function isSafeStoragePath(path: string) {
-  return Boolean(path) && !path.startsWith("/") && !path.includes("..");
+  return !isPublicationStorageReference(path) && Boolean(path) && !path.startsWith("/") && !path.includes("..");
 }
 
 async function deleteStorageObject(bucket: string, path: string, headers: Record<string, string>) {

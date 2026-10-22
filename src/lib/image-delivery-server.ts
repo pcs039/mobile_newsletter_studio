@@ -1,9 +1,7 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
-// Reuse the engine shipped by our pinned Next version, without its public optimizer
-// endpoint/cache or unauthenticated source fetch. Keep this dependency isolated.
-import { optimizeImage } from 'next/dist/server/image-optimizer';
+import sharp from 'sharp';
 import { imageDeliveryWidths, type ImageDeliveryKind } from '@/lib/image-delivery';
 const cache = new Map<string, {bytes: Buffer; type: string}>();
 let cacheBytes = 0;
@@ -37,7 +35,9 @@ export async function deliverAuthorizedPng(upstream: Response, request: Request 
       activeTransforms++;
       work=(async()=>{
         try {
-          const bytes=await optimizeImage({buffer:original,contentType:type,quality,width,limitInputPixels:40_000_000,timeoutInSeconds:7});
+          const image=sharp(original,{limitInputPixels:40_000_000}).timeout({seconds:7}).rotate().resize(width,undefined,{withoutEnlargement:true});
+          // Preserve the previous engine's AVIF quality scale and effort.
+          const bytes=await (format==='avif'?image.avif({quality:Math.max(Math.round(quality*50/80),1),effort:3}):image.webp({quality})).toBuffer();
           return bytes.length<original.length?{bytes,type}:{bytes:original,type:'image/png'};
         } catch { return {bytes:original,type:'image/png'}; }
         finally { activeTransforms--; }

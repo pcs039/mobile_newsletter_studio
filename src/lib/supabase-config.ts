@@ -1,3 +1,5 @@
+import { isPublicationStorageReference } from "@/lib/article-publication-storage-policy";
+
 const requiredPublicEnv = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"] as const;
 
 export type SupabaseConfigStatus = {
@@ -41,6 +43,7 @@ export function getSupabaseRestEndpoint(path: string) {
 }
 
 export function getSupabaseStorageEndpoint(path: string) {
+  if (isPublicationStorageReference(path)) return null;
   const config = getSupabaseConfigStatus();
 
   if (!config.url) {

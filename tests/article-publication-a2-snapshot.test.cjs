@@ -51,7 +51,7 @@ test('A2-16 cross-project article, child and asset references rejected',()=>{
  for(const section of ['article','blocks','photos']){const c=f.image(f.capture());(Array.isArray(c[section])?c[section][0]:c[section]).project_id=randomUUID();assert.throws(()=>build(c,randomUUID()),/ownership/);}
 });
 test('A2-09 byte inspection decodes image, rejects truncation and verifies WAV structure',async()=>{
- const sharp=require('next/dist/server/image-optimizer').getSharp(1,false),png=await sharp({create:{width:2,height:3,channels:3,background:'#335577'}}).png().toBuffer();
+ const sharp=require('sharp'),png=await sharp({create:{width:2,height:3,channels:3,background:'#335577'}}).png().toBuffer();
  assert.deepEqual(await inspectPublicationBytes(png,'image/png'),{width:2,height:3});
  await assert.rejects(inspectPublicationBytes(png.subarray(0,32),'image/png'));await assert.rejects(inspectPublicationBytes(png,'image/jpeg'));
  assert.equal((await inspectPublicationBytes(f.wav(),'audio/wav')).sampleRate,8000);await assert.rejects(inspectPublicationBytes(f.wav().subarray(0,44),'audio/wav'));

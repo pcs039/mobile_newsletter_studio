@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
-import { getSharp } from "next/dist/server/image-optimizer";
+import sharp from "sharp";
 import { create as createFont } from "fontkit";
 import { publicationHash, type PublicationJson } from "@/lib/article-publication-canonical";
 import { buildArticlePublicationSnapshot, type PublicationCapture } from "@/lib/article-publication-snapshot";
@@ -34,7 +34,7 @@ export async function inspectPublicationBytes(bytes:Buffer,mime:string):Promise<
     const detected=bytes.subarray(0,8).toString("hex")==="89504e470d0a1a0a"?"image/png":
       bytes[0]===255&&bytes[1]===216?"image/jpeg":bytes.toString("ascii",0,4)==="RIFF"&&bytes.toString("ascii",8,12)==="WEBP"?"image/webp":"";
     if(detected!==mime)throw Error("media_mime_mismatch");
-    const image=getSharp(1,false)(bytes,{limitInputPixels:8000000,failOn:"warning"});
+    const image=sharp(bytes,{limitInputPixels:8000000,failOn:"warning"}).timeout({seconds:7});
     const metadata=await image.metadata();
     if(!metadata.width||!metadata.height||metadata.pages&&metadata.pages>1)throw Error("media_dimensions");
     await image.clone().raw().toBuffer(); // Decode, not just trust IHDR/content-type.
