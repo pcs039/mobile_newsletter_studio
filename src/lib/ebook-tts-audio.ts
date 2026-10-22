@@ -1,3 +1,4 @@
+import { isPublicationStorageReference } from "@/lib/article-publication-storage-policy";
 import { createHash } from "crypto";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
@@ -131,7 +132,7 @@ function encodeStoragePath(path: string) {
 }
 
 function isSafeStoragePath(path: string) {
-  return path.length > 0 && !path.includes("..") && !path.startsWith("/") && !path.endsWith("/");
+  return !isPublicationStorageReference(path) && path.length > 0 && !path.includes("..") && !path.startsWith("/") && !path.endsWith("/");
 }
 
 function normalizeTtsText(text: string) {

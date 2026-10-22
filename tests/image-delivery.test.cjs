@@ -6,8 +6,7 @@ const {renderToStaticMarkup}=require('react-dom/server');
 const load=require('./canva-test-loader.cjs')();
 const delivery=load('src/lib/image-delivery.ts');
 const {deliverAuthorizedPng}=load('src/lib/image-delivery-server.ts');
-const {getSharp}=require('next/dist/server/image-optimizer');
-const sharp=getSharp();
+const sharp=require('sharp');
 const headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'};
 const request=(query)=>new Request('https://staging.test/image?'+query);
 async function png(width=600,height=750){return sharp({create:{width,height,channels:4,background:'#245377'}}).png().toBuffer();}
@@ -53,7 +52,7 @@ test('same authorized request reuses deterministic bytes and original mutation c
  assert.equal(b.headers.get('vary'),'Accept');assert.equal(b.headers.get('x-image-delivery-width'),'480');
 });
 test('transform failure returns byte-identical original PNG',async()=>{
- const isolated=require('./canva-test-loader.cjs')({'next/dist/server/image-optimizer':{optimizeImage:async()=>{throw Error('unavailable');}}});
+ const isolated=require('./canva-test-loader.cjs')({sharp:()=>{throw Error('unavailable');}});
  const bytes=await png();const r=await isolated('src/lib/image-delivery-server.ts').deliverAuthorizedPng(new Response(bytes),request('deliveryWidth=480&deliveryFormat=webp'),'canva',headers);
  assert.equal(r.headers.get('content-type'),'image/png');assert.deepEqual(Buffer.from(await r.arrayBuffer()),bytes);
 });

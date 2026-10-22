@@ -1,3 +1,4 @@
+import { isPublicationStorageReference } from "@/lib/article-publication-storage-policy";
 import { validateDesignAssetMetadata } from "@/lib/design-asset-metadata";
 import { NextResponse } from "next/server";
 import {
@@ -95,7 +96,7 @@ function encodeStoragePath(path: string) {
 }
 
 function isSafeStoragePath(path: string) {
-  return Boolean(path) && !path.startsWith("/") && !path.includes("..") && !path.endsWith("/");
+  return !isPublicationStorageReference(path) && Boolean(path) && !path.startsWith("/") && !path.includes("..") && !path.endsWith("/");
 }
 
 function getExtension(fileName: string) {
@@ -350,6 +351,7 @@ async function isProjectSourceDesignAsset(projectId: string, assetId: string, he
 }
 
 async function deleteStorageObject(bucket: string, path: string, headers: Record<string, string>) {
+  if (isPublicationStorageReference(bucket) || isPublicationStorageReference(path)) return false;
   if (!isSafeStoragePath(path)) {
     return true;
   }
