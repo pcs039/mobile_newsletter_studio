@@ -1,6 +1,7 @@
 // Client-safe readiness contract. Provider credentials and prepared payloads
 // stay on the server; the confirmation binds the saved input for five minutes.
 import type { CanvaAutofillExecutionResult } from "@/lib/canva-autofill-execution";
+import type { CanvaContentFitReview } from "@/lib/canva-content-fit";
 export type CanvaRecommendationPreparation = {
   ok: true;
   supported: boolean;
@@ -11,6 +12,7 @@ export type CanvaRecommendationPreparation = {
   missingFields: string[];
   visualIssues: Array<{ field: string; fitStatus: "adjusted" | "overflow" }>;
   confirmation?: string;
+  contentFitReview?: CanvaContentFitReview;
 };
 export const canvaFieldLabels: Record<string, string> = {
   TITLE: "제목", EVENT_DATE: "행사 일시", EVENT_PLACE: "행사 장소", EVENT_SUMMARY: "요약", CTA: "행동 버튼", MAIN_IMAGE: "대표 이미지",

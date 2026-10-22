@@ -6,6 +6,7 @@ import { CanvaDesignReviewControls } from "@/components/design/canva-design-revi
 import { receiveCanvaDesign, restoreCanvaReview, reviewCanvaDesign, type CanvaDesignReview } from "@/lib/canva-design-review";
 import { getCanonicalCanvaTemplate } from "@/lib/canva-template-registry";
 import type { CanvaAutofillExecutionResult } from "@/lib/canva-autofill-execution";
+import { CanvaContentFitReview } from "@/components/design/canva-content-fit-review";
 
 export function CanvaRecommendationExecutionControls({ projectSlug, articleId, templateId, disabled, articleVersion = "", onChooseAnother }: {
   projectSlug: string; articleId: string; templateId: string; disabled: boolean; articleVersion?: string; onChooseAnother?: () => void;
@@ -102,6 +103,22 @@ export function CanvaRecommendationExecutionControls({ projectSlug, articleId, t
     } catch { if (alive.current) setError("제작 실패 · 결과가 미확정일 수 있습니다. 자동으로 다시 제작하지 않습니다. 프로젝트 디자인 화면에서 상태를 확인하세요."); }
     finally { clearTimeout(timeout); flight.current = false; if (alive.current) setBusy(false); }
   }
+  async function recheck() {
+    if (flight.current || disabled || checking || busy || importBusy || submitted || requestKey.current || !supported || !preparation?.stagingAllowed) return;
+    flight.current = true; setChecking(true); setError("");
+    setPreparation(previous => previous ? { ...previous, visualReady: false, confirmation: undefined, contentFitReview: undefined } : null);
+    const abort = new AbortController(); controller.current = abort;
+    const timer = setTimeout(() => abort.abort(), 15000);
+    try {
+      const value = await call("prepare", abort.signal);
+      if (abort.signal.aborted) throw Error("점검 시간이 초과되었습니다.");
+      if (alive.current) setPreparation(value);
+    } catch { if (alive.current) {
+      setPreparation(previous => previous ? { ...previous, visualReady: false, confirmation: undefined, contentFitReview: undefined } : null);
+      setError("저장된 기사 점검에 실패했습니다. 입력을 유지하며 다시 점검할 수 있습니다. 자동으로 제작하지 않습니다.");
+    } }
+    finally { clearTimeout(timer); flight.current = false; if (alive.current) setChecking(false); }
+  }
   async function reviewAction(action: "approve" | "open" | "revise" | "cancel") {
     if (!review || flight.current || disabled || importBusy) return false;
     if (preparation && !preparation.stagingAllowed) { recordReview(reviewCanvaDesign(review, action)); return true; }
@@ -138,6 +155,8 @@ export function CanvaRecommendationExecutionControls({ projectSlug, articleId, t
     <p role="status" aria-live="polite" className="text-sm font-bold">{busy ? "제작 중" : state}</p>
     {fields.length ? <p className="mt-2 text-sm text-amber-900">확인할 항목: {fields.map(field => canvaFieldLabels[field] ?? "기사 정보").join(", ")}</p> : null}
     {error ? <p role="alert" className="mt-2 text-sm text-red-700">{error}</p> : null}
+    <CanvaContentFitReview templateId={templateId} review={preparation?.contentFitReview} checking={checking} />
+    {supported && preparation?.stagingAllowed && !submitted ? <button type="button" className="dd-btn dd-btn-secondary mt-2 max-w-full whitespace-normal" disabled={disabled || busy || checking || importBusy} onClick={() => void recheck()}>저장된 기사 다시 점검</button> : null}
     <button type="button" className="dd-btn dd-btn-primary mt-3 max-w-full" style={{ whiteSpace: "normal" }}
       disabled={disabled || busy || checking || submitted || !canProduceCanva(preparation)} onClick={() => void run()}>이 디자인으로 Canva 제작</button>
     {result?.status === "in_progress" && !busy ? <button type="button" disabled={disabled} className="dd-btn dd-btn-secondary ml-2 mt-3 max-w-full" onClick={() => void run(true)}>제작 상태 확인</button> : null}

@@ -7,7 +7,7 @@ const ready = { ok: true, supported: true, connected: true, isReady: true, visua
 const props = { projectSlug: 'test', articleId: 'article', templateId: 'event_festival_02', disabled: false };
 function harness(responses, storage = new Map()) {
   const states = [], effects = []; let cursor = 0, mounted = false;
-  const react = { useState(initial) { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], value => { states[index] = value; }]; },
+  const react = { useState(initial) { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; },
     useRef(initial) { const index = cursor++; if (!(index in states)) states[index] = { current: initial }; return states[index]; }, useEffect(action) { if (!mounted) effects.push(action); } };
   const compiledModule = { exports: {} }, calls = [], reviewCalls = [];
   const timer = (fn, ms) => ms === 3000 ? setTimeout(fn, 0) : setTimeout(fn, ms);
@@ -23,6 +23,28 @@ function find(tree, predicate) { if (!tree || typeof tree !== 'object') return [
 const markup = tree => renderToStaticMarkup(tree);
 const button = tree => find(tree, t => t.type === 'button' && t.props.children === '이 디자인으로 Canva 제작')[0];
 const settle = () => new Promise(resolve => setTimeout(resolve, 20));
+
+test('recheck is explicit prepare-only, double-click guarded and never starts creation', async () => {
+  let release;
+  const h = harness((input, count) => count === 1 ? ready : new Promise(resolve => { release = resolve; }));
+  h.render(); h.mount(); await settle();
+  const recheck = find(h.render(), t => t.type === 'button' && t.props.children === '저장된 기사 다시 점검')[0];
+  recheck.props.onClick(); recheck.props.onClick(); await settle();
+  assert.deepEqual(h.calls.map(c => c.action), ['prepare', 'prepare']);
+  assert(button(h.render()).props.disabled);
+  release({ ...ready, visualReady: false, confirmation: undefined, visualIssues: [{ field: 'TITLE', fitStatus: 'overflow' }] });
+  await settle(); assert(button(h.render()).props.disabled); assert(markup(h.render()).includes('제목'));
+});
+
+test('failed recheck invalidates old confirmation and permits a safe prepare-only retry', async () => {
+  const h = harness((input, count) => { if (count === 2) throw Error('network'); return ready; });
+  h.render(); h.mount(); await settle();
+  const recheck = () => find(h.render(), t => t.type === 'button' && t.props.children === '저장된 기사 다시 점검')[0];
+  recheck().props.onClick(); await settle();
+  assert(button(h.render()).props.disabled); assert(markup(h.render()).includes('점검에 실패'));
+  assert(!recheck().props.disabled); recheck().props.onClick(); await settle();
+  assert(!button(h.render()).props.disabled); assert.deepEqual(h.calls.map(c => c.action), ['prepare', 'prepare', 'prepare']);
+});
 
 test('supported ready selection enables only after read-only preparation; explicit single click and synchronous double click create once', async () => {
   let release; const pending = new Promise(resolve => { release = resolve; });
