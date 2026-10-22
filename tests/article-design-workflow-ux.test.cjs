@@ -13,6 +13,15 @@ function harness(file,name,props,overrides={}){
 }
 const button=(t,label)=>nodes(t,e=>e.type==='button'&&text(e)===label)[0];
 const patternProps={pattern:'manual',textDesign:{},composition:{settings:{},assets:[]},article:{},articleId:'a',projectSlug:'p',onApply:()=>{}};
+test('first-time design guidance is available before composition creation without creating data',()=>{
+ const state={composition:null,saved:null,textStatus:'saved',layoutStatus:'saved',hasUnsaved:false,busy:false};
+ const article={id:'a',title:'문화 행사 안내',summary:'문화 행사에 참여하세요',body:'행사 일정과 참가 방법을 안내합니다.',articleType:'event_festival',publicInfo:{},blocks:[],links:[]};
+ const h=harness('src/components/design/article-composition-editor.tsx','ArticleCompositionEditor',{article,assets:[],initialComposition:null,initialStatus:'not_found',projectSlug:'p',previewArticle:article,reuseSources:[]},{'@/components/design/use-composition-save-state':{useCompositionSaveState:()=>state}});
+ const boundary=h.render(),t=boundary.type(boundary.props);
+ const recommendation=nodes(t,e=>e.props?.result?.primaryStrategy)[0];assert(recommendation);
+ assert.equal(recommendation.props.result.primaryStrategy,'canva_full_layout');
+ assert(button(t,'디자인 조정 시작'));assert(!state.composition);
+});
 test('manual pattern disclosure preserves selection; confirmation opens change details, no apply on disclosure or selection',()=>{
  let calls=0;const h=harness('src/components/design/article-production-pattern-controls.tsx','ArticleProductionPatternControls',{...patternProps,onApply:()=>calls++});
  let t=h.render(),details=nodes(t,e=>e.type==='details')[0];assert(!details.props.open);
