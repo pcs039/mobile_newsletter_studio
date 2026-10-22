@@ -899,6 +899,7 @@ function ArticleCompositionEditorSession({
       ) : null}
 
       <DesignSaveSummary state={saveState} assets={assets} />
+      <a href={`#composition-preview-${article.id}`} className="mt-3 inline-block text-sm font-bold text-[#184a88] underline underline-offset-4">현재 디자인 미리보기로 이동</a>
 
       <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,520px)] xl:items-start">
         <div className="min-w-0">
@@ -1031,7 +1032,7 @@ function ArticleCompositionEditorSession({
 
           </details>
         </div>
-        <div className="min-w-0 xl:sticky xl:top-4">
+        <div id={`composition-preview-${article.id}`} tabIndex={-1} className="min-w-0 scroll-mt-4 xl:sticky xl:top-4">
           <h3 className="mb-2 text-base font-black text-[#092046]">3. 미리보기·확인</h3>
           <p className="mb-1 text-sm font-bold text-[#184a88]">즉시 미리보기 · 편집 중</p>
           <p className="mb-3 text-xs leading-5 text-slate-600">{saveState.hasUnsaved || isBusy ? "미저장·저장 중인 변경사항은 저장본 미리보기에 반영되지 않을 수 있습니다." : "저장본은 화면 상단의 ‘저장본 미리보기’에서 확인하세요."} 기사 제목·본문은 마지막 기사 저장 기준입니다.</p>

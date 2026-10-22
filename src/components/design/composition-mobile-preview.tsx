@@ -58,6 +58,16 @@ export function CompositionMobilePreview({ article, assets, composition, selecte
         <span>작업창보다 넓으면 가용 폭에 맞춥니다.</span>
         {selectedAsset ? <span className="w-full break-words">선택: {selectedAsset.name}</span> : null}
       </div>
+      <details className="mb-3 rounded-lg border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600">
+        <summary className="cursor-pointer font-bold text-[#092046]">모바일 화면 점검 · 390px → 520px</summary>
+        <ol className="mt-2 list-decimal space-y-1 pl-5">
+          <li>위 화면 폭을 390px, 520px로 바꾸어 제목과 본문의 줄바꿈을 확인하세요.</li>
+          <li>미리보기 안의 글자 크기를 최대로 높여 긴 제목·날짜·연락처가 잘리지 않는지 확인하세요.</li>
+          <li>이미지를 눌러 확대하고, 행동 버튼의 문구와 연결 대상을 확인하세요. 신청·전화 등 실제 실행은 별도 판단하세요.</li>
+          <li>필요한 변경사항을 저장한 뒤 화면 상단의 ‘저장본 미리보기’에서 승인·표시 조건이 반영된 결과를 확인하세요.</li>
+        </ol>
+        <p className="mt-2">아래는 편집 중 즉시 미리보기입니다. 이 화면 확인만으로 저장·승인·발행되지 않습니다.</p>
+      </details>
       <p className="mb-3 text-xs leading-5 text-slate-600">편집 중인 배경·상단 장식과 HTML 디자인을 공용 기사 카드로 표시합니다. draft·미승인 자산도 편집용으로 보일 수 있습니다. 제목 옆 아이콘·본문 주변 장식·하단 배너는 공개 미지원으로 여기에도 표시하지 않습니다.</p>
       <p className="mb-3 text-xs leading-5 text-slate-600">{previewAudioNotice}</p>
       <div className="composition-reader-viewport mx-auto w-full min-w-0" style={{ maxWidth: width, containerType: "inline-size" }}>
