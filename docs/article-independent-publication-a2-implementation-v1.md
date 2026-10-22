@@ -135,3 +135,80 @@ TypeScript/lint/Webpack build/diff check 통과. 기존 lint warning 3개는 범
 
 따라서 이것은 **격리 내부 보존·접근 계약 PR**이며 Production rollout 준비 완료가 아니다.
 실제 원격 설치·Storage 설정·reader 연결·공개 gate는 별도 승인 전까지 금지한다.
+
+## 2026-10-22 최종 감사 및 다음 단계
+
+### 확인된 정합성 결함과 최소 보정
+
+- 메타데이터 없는 이미지 기사의 presentation fallback을 기존 repository와 동일한 `mixed`로 보정했다. 명시적 `text/image/mixed`는 유지한다.
+- 글꼴 capture에 `detected_weight/detected_style`을 포함하고 기존 `mapFontAssetRowToFontAsset` 우선순위와 맞췄다. 패밀리 미지정 파일의 CSS 이름도 `DD_Font_{id}` 규칙으로 고정한다. 글꼴 ID 선택으로 기사 CSS 굵기를 새로 변경하는 기능은 아니다.
+- 단위 2개와 실제 PostgreSQL capture/finalize 회귀 1개를 추가했다. 기존 reader, 폰트 CSS, 저장/발행 RPC는 수정하지 않았다.
+
+보정 후 A2 **40/40**, 전체 **591/591** 통과(실패/skip 0).
+TypeScript·lint·Webpack build·diff check 통과. 기존 lint warning 3개 외 신규 warning 0.
+실제 PostgreSQL 다중 연결과 기존 SQL WASM 회귀를 모두 실행했다.
+
+### 코드 감사 판단
+
+| 대상 | 확인 결과 / 남은 경계 |
+|---|---|
+| Node/SQL canonical | UTF-8 key 정렬, 문자열 escape, 6자리 소수/크기 제한과 render hash의 교차 런타임 fixture 통과. 임의 JSON/범용 표준 canonicalizer로 취급하지 않는다. |
+| snapshot | 허용 필드, 지원 block/slot, 상속값과 font face를 고정. survey·opaque metadata·외부 파일·알 수 없는 HTML/CSS는 차단한다. 실제 reader adapter와 시각 비교는 미완료다. |
+| 소유권/권한 | 같은 project/article/source와 active revision manifest membership 검사. service_role 전용 RPC 및 격리 가드 유지. 호출자가 전달하는 actor context를 향후 HTTP 인증에서 서버가 구성해야 한다. |
+| bytes | SHA-256, 길이, MIME signature 및 이미지 실제 decode 검사. MP3는 frame 구조, 폰트는 fontkit metadata 검증이며 재생/Chrome OTS 통과를 대신하지 않는다. |
+| 재요청 | 동일 key 영수증, 복사 성공/DB 실패, 응답 유실 후 동일 사본 재사용 검증. worker 재시작 시 lease 만료 대기·분산 재개는 추가 검증 필요다. |
+| pin/GC | 실제 다중 연결 row-lock 경합 검증. 공개 이력 pin은 GC 거부, 준비-only 고아 file은 grace 이후 정리. 고아 revision row GC와 운영 retention은 미정이다. |
+| 접근 종료 | withdraw/replace 뒤 이전 revision의 새로운 내부 read 거부. 이미 다운로드한 bytes와 별도 공개 원본 URL은 회수 불가다. |
+
+`next/dist/server/image-optimizer#getSharp`는 현재 고정 Next 16.3.4에서 실행되지만 Next 내부 API다.
+해당 helper는 shared Sharp cache/concurrency에도 관여한다. 공식 Next 공개 이미지 API를
+서버 파일 검증 API로 사용할 근거는 없다. 원격 adapter PR에서 `sharp`를 명시적 dependency로
+선언하고 공식 constructor `sharp(bytes, {limitInputPixels, failOn})` + raw decode로 대체하는 것을
+권장한다. 현재 transitive 설치에 의존한 deep import를 장기 worker 계약으로 승인하지 않는다.
+이번 감사에서는 dependency나 동작하는 격리 decoder를 불필요하게 변경하지 않았다.
+공식 근거: [Sharp constructor](https://sharp.pixelplumbing.com/api-constructor/),
+[Next Sharp deployment guide](https://nextjs.org/docs/messages/sharp-missing-in-production).
+
+### Vercel 검사 미등록 조사
+
+최초 head `eb728dc4cea5da57a52fcaaeaacb2f482b3cfb6e`에는 이후 Vercel SUCCESS가 등록됐고,
+대시보드에서 Preview Ready 배포 `AJMVubE2bCV5R3D7vFa7aA1CHsWq`를 확인했다.
+배포 시작은 2026-10-22 00:36:20 KST, Preview Comments 완료는 00:38:27 KST다.
+최초 PR 생성 직후 조회의 0건은 최종 실패/제외 판정이 아니었다. 제공자 내부 이벤트 전달 지연의
+정확한 원인은 조회한 화면/API만으로 확정할 수 없다.
+
+읽기 전용으로 확인한 설정은 Git repository 연결, Commit Status ON,
+Preview Branch Tracking ON / All unassigned branches, Ignored Build Step Automatic이다.
+저장소 `vercel.json`은 없으며 stacked base를 제외하는 설정은 발견하지 않았다.
+설정·환경변수·배포를 변경하지 않았다. 로컬 build 통과와 원격 Preview 성공은 별개로 기록한다.
+
+### 모의 Storage와 원격 연결의 차이
+
+| 항목 | 모의 구현 | 실제 연결 전에 필요한 조건 |
+|---|---|---|
+| private / 권한 | 프로세스 내부 Map, remote client 없음 | 별도 private 보존 bucket, anon/auth 직접 접근 금지, worker 권한 분리. service_role은 RLS 우회 가능하므로 RLS만으로 불변성을 보장하지 않는다. |
+| overwrite | 기존 path의 다른 bytes 거부 | 생성은 upsert=false. 이미 존재하면 충돌을 무조건 성공으로 간주하지 말고 재다운로드 hash/MIME/길이 일치 시에만 재사용. broad key로 overwrite/delete 가능한 경로를 제거/제한해야 한다. |
+| 검증 | Buffer 복제 후 재검증 | streaming/메모리 제한, 응답 중단/압축/MIME/크기 검증, 저장된 객체 재다운로드와 SHA-256 확인. 단순 ETag는 SHA-256 대체 불가. |
+| Storage 성공 / DB 실패 | 예약 path와 bytes 잔존 | 예약 ledger를 먼저 commit, 사본 생성·재검증 후 verified/finalize. worker crash·timeout 뒤 동일 path로 reconciliation, pin/GC 공통 잠금과 fencing 필요. |
+| 삭제 보호 | 비공개 Symbol과 DB GC 결정 | 보존 namespace는 기존 upload/upsert/delete/TTS cleanup에서 접근 금지. private은 WORM 의미가 아니다. DB transaction은 Storage 작업을 rollback하지 않는다. |
+| 공개 접근 | 내부 DB 판정 후 Map read | revision membership 확인 후 서버 proxy로 제공. 원본/signed URL redirect 금지. GET/HEAD/Range/조건부 요청마다 철회 판정, no-store 및 CDN 헤더 검증 필요. |
+| 원본 변화 | 별도 사본으로 bytes 유지 | 원본 bucket과 물리 경로 분리, 원본 cleanup 확인/tombstone 정책 및 백업/복구 실증. 이미 공용 bucket에 노출된 원본은 독립 발행 철회로 회수 불가. |
+
+Supabase 문서상 private 파일은 인증 download 또는 signed URL로 제공하며 signed URL은 만료까지
+유효하므로, 즉시 철회를 보장할 독립 공개 경로에서는 URL을 브라우저에 전달하지 않는 쪽을 권장한다.
+[권한 문서](https://supabase.com/docs/guides/storage/security/access-control),
+[업로드 문서](https://supabase.com/docs/guides/storage/uploads/standard-uploads),
+[다운로드 문서](https://supabase.com/docs/guides/storage/serving/downloads).
+이번에는 원격 bucket·object·정책을 생성/수정하거나 실제 파일을 업로드하지 않았다.
+
+### 최소 PR 및 적용 순서 제안
+
+1. A1 → A2 순서로 코드 검토. 두 SQL은 격리 설치/실행 가드를 가진 개발용이므로 병합 승인이 원격 migration 승인은 아니다. 원격 적용용 설치·권한·feature gate는 별도 승인·PR이 필요하다.
+2. private 보존 adapter와 기존 삭제/upsert/TTS 정리 경로 보호를 먼저 구현한다. 두 변경은 함께 검증돼야 하며 writer와 GC credential/namespace 분리, 복구와 retention을 확정한다. 아직 공개 API/UI는 연결하지 않는다.
+3. 서버 revision/file 접근 service와 HTTP 계약을 gate OFF로 구현한다. 사용자 인증에서 context 구성, project/article/revision/file 검사, GET/HEAD/Range/304/no-store·철회 경합 검증을 포함한다.
+4. 공통 reader용 snapshot adapter와 단일 기사 URL을 gate OFF로 추가한다. snapshot schema/renderer와 실제 typography/blocks/CTA/음성의 무손실 표현 및 타 비공개 기사 navigation 차단을 검증한다.
+5. 별도 승인된 Staging bucket/migration/배포에만 통합 연결한다. 실제 발행/교체/철회/재공개·다운로드·중복·장애·GC·원본 삭제 E2E와 기존 정기호 회귀를 통과한 뒤 Production rollout 승인을 요청한다.
+
+A1/A2는 각각 전체 회귀·Preview·권한/삭제 경합 검토 후 순서대로 병합할 수 있으나,
+이번 작업에서는 둘 다 OPEN으로 유지한다. 현재 원격 적용은 backup/PITR/Storage 복구 확인,
+원본 및 보존 파일 권한 분리, 기존 모든 cleanup 경로 보호, reader/HTTP 검증 미완료로 차단한다.

@@ -128,9 +128,10 @@ export function buildArticlePublicationSnapshot(capture: PublicationCapture, pre
     const selected=capture.fonts.find(f=>f.id===id);if(!selected)throw Error("snapshot_missing_font");
     if(selected.is_active!==true||selected.webfont_allowed!==true||selected.family_active===false||selected.family_webfont_allowed===false)throw Error("snapshot_font_policy");
     const faces=capture.fonts.filter(f=>(selected.family_id?f.family_id===selected.family_id:f.id===id)&&f.is_active===true&&f.webfont_allowed===true).sort((a,b)=>String(a.id).localeCompare(String(b.id),"en"));
-    const family=text(selected.css_family_name??selected.font_family,100);if(!/^[\p{L}\p{N}_ -]+$/u.test(family))throw Error("snapshot_font_family");
+    // Match the existing repository's CSS identity, including standalone files.
+    const family=text(selected.css_family_name||`DD_Font_${String(selected.id).replace(/[^a-zA-Z0-9_-]/g,"_").replace(/-/g,"_")}`,100);if(!/^[\p{L}\p{N}_ -]+$/u.test(family))throw Error("snapshot_font_family");
     typography[role]={selectedId:a[`${role}_font_asset_id`]??null,resolvedId:String(id),family,
-      faces:faces.map(f=>{const weight=String(f.font_weight??"400"),style=String(f.font_style??"normal");
+      faces:faces.map(f=>{const weight=String(f.detected_weight||f.font_weight||"400"),style=String(f.detected_style||f.font_style||"normal");
         if(!/^[1-9]00$/.test(weight)||!["normal","italic"].includes(style))throw Error("snapshot_font_face");
         return {weight,style,format:text(f.font_file_format,10),...file(f,"font",`font-${role}-${f.id}`)};})};
   }
@@ -160,7 +161,7 @@ export function buildArticlePublicationSnapshot(capture: PublicationCapture, pre
   const align=(value:PublicationJson|undefined)=>{const v=String(value||"left");if(!["left","center","right"].includes(v))throw Error("snapshot_alignment");return v;};
   const candidate:PublicationCandidate={snapshotSchemaVersion:"a2-content-v1",rendererVersion:"a2-reader-contract-v1",canonicalVersion:"a2-canonical-v1",projectId,articleId,
     article:{title:text(a.display_title||a.title,500),summary:text(a.summary,4000),body:text(a.body),blocks,links,publicInfo:info,
-      contentPresentation:((capture.blocks.find(b=>(b.metadata as PublicationRow)?.presentation_mode)?.metadata as PublicationRow)?.presentation_mode)||"text",
+      contentPresentation:((capture.blocks.find(b=>(b.metadata as PublicationRow)?.presentation_mode)?.metadata as PublicationRow)?.presentation_mode)||(capture.blocks.some(b=>b.block_type==="image")?"mixed":"text"),
       showPublicTitle:((capture.blocks.find(b=>typeof (b.metadata as PublicationRow)?.show_public_title==="boolean")?.metadata as PublicationRow)?.show_public_title)??true,
       ...pick(a,["article_type","publication_kind","urgency","motion_preset","motion_speed","contact_name","contact_phone","title_motion_effect","title_motion_speed","text_box_motion_effect","text_box_motion_speed","image_motion_effect","image_motion_speed","link_motion_effect","link_motion_speed"]),
       titleAlignment:align(a.title_alignment),summaryAlignment:align(a.summary_alignment||a.text_alignment),bodyAlignment:align(a.body_alignment||a.text_alignment)},

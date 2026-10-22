@@ -68,6 +68,17 @@ test('A2 actual PostgreSQL: snapshot, private preservation, authorization, fault
    assert.equal((await s.worker.read(s.c.projectId,s.c.articleId,r.revision,file.id)).length,file.byte_size);
    await sql('update font_families set is_active=false where id=$1',[family]);await assert.rejects(s.worker.read(s.c.projectId,s.c.articleId,r.revision,file.id),/denied/);
   });
+  await t.test('A2 audit: SQL capture retains detected face metadata and standalone CSS identity',async()=>{
+   const s=await sample({image:false}),id=randomUUID(),path=`projects/${s.c.projectId}/standalone.ttf`;
+   await sql('alter table font_assets add column detected_weight text,add column detected_style text');
+   await sql("insert into font_assets(id,font_family,font_file_path,font_file_format,font_weight,font_style,detected_weight,detected_style,is_active,webfont_allowed,storage_bucket) values($1,'Display name',$2,'ttf','400','normal','700','italic',true,true,'a2-isolated-source')",[id,path]);
+   await sql('update newsletter_articles set title_font_asset_id=$2 where id=$1',[s.c.articleId,id]);
+   s.store.setSource(path,require('./article-publication-a2-fixtures.cjs').syntheticFont({weight:700,italic:true}));
+   const prep=await s.worker.prepare(s.c),captured=prep.capture.fonts[0];
+   assert.equal(captured.detected_weight,'700');assert.equal(captured.css_family_name,`DD_Font_${id.replace(/-/g,'_')}`);
+   const r=await s.worker.preserve(s.c,prep),snapshot=(await sql('select snapshot from newsletter_article_publication_revisions where id=$1',[r.revisionId]))[0].snapshot;
+   assert.equal(snapshot.typography.title.faces[0].weight,'700');assert.equal(snapshot.typography.title.faces[0].style,'italic');
+  });
   await t.test('A2-09 uploaded and saved AI audio manifest preserves verified segment order',async()=>{
    const fixture=require('./article-publication-a2-fixtures.cjs'),{normalizeKoreanTtsText,ARTICLE_TTS_NORMALIZATION_VERSION}=load('src/lib/article-tts-audio.ts');
    for(const source of ['uploaded','ai_tts']){const s=await sample({image:false}),audio=randomUUID(),path=`projects/${s.c.projectId}/audio.wav`;

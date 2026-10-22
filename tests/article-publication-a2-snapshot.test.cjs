@@ -36,6 +36,17 @@ test('A2-06 bounded canonical JSON, Unicode ordering and number normalization',(
  for(const v of [NaN,Infinity,1e13,0.1234567,undefined,'\ud800'])assert.throws(()=>publicationCanonical(v));
  assert.equal(publicationHash({a:1,b:2}),publicationHash({b:2,a:1}));
 });
+test('A2 audit: metadata-less image presentation matches the reader fallback',()=>{
+ const c=f.image(f.capture());assert.equal(build(c,randomUUID()).candidate.article.contentPresentation,'mixed');
+ c.blocks[0].metadata.presentation_mode='text';assert.equal(build(c,randomUUID()).candidate.article.contentPresentation,'text');
+});
+test('A2 audit: standalone CSS identity and detected face metadata match existing font CSS',()=>{
+ const c=f.capture(),id=randomUUID();c.article.title_font_asset_id=id;
+ c.fonts=[{id,font_family:'Display name',font_weight:'400',font_style:'normal',detected_weight:'700',detected_style:'italic',font_file_format:'ttf',is_active:true,webfont_allowed:true,storage_bucket:'a2-isolated-source',font_file_path:`projects/${f.p}/font.ttf`,mime_type:'font/ttf'}];
+ const title=build(c,randomUUID()).candidate.typography.title;
+ assert.equal(title.family,`DD_Font_${id.replace(/-/g,'_')}`);assert.equal(title.faces[0].weight,'700');assert.equal(title.faces[0].style,'italic');
+ assert.equal(title.selectedId,id);assert.equal(title.resolvedId,id);
+});
 test('A2-16 cross-project article, child and asset references rejected',()=>{
  for(const section of ['article','blocks','photos']){const c=f.image(f.capture());(Array.isArray(c[section])?c[section][0]:c[section]).project_id=randomUUID();assert.throws(()=>build(c,randomUUID()),/ownership/);}
 });
