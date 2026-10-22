@@ -1,4 +1,6 @@
 "use client";
+import { buildVisualDirectorResult } from "@/lib/article-visual-director";
+import { ArticleVisualDirectorResult } from "@/components/design/article-visual-director-result";
 
 import { InstitutionAssetPlacementConfirm } from "@/components/design/institution-asset-placement-confirm";
 import { institutionAssetPlacementSlots } from "@/lib/institution-asset-placement";
@@ -834,6 +836,7 @@ function ArticleCompositionEditorSession({
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
           디자인 조정을 시작하거나 등록된 Canva 템플릿을 선택하세요. 기존 기사 내용은 유지됩니다.
         </p>
+        <div className="mt-3"><ArticleVisualDirectorResult result={buildVisualDirectorResult(article)} /></div>
         {saveState.error ? <p role="alert" className="mt-3 text-sm font-bold text-rose-800">{saveState.error} 저장본을 확인한 뒤 다시 시도하세요.</p> : null}
         {recommendedPattern ? <p className="mt-3 text-sm font-bold">기사 작성 단계의 AI 추천을 확인하려면 디자인 조정을 시작하세요. 추천은 자동 적용되지 않습니다.</p> : null}
         {initialStatus !== "not_found" ? (
@@ -899,6 +902,7 @@ function ArticleCompositionEditorSession({
       ) : null}
 
       <DesignSaveSummary state={saveState} assets={assets} />
+      <a href={`#composition-preview-${article.id}`} className="mt-3 inline-block text-sm font-bold text-[#184a88] underline underline-offset-4">현재 디자인 미리보기로 이동</a>
 
       <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,520px)] xl:items-start">
         <div className="min-w-0">
@@ -1031,7 +1035,7 @@ function ArticleCompositionEditorSession({
 
           </details>
         </div>
-        <div className="min-w-0 xl:sticky xl:top-4">
+        <div id={`composition-preview-${article.id}`} tabIndex={-1} className="min-w-0 scroll-mt-4 xl:sticky xl:top-4">
           <h3 className="mb-2 text-base font-black text-[#092046]">3. 미리보기·확인</h3>
           <p className="mb-1 text-sm font-bold text-[#184a88]">즉시 미리보기 · 편집 중</p>
           <p className="mb-3 text-xs leading-5 text-slate-600">{saveState.hasUnsaved || isBusy ? "미저장·저장 중인 변경사항은 저장본 미리보기에 반영되지 않을 수 있습니다." : "저장본은 화면 상단의 ‘저장본 미리보기’에서 확인하세요."} 기사 제목·본문은 마지막 기사 저장 기준입니다.</p>
