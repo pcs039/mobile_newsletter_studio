@@ -830,13 +830,13 @@ type InlinePublicInfoAction = {
 };
 
 const publicPrimaryActionClassName =
-  "inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#092046] bg-[#092046] px-4 py-2 text-xs font-black text-white transition hover:bg-[#143a6b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] focus-visible:ring-offset-2";
+  "inline-flex min-h-10 min-w-0 max-w-full shrink-0 items-center justify-center gap-1.5 whitespace-normal rounded-xl border border-[#092046] bg-[#092046] px-4 py-2 text-xs font-black text-white [overflow-wrap:anywhere] transition hover:bg-[#143a6b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] focus-visible:ring-offset-2";
 const publicSecondaryActionClassName =
   "inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#b8d7ff] bg-white px-3.5 py-2 text-xs font-black text-[#092046] transition hover:bg-[#f4f8ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f73b7] focus-visible:ring-offset-2";
 
 function ArrowRightIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4 fill-none stroke-current" strokeWidth="1.8">
+    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4 shrink-0 fill-none stroke-current" strokeWidth="1.8">
       <path d="M4 10h11M11 6l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -1351,7 +1351,7 @@ function ArticlePublicInfoCard({
                   data-article-id={article.id}
                   data-link-action-id={entryAction.linkActionId}
                 >
-                  <span>{entryAction.label}</span>
+                  <span className="min-w-0">{entryAction.label}</span>
                   <ArrowRightIcon />
                 </a>
               ) : null}
