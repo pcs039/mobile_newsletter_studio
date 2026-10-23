@@ -68,7 +68,7 @@ export default async function ProjectDesignKitPage({ params }: { params: Promise
       sidebarNote="기관 기준은 공통 규칙으로, 이번 호 자산은 발행호 밑작업으로, Composition은 기사별 예외 조정으로 사용합니다."
       actions={
         <Link
-          href={`/projects/${projectId}/reading`}
+          href={`/projects/${projectId}/articles`}
           className="rounded-lg border border-[#2f73b7] bg-white px-5 py-3 text-sm font-black text-[#092046] transition hover:bg-[#eaf3ff]"
         >
           기사 제작으로 이동
@@ -86,7 +86,7 @@ export default async function ProjectDesignKitPage({ params }: { params: Promise
               <a href="#issue-design" className="rounded-lg border border-[#c9d7e8] bg-white px-4 py-3 text-sm font-black text-[#092046] transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]">
                 2. 이번 호 디자인
               </a>
-              <Link href={`/projects/${projectId}/reading`} className="rounded-lg border border-[#c9d7e8] bg-white px-4 py-3 text-sm font-black text-[#092046] transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]">
+              <Link href={`/projects/${projectId}/articles`} className="rounded-lg border border-[#c9d7e8] bg-white px-4 py-3 text-sm font-black text-[#092046] transition hover:border-[#2f73b7] hover:bg-[#eaf3ff]">
                 3. 개별 기사 디자인
               </Link>
             </div>
@@ -132,7 +132,7 @@ export default async function ProjectDesignKitPage({ params }: { params: Promise
             <p className="text-xs font-black uppercase tracking-wide text-[#184a88]">3. 개별 기사 디자인</p>
             <h2 className="mt-1 text-2xl font-black text-[#092046]">기사별 배치와 예외 조정</h2>
             <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-600">기사 제작 화면의 디자인 조정에서 배경, 장식, 이미지 배치와 위치·회전·크기·투명도·레이어를 기사별로 조정합니다.</p>
-            <Link href={`/projects/${projectId}/reading`} className="mt-4 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md">
+            <Link href={`/projects/${projectId}/articles`} className="mt-4 inline-flex rounded-lg bg-[#092046] px-5 py-3 text-sm font-black text-white shadow-sm shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#123a78] hover:shadow-md">
               기사 선택 후 디자인 조정
             </Link>
           </section>
