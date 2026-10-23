@@ -84,3 +84,21 @@ export function prepareCanvaContentFit(raw: CanonicalCanvaAutofillPayload): Canv
       ...(!payloadMatches ? ["원본 필드와 payload의 글자 값이 일치하지 않습니다."] : []),
     ] };
 }
+
+// Admin-only diagnostic DTO: no article copy, Canva asset IDs or executable payload.
+// Source PNG acceptance is NOT proof of the unknown template image-frame geometry.
+export type CanvaContentFitReview = {
+  templateId: string;
+  supported: boolean;
+  fields: Array<Pick<ContentFitResult, "field" | "characterCount" | "explicitLines" | "maxChars" | "maxLines" | "fitStatus">>;
+  image: { sourceWidth: number | null; sourceHeight: number | null; sourceRatioAccepted: boolean | null };
+};
+export function buildCanvaContentFitReview(fit: CanvaContentFitPreflight, image?: { width: number; height: number }): CanvaContentFitReview {
+  const dimensionsKnown = !!image && Number.isSafeInteger(image.width) && Number.isSafeInteger(image.height) && image.width > 0 && image.height > 0;
+  return {
+    templateId: fit.templateId, supported: fit.supported,
+    fields: fit.fields.map(({ field, characterCount, explicitLines, maxChars, maxLines, fitStatus }) => ({ field, characterCount, explicitLines, maxChars, maxLines, fitStatus })),
+    image: { sourceWidth: dimensionsKnown ? image.width : null, sourceHeight: dimensionsKnown ? image.height : null,
+      sourceRatioAccepted: dimensionsKnown ? image.width * 4 === image.height * 3 : null },
+  };
+}

@@ -22,7 +22,7 @@ function setup(options = {}) {
     '@/lib/staging-environment': { stagingRequestAllowed: () => !options.preview, requireStagingE2E() { if (options.preview) throw Error('STAGING'); } },
     '@/lib/newsletter-repository': { getProjectContent: async () => ({ source: 'supabase', articles: options.crossProject ? [] : [saved] }) },
     '@/lib/canva-connection-repository': { getConnection: async () => options.disconnected ? null : row },
-    '@/lib/canva-background-repository': { readCanvaBackground: async (p, id) => { assert.equal(p, project.id); assert.equal(id, upload.sourceAssetId); if (options.invalidAsset) throw Error('revoked'); return { id, hash: upload.sourceHash }; } },
+    '@/lib/canva-background-repository': { readCanvaBackground: async (p, id) => { assert.equal(p, project.id); assert.equal(id, upload.sourceAssetId); if (options.invalidAsset) throw Error('revoked'); return { id, hash: upload.sourceHash, width:900, height:1200 }; } },
     '@/lib/canva-confirmation': { createCanvaConfirmation: digest, verifyCanvaConfirmation: (confirmation, binding) => confirmation === digest(binding) },
     '@/lib/canva-autofill-execution': { executeCanonicalCanvaAutofill: async (req, input) => { calls.push(input); return { ok: true, status: options.pending ? 'in_progress' : 'created', editUrl: 'https://www.canva.com/design/D/edit', duplicate: !!options.duplicate }; } },
   });
@@ -34,6 +34,8 @@ test('supported safe saved payload is prepared read-only, redacted and only expl
   const c = setup(), snapshot = JSON.stringify([article, c.row]); const ready = (await c.run()).value;
   assert(canProduceCanva(ready)); assert.equal(c.calls.length, 0); assert.equal(JSON.stringify([article, c.row]), snapshot);
   assert(!JSON.stringify(ready).includes('NOT_OUTPUT')); assert(!JSON.stringify(ready).includes('IMAGE')); assert(!JSON.stringify(ready).includes(article.title));
+  assert.equal(ready.contentFitReview.fields[0].characterCount,Array.from(values.TITLE).length);
+  assert.deepEqual(ready.contentFitReview.image,{sourceWidth:900,sourceHeight:1200,sourceRatioAccepted:true});
   assert.equal((await c.run({ action: 'execute', requestKey, confirmation: ready.confirmation })).value.status, 'created');
   assert.equal(c.calls.length, 1); assert.equal(c.calls[0].prepared.payload.data.MAIN_IMAGE.asset_id, 'IMAGE');
 });

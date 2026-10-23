@@ -2,7 +2,7 @@ import { canvaAdmin, canvaFailure, canvaJson, sameOrigin } from "@/lib/canva-api
 import { stagingRequestAllowed, requireStagingE2E } from "@/lib/staging-environment";
 import { getCanonicalCanvaTemplate } from "@/lib/canva-template-registry";
 import { buildCanonicalCanvaAutofillPayload, type CanvaAutofillImageBinding } from "@/lib/canva-autofill-payload";
-import { prepareCanvaContentFit } from "@/lib/canva-content-fit";
+import { prepareCanvaContentFit, buildCanvaContentFitReview } from "@/lib/canva-content-fit";
 import { executeCanonicalCanvaAutofill } from "@/lib/canva-autofill-execution";
 import { getConnection } from "@/lib/canva-connection-repository";
 import { getProjectContent } from "@/lib/newsletter-repository";
@@ -36,10 +36,12 @@ export async function POST(request: Request) {
     const row = await getConnection(access.project.id, access.user.id);
     const connected = !!row?.access_token && !!row.refresh_token && !!row.expires_at && Number.isFinite(Date.parse(row.expires_at));
     const images: CanvaAutofillImageBinding[] = [];
+    let imageDimensions: { width: number; height: number } | undefined;
     const upload = row?.execution?.backgroundUpload;
     if (upload?.status === "success") {
       try {
         const background = await readCanvaBackground(access.project.id, upload.sourceAssetId);
+        imageDimensions = { width: background.width, height: background.height };
         images.push({ field: "MAIN_IMAGE", sourceHash: background.hash, upload,
           asset: { id: background.id, projectId: access.project.id, approvalStatus: "approved", isActive: true, mimeType: "image/png" } });
       } catch { /* A missing, revoked or inaccessible asset remains a missing field. */ }
@@ -51,6 +53,7 @@ export async function POST(request: Request) {
     const readiness: CanvaRecommendationPreparation = { ok: true, supported: fit.supported, connected, stagingAllowed: true,
       isReady: prepared.isReady, visualReady: fit.visualReady, missingFields: prepared.missingFields.map(f => f.field),
       visualIssues: fit.fields.flatMap(f => f.fitStatus === "overflow" ? [{ field: f.field, fitStatus: f.fitStatus }] : []),
+      contentFitReview: buildCanvaContentFitReview(fit, imageDimensions),
       ...(connected && fit.visualReady && prepared.isReady ? { confirmation: createCanvaConfirmation(binding) } : {}) };
     if (p.action === "prepare") return canvaJson(readiness);
     if (!canvaUuid.test(p.requestKey ?? "")) throw new CanvaConnectError(400, "제작 요청을 확인하세요.");
