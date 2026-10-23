@@ -31,7 +31,7 @@ export function IssueDesignBatchApply({
   const isLoading = copySafety.busy || copySafety.locked;
 
   function selectSource(articleId: string) {
-    if (isLoading && copySafety.phase !== "loading") return;
+    if (copySafety.locked || (copySafety.busy && copySafety.phase !== "loading")) return;
     void copySafety.selectSource(articleId);
     setSelectedTargetIds((current) => current.filter((targetId) => targetId !== articleId));
   }

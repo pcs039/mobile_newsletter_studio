@@ -130,7 +130,42 @@ test('batch UI uses the same source guard and retains selected targets when resu
  const render=()=>{hooks.reset();return UI(props);},button=()=>nodes(render(),e=>e.type==='button'&&['선택 기사에 디자인 적용','결과 확인 필요 · 재실행 잠김'].includes(label(e)))[0];
  await h.engine.selectSource('source');for(const checkbox of nodes(render(),e=>e.type==='input'))checkbox.props.onChange();assert(!button().props.disabled);
  const previous=global.window;global.window={confirm:()=>true};h.state.post=()=>{throw Error('lost');};
- try{button().props.onClick();await tick();assert(h.engine.locked);assert(button().props.disabled);assert.equal(nodes(render(),e=>e.type==='input'&&e.props.checked).length,2);assert.equal(refresh,0);assert.equal(h.posts().length,1);}finally{global.window=previous;}
+ try{const stale=button();stale.props.onClick();await tick();assert(h.engine.locked);assert(button().props.disabled);stale.props.onClick();await tick();assert.equal(nodes(render(),e=>e.type==='input'&&e.props.checked).length,2);assert.equal(refresh,0);assert.equal(h.posts().length,1);}finally{global.window=previous;}
+});
+
+test('unknown copy blocks affected Composition edits and stale event handlers, while unrelated article edits remain available',async()=>{
+ const h=fixture(),hooks=uiHooks(),calls={save:0,text:0,preview:0,retry:0,accept:0};
+ const saved={composition:comp('target'),saved:comp('target'),busy:false,layoutStatus:'saved',textStatus:'saved',hasUnsaved:false,canRetryLayout:true,save:async()=>{calls.save++;return null;},changeText:()=>calls.text++,previewPatch:()=>calls.preview++,previewPlacement:()=>calls.preview++,retryLayout:()=>calls.retry++,acceptApplied:()=>calls.accept++};
+ function TextControls(){return null;} function PatternControls(){return null;}
+ const UI=loader({react:hooks.hooks,'@/components/design/article-canva-templates':{ArticleCanvaTemplates:()=>null},'@/components/design/article-production-pattern-controls':{ArticleProductionPatternControls:PatternControls},'@/components/design/article-text-design-controls':{ArticleTextDesignControls:TextControls},'@/components/design/composition-copy-status':{useCompositionCopySafety:()=>h.engine,CompositionCopyStatus:()=>null},'@/components/design/use-composition-save-state':{useCompositionSaveState:()=>saved}})('src/components/design/article-composition-editor.tsx').ArticleCompositionEditor;
+ let props={article:{id:'target',title:'대상'},assets:[],initialComposition:comp('target'),initialStatus:'ok',projectSlug:'project',previewArticle:{id:'target'},reuseSources:[{id:'source',hasComposition:true,title:'원본'}]};
+ const render=()=>{hooks.reset();const element=UI(props);return element.type(element.props);};
+ await h.engine.selectSource('source');const before=render(),text=nodes(before,e=>e.type===TextControls)[0].props,pattern=nodes(before,e=>e.type===PatternControls)[0].props;
+ const placements=nodes(before,e=>typeof e.type==='function'&&e.props?.placement);
+ const summary=nodes(before,e=>typeof e.type==='function'&&e.type.name==='DesignSaveSummary')[0].props;
+ h.state.post=()=>{throw Error('lost');};await h.run();assert(h.engine.affectsArticle('target'));
+ const after=render(),disabledText=nodes(after,e=>e.type===TextControls)[0].props;assert(disabledText.disabled);assert(disabledText.saveDisabled);
+ text.onChange({label:'late'});text.onSave();pattern.onApply('manual');pattern.onDraftApplied(comp('target'));
+ for(const p of placements){await p.props.onUpdate({isVisible:false});p.props.onPreview({rotation:40});await p.props.onDelete();}
+ summary.state.retryLayout();await tick();assert.deepEqual(calls,{save:0,text:0,preview:0,retry:0,accept:0});
+ assert(nodes(after,e=>e.props?.state?.canRetryLayout===false).length);assert(nodes(after,e=>e.props?.onSelect&&e.props?.buttonLabel).every(e=>e.props.disabled));
+ props={...props,article:{id:'unrelated',title:'무관 기사'}};saved.composition=comp('unrelated');saved.saved=saved.composition;
+ const unrelatedText=nodes(render(),e=>e.type===TextControls)[0].props;assert(!unrelatedText.disabled);unrelatedText.onChange({label:'허용'});assert.equal(calls.text,1);
+});
+
+test('non-copy status/settings repository paths and general PATCH API keep their original response contract',async()=>{
+ const oldFetch=global.fetch,oldKey=process.env.SUPABASE_SERVICE_ROLE_KEY,oldError=console.error;console.error=()=>{};
+ const repo=loader({'@/lib/supabase-config':{getSupabaseConfigStatus:()=>({isConfigured:true,hasServiceRoleKey:true}),getSupabaseRestEndpoint:p=>'https://fixture.invalid'+p}})('src/lib/article-composition-repository.ts');
+ try{
+  for(const method of ['updateProjectArticleCompositionStatus','updateProjectArticleCompositionSettings'])for(const mode of ['not_configured','missing','migration','error','lost','success']){
+   if(mode==='not_configured')delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY='isolated-fixture-only';
+   const row={id:'c-target',project_id:'project',article_id:'target',layout_key:'standard',status:'draft',settings:{},created_at:'1',updated_at:'2'};
+   global.fetch=async(url,init)=>{if(mode==='lost')throw Error('lost');if(init.method==='PATCH')return new Response(JSON.stringify(mode==='missing'?[]:mode==='success'?[row]:{message:'failure'}),{status:mode==='migration'?404:mode==='error'?500:200});return new Response(JSON.stringify(url.includes('composition_assets')?[]:[row]));};
+   const result=await repo[method]('project','target',method.endsWith('Status')?'draft':{textDesign:{label:'일반'}});assert(!Object.hasOwn(result,'copyOutcome'),method+':'+mode);if(mode==='success')assert.equal(result.status,'ok');
+  }
+  const route=loader({'@/lib/project-api-access':{requireProjectApiAccess:async()=>({ok:true,project:{id:'project',slug:'project'}})},'@/lib/newsletter-repository':{getProjectContent:async()=>({articles:[{id:'target'}]}),getProjectDesignAssets:async()=>({ok:true,assets:[]})},'@/lib/article-composition-repository':{getProjectArticleComposition:async()=>({status:'ok',data:comp('target')}),updateProjectArticleCompositionStatus:async()=>({status:'request_failed',data:null,message:'오류',copyOutcome:'unknown'})}})('src/app/api/project-article-composition/route.ts');
+  const response=await route.PATCH(new Request('https://fixture.invalid/api/project-article-composition',{method:'PATCH',body:JSON.stringify({projectSlug:'project',articleId:'target',compositionId:'c-target',action:'update_status',status:'draft'})}));assert(!Object.hasOwn(await response.json(),'copyOutcome'));
+ }finally{global.fetch=oldFetch;console.error=oldError;if(oldKey===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=oldKey;}
 });
 
 test('unchanged single/batch RPCs preserve article content, target text settings and source placements in isolated SQL',{skip:!process.env.CANVA_SQL_TEST_RUNTIME},async()=>{

@@ -610,12 +610,14 @@ function ArticleCompositionEditorSession({
   const assetById = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
   const copyUncertainHere = copySafety.affectsArticle(article.id);
   const isBusy = saveState.busy || copySafety.busy || copyUncertainHere;
+  const copyWritesBlocked = () => copySafety.busy || copySafety.affectsArticle(article.id);
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("article-design-save-state", { detail: { articleId: article.id, unsettled: saveState.hasUnsaved || isBusy } }));
     return () => { window.dispatchEvent(new CustomEvent("article-design-save-state", { detail: { articleId: article.id, unsettled: false } })); };
   }, [article.id, saveState.hasUnsaved, isBusy]);
 
   async function mutate(method: "POST" | "PATCH" | "DELETE", payload: Record<string, unknown>, key: string) {
+    if (copyWritesBlocked()) return;
     setBusyKey(key);
     setNotice(null);
 
@@ -695,7 +697,7 @@ function ArticleCompositionEditorSession({
     placement: ProjectArticleCompositionAsset,
     patch: { isVisible?: boolean; settings?: ArticleCompositionPlacementSettings; sortOrder?: number },
   ) {
-    if (!composition) return;
+    if (!composition || copyWritesBlocked()) return;
     saveState.previewPatch(placement.id, patch);
     await mutate(
       "PATCH",
@@ -718,6 +720,7 @@ function ArticleCompositionEditorSession({
     placementId: string,
     settings: ArticleCompositionPlacementSettings,
   ) {
+    if (copyWritesBlocked()) return;
     setNotice(null);
     saveState.previewPlacement(placementId, settings);
   }
@@ -848,7 +851,7 @@ function ArticleCompositionEditorSession({
         </p>
       ) : null}
 
-      <DesignSaveSummary state={saveState} assets={assets} />
+      <DesignSaveSummary state={{ ...saveState, canRetryLayout: saveState.canRetryLayout && !copyWritesBlocked(), retryLayout: () => { if (!copyWritesBlocked()) saveState.retryLayout(); } }} assets={assets} />
       {copyUncertainHere ? <p role="status" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-950">디자인 복사 결과 확인 필요 — 추가 Composition 변경을 잠갔습니다. ‘다른 기사 디자인 불러오기’에서 저장본을 조회하세요. 현재 미리보기가 복사 결과를 확정하지는 않습니다.</p> : null}
       <a href={`#composition-preview-${article.id}`} className="mt-3 inline-block text-sm font-bold text-[#184a88] underline underline-offset-4">현재 디자인 미리보기로 이동</a>
 
@@ -858,14 +861,14 @@ function ArticleCompositionEditorSession({
       <ArticleProductionPatternControls
         institutionPlacement={{ assetIds: assets.filter(asset => institutionAssetPlacementSlots(asset, composition.projectId).length > 0).map(asset => asset.id), onRequest: setInstitutionAssetId }}
         institutionVisualAvailable={assets.some(asset => asset.isActive && asset.approvalStatus === "approved" && asset.metadata?.source === "institution" && ["background", "illustration", "card_frame", "banner"].includes(asset.assetType))} article={article} key={String(composition.settings.productionPattern ?? "manual")} pattern={composition.settings.productionPattern}
-        composition={composition} onDraftApplied={value => { saveState.acceptApplied(value); setRecommendationApplied(true); }}
+        composition={composition} onDraftApplied={value => { if (!copyWritesBlocked()) { saveState.acceptApplied(value); setRecommendationApplied(true); } }}
         recommendedPattern={recommendationApplied ? undefined : recommendedPattern} projectSlug={projectSlug} articleId={article.id} textDesign={composition.settings.textDesign} disabled={isBusy || saveState.hasUnsaved}
         onApply={productionPattern => void mutate("PATCH", { action: "apply_production_pattern", projectSlug, articleId: article.id, compositionId: composition.id, productionPattern, textDesign: composition.settings.textDesign ?? {} }, "production-pattern")} />
 
           {institutionAssetId ? <InstitutionAssetPlacementConfirm key={`${article.id}:${institutionAssetId}`} assetId={institutionAssetId} assets={assets} composition={composition} disabled={isBusy || saveState.hasUnsaved}
             onClose={() => setInstitutionAssetId(null)} onApply={async (slot, assetId) => {
               const asset = assets.find(a => a.id === assetId);
-              if (isBusy || saveState.hasUnsaved || !institutionAssetPlacementSlots(asset, composition.projectId).includes(slot)) return false;
+              if (isBusy || copyWritesBlocked() || saveState.hasUnsaved || !institutionAssetPlacementSlots(asset, composition.projectId).includes(slot)) return false;
               if (composition.assets.some(p => p.slot === slot && p.assetId === assetId)) return true;
               selectSlot(slot);
               return !!(await selectAsset(slot, assetId));
@@ -880,8 +883,8 @@ function ArticleCompositionEditorSession({
             </summary>
             <p className="mt-3 text-xs leading-5 text-slate-600">배치·표시는 자동 저장, 글자 디자인은 버튼으로 저장합니다. 공개 반영 조건은 위의 ‘독자 화면 표시 조건 확인’에서 볼 수 있습니다.</p>
       {saveState.hasUnsaved ? <p className="mt-3 text-sm text-amber-900">편집 중인 변경사항을 저장한 뒤 패턴·초안을 적용하세요.</p> : null}
-      <ArticleTextDesignControls value={composition.settings.textDesign} disabled={false} saveDisabled={isBusy} saveStatus={saveState.textStatus}
-        onChange={next => { setNotice(null); saveState.changeText(next); }}
+      <ArticleTextDesignControls value={composition.settings.textDesign} disabled={copyUncertainHere || copySafety.busy} saveDisabled={isBusy} saveStatus={saveState.textStatus}
+        onChange={next => { if (!copyWritesBlocked()) { setNotice(null); saveState.changeText(next); } }}
         onSave={() => void mutate("PATCH", { action: "update_text_design", projectSlug, articleId: article.id, compositionId: composition.id, textDesign: composition.settings.textDesign ?? {} }, "text-design")} />
 
       <div className="mt-4">{reusePanel}</div>

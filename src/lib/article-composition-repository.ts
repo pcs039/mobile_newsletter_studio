@@ -123,9 +123,12 @@ export type ArticleCompositionRepositoryStatus =
 
 export type ArticleCompositionRepositoryResult<T> = {
   data: T;
-  copyOutcome?: "success" | "rejected" | "unknown";
   message: string;
   status: ArticleCompositionRepositoryStatus;
+};
+
+export type ArticleCompositionCopyResult<T> = ArticleCompositionRepositoryResult<T> & {
+  copyOutcome: "success" | "rejected" | "unknown";
 };
 
 export type ProjectArticleCompositionSource = {
@@ -393,7 +396,7 @@ export async function copyProjectArticleComposition(input: {
   projectId: string;
   sourceArticleId: string;
   targetArticleId: string;
-}): Promise<ArticleCompositionRepositoryResult<ProjectArticleComposition | null>> {
+}): Promise<ArticleCompositionCopyResult<ProjectArticleComposition | null>> {
   const projectId = input.projectId.trim();
   const sourceArticleId = input.sourceArticleId.trim();
   const targetArticleId = input.targetArticleId.trim();
@@ -462,7 +465,7 @@ export async function copyProjectArticleCompositionsBatch(input: {
   projectId: string;
   sourceArticleId: string;
   targetArticleIds: string[];
-}): Promise<ArticleCompositionRepositoryResult<ArticleCompositionBatchCopySummary | null>> {
+}): Promise<ArticleCompositionCopyResult<ArticleCompositionBatchCopySummary | null>> {
   const projectId = input.projectId.trim();
   const sourceArticleId = input.sourceArticleId.trim();
   const targetArticleIds = input.targetArticleIds.map((articleId) => articleId.trim());
@@ -570,7 +573,7 @@ async function patchProjectArticleComposition(
   );
 
   if (!headers || !endpoint) {
-    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", copyOutcome: "rejected", status: "not_configured" };
+    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
   }
 
   try {
@@ -585,17 +588,17 @@ async function patchProjectArticleComposition(
     if (!response.ok) {
       console.error("Article composition status update failed", response.status, body);
       return isMigrationRequired(response.status, body)
-        ? { data: null, message: "기사 Composition을 위한 v1.25 migration 적용이 필요합니다.", copyOutcome: "rejected", status: "migration_required" }
-        : { data: null, message: "기사 화면 구성 상태를 변경하지 못했습니다.", copyOutcome: "unknown", status: "request_failed" };
+        ? { data: null, message: "기사 Composition을 위한 v1.25 migration 적용이 필요합니다.", status: "migration_required" }
+        : { data: null, message: "기사 화면 구성 상태를 변경하지 못했습니다.", status: "request_failed" };
     }
 
     const rows = body ? (JSON.parse(body) as ArticleCompositionRow[]) : [];
-    if (!rows[0]) return { data: null, message: "변경할 기사 화면 구성을 찾지 못했습니다.", copyOutcome: "rejected", status: "not_found" };
+    if (!rows[0]) return { data: null, message: "변경할 기사 화면 구성을 찾지 못했습니다.", status: "not_found" };
 
     return getProjectArticleComposition(projectId, articleId);
   } catch (error) {
     console.error("Article composition status update request failed", error);
-    return { data: null, message: "기사 화면 구성 상태 변경 중 오류가 발생했습니다.", copyOutcome: "unknown", status: "request_failed" };
+    return { data: null, message: "기사 화면 구성 상태 변경 중 오류가 발생했습니다.", status: "request_failed" };
   }
 }
 

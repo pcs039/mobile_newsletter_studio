@@ -64,7 +64,7 @@ function repositoryStatusCode(status: ArticleCompositionRepositoryResult<unknown
 
 function repositoryResponse(result: ArticleCompositionRepositoryResult<unknown>, successStatus = 200) {
   return NextResponse.json(
-    { ok: result.status === "ok", composition: result.data, message: result.message, ...(result.copyOutcome ? { copyOutcome: result.copyOutcome } : {}) },
+    { ok: result.status === "ok", composition: result.data, message: result.message },
     { status: result.status === "ok" ? successStatus : repositoryStatusCode(result.status) },
   );
 }
@@ -217,12 +217,14 @@ export async function POST(request: Request) {
       );
     }
 
-    return repositoryResponse(
-      await copyProjectArticleComposition({
-        projectId: context.projectId,
-        sourceArticleId,
-        targetArticleId: articleId,
-      }),
+    const copied = await copyProjectArticleComposition({
+      projectId: context.projectId,
+      sourceArticleId,
+      targetArticleId: articleId,
+    });
+    return NextResponse.json(
+      { ok: copied.status === "ok", composition: copied.data, message: copied.message, copyOutcome: copied.copyOutcome },
+      { status: copied.status === "ok" ? 200 : repositoryStatusCode(copied.status) },
     );
   }
   if (action !== "add_placement") {
