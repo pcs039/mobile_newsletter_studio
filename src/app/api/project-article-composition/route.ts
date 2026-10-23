@@ -69,6 +69,11 @@ function repositoryResponse(result: ArticleCompositionRepositoryResult<unknown>,
   );
 }
 
+async function rejectedCopyResponse(response: Response) {
+  const body = await response.json().catch(() => ({ ok: false }));
+  return NextResponse.json({ ...body, copyOutcome: "rejected" }, { status: response.status });
+}
+
 function isProductionAsset(asset: ProjectDesignAsset): asset is ProjectDesignAsset & {
   assetType: ProjectDesignProductionAssetType;
 } {
@@ -176,7 +181,7 @@ export async function POST(request: Request) {
 
   if (action === "copy_compositions_batch") {
     const access = await requireProjectApiAccess({ projectSlug });
-    if (!access.ok) return access.response;
+    if (!access.ok) return rejectedCopyResponse(access.response);
 
     const sourceArticleId = asText(payload?.sourceArticleId);
     const targetArticleIds = Array.isArray(payload?.targetArticleIds)
@@ -189,14 +194,14 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(
-      { ok: batchResult.status === "ok", result: batchResult.data, message: batchResult.message },
+      { ok: batchResult.status === "ok", result: batchResult.data, message: batchResult.message, copyOutcome: batchResult.copyOutcome ?? "unknown" },
       { status: batchResult.status === "ok" ? 200 : repositoryStatusCode(batchResult.status) },
     );
   }
 
   const result = await requireEditorContext(projectSlug, articleId);
 
-  if (!result.ok) return result.response;
+  if (!result.ok) return action === "copy_composition" ? rejectedCopyResponse(result.response) : result.response;
   const { context } = result;
 
   if (action === "create_composition") {
@@ -207,17 +212,19 @@ export async function POST(request: Request) {
 
     if (!sourceArticleId || sourceArticleId === articleId) {
       return NextResponse.json(
-        { ok: false, message: "원본 기사와 적용할 기사를 다르게 선택해 주세요." },
+        { ok: false, copyOutcome: "rejected", message: "원본 기사와 적용할 기사를 다르게 선택해 주세요." },
         { status: 400 },
       );
     }
 
-    return repositoryResponse(
-      await copyProjectArticleComposition({
-        projectId: context.projectId,
-        sourceArticleId,
-        targetArticleId: articleId,
-      }),
+    const copied = await copyProjectArticleComposition({
+      projectId: context.projectId,
+      sourceArticleId,
+      targetArticleId: articleId,
+    });
+    return NextResponse.json(
+      { ok: copied.status === "ok", composition: copied.data, message: copied.message, copyOutcome: copied.copyOutcome },
+      { status: copied.status === "ok" ? 200 : repositoryStatusCode(copied.status) },
     );
   }
   if (action !== "add_placement") {

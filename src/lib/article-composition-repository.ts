@@ -127,6 +127,10 @@ export type ArticleCompositionRepositoryResult<T> = {
   status: ArticleCompositionRepositoryStatus;
 };
 
+export type ArticleCompositionCopyResult<T> = ArticleCompositionRepositoryResult<T> & {
+  copyOutcome: "success" | "rejected" | "unknown";
+};
+
 export type ProjectArticleCompositionSource = {
   articleId: string;
   status: "draft" | "ready";
@@ -392,20 +396,20 @@ export async function copyProjectArticleComposition(input: {
   projectId: string;
   sourceArticleId: string;
   targetArticleId: string;
-}): Promise<ArticleCompositionRepositoryResult<ProjectArticleComposition | null>> {
+}): Promise<ArticleCompositionCopyResult<ProjectArticleComposition | null>> {
   const projectId = input.projectId.trim();
   const sourceArticleId = input.sourceArticleId.trim();
   const targetArticleId = input.targetArticleId.trim();
 
   if (!projectId || !sourceArticleId || !targetArticleId || sourceArticleId === targetArticleId) {
-    return { data: null, message: "원본 기사와 적용할 기사를 확인해 주세요.", status: "invalid_input" };
+    return { data: null, message: "원본 기사와 적용할 기사를 확인해 주세요.", copyOutcome: "rejected", status: "invalid_input" };
   }
 
   const headers = getServiceRoleHeaders();
   const endpoint = getSupabaseRestEndpoint("/rest/v1/rpc/copy_newsletter_article_composition_atomic");
 
   if (!headers || !endpoint) {
-    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
+    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", copyOutcome: "rejected", status: "not_configured" };
   }
 
   try {
@@ -426,30 +430,34 @@ export async function copyProjectArticleComposition(input: {
         return {
           data: null,
           message: "기사 디자인 재사용을 위한 v1.27 migration 적용이 필요합니다.",
-          status: "migration_required",
+          copyOutcome: "rejected", status: "migration_required",
         };
       }
       if (body.includes("composition_copy_same_article") || body.includes("composition_copy_identifiers_required")) {
-        return { data: null, message: "원본 기사와 적용할 기사를 다르게 선택해 주세요.", status: "invalid_input" };
+        return { data: null, message: "원본 기사와 적용할 기사를 다르게 선택해 주세요.", copyOutcome: "rejected", status: "invalid_input" };
       }
       if (body.includes("composition_copy_article_not_found") || body.includes("composition_copy_source_not_found")) {
-        return { data: null, message: "복사할 기사 디자인을 찾지 못했습니다.", status: "not_found" };
+        return { data: null, message: "복사할 기사 디자인을 찾지 못했습니다.", copyOutcome: "rejected", status: "not_found" };
       }
       if (body.includes("composition_copy_project_mismatch")) {
-        return { data: null, message: "같은 프로젝트의 기사 디자인만 재사용할 수 있습니다.", status: "conflict" };
+        return { data: null, message: "같은 프로젝트의 기사 디자인만 재사용할 수 있습니다.", copyOutcome: "rejected", status: "conflict" };
       }
 
       console.error("Article composition copy failed", response.status, body);
-      return { data: null, message: "기사 디자인을 복사하지 못했습니다.", status: "request_failed" };
+      return { data: null, message: "기사 디자인을 복사하지 못했습니다.", copyOutcome: "unknown", status: "request_failed" };
     }
 
+    const receipt = JSON.parse(body) as Record<string, unknown>;
+    if (receipt.ok !== true || typeof receipt.composition_id !== "string" || typeof receipt.copied_placement_count !== "number" || receipt.copied_placement_count < 0) {
+      return { data: null, copyOutcome: "unknown", status: "request_failed", message: "복사 응답을 확인하지 못했습니다. 저장본 확인이 필요합니다." };
+    }
     const composition = await getProjectArticleComposition(projectId, targetArticleId);
-    return composition.status === "ok"
-      ? { ...composition, message: "기사 디자인 배치를 복사했습니다." }
-      : composition;
+    return composition.status === "ok" && composition.data?.id === receipt.composition_id && composition.data.articleId === targetArticleId
+      ? { ...composition, copyOutcome: "success", message: "기사 디자인 배치를 복사했습니다." }
+      : { ...composition, copyOutcome: "unknown" };
   } catch (error) {
     console.error("Article composition copy request failed", error);
-    return { data: null, message: "기사 디자인 복사 중 오류가 발생했습니다.", status: "request_failed" };
+    return { data: null, message: "기사 디자인 복사 중 오류가 발생했습니다.", copyOutcome: "unknown", status: "request_failed" };
   }
 }
 
@@ -457,27 +465,27 @@ export async function copyProjectArticleCompositionsBatch(input: {
   projectId: string;
   sourceArticleId: string;
   targetArticleIds: string[];
-}): Promise<ArticleCompositionRepositoryResult<ArticleCompositionBatchCopySummary | null>> {
+}): Promise<ArticleCompositionCopyResult<ArticleCompositionBatchCopySummary | null>> {
   const projectId = input.projectId.trim();
   const sourceArticleId = input.sourceArticleId.trim();
   const targetArticleIds = input.targetArticleIds.map((articleId) => articleId.trim());
   const uniqueTargetIds = new Set(targetArticleIds);
 
   if (!projectId || !sourceArticleId || targetArticleIds.length === 0 || targetArticleIds.some((articleId) => !articleId)) {
-    return { data: null, message: "원본 기사와 적용할 기사 목록을 확인해 주세요.", status: "invalid_input" };
+    return { data: null, message: "원본 기사와 적용할 기사 목록을 확인해 주세요.", copyOutcome: "rejected", status: "invalid_input" };
   }
   if (uniqueTargetIds.size !== targetArticleIds.length) {
-    return { data: null, message: "적용할 기사 목록에 중복된 기사가 있습니다.", status: "invalid_input" };
+    return { data: null, message: "적용할 기사 목록에 중복된 기사가 있습니다.", copyOutcome: "rejected", status: "invalid_input" };
   }
   if (uniqueTargetIds.has(sourceArticleId)) {
-    return { data: null, message: "원본 기사는 적용 대상에서 제외해 주세요.", status: "invalid_input" };
+    return { data: null, message: "원본 기사는 적용 대상에서 제외해 주세요.", copyOutcome: "rejected", status: "invalid_input" };
   }
 
   const headers = getServiceRoleHeaders();
   const endpoint = getSupabaseRestEndpoint("/rest/v1/rpc/copy_newsletter_article_compositions_batch_atomic");
 
   if (!headers || !endpoint) {
-    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", status: "not_configured" };
+    return { data: null, message: "Supabase 서버 설정을 확인해 주세요.", copyOutcome: "rejected", status: "not_configured" };
   }
 
   try {
@@ -498,7 +506,7 @@ export async function copyProjectArticleCompositionsBatch(input: {
         return {
           data: null,
           message: "기사 디자인 일괄 적용을 위한 v1.28 migration 적용이 필요합니다.",
-          status: "migration_required",
+          copyOutcome: "rejected", status: "migration_required",
         };
       }
       if (
@@ -507,17 +515,17 @@ export async function copyProjectArticleCompositionsBatch(input: {
         || body.includes("composition_batch_copy_duplicate_targets")
         || body.includes("composition_batch_copy_source_in_targets")
       ) {
-        return { data: null, message: "원본 기사와 중복되지 않는 적용 대상 기사를 선택해 주세요.", status: "invalid_input" };
+        return { data: null, message: "원본 기사와 중복되지 않는 적용 대상 기사를 선택해 주세요.", copyOutcome: "rejected", status: "invalid_input" };
       }
       if (body.includes("composition_batch_copy_article_not_found") || body.includes("composition_batch_copy_source_not_found")) {
-        return { data: null, message: "일괄 적용할 기사 디자인을 찾지 못했습니다.", status: "not_found" };
+        return { data: null, message: "일괄 적용할 기사 디자인을 찾지 못했습니다.", copyOutcome: "rejected", status: "not_found" };
       }
       if (body.includes("composition_batch_copy_project_mismatch")) {
-        return { data: null, message: "같은 프로젝트의 기사에만 디자인을 일괄 적용할 수 있습니다.", status: "conflict" };
+        return { data: null, message: "같은 프로젝트의 기사에만 디자인을 일괄 적용할 수 있습니다.", copyOutcome: "rejected", status: "conflict" };
       }
 
       console.error("Article composition batch copy failed", response.status, body);
-      return { data: null, message: "기사 디자인을 일괄 적용하지 못했습니다.", status: "request_failed" };
+      return { data: null, message: "기사 디자인을 일괄 적용하지 못했습니다.", copyOutcome: "unknown", status: "request_failed" };
     }
 
     const result = JSON.parse(body) as Record<string, unknown>;
@@ -532,7 +540,7 @@ export async function copyProjectArticleCompositionsBatch(input: {
       || sourcePlacementCount < 0
       || copiedPlacementCount !== sourcePlacementCount * targetCount
     ) {
-      return { data: null, message: "기사 디자인 일괄 적용 결과를 확인하지 못했습니다.", status: "request_failed" };
+      return { data: null, message: "기사 디자인 일괄 적용 결과를 확인하지 못했습니다.", copyOutcome: "unknown", status: "request_failed" };
     }
 
     return {
@@ -543,11 +551,11 @@ export async function copyProjectArticleCompositionsBatch(input: {
         targetArticleCount: targetCount,
       },
       message: `${targetCount.toLocaleString("ko-KR")}개 기사에 디자인 배치를 적용했습니다.`,
-      status: "ok",
+      copyOutcome: "success", status: "ok",
     };
   } catch (error) {
     console.error("Article composition batch copy request failed", error);
-    return { data: null, message: "기사 디자인 일괄 적용 중 오류가 발생했습니다.", status: "request_failed" };
+    return { data: null, message: "기사 디자인 일괄 적용 중 오류가 발생했습니다.", copyOutcome: "unknown", status: "request_failed" };
   }
 }
 
