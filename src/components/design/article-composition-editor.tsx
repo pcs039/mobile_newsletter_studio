@@ -1,4 +1,6 @@
 "use client";
+import { CompositionCopyStatus, useCompositionCopySafety } from "@/components/design/composition-copy-status";
+import type { CompositionCopySafety } from "@/lib/composition-copy-safety";
 import { buildVisualDirectorResult } from "@/lib/article-visual-director";
 import { ArticleVisualDirectorResult } from "@/components/design/article-visual-director-result";
 
@@ -69,12 +71,6 @@ type CompositionApiResponse = {
 };
 
 type Notice = { kind: "error" | "success"; message: string } | null;
-
-type ReuseState =
-  | { status: "idle"; message: string }
-  | { status: "loading"; message: string }
-  | { status: "success"; message: string }
-  | { status: "error"; message: string };
 
 const slotDefinitions: Array<{
   description: string;
@@ -525,14 +521,14 @@ function DesignReusePanel({
   onSourceChange,
   selectedSourceId,
   sources,
-  state,
+  safety,
 }: {
   disabled: boolean;
   onApply: () => void;
   onSourceChange: (sourceId: string) => void;
   selectedSourceId: string;
   sources: ArticleCompositionEditorProps["reuseSources"];
-  state: ReuseState;
+  safety: CompositionCopySafety;
 }) {
   const availableSourceCount = sources.filter((source) => source.hasComposition).length;
 
@@ -541,6 +537,7 @@ function DesignReusePanel({
       <summary className="cursor-pointer px-4 py-3 text-sm font-black text-[#092046] sm:px-5">
         다른 기사 디자인 불러오기
         <span className="ml-2 text-xs font-bold text-slate-500">같은 발행호에서 재사용</span>
+        {safety.locked ? <span className="mt-1 block text-xs text-amber-900">결과 확인 필요 · 복사 잠김</span> : safety.busy ? <span className="mt-1 block text-xs text-sky-800">원본 확인·적용 중</span> : null}
       </summary>
       <div className="border-t border-slate-200 p-4 sm:p-5">
         <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -548,7 +545,7 @@ function DesignReusePanel({
             원본 기사
             <select
               value={selectedSourceId}
-              disabled={disabled || availableSourceCount === 0}
+              disabled={(disabled && safety.phase !== "loading") || availableSourceCount === 0}
               onChange={(event) => onSourceChange(event.currentTarget.value)}
               className="mt-2 h-12 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
             >
@@ -562,11 +559,11 @@ function DesignReusePanel({
           </label>
           <button
             type="button"
-            disabled={disabled || !selectedSourceId}
+            disabled={disabled || !safety.canCopy}
             onClick={onApply}
             className="h-12 rounded-lg border border-[#2f73b7] bg-[#eaf3ff] px-5 text-sm font-black text-[#092046] transition hover:bg-white disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-400"
           >
-            {state.status === "loading" ? "디자인 적용 중" : "디자인 적용"}
+            {safety.busy ? "원본 확인·적용 중" : "디자인 적용"}
           </button>
         </div>
 
@@ -576,24 +573,7 @@ function DesignReusePanel({
           <p className="mt-3 text-sm font-bold text-slate-600">디자인 구성이 저장된 다른 기사가 없습니다.</p>
         ) : null}
 
-        <div className="mt-4 rounded-lg border border-[#d8e8ff] bg-[#f7fbff] p-4 text-xs font-semibold leading-5 text-slate-600">
-          <p className="font-black text-[#092046]">복사되는 항목</p>
-          <p className="mt-1">배경, 이미지, 장식과 위치·회전·크기·투명도·레이어·표시 순서를 그대로 적용합니다.</p>
-          <p className="mt-2 font-black text-[#184a88]">현재 기사의 제목·본문·요약·콘텐츠 블록·링크·상태는 유지되고 디자인 배치만 교체됩니다.</p>
-          <p className="mt-2 text-slate-500">적용 중 오류가 발생하면 atomic transaction이 취소되어 현재 디자인도 그대로 유지됩니다.</p>
-        </div>
-
-        {state.status !== "idle" ? (
-          <p className={`mt-4 rounded-lg px-4 py-3 text-sm font-bold ${
-            state.status === "error"
-              ? "bg-rose-50 text-rose-800"
-              : state.status === "success"
-                ? "bg-emerald-50 text-emerald-800"
-                : "bg-sky-50 text-sky-800"
-          }`} role="status">
-            {state.message}
-          </p>
-        ) : null}
+        <CompositionCopyStatus safety={safety} />
       </div>
     </details>
   );
@@ -622,14 +602,14 @@ function ArticleCompositionEditorSession({
   const [notice, setNotice] = useState<Notice>(null);
   const [activeSlot, setActiveSlot] = useState<ArticleCompositionSlot>("hero_background");
   const [selectedPlacementId, setSelectedPlacementId] = useState<string | null>(null);
-  const [reuseSourceId, setReuseSourceId] = useState("");
-  const [reuseState, setReuseState] = useState<ReuseState>({ status: "idle", message: "" });
+  const copySafety = useCompositionCopySafety(projectSlug);
   const selectableAssets = useMemo(
     () => assets.filter((asset) => isProductionAsset(asset) && asset.isActive && asset.approvalStatus !== "archived"),
     [assets],
   );
   const assetById = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
-  const isBusy = saveState.busy;
+  const copyUncertainHere = copySafety.affectsArticle(article.id);
+  const isBusy = saveState.busy || copySafety.busy || copyUncertainHere;
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("article-design-save-state", { detail: { articleId: article.id, unsettled: saveState.hasUnsaved || isBusy } }));
     return () => { window.dispatchEvent(new CustomEvent("article-design-save-state", { detail: { articleId: article.id, unsettled: false } })); };
@@ -766,57 +746,24 @@ function ArticleCompositionEditorSession({
   }
 
   async function applyReusedDesign() {
-    if (!reuseSourceId || reuseSourceId === article.id || isBusy || saveState.layoutStatus !== "saved") return;
-
-    const source = reuseSources.find((candidate) => candidate.id === reuseSourceId && candidate.hasComposition);
-    if (!source) {
-      setReuseState({ status: "error", message: "불러올 기사 디자인을 다시 선택해 주세요. 현재 디자인은 그대로 유지됩니다." });
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `“${source.title}”의 디자인 배치로 현재 디자인을 교체할까요?\n기사 제목·본문·링크와 기사 상태는 유지됩니다.`,
-    );
-    if (!confirmed) return;
-
-    setBusyKey(`copy:${source.id}`);
-    setReuseState({ status: "loading", message: "선택한 기사 디자인을 적용하고 있습니다." });
-
-    const result = await saveState.save({
-      key: "copy", kind: "layout", signature: source.id, perform: async () => {
-        const response = await fetch("/api/project-article-composition", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "copy_composition", articleId: article.id, projectSlug, sourceArticleId: source.id }),
-        }).catch(() => null);
-        const result = response ? await response.json().catch(() => null) as CompositionApiResponse | null : null;
-        if (!response || !response.ok || !result?.ok || !result.composition) {
-          throw new Error(result?.message ?? "기사 디자인을 불러오지 못했습니다.");
-        }
-        return { composition: result.composition, message: result.message };
-      },
-    });
-    setBusyKey("");
-    if (!result) { setReuseState({ status: "error", message: "디자인 불러오기에 실패했습니다. 저장본을 다시 확인하세요." }); return; }
-    setSelectedPlacementId(null);
-    setReuseState({
-      status: "success",
-      message: `“${source.title}”의 디자인 배치를 적용했습니다. 모바일 미리보기에 즉시 반영되었습니다.`,
-    });
+    if (isBusy || saveState.layoutStatus !== "saved") return;
+    const source = reuseSources.find(candidate => candidate.id === copySafety.sourceId && candidate.hasComposition);
+    if (!source) return;
+    const result = await copySafety.copy([article.id], true, () => window.confirm(
+      `“${source.title}”의 자산 배치로 현재 배치를 교체할까요?\nHTML 텍스트 디자인·글꼴·제작 패턴과 기사 내용은 유지되고 Composition은 draft로 전환됩니다.`,
+    ));
+    if (result?.composition) { saveState.acceptApplied(result.composition); setSelectedPlacementId(null); }
   }
 
-  const availableReuseSources = reuseSources.filter((source) => source.id !== article.id);
+  const availableReuseSources = reuseSources.filter(source => source.id !== article.id);
   const reusePanel = (
     <DesignReusePanel
-      disabled={isBusy || saveState.layoutStatus !== "saved"}
+      disabled={isBusy || copySafety.locked || saveState.layoutStatus !== "saved"}
       onApply={() => void applyReusedDesign()}
-      onSourceChange={(sourceId) => {
-        setReuseSourceId(sourceId);
-        setReuseState({ status: "idle", message: "" });
-      }}
-      selectedSourceId={reuseSourceId}
+      onSourceChange={sourceId => void copySafety.selectSource(sourceId)}
+      selectedSourceId={copySafety.sourceId}
       sources={availableReuseSources}
-      state={reuseState}
+      safety={copySafety}
     />
   );
 
@@ -902,6 +849,7 @@ function ArticleCompositionEditorSession({
       ) : null}
 
       <DesignSaveSummary state={saveState} assets={assets} />
+      {copyUncertainHere ? <p role="status" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-950">디자인 복사 결과 확인 필요 — 추가 Composition 변경을 잠갔습니다. ‘다른 기사 디자인 불러오기’에서 저장본을 조회하세요. 현재 미리보기가 복사 결과를 확정하지는 않습니다.</p> : null}
       <a href={`#composition-preview-${article.id}`} className="mt-3 inline-block text-sm font-bold text-[#184a88] underline underline-offset-4">현재 디자인 미리보기로 이동</a>
 
       <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,520px)] xl:items-start">
@@ -928,6 +876,7 @@ function ArticleCompositionEditorSession({
               <span className="mt-1 block text-xs font-normal text-slate-600">글자·배경·장식 조정 · {composition.assets.length}개 배치</span>
               {saveState.textStatus !== "saved" ? <span className="mt-1 block text-xs text-amber-900">텍스트: {designSaveLabels[saveState.textStatus]}</span> : null}
               {saveState.layoutStatus !== "saved" ? <span className="mt-1 block text-xs text-amber-900">배치: {designSaveLabels[saveState.layoutStatus]}</span> : null}
+              {copySafety.locked ? <span className="mt-1 block text-xs text-amber-900">디자인 복사 결과 확인 필요 · 잠김</span> : null}
             </summary>
             <p className="mt-3 text-xs leading-5 text-slate-600">배치·표시는 자동 저장, 글자 디자인은 버튼으로 저장합니다. 공개 반영 조건은 위의 ‘독자 화면 표시 조건 확인’에서 볼 수 있습니다.</p>
       {saveState.hasUnsaved ? <p className="mt-3 text-sm text-amber-900">편집 중인 변경사항을 저장한 뒤 패턴·초안을 적용하세요.</p> : null}
