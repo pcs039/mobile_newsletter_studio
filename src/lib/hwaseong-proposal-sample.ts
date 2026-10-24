@@ -10,7 +10,7 @@ export function proposalSample(article: ProjectContentArticle, projectId: string
   const m = cover?.metadata.proposal_sample;
   if (!cover || !m || typeof m !== "object" || Array.isArray(m)) return null;
   const v = m as Record<string, unknown>;
-  if (v.version !== 1 || !["policy", "tourism", "event", "cartoon", "accessible"].includes(String(v.kind)) ||
+  if (v.version !== 1 || !["policy", "tourism", "event", "cartoon", "accessible", "interview", "video"].includes(String(v.kind)) ||
       !["eyebrow", "headline", "summary", "sourceTitle"].every(k => typeof v[k] === "string" && String(v[k]).length < 500) ||
       !/^#[0-9a-f]{6}$/i.test(String(v.color)) || !/^#[0-9a-f]{6}$/i.test(String(v.pale)) ||
       !cover.body.startsWith("/api/project-files/preview?")) return null;
@@ -55,4 +55,32 @@ export const tourismPlaces = [
 
 export function sampleHref(slug: string, articleId?: string, detail = false, width = 390) {
   return `/projects/${encodeURIComponent(slug)}/samples?${new URLSearchParams({ ...(articleId ? { articleId } : {}), ...(detail ? { view: "detail" } : {}), width: String(width === 520 ? 520 : 390) })}`;
+}
+
+export const interviewSource = "https://v.daum.net/v/20260608110932267";
+export const officialVideoId = "cLHilm6oBjI";
+export type EditorialFeature = {
+  sourceUrl: string; publishedDate: string; credit: string; person: string; role: string;
+  quote: string; note: string; videoId: string; sections: { title: string; text: string }[];
+  canvaCover: string;
+};
+export function editorialFeature(sample: ProposalSample, projectId?: string): EditorialFeature | null {
+  if (!["interview", "video"].includes(sample.kind)) return null;
+  const raw = sample.article.blocks.find(b => b.metadata.proposal_sample)?.metadata.proposal_editorial;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const v = raw as Record<string, unknown>;
+  const strings = ["sourceUrl", "publishedDate", "credit", "person", "role", "quote", "note", "videoId", "canvaCover"];
+  if (strings.some(k => typeof v[k] !== "string" || String(v[k]).length > 600) || !/^2026-\d{2}-\d{2}$/.test(String(v.publishedDate))) return null;
+  if (sample.kind === "interview" ? v.sourceUrl !== interviewSource || v.videoId !== "" : v.sourceUrl !== `https://www.youtube.com/watch?v=${officialVideoId}` || v.videoId !== officialVideoId) return null;
+  if (!Array.isArray(v.sections) || !v.sections.length || v.sections.length > 5 || v.sections.some(s => !s || typeof s.title !== "string" || s.title.length > 100 || typeof s.text !== "string" || s.text.length > 1800)) return null;
+  let canvaCover = "";
+  if (v.canvaCover) {
+    try {
+      const u = new URL(String(v.canvaCover), "https://sample.invalid");
+      const cover = new URL(sample.cover, "https://sample.invalid");
+      const prefix = projectId ? `projects/${projectId}/` : cover.searchParams.get("path")?.match(/^projects\/[^/]+\//)?.[0];
+      if (prefix && u.origin === cover.origin && u.pathname === "/api/project-files/preview" && u.searchParams.get("bucket") === "design-production-assets" && u.searchParams.get("path")?.startsWith(prefix)) canvaCover = String(v.canvaCover);
+    } catch { /* A malformed optional design is never rendered. */ }
+  }
+  return { sourceUrl: String(v.sourceUrl), publishedDate: String(v.publishedDate), credit: String(v.credit), person: String(v.person), role: String(v.role), quote: String(v.quote), note: String(v.note), videoId: String(v.videoId), sections: v.sections.map(s => ({ title: s.title, text: s.text })), canvaCover };
 }

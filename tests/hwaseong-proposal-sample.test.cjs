@@ -40,3 +40,16 @@ test('outdated tourism/comic audio is hidden only in presentation, preserving st
   if(['tourism','cartoon'].includes(kind)){assert.equal(shown.audioSource,'none');assert.equal(shown.audioFile,null);assert.equal(shown.body,a.body);assert.equal(shown.blocks,a.blocks);}else assert.equal(shown,a);assert.equal(JSON.stringify(a),before);
  }
 });
+test('editorial sources, dates and video membership fail closed; no arbitrary embed or cross-project Canva image',()=>{
+ const {editorialFeature}=loader()('src/lib/hwaseong-proposal-sample.ts');
+ const a=fixture();const m=a.blocks[0].metadata;m.proposal_sample.kind='video';m.proposal_editorial={sourceUrl:'https://www.youtube.com/watch?v=cLHilm6oBjI',publishedDate:'2026-10-15',credit:'공식 썸네일',person:'',role:'',quote:'',note:'설명란 기반',videoId:'cLHilm6oBjI',canvaCover:'',sections:[{title:'장소',text:'공식 설명'}]};
+ const sample=proposalSample(a,pid);assert(editorialFeature(sample));const before=JSON.stringify(a);
+ for(const patch of [{sourceUrl:'https://evil.invalid'},{videoId:'made-up-id'},{publishedDate:'unknown'},{sections:[{title:'x',text:9}]}]){const saved={...m.proposal_editorial};Object.assign(m.proposal_editorial,patch);assert.equal(editorialFeature(sample),null);m.proposal_editorial=saved;}
+ assert.equal(JSON.stringify(a),before);m.proposal_editorial.canvaCover='/api/project-files/preview?bucket=design-production-assets&path=projects/other/cover.png';assert.equal(editorialFeature(sample,pid).canvaCover,'');
+ m.proposal_sample.kind='interview';m.proposal_editorial.sourceUrl='https://v.daum.net/v/20260608110932267';m.proposal_editorial.videoId='';assert(editorialFeature(proposalSample(a,pid)));
+});
+test('video loads only on explicit click; sample integration does not alter old article detail rendering',()=>{
+ const fs=require('node:fs'),path=require('node:path'),source=fs.readFileSync(path.join(__dirname,'../src/components/hwaseong-editorial-sample.tsx'),'utf8');
+ assert.match(source,/useState\(false\)/);assert.match(source,/loaded \? <iframe/);assert.match(source,/youtube-nocookie\.com\/embed/);assert.match(source,/onClick=\{\(\) => setLoaded\(true\)\}/);assert.match(source,/플레이어 닫기 · 재생 중단/);assert.match(source,/key=\{sample.article.id\}/);
+ const reader=fs.readFileSync(path.join(__dirname,'../src/components/hwaseong-proposal-reader.tsx'),'utf8');assert.match(reader,/const prev = samples\[index - 1\], next = samples\[index \+ 1\]/);assert.match(reader,/첫 기사입니다/);assert.match(reader,/마지막 기사입니다/);assert.match(reader,/samplePresentationArticle\(selected\)/);
+});
