@@ -519,7 +519,7 @@ export function PublicNewsletterCoverView({
             </div>
             {coverLayout === "image_info" && hasInfo ? (
               <div className="border-t border-slate-100 px-5 py-5">
-                {coverTitle ? <h2 data-public-text-scale-target={compact ? "article-title" : undefined} className={`${compact ? "text-[1.9rem] tracking-tight" : "text-2xl"} font-black leading-tight text-[#092046] [word-break:keep-all] [overflow-wrap:anywhere]`}>{coverTitle}</h2> : null}
+                {coverTitle ? <h2 data-proposal-cover-title={compact || undefined} data-public-text-scale-target={compact ? "article-title" : undefined} className={`${compact ? "text-[1.9rem] tracking-tight" : "text-2xl"} font-black leading-tight text-[#092046] [word-break:keep-all] [overflow-wrap:anywhere]`}>{coverTitle}</h2> : null}
                 {coverSubtitle ? <p data-public-text-scale-target={compact ? "article-summary" : undefined} className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all] [overflow-wrap:anywhere]">{coverSubtitle}</p> : null}
                 {!masthead && coverIssueText ? <p className="mt-3 text-xs font-black text-[#184a88]">{coverIssueText}</p> : null}
               </div>
