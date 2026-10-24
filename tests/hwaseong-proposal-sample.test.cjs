@@ -53,3 +53,12 @@ test('video loads only on explicit click; sample integration does not alter old 
  assert.match(source,/useState\(false\)/);assert.match(source,/loaded \? <iframe/);assert.match(source,/youtube-nocookie\.com\/embed/);assert.match(source,/onClick=\{\(\) => setLoaded\(true\)\}/);assert.match(source,/플레이어 닫기 · 재생 중단/);assert.match(source,/key=\{sample.article.id\}/);
  const reader=fs.readFileSync(path.join(__dirname,'../src/components/hwaseong-proposal-reader.tsx'),'utf8');assert.match(reader,/const prev = samples\[index - 1\], next = samples\[index \+ 1\]/);assert.match(reader,/첫 기사입니다/);assert.match(reader,/마지막 기사입니다/);assert.match(reader,/samplePresentationArticle\(selected\)/);
 });
+test('interview A/B displays one cover, avoids duplicated visible quote and preserves HTML detail',()=>{
+ const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+ const e={sourceUrl:'https://v.daum.net/v/20260608110932267',publishedDate:'2026-06-08',credit:'photo credit',person:'작가',role:'시각예술',quote:'확대 가능한 실제 인용문',note:'출처 안내',canvaCover:'/api/project-files/preview?bucket=design-production-assets&path=projects/test/canva.png',sections:[{title:'주제',text:'확대 가능한 본문'}]};
+ const sample={kind:'interview',headline:'인터뷰 제목',summary:'요약',cover:'/photo.webp',sourceTitle:'원문',article:{id:'article'}};
+ const render=(mode,detail=false)=>{const load=loader({'react':{...React,useState:()=>[mode,()=>{}]},'next/link':props=>React.createElement('a',props),'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null},'@/lib/hwaseong-proposal-sample':{editorialFeature:()=>e}});return renderToStaticMarkup(React.createElement(load('src/components/hwaseong-editorial-sample.tsx').HwaseongEditorialSample,{sample,href:'/detail',detail}));};
+ const a=render('html');assert.match(a,/src="\/photo.webp"/);assert(!a.includes('src="'+e.canvaCover));assert.match(a,/<blockquote/);assert.match(a,/인터뷰 표지 비교/);
+ const b=render('canva');assert(!b.includes('src="/photo.webp"'));assert.match(b,/Canva 표지에서 상세기사 보기/);assert(!b.includes('<blockquote'));assert(!b.includes('data-public-text-scale-target="article-title"'));assert.equal((b.match(/<img /g)||[]).length,1);assert.match(b,/출처 표시만으로 외부 제안·재배포 권리가 확보되는 것은 아닙니다/);
+ const detail=render('canva',true);assert.match(detail,/<blockquote/);assert.match(detail,/확대 가능한 실제 인용문/);assert.match(detail,/data-public-text-scale-target="article-body"/);assert(!detail.includes('인터뷰 표지 비교'));
+});
