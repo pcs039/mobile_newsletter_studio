@@ -4,6 +4,7 @@ const fs = require('node:fs'), os = require('node:os'), path = require('node:pat
 const { execFileSync } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 const bin = process.env.DESIGN_UPLOAD_B2_PG_BIN, runtime = process.env.DESIGN_UPLOAD_B2_PG_RUNTIME;
+const operating = process.env.DESIGN_UPLOAD_B3_MIGRATION_TEST === '1';
 const actor = { id: 'qa', name: 'QA', role: 'user' }, digest = 'a'.repeat(64);
 test('B2 real PostgreSQL multi-connection contracts and legacy writers', { skip: !bin || !runtime, timeout: 90000 }, async t => {
   const { Client } = require(runtime);
@@ -17,6 +18,7 @@ test('B2 real PostgreSQL multi-connection contracts and legacy writers', { skip:
     const c = new Client({host:socket,port,database:db,user:'fixture_root',password:'',ssl:false,application_name:name,
       connectionTimeoutMillis:3000,query_timeout:7000});
     await c.connect(); clients.push(c);
+    if(operating){const original=c.query.bind(c);c.query=(text,...args)=>original(typeof text==='string'?text.replaceAll('upload_b2_draft','design_asset_upload'):text,...args);}
     await c.query("SET statement_timeout='5s'; SET idle_in_transaction_session_timeout='15s'");
     return c;
   };
@@ -32,10 +34,10 @@ test('B2 real PostgreSQL multi-connection contracts and legacy writers', { skip:
       CREATE TABLE public.newsletter_project_design_kits(id uuid PRIMARY KEY);
       CREATE TABLE public.newsletter_articles(id uuid PRIMARY KEY,project_id uuid REFERENCES public.newsletter_projects(id) ON DELETE CASCADE,title text,body text);
       SET upload_b2.isolated='yes';`);
-    for (const file of ['schema_v1_15_project_design_assets.sql','schema_v1_22_design_intake_foundation.sql','schema_v1_23_design_production_assets.sql','schema_v1_25_article_compositions.sql','schema_v1_26_composition_asset_delete_integrity.sql','schema_v1_32_design_asset_metadata.sql'])
+    for (const file of ['schema_v1_15_project_design_assets.sql','schema_v1_22_design_intake_foundation.sql','schema_v1_23_design_production_assets.sql',...(operating?['schema_v1_24_design_processing_jobs.sql']:[]),'schema_v1_25_article_compositions.sql','schema_v1_26_composition_asset_delete_integrity.sql','schema_v1_32_design_asset_metadata.sql'])
       await root.query(fs.readFileSync(path.join(__dirname,'../supabase',file),'utf8'));
-    const draft = fs.readFileSync(path.join(__dirname,'fixtures/design-upload-b2-draft.sql'),'utf8');
-    await root.query("SET upload_b2.isolated='no'"); await assert.rejects(root.query(draft),/local B2 database/);
+    const draft = fs.readFileSync(path.join(__dirname,operating?'../supabase/schema_v1_41_design_asset_direct_upload.sql':'fixtures/design-upload-b2-draft.sql'),'utf8');
+    if(!operating){await root.query("SET upload_b2.isolated='no'"); await assert.rejects(root.query(draft),/local B2 database/);}
     await root.query("SET upload_b2.isolated='yes'"); await root.query(draft);
     await root.query('GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO service_role');
     const a = await connect('writer-a'), b = await connect('writer-b');
@@ -194,6 +196,33 @@ test('B2 real PostgreSQL multi-connection contracts and legacy writers', { skip:
       }
       const functions=await q(root,"SELECT p.prosecdef,p.proconfig FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='upload_b2_draft'");
       for(const fn of functions){assert.equal(fn.prosecdef,false);assert.ok(fn.proconfig.includes('search_path=pg_catalog'));}
+    });
+    if(operating)await t.test('operating public wrappers, request lookup, quota, proof allowlist and v1.24 references',async()=>{
+      const p=await seed(),request=randomUUID();
+      const id=(await q(a,'SELECT public.prepare_design_asset_upload($1,$2,$3,$4,$5,$6,$7,$8) id',[p,actor,request,'fixture.png','background','image/png',100,digest]))[0].id;
+      const state=async()=> (await q(a,'SELECT public.get_design_asset_upload_status($1,$2,$3,$4) s',[p,actor,null,request]))[0].s;
+      assert.equal((await state()).id,id);
+      const g=(await q(a,'SELECT public.claim_design_asset_upload($1,$2) g',[id,actor]))[0].g;
+      await a.query('SELECT public.mark_design_asset_upload_stored($1,$2,$3,$4)',[id,actor,g,{hash:digest,mime:'image/png',size:100,width:8,height:8,policy:'b2-raster-v1',decoded:true,untrusted:'must not persist'}]);
+      assert.equal((await state()).verified.untrusted,undefined);
+      await a.query('SELECT public.finalize_design_asset_upload($1,$2,$3)',[id,actor,g]);
+      const job=randomUUID();
+      await a.query("INSERT INTO public.newsletter_design_processing_jobs(id,project_id,provider,operation) VALUES($1,$2,'canva','canva_export')",[job,p]);
+      await a.query('INSERT INTO public.newsletter_design_processing_job_outputs(job_id,asset_id) VALUES($1,$2)',[job,id]);
+      await assert.rejects(a.query("UPDATE public.newsletter_project_design_assets SET asset_type='logo' WHERE id=$1",[id]),{code:'23514'});
+      await a.query('DELETE FROM public.newsletter_project_design_assets WHERE id=$1',[id]);
+      assert.equal((await q(a,'SELECT asset_id FROM public.newsletter_design_processing_job_outputs WHERE job_id=$1',[job]))[0].asset_id,null);
+      assert.equal((await state()).asset_exists,false);assert.equal((await state()).receipt.assetId,id);
+      for(let n=0;n<8;n++)await prepare(a,p);
+      await assert.rejects(prepare(a,p),{code:'PT409'});
+      await root.query('SET ROLE anon');await assert.rejects(root.query('SELECT public.get_design_asset_upload_status($1,$2,$3,$4)',[p,actor,id,null]),{code:'42501'});await root.query('RESET ROLE');
+    });
+    if(operating)await t.test('unregistered ID collision does not journal an unrelated legacy file for cleanup',async()=>{
+      const p=await seed(),id=await prepare(a,p);
+      await a.query("INSERT INTO public.newsletter_project_design_assets(id,project_id,asset_type,name,storage_bucket,storage_path) VALUES($1,$2,'background','Legacy collision','design-production-assets','unrelated-legacy.png')",[id,p]);
+      await a.query('DELETE FROM public.newsletter_project_design_assets WHERE id=$1',[id]);
+      assert.equal((await q(root,'SELECT asset_gone_at FROM upload_b2_draft.sessions WHERE id=$1',[id]))[0].asset_gone_at,null);
+      assert.equal(Number((await q(root,'SELECT count(*) n FROM upload_b2_draft.cleanup_jobs WHERE session_id=$1',[id]))[0].n),0);
     });
     assert.match((await root.query('SHOW server_version')).rows[0].server_version,/^17\./);
   } finally {
