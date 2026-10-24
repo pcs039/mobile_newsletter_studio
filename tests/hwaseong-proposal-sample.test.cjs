@@ -51,7 +51,7 @@ test('editorial sources, dates and video membership fail closed; no arbitrary em
 test('video loads only on explicit click; sample integration does not alter old article detail rendering',()=>{
  const fs=require('node:fs'),path=require('node:path'),source=fs.readFileSync(path.join(__dirname,'../src/components/hwaseong-editorial-sample.tsx'),'utf8');
  assert.match(source,/useState\(false\)/);assert.match(source,/loaded \? <iframe/);assert.match(source,/youtube-nocookie\.com\/embed/);assert.match(source,/onClick=\{\(\) => setLoaded\(true\)\}/);assert.match(source,/플레이어 닫기 · 재생 중단/);assert.match(source,/key=\{sample.article.id\}/);
- const reader=fs.readFileSync(path.join(__dirname,'../src/components/hwaseong-proposal-reader.tsx'),'utf8');assert.match(reader,/const prev = samples\[index - 1\], next = samples\[index \+ 1\]/);assert.match(reader,/첫 기사입니다/);assert.match(reader,/마지막 기사입니다/);assert.match(reader,/samplePresentationArticle\(selected\)/);
+ const reader=fs.readFileSync(path.join(__dirname,'../src/components/hwaseong-proposal-reader.tsx'),'utf8');assert.match(reader,/첫 기사입니다/);assert.match(reader,/마지막 기사입니다/);assert.match(reader,/samplePresentationArticle\(selected\)/);
 });
 test('interview A/B displays one cover, avoids duplicated visible quote and preserves HTML detail',()=>{
  const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');

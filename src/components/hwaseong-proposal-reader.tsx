@@ -13,6 +13,7 @@ import type { FontAsset } from "@/lib/newsletter-repository";
 import type { ArticleHeroBackground } from "@/lib/article-hero-background";
 import type { ArticleTextDesign } from "@/lib/article-text-design";
 import { comicScenes, sampleHref, samplePresentationArticle, tourismFeature, tourismPlaces, tourismSource, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
+import { normalizeSampleInterest, orderProposalSamples, sampleInterests, type SampleInterest } from "@/lib/hwaseong-sample-interest";
 
 const action = "inline-flex min-h-11 items-center justify-center rounded-xl border border-current px-4 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
 function TourismMap({ sample, detailHref }: { sample: ProposalSample; detailHref: string }) {
@@ -143,31 +144,38 @@ function SampleSummary({ sample, href, onImage }: { sample: ProposalSample; href
   </section>;
 }
 
-export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, textDesigns, selectedId, detail, width, cover, contents = false, qa = false }: {
+export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, textDesigns, selectedId, detail, width, cover, contents = false, qa = false, interest = "all" }: {
   slug: string; samples: ProposalSample[]; fonts: FontAsset[]; backgrounds: Record<string, ArticleHeroBackground>; textDesigns: Record<string, ArticleTextDesign>;
   selectedId?: string; detail: boolean; width: 390 | 520;
   cover?: Pick<ComponentProps<typeof PublicNewsletterCoverView>, "coverImageSrc" | "coverFit" | "coverLayout" | "coverTitle" | "coverSubtitle" | "coverIssueText" | "masthead">;
-  contents?: boolean; qa?: boolean;
+  contents?: boolean; qa?: boolean; interest?: SampleInterest;
 }) {
   const router = useRouter();
   const [image, setImage] = useState<PublicArticleLightboxImage | null>(null);
-  const selected = samples.find(s => s.article.id === selectedId);
-  const index = samples.findIndex(s => s.article.id === selectedId);
-  const prev = samples[index - 1], next = samples[index + 1];
+  const currentInterest = normalizeSampleInterest(interest);
+  const orderedSamples = orderProposalSamples(samples, currentInterest);
+  const selected = orderedSamples.find(s => s.article.id === selectedId);
+  const index = orderedSamples.findIndex(s => s.article.id === selectedId);
+  const prev = orderedSamples[index - 1], next = orderedSamples[index + 1];
   const isCoverView = Boolean(cover && !selected && !contents);
-  const href = (id?: string, d = false, w = width) => sampleHref(slug, id, d, w, { qa });
-  const contentsHref = sampleHref(slug, undefined, false, width, { contents: true, qa });
+  const href = (id?: string, d = false, w = width) => sampleHref(slug, id, d, w, { qa, interest: currentInterest });
+  const contentsHref = sampleHref(slug, undefined, false, width, { contents: true, qa, interest: currentInterest });
   return <main className="public-newsletter-screen min-h-screen bg-[#e8edef] py-3 sm:px-2 text-[#172e35] sm:py-8">
     <div className="mx-auto mb-3 flex w-full flex-wrap items-center justify-between gap-2 text-xs text-slate-600" style={{ maxWidth: width }}>
-      <span>{qa ? "STAGING QA · " : ""}비공개 제안 시안 · 정식 발행물 아님</span>{qa ? <div className="flex gap-2">{([390, 520] as const).map(w => <Link key={w} href={sampleHref(slug, selectedId, detail, w, { contents: !isCoverView && !selected, qa })} className="rounded border bg-white px-2 py-2" aria-current={width === w ? "page" : undefined}>{w}px</Link>)}</div> : null}
+      <span>{qa ? "STAGING QA · " : ""}비공개 제안 시안 · 정식 발행물 아님</span>{qa ? <div className="flex gap-2">{([390, 520] as const).map(w => <Link key={w} href={sampleHref(slug, selectedId, detail, w, { contents: !isCoverView && !selected, qa, interest: currentInterest })} className="rounded border bg-white px-2 py-2" aria-current={width === w ? "page" : undefined}>{w}px</Link>)}</div> : null}
     </div>
     <div data-sample-width={width} className="mx-auto w-full overflow-hidden sm:rounded-[24px] bg-white shadow-xl" style={{ maxWidth: width }}>
       {!isCoverView ? <header className="flex items-center justify-between gap-2 border-b border-slate-200 px-5 py-4"><Link href={href()} className="min-h-11 content-center font-black tracking-tight">화성, 가까이</Link><span className="text-xs font-bold text-slate-500">2026.10 · SAMPLE</span></header> : null}
+      {!isCoverView && !selected ? <nav aria-label="관심분야 선택" className="border-b border-slate-200 px-5 py-4">
+        <p className="mb-2 text-sm font-bold">어떤 소식부터 볼까요?</p>
+        <div className="grid grid-cols-2 gap-2">{sampleInterests.map(option => <Link key={option.value} href={sampleHref(slug, undefined, false, width, { contents: !isCoverView, qa, interest: option.value })} aria-current={currentInterest === option.value ? "true" : undefined} className={`min-h-11 content-center rounded-xl border px-3 py-2 text-center text-sm font-bold ${currentInterest === option.value ? "border-[#125e7c] bg-[#125e7c] text-white" : "border-slate-200 bg-white text-slate-700"}`}>{option.label}</Link>)}</div>
+        <p className="mt-2 text-xs leading-5 text-slate-500">선택한 주제를 먼저 보여드려요. 7개 기사는 모두 볼 수 있습니다.</p>
+      </nav> : null}
       {isCoverView && cover ? <>
-        <PublicNewsletterCoverView {...cover} compact slug={slug} hasArticles={samples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." tocLabel={`${samples.length}가지 콘텐츠 둘러보기`} onOpenToc={() => router.push(contentsHref)} onStartReading={() => router.push(href(samples[0]?.article.id))} />
+        <PublicNewsletterCoverView {...cover} compact slug={slug} hasArticles={orderedSamples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." tocLabel={`${orderedSamples.length}가지 콘텐츠 둘러보기`} onOpenToc={() => router.push(contentsHref)} onStartReading={() => router.push(href(orderedSamples[0]?.article.id))} />
         <div className="px-5 py-4"><p className="mb-3 text-[11px] leading-5 text-slate-600">표지 배경은 Canva AI로 제작한 개념 일러스트이며 실제 장소 사진이 아닙니다.</p><PublicTextSizeToggle compact /></div>
       </> : selected ? <>
-        <nav className="flex flex-wrap items-center justify-between gap-2 px-5 pt-2 text-xs"><Link href={contentsHref} className="min-h-11 content-center font-bold">← 목록</Link><span>{index + 1} / {samples.length} · {detail ? "상세기사" : "요약 첫 페이지"}</span></nav>
+        <nav className="flex flex-wrap items-center justify-between gap-2 px-5 pt-2 text-xs"><Link href={contentsHref} className="min-h-11 content-center font-bold">← 목록</Link><span>{currentInterest !== "all" ? `${sampleInterests.find(option => option.value === currentInterest)?.label} · ` : ""}{index + 1} / {orderedSamples.length} · {detail ? "상세기사" : "요약 첫 페이지"}</span></nav>
         {detail ? <section className="p-3">
           <Link href={href(selected.article.id)} className={`${action} mb-4 w-full text-slate-700`}>← 이전 페이지 · 이 기사 요약</Link>
           {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail /> : selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard article={{ ...samplePresentationArticle(selected), blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} showTextSizeControl heroBackground={backgrounds[selected.article.id]} textDesign={textDesigns[selected.article.id]} />}
@@ -175,7 +183,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         </section> : ["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail={false} /> : <SampleSummary key={selected.article.id} sample={selected} href={href(selected.article.id, true)} onImage={setImage} />}
         <nav aria-label="기사 이동" className="grid grid-cols-2 gap-3 border-t border-slate-200 p-5">{prev ? <Link className={action} href={href(prev.article.id)}>← 이전 기사 요약</Link> : <span className="content-center text-center text-xs text-slate-500">첫 기사입니다</span>}{next ? <Link className={action} href={href(next.article.id)}>다음 기사 요약 →</Link> : <span className="content-center text-center text-xs text-slate-500">마지막 기사입니다</span>}</nav>
       </> : <section className="p-5">{cover ? <Link href={href()} className="mb-4 inline-flex min-h-11 items-center text-sm font-bold">← 표지로 돌아가기</Link> : null}<p className="text-xs font-black text-[#17694c]">{samples.length}가지 디자인, 화성의 여러 표정</p><h1 className="mt-2 text-3xl font-black leading-tight">손안에서 만나는<br />우리 도시의 소식</h1><p className="mt-4 text-sm leading-6 text-slate-600">기존 10월호 작업본·공식 관광자료·공개 인터뷰·공식 영상으로 제작한 비공개 샘플입니다. 요약 첫 화면에서 상세기사로 이어집니다.</p>
-        <ol className="mt-6 space-y-4">{samples.map(s => <li key={s.article.id}><Link href={href(s.article.id)} className="block overflow-hidden rounded-2xl border border-slate-200"><div className="h-36 overflow-hidden" style={{ backgroundColor: s.pale }}><img src={s.cover} alt="" className="h-full w-full object-contain" /></div><div className="p-4"><p className="text-xs font-black" style={{ color: s.color }}>{s.eyebrow}</p><h2 className="mt-2 text-lg font-black leading-7 [word-break:keep-all]">{s.headline.replace("\n", " ")} →</h2></div></Link></li>)}</ol>
+        <ol className="mt-6 space-y-4">{orderedSamples.map(s => <li key={s.article.id}><Link href={href(s.article.id)} className="block overflow-hidden rounded-2xl border border-slate-200"><div className="h-36 overflow-hidden" style={{ backgroundColor: s.pale }}><img src={s.cover} alt="" className="h-full w-full object-contain" /></div><div className="p-4"><p className="text-xs font-black" style={{ color: s.color }}>{s.eyebrow}</p><h2 className="mt-2 text-lg font-black leading-7 [word-break:keep-all]">{s.headline.replace("\n", " ")} →</h2></div></Link></li>)}</ol>
       </section>}
       <footer className="border-t border-slate-200 px-5 py-5 text-xs leading-5 text-slate-500">화성시 담당자 대상 비공개 제안 · 정식 발행물 아님 · 외부 공개·재배포 금지{qa ? <><br />기존 Production 기사·발행 상태는 변경하지 않았습니다.</> : null}</footer>
     </div><PublicArticleImageLightbox image={image} onClose={() => setImage(null)} />
