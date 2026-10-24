@@ -10,7 +10,7 @@ import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import type { FontAsset } from "@/lib/newsletter-repository";
 import type { ArticleHeroBackground } from "@/lib/article-hero-background";
 import type { ArticleTextDesign } from "@/lib/article-text-design";
-import { comicScenes, sampleHref, tourismFeature, tourismPlaces, tourismSource, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
+import { comicScenes, sampleHref, samplePresentationArticle, tourismFeature, tourismPlaces, tourismSource, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 
 const action = "inline-flex min-h-11 items-center justify-center rounded-xl border border-current px-4 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
 function TourismMap({ sample, detailHref }: { sample: ProposalSample; detailHref: string }) {
@@ -90,7 +90,7 @@ function TourismDetail({ sample }: { sample: ProposalSample }) {
     <h2 className="px-2 text-lg font-black">마음에 든 곳, 찾아가기</h2>
     <div className="mt-3 space-y-3">{tourismPlaces.map(p => <section id={`place-${p.id}`} key={p.id} className="scroll-mt-4 rounded-xl border border-sky-100 bg-[#f8fbfc] p-4"><h3 className="text-lg font-black">{p.name}</h3><p data-public-text-scale-target="article-summary" className="mt-2 text-sm leading-7">{p.description}</p><p className="mt-2 text-xs leading-6 text-slate-600">{p.address}</p><div className="mt-3 flex flex-wrap gap-2"><a className={action} target="_blank" rel="noreferrer" href={`https://map.kakao.com/link/search/${encodeURIComponent(p.address + " " + p.name)}`}>길찾기 ↗</a>{p.phone ? <a className={action} href={`tel:${p.phone}`}>전화</a> : null}</div></section>)}</div>
     <p className="mt-5 px-2 text-xs leading-6 text-slate-500">출처: <a className="underline" href={tourismSource} target="_blank" rel="noreferrer">화성특례시 「화성 여행 꿀팁」</a>. 공식 자료를 바탕으로 재구성한 비공개 제안용 특집입니다. 추천 장소 묶음이며 이동 시간·실제 여행 코스를 보장하지 않습니다. 운영 시간·요금·바닷길 통행은 방문 전 확인하세요.</p>
-    {sample.article.audioFile?.previewHref ? <details className="mt-4 rounded-xl border border-slate-200 p-3"><summary className="min-h-11 cursor-pointer content-center text-sm font-bold">기존 요약 음성 듣기</summary><PublicArticleAudioPlayer key={sample.article.id} ariaLabel="기존 관광 요약 음성" src={sample.article.audioFile.previewHref} /><p className="mt-2 text-xs leading-5 text-slate-500">기존 요약 음성을 보존했습니다. 새 특집 본문 전체 낭독은 아닙니다.</p></details> : null}
+
     <details className="mt-4 rounded-xl border border-slate-200 p-4"><summary className="min-h-11 cursor-pointer content-center text-sm font-bold">기존 도시 비전 원문 · 보존 자료</summary><p className="mt-2 text-xs leading-6 text-slate-500">관광 특집의 출처와 다른 기존 기사이며 원문을 변경하지 않았습니다.</p><p data-public-text-scale-target="article-body" className="mt-3 whitespace-pre-wrap text-base leading-8">{sample.article.body}</p></details>
   </article>;
 }
@@ -98,6 +98,7 @@ function TourismDetail({ sample }: { sample: ProposalSample }) {
 // Only the five private fixtures use this editorial presentation. Saved detail content stays in ArticleCard.
 function SampleSummary({ sample, href, onImage }: { sample: ProposalSample; href: string; onImage: (image: PublicArticleLightboxImage) => void }) {
   const dark = sample.kind === "event";
+  const audio = samplePresentationArticle(sample).audioFile;
   const artComic = sample.kind === "cartoon" && sample.artDirectionVersion === 3;
   const imageAlt = sample.kind === "cartoon" ? "창작 3컷: 놀이터 입장에 신난 보호자와 강아지, 뒷정리를 깨닫는 장면, 두 강아지와 함께 웃는 다음 산책" : sample.headline;
   const facts = sample.kind === "policy" ? [
@@ -133,8 +134,8 @@ function SampleSummary({ sample, href, onImage }: { sample: ProposalSample; href
       </ol> : sample.kind === "cartoon" ? <><p data-public-text-scale-target="article-summary" className="mt-5 text-lg font-black leading-8">즐거운 놀이터의 마지막 한 걸음,<br />뒷정리와 배려입니다.</p><details className="mt-3 text-sm leading-6"><summary className="min-h-11 cursor-pointer content-center underline">만화 대사 글로 읽기</summary><ol className="space-y-2 pb-3" data-public-text-scale-target="article-summary">{artComic ? comicScenes.map((scene, i) => <li key={scene.line}>{i + 1}. {scene.speaker}: {scene.line} — {scene.aside}</li>) : <><li>1. 드디어 놀이터다! — 신나게 입장해요.</li><li>2. 잠깐! 뒷정리도 함께 해야지. — 보호자가 배변 봉투를 챙겨요.</li><li>3. 다음 산책도 기분 좋게! — 서로 배려하며 함께 웃어요.</li></>}</ol></details></> : null}
       <Link href={href} className={`${action} mt-5 w-full border-transparent text-white`} style={{ backgroundColor: dark ? "#ffe0ae" : sample.color, color: dark ? "#192e46" : "white" }}>상세기사 보기 <span aria-hidden="true" className="ml-3">→</span></Link>
       <div className="mt-4 grid gap-3"><span className="text-xs opacity-80">{sample.kind === "cartoon" ? "원문 소재의 창작 시연 만화" : sample.kind === "accessible" ? "영어는 시연 번역 · 공식 공고 아님" : sample.kind === "tourism" ? "공식 관광자료 기반 · 비공개 시연" : "10월호 원문 기반 · 비공개 시연"}</span><PublicTextSizeToggle compact /></div>
-      {sample.article.audioFile?.previewHref ? <details className="mt-3 rounded-xl bg-white/90 px-3 text-[#172e35]"><summary className="min-h-11 cursor-pointer content-center text-sm font-bold">요약 음성 듣기</summary><div className="pb-3"><PublicArticleAudioPlayer key={sample.article.id} ariaLabel="요약 음성 안내" src={sample.article.audioFile.previewHref} /><p className="mt-2 text-xs leading-5 text-slate-500">로컬 기기 합성 요약 음성 · 공식 육성 아님</p></div></details> : null}
-      <details className="mt-3 text-xs leading-5 opacity-80"><summary className="min-h-11 cursor-pointer content-center">출처·시연 안내</summary><p>{sample.kind === "tourism" ? "출처: 화성특례시 공식 관광지도. 기존 도시 비전 원문은 보존 자료로 분리했습니다." : <>원문: {sample.sourceTitle}<br />상세 원문은 그대로 보존했습니다.</>} 최신 행정·행사 공고가 아닙니다. {sample.kind !== "tourism" ? "이미지는 시연용 일러스트입니다." : "장소 안내는 공식 관광지도에 근거합니다."}</p></details>
+      {audio?.previewHref ? <details className="mt-3 rounded-xl bg-white/90 px-3 text-[#172e35]"><summary className="min-h-11 cursor-pointer content-center text-sm font-bold">요약 음성 듣기</summary><div className="pb-3"><PublicArticleAudioPlayer key={sample.article.id} ariaLabel="요약 음성 안내" src={audio.previewHref} /><p className="mt-2 text-xs leading-5 text-slate-500">로컬 기기 합성 요약 음성 · 공식 육성 아님</p></div></details> : null}
+      <details className="mt-3 text-xs leading-5 opacity-80"><summary className="min-h-11 cursor-pointer content-center">출처·시연 안내</summary><p>{sample.kind === "tourism" ? "출처: 화성특례시 공식 관광지도. 기존 도시 비전 원문은 보존 자료로 분리했습니다." : <>원문: {sample.sourceTitle}<br />상세 원문은 그대로 보존했습니다.</>} 최신 행정·행사 공고가 아닙니다. {sample.kind !== "tourism" ? "이미지는 시연용 일러스트입니다." : "장소 안내는 공식 관광지도에 근거합니다."}</p>{sample.kind === "tourism" || sample.kind === "cartoon" ? <p className="mt-2">현재 콘텐츠에 맞는 음성은 아직 없습니다. 기존 1차 시연 안내 음성은 보존하고 이 화면에서는 숨겼습니다.</p> : null}</details>
     </div>
   </section>;
 }
@@ -158,7 +159,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         <nav className="flex flex-wrap items-center justify-between gap-2 px-5 pt-2 text-xs"><Link href={href()} className="min-h-11 content-center font-bold">← 목록</Link><span>{index + 1} / {samples.length} · {detail ? "상세기사" : "요약 첫 페이지"}</span></nav>
         {detail ? <section className="p-3">
           <Link href={href(selected.article.id)} className={`${action} mb-4 w-full text-slate-700`}>← 이전 페이지 · 이 기사 요약</Link>
-          {selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard article={{ ...selected.article, blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} showTextSizeControl heroBackground={backgrounds[selected.article.id]} textDesign={textDesigns[selected.article.id]} />}
+          {selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard article={{ ...samplePresentationArticle(selected), blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} showTextSizeControl heroBackground={backgrounds[selected.article.id]} textDesign={textDesigns[selected.article.id]} />}
 
         </section> : <SampleSummary key={selected.article.id} sample={selected} href={href(selected.article.id, true)} onImage={setImage} />}
         <nav aria-label="기사 이동" className="grid grid-cols-2 gap-3 border-t border-slate-200 p-5">{prev ? <Link className={action} href={href(prev.article.id)}>← 이전 기사 요약</Link> : <span className="content-center text-center text-xs text-slate-500">첫 기사입니다</span>}{next ? <Link className={action} href={href(next.article.id)}>다음 기사 요약 →</Link> : <span className="content-center text-center text-xs text-slate-500">마지막 기사입니다</span>}</nav>

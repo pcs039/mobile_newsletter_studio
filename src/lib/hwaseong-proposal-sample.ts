@@ -28,6 +28,14 @@ export function tourismFeature(sample: ProposalSample) {
   return { title: block.title, paragraphs: block.body.split(/\n\s*\n/).filter(Boolean) };
 }
 
+// These two retained recordings describe the first sample, not the current feature/comic.
+// Hide their players without changing or deleting the stored audio or article.
+export function samplePresentationArticle(sample: ProposalSample): ProjectContentArticle {
+  return sample.kind === "tourism" || sample.kind === "cartoon"
+    ? { ...sample.article, audioSource: "none", audioFile: null }
+    : sample.article;
+}
+
 export const comicScenes = [
   { speaker: "보호자", line: "오늘은 마음껏 뛰어!", aside: "달릴 준비는 완벽했는데…", alt: "가을 놀이터를 달리는 보호자와 신이 난 코기" },
   { speaker: "보호자", line: "어? 중요한 걸 깜빡했네…", aside: "빈 주머니를 확인하는 순간, 강아지가 멈춰 섭니다.", alt: "빈 주머니를 확인하며 놀란 보호자와 기다리라는 듯 앞발을 든 코기" },

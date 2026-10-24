@@ -34,3 +34,9 @@ test('tourism feature requires an attributed visible stored block; original arti
  const sample=proposalSample(a,pid),before=JSON.stringify(a);assert.deepEqual(tourismFeature(sample),{title:'관광 특집',paragraphs:['바다\n공식 장소 안내','초록\n공식 공원 안내']});assert.equal(JSON.stringify(a),before);
  a.blocks[1].metadata.source='https://evil.invalid';assert.equal(tourismFeature(sample),null);a.blocks[1].metadata.source='https://www.hscity.go.kr/www/intro/trstMap.jsp';a.blocks[1].isVisible=false;assert.equal(tourismFeature(sample),null);sample.kind='cartoon';assert.equal(tourismFeature(sample),null);
 });
+test('outdated tourism/comic audio is hidden only in presentation, preserving stored article and other samples',()=>{
+ const {samplePresentationArticle}=loader()('src/lib/hwaseong-proposal-sample.ts');
+ for(const kind of ['tourism','cartoon','policy','event','accessible']){const a=fixture();a.audioSource='uploaded';a.audioFile={id:'retained-audio',previewHref:'/api/project-files/preview?bucket=audio-files&path=sample.m4a'};a.body='보존 원문';a.blocks[0].metadata.proposal_sample.kind=kind;const sample=proposalSample(a,pid),before=JSON.stringify(a),shown=samplePresentationArticle(sample);
+  if(['tourism','cartoon'].includes(kind)){assert.equal(shown.audioSource,'none');assert.equal(shown.audioFile,null);assert.equal(shown.body,a.body);assert.equal(shown.blocks,a.blocks);}else assert.equal(shown,a);assert.equal(JSON.stringify(a),before);
+ }
+});
