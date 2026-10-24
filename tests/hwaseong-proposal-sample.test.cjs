@@ -62,3 +62,21 @@ test('interview A/B displays one cover, avoids duplicated visible quote and pres
  const b=render('canva');assert(!b.includes('src="/photo.webp"'));assert.match(b,/Canva 표지에서 상세기사 보기/);assert(!b.includes('<blockquote'));assert(!b.includes('data-public-text-scale-target="article-title"'));assert.equal((b.match(/<img /g)||[]).length,1);assert.match(b,/출처 표시만으로 외부 제안·재배포 권리가 확보되는 것은 아닙니다/);
  const detail=render('canva',true);assert.match(detail,/<blockquote/);assert.match(detail,/확대 가능한 실제 인용문/);assert.match(detail,/data-public-text-scale-target="article-body"/);assert(!detail.includes('인터뷰 표지 비교'));
 });
+
+function renderProposal(kind, detail=false) {
+ const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+ const article={id:'sample',body:'보존 자료',blocks:[],audioFile:null};
+ if(kind==='tourism')article.blocks.push({type:'paragraph',title:'관광 특집',body:'공식 관광자료',isVisible:true,metadata:{proposal_tourism_feature:1,source:'https://www.hscity.go.kr/www/intro/trstMap.jsp'}});
+ const sample={article,kind,cover:'/image.webp',eyebrow:'시연',headline:'시연 제목',sourceTitle:'기존 10월호 작업본',color:'#123456',pale:'#ffffff',artDirectionVersion:3};
+ const load=loader({'next/link':({children,...props})=>React.createElement('a',props,children),'next/navigation':{useRouter:()=>({push:()=>{}})},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null},'@/components/public-article-image-lightbox':{PublicArticleImageLightbox:()=>null},'@/components/public-mobile-article-reader':{ArticleCard:()=>null,PublicNewsletterCoverView:()=>null}});
+ return renderToStaticMarkup(React.createElement(load('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader,{slug:'hwaseong-2026-10-samples',samples:[sample],fonts:[],backgrounds:{},textDesigns:{},selectedId:article.id,detail,width:390}));
+}
+test('accessible fixture states registered dog, guardian age and free entry without a QR procedure',()=>{
+ const html=renderProposal('accessible');assert(!/QR|QR코드/.test(html));assert.match(html,/동물등록을 마친 반려견과 만 13세 이상 보호자/);assert.match(html,/함께 무료로 이용/);assert.match(html,/guardian aged 13 or older/);assert.match(html,/Admission is free/);assert.match(html,/공식 안내에 맞게 정정/);
+});
+test('event presentation retains original subjects while separating archived introduction from current participation',()=>{
+ const html=renderProposal('event');for(const name of ['루나빛축제','안곡서원 문화제','노작홍사용창작연극제'])assert(html.includes(name));assert.match(html,/2026년 10월호 작업본/);assert.match(html,/현재 신청·참여 안내가 아닙니다/);assert(!html.includes('참여 가능'));assert(!html.includes('정조대왕능행차'));
+});
+test('tourism search links use a place-search label without claiming route calculation',()=>{
+ const html=renderProposal('tourism',true);assert.equal((html.match(/지도에서 장소 찾기/g)||[]).length,6);assert(!html.includes('길찾기'));assert.equal((html.match(/https:\/\/map.kakao.com\/link\/search\//g)||[]).length,6);assert.equal((html.match(/href="tel:/g)||[]).length,5);
+});
