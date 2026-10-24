@@ -45,3 +45,13 @@
 - 제목·요약·본문·인용문은 HTML. 기사 전환 시 플레이어 인스턴스가 교체되며 닫기 버튼으로 iframe 제거.
 - 전체 626/626, skip 0. TypeScript·Webpack build·diff check 통과. lint 오류 0, 기존 경고 3개.
 - 원격 390/520 QA와 배포 결과는 최종 검수 후 아래 기록에 보완한다.
+
+## 원격 최종 QA
+
+- fixed Staging의 `464b612` 배포 Ready, Preview SUCCESS. 관리자 인증 세션으로 7건 목록, 06·07 요약/상세, 이전 페이지·이전/다음 기사 링크 확인.
+- 390/520 viewport: 실제 사진 690×518, 썸네일 1280×720, Canva PNG 1080×1920 로딩 확인. 가로 넘침 없음. HTML 본문 최대 32px 확대 확인.
+- 샘플 iframe 안에서 실제 영상 재생·자막·화면 확인. 초기 iframe 0개, 클릭 후 1개, 닫기 후 0개. 기사 변경 후 iframe 0개. 원본 YouTube에서도 실제 재생 확인.
+- 기존 5건의 제목·화면·정렬·이전/다음 링크 및 보존 자산 참조 확인. 원본 DB 행·파일 15개는 전후 동일. Composition placement 행의 별도 변경 전 baseline은 누락되어 바이트 단위 전후 동일성을 별도 주장하지 않으며, 기존 5개 placement가 기존 자산을 계속 참조하는 것은 확인함. 신규 생성 스크립트는 신규 기사 ID의 Composition만 호출함.
+- Production 샘플 URL은 HTTP 404. Production 실행 배포는 기존 `9ed9bbc` 유지.
+- 사진·썸네일 수신 전 레이아웃 높이가 줄었다가 늘어나는 현상을 줄이기 위해 신규 이미지에 검증된 intrinsic width/height 지정. 기존 5건은 변경하지 않음.
+- 원격 인증 서명키 값·청구 내역·전체 영상 장면·사진 재배포 허가는 미확인. 기존 앱 Canva 자동 제작/import 연결 E2E는 미실행. 새 UI 및 sample route는 공식 발행 reader로 활성화되지 않음.
