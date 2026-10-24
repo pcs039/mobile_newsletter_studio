@@ -37,4 +37,5 @@ test('Staging route uses the existing project cover contract and retains access 
  const element=await page({params:Promise.resolve({projectId:slug}),searchParams:Promise.resolve({view:'contents',qa:'1'})});const p=element.props.children[1].props;
  assert.equal(p.cover.coverImageSrc,'/mobile-assets/path/cover.webp');assert.equal(p.cover.coverTitle,'DB 제목');assert.equal(p.cover.masthead,'DB 제호');assert.equal(p.contents,true);assert.equal(p.qa,true);
  project.coverEnabled=false;assert.equal((await page({params:Promise.resolve({projectId:slug}),searchParams:Promise.resolve({})})).props.children[1].props.cover,undefined);
+ for(const [interest,expected] of [['pets','pets'],['culture','culture'],['civic','civic'],['invalid','all'],[['pets','culture'],'all']])assert.equal((await page({params:Promise.resolve({projectId:slug}),searchParams:Promise.resolve({interest})})).props.children[1].props.interest,expected);
 });

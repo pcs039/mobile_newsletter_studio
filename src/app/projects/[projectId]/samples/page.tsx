@@ -6,13 +6,14 @@ import { getArticleHeroBackgrounds, getArticleTextDesigns } from "@/lib/article-
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { HwaseongProposalReader } from "@/components/hwaseong-proposal-reader";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
+import { normalizeSampleInterest } from "@/lib/hwaseong-sample-interest";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "화성 10월호 · 비공개 제안 샘플", robots: { index: false, follow: false }, referrer: "no-referrer" as const };
 
 export default async function Samples({ params, searchParams }: {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ articleId?: string; view?: string; width?: string; qa?: string }>;
+  searchParams: Promise<{ articleId?: string; view?: string; width?: string; qa?: string; interest?: string | string[] }>;
 }) {
   const { projectId } = await params;
   // No route activation on Production or a general Preview, even after a future merge.
@@ -36,5 +37,5 @@ export default async function Samples({ params, searchParams }: {
     coverIssueText: project.coverIssueText || project.issue, masthead: project.title,
   } : undefined;
   return <><PublicFontFaceStyle fonts={fontData.fonts} /><HwaseongProposalReader slug={projectId} samples={samples} fonts={fontData.fonts} backgrounds={backgrounds} textDesigns={textDesigns} cover={cover}
-    selectedId={ids.includes(query.articleId ?? "") ? query.articleId : undefined} detail={query.view === "detail"} contents={query.view === "contents"} qa={query.qa === "1"} width={query.width === "520" ? 520 : 390} /></>;
+    selectedId={ids.includes(query.articleId ?? "") ? query.articleId : undefined} detail={query.view === "detail"} contents={query.view === "contents"} qa={query.qa === "1"} interest={normalizeSampleInterest(query.interest)} width={query.width === "520" ? 520 : 390} /></>;
 }
