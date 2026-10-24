@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- Authenticated private assets retain their original URL and aspect ratio. */
 
 import Link from "next/link";
+import { HwaseongEditorialSample } from "@/components/hwaseong-editorial-sample";
 import { useRef, useState } from "react";
 import { ArticleCard } from "@/components/public-mobile-article-reader";
 import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
@@ -159,11 +160,11 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         <nav className="flex flex-wrap items-center justify-between gap-2 px-5 pt-2 text-xs"><Link href={href()} className="min-h-11 content-center font-bold">← 목록</Link><span>{index + 1} / {samples.length} · {detail ? "상세기사" : "요약 첫 페이지"}</span></nav>
         {detail ? <section className="p-3">
           <Link href={href(selected.article.id)} className={`${action} mb-4 w-full text-slate-700`}>← 이전 페이지 · 이 기사 요약</Link>
-          {selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard article={{ ...samplePresentationArticle(selected), blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} showTextSizeControl heroBackground={backgrounds[selected.article.id]} textDesign={textDesigns[selected.article.id]} />}
+          {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail /> : selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard article={{ ...samplePresentationArticle(selected), blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} showTextSizeControl heroBackground={backgrounds[selected.article.id]} textDesign={textDesigns[selected.article.id]} />}
 
-        </section> : <SampleSummary key={selected.article.id} sample={selected} href={href(selected.article.id, true)} onImage={setImage} />}
+        </section> : ["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail={false} /> : <SampleSummary key={selected.article.id} sample={selected} href={href(selected.article.id, true)} onImage={setImage} />}
         <nav aria-label="기사 이동" className="grid grid-cols-2 gap-3 border-t border-slate-200 p-5">{prev ? <Link className={action} href={href(prev.article.id)}>← 이전 기사 요약</Link> : <span className="content-center text-center text-xs text-slate-500">첫 기사입니다</span>}{next ? <Link className={action} href={href(next.article.id)}>다음 기사 요약 →</Link> : <span className="content-center text-center text-xs text-slate-500">마지막 기사입니다</span>}</nav>
-      </> : <section className="p-5"><p className="text-xs font-black text-[#17694c]">5가지 디자인, 화성의 여러 표정</p><h1 className="mt-2 text-3xl font-black leading-tight">손안에서 만나는<br />우리 도시의 소식</h1><p className="mt-4 text-sm leading-6 text-slate-600">기존 화성시 10월호 작업본과 공식 관광자료로 제작한 비공개 샘플입니다. 각 기사는 이미지 요약과 상세 원문으로 이어집니다.</p>
+      </> : <section className="p-5"><p className="text-xs font-black text-[#17694c]">{samples.length}가지 디자인, 화성의 여러 표정</p><h1 className="mt-2 text-3xl font-black leading-tight">손안에서 만나는<br />우리 도시의 소식</h1><p className="mt-4 text-sm leading-6 text-slate-600">기존 10월호 작업본·공식 관광자료·공개 인터뷰·공식 영상으로 제작한 비공개 샘플입니다. 요약 첫 화면에서 상세기사로 이어집니다.</p>
         <ol className="mt-6 space-y-4">{samples.map(s => <li key={s.article.id}><Link href={href(s.article.id)} className="block overflow-hidden rounded-2xl border border-slate-200"><div className="h-36 overflow-hidden" style={{ backgroundColor: s.pale }}><img src={s.cover} alt="" className="h-full w-full object-contain" /></div><div className="p-4"><p className="text-xs font-black" style={{ color: s.color }}>{s.eyebrow}</p><h2 className="mt-2 text-lg font-black leading-7 [word-break:keep-all]">{s.headline.replace("\n", " ")} →</h2></div></Link></li>)}</ol>
       </section>}
       <footer className="border-t border-slate-200 px-5 py-5 text-xs leading-5 text-slate-500">화성시 담당자 대상 비공개 제안 · 외부 공개·재배포 금지<br />기존 Production 기사·발행 상태는 변경하지 않았습니다.</footer>
