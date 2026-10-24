@@ -1217,6 +1217,17 @@ select {
   word-break: keep-all;
 }
 
+/* Opt-in compact proposal cover; ordinary publication covers retain their typography. */
+[data-public-text-scale="large"] .public-newsletter-screen [data-proposal-cover-title] {
+  font-size: 2.2rem;
+  line-height: 1.3;
+}
+
+[data-public-text-scale="xlarge"] .public-newsletter-screen [data-proposal-cover-title] {
+  font-size: 2.5rem;
+  line-height: 1.3;
+}
+
 [data-public-text-scale="large"] .public-newsletter-screen [data-public-text-scale-target="article-summary"] {
   font-size: 1.3125rem;
   line-height: 1.65;
