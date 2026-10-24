@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { requireProjectAdminPreviewAccess } from "@/lib/project-admin-preview-access";
-import { getProjectWorkspace, getProjectContent, getFontAssets } from "@/lib/newsletter-repository";
+import { getProjectWorkspace, getProjectContent, getFontAssets, makePublicStoragePreviewHref } from "@/lib/newsletter-repository";
 import { getArticleHeroBackgrounds, getArticleTextDesigns } from "@/lib/article-composition-repository";
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { HwaseongProposalReader } from "@/components/hwaseong-proposal-reader";
@@ -12,7 +12,7 @@ export const metadata = { title: "화성 10월호 · 비공개 제안 샘플", r
 
 export default async function Samples({ params, searchParams }: {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ articleId?: string; view?: string; width?: string }>;
+  searchParams: Promise<{ articleId?: string; view?: string; width?: string; qa?: string }>;
 }) {
   const { projectId } = await params;
   // No route activation on Production or a general Preview, even after a future merge.
@@ -29,6 +29,12 @@ export default async function Samples({ params, searchParams }: {
     const u = new URL(s.article.audioFile.previewHref, "https://sample.invalid");
     s.article = { ...s.article, audioFile: { ...s.article.audioFile, previewHref: `/api/project-files/preview?${u.searchParams}` } };
   }
-  return <><PublicFontFaceStyle fonts={fontData.fonts} /><HwaseongProposalReader slug={projectId} samples={samples} fonts={fontData.fonts} backgrounds={backgrounds} textDesigns={textDesigns}
-    selectedId={ids.includes(query.articleId ?? "") ? query.articleId : undefined} detail={query.view === "detail"} width={query.width === "520" ? 520 : 390} /></>;
+  const coverImageSrc = project.coverImagePath ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) : project.coverImageUrl;
+  const cover = project.coverEnabled && coverImageSrc ? {
+    coverImageSrc, coverFit: project.coverFit, coverLayout: project.coverLayout,
+    coverTitle: project.coverTitle || project.title, coverSubtitle: project.coverSubtitle,
+    coverIssueText: project.coverIssueText || project.issue, masthead: project.title,
+  } : undefined;
+  return <><PublicFontFaceStyle fonts={fontData.fonts} /><HwaseongProposalReader slug={projectId} samples={samples} fonts={fontData.fonts} backgrounds={backgrounds} textDesigns={textDesigns} cover={cover}
+    selectedId={ids.includes(query.articleId ?? "") ? query.articleId : undefined} detail={query.view === "detail"} contents={query.view === "contents"} qa={query.qa === "1"} width={query.width === "520" ? 520 : 390} /></>;
 }

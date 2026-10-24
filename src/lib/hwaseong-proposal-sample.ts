@@ -53,8 +53,8 @@ export const tourismPlaces = [
   { id: "20", name: "우리꽃식물원", points: "598,456 676,457 701,504 694,545 603,548 569,546 566,503", description: "우리 식물과 정원을 둘러보는 나들이 공간입니다.", address: "화성시 팔탄면 3.1만세로 777-17", phone: "031-5189-6160" },
 ] as const;
 
-export function sampleHref(slug: string, articleId?: string, detail = false, width = 390) {
-  return `/projects/${encodeURIComponent(slug)}/samples?${new URLSearchParams({ ...(articleId ? { articleId } : {}), ...(detail ? { view: "detail" } : {}), width: String(width === 520 ? 520 : 390) })}`;
+export function sampleHref(slug: string, articleId?: string, detail = false, width = 390, options?: { contents?: boolean; qa?: boolean }) {
+  return `/projects/${encodeURIComponent(slug)}/samples?${new URLSearchParams({ ...(articleId ? { articleId } : {}), ...(detail && articleId ? { view: "detail" } : !articleId && options?.contents ? { view: "contents" } : {}), width: String(width === 520 ? 520 : 390), ...(options?.qa ? { qa: "1" } : {}) })}`;
 }
 
 export const interviewSource = "https://v.daum.net/v/20260608110932267";

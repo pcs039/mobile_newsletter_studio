@@ -447,7 +447,7 @@ function InterestPreferenceSelector({
   );
 }
 
-function PublicNewsletterCoverView({
+export function PublicNewsletterCoverView({
   coverFit,
   coverImageSrc,
   coverIssueText,
@@ -460,6 +460,11 @@ function PublicNewsletterCoverView({
   onStartReading,
   publicSurveyLinks = [],
   slug,
+  compact = false,
+  masthead,
+  coverImageAlt,
+  startLabel = "첫 기사 읽기",
+  tocLabel = "목차 보기",
 }: {
   coverFit: "contain" | "cover";
   coverImageSrc: string;
@@ -473,19 +478,25 @@ function PublicNewsletterCoverView({
   onStartReading: () => void;
   publicSurveyLinks?: ProjectSurveyItem[];
   slug: string;
+  compact?: boolean;
+  masthead?: string;
+  coverImageAlt?: string;
+  startLabel?: string;
+  tocLabel?: string;
 }) {
   const hasInfo = Boolean(coverTitle || coverSubtitle || coverIssueText);
   const imageFitClass = coverFit === "cover" || coverLayout === "image_overlay" ? "object-cover" : "object-contain";
 
   return (
-    <section className="border-b border-slate-200 bg-[#f4f8ff] px-3 py-5">
+    <section aria-label="소식지 표지" className={`border-b border-slate-200 px-3 py-5 ${compact ? "bg-[#f8f3e8]" : "bg-[#f4f8ff]"}`}>
+      {masthead ? <div className="mb-4 flex flex-wrap items-end justify-between gap-2 px-2 text-[#123f4b]"><p className="text-lg font-black tracking-tight">{masthead}</p><p className="text-[11px] font-bold">{coverIssueText}</p></div> : null}
       <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-lg shadow-blue-950/10">
         {coverLayout === "image_overlay" ? (
           <div className="relative min-h-[76vh] bg-slate-950">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImageSrc}
-              alt={coverTitle || "모바일 소식지 표지"}
+              alt={coverImageAlt || coverTitle || "모바일 소식지 표지"}
               className={`absolute inset-0 h-full w-full ${imageFitClass}`}
             />
             {hasInfo ? (
@@ -502,15 +513,15 @@ function PublicNewsletterCoverView({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={coverImageSrc}
-                alt={coverTitle || "모바일 소식지 표지"}
-                className={`mx-auto max-h-[82vh] w-full rounded-[1.1rem] ${imageFitClass}`}
+                alt={coverImageAlt || coverTitle || "모바일 소식지 표지"}
+                className={`mx-auto w-full rounded-[1.1rem] ${compact ? "h-[clamp(180px,30svh,300px)]" : "max-h-[82vh]"} ${imageFitClass}`}
               />
             </div>
             {coverLayout === "image_info" && hasInfo ? (
               <div className="border-t border-slate-100 px-5 py-5">
-                {coverTitle ? <h2 className="text-2xl font-black leading-tight text-[#092046] [word-break:keep-all]">{coverTitle}</h2> : null}
-                {coverSubtitle ? <p className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all]">{coverSubtitle}</p> : null}
-                {coverIssueText ? <p className="mt-3 text-xs font-black text-[#184a88]">{coverIssueText}</p> : null}
+                {coverTitle ? <h2 data-public-text-scale-target={compact ? "article-title" : undefined} className={`${compact ? "text-[1.9rem] tracking-tight" : "text-2xl"} font-black leading-tight text-[#092046] [word-break:keep-all] [overflow-wrap:anywhere]`}>{coverTitle}</h2> : null}
+                {coverSubtitle ? <p data-public-text-scale-target={compact ? "article-summary" : undefined} className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all] [overflow-wrap:anywhere]">{coverSubtitle}</p> : null}
+                {!masthead && coverIssueText ? <p className="mt-3 text-xs font-black text-[#184a88]">{coverIssueText}</p> : null}
               </div>
             ) : null}
           </>
@@ -521,17 +532,17 @@ function PublicNewsletterCoverView({
           type="button"
           onClick={onStartReading}
           disabled={!hasArticles}
-          className="dd-btn dd-btn-primary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45"
+          className={`dd-btn dd-btn-primary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45 ${compact ? "order-2" : ""}`}
         >
-          첫 기사 읽기
+          {startLabel}
         </button>
         <button
           type="button"
           onClick={onOpenToc}
           disabled={!hasArticles}
-          className="dd-btn dd-btn-secondary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45"
+          className={`dd-btn dd-btn-secondary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45 ${compact ? "order-1" : ""}`}
         >
-          목차 보기
+          {tocLabel}
         </button>
       </div>
       {interestSelector}
