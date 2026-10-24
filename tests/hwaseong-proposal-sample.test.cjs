@@ -28,3 +28,9 @@ test('Staging route does not expose another project',async()=>{
  let reads=0;const load=loader({'next/navigation':{notFound:()=>{throw Error('404');}},'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>true},'@/lib/newsletter-repository':{getProjectWorkspace:()=>{reads++;}}});
  await assert.rejects(load('src/app/projects/[projectId]/samples/page.tsx').default({params:Promise.resolve({projectId:'muan-26-09'}),searchParams:Promise.resolve({})}),/404/);assert.equal(reads,0);
 });
+test('tourism feature requires an attributed visible stored block; original article stays intact',()=>{
+ const {tourismFeature}=loader()('src/lib/hwaseong-proposal-sample.ts');
+ const a=fixture();a.body='보존할 도시 비전 원문';a.blocks[0].metadata.proposal_sample.kind='tourism';a.blocks.push({type:'paragraph',title:'관광 특집',body:'바다\n공식 장소 안내\n\n초록\n공식 공원 안내',isVisible:true,metadata:{proposal_tourism_feature:1,source:'https://www.hscity.go.kr/www/intro/trstMap.jsp'}});
+ const sample=proposalSample(a,pid),before=JSON.stringify(a);assert.deepEqual(tourismFeature(sample),{title:'관광 특집',paragraphs:['바다\n공식 장소 안내','초록\n공식 공원 안내']});assert.equal(JSON.stringify(a),before);
+ a.blocks[1].metadata.source='https://evil.invalid';assert.equal(tourismFeature(sample),null);a.blocks[1].metadata.source='https://www.hscity.go.kr/www/intro/trstMap.jsp';a.blocks[1].isVisible=false;assert.equal(tourismFeature(sample),null);sample.kind='cartoon';assert.equal(tourismFeature(sample),null);
+});

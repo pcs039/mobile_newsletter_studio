@@ -1,0 +1,11 @@
+# 펫티켓 3차 이미지 제작 기록
+
+- 도구: OpenAI 내장 `image_gen` (실제 생성 1회, Canva 미사용)
+- 날짜: 2026-10-25
+- 결과: `petiquette-v3.png` — 가상의 보호자와 코기, 가을 놀이터의 세 장면
+- 사람·장소의 실사 기록이나 공식 화성시 사진으로 사용하지 않는다.
+- 이미지 바이트는 생성 원본 그대로 보존한다. 화면에서 CSS로 동일 높이 세 컷을 나누고 HTML 대사를 붙인다. 대사는 이미지에 합성하지 않는다.
+
+## 사용 프롬프트
+
+Use case: illustration-story. Asset: polished editorial 3-panel Korean municipal mobile newsletter comic about pet etiquette, intended for adult residents, warm witty sophisticated hand-drawn art, NOT flat vector clipart. Create ONE portrait image, exactly 3 equal-height landscape panels stacked vertically, edge-to-edge separated by thin warm-white gutters. Consistent characters: young adult Korean woman with short dark bob, teal casual jacket, cream trousers and orange crossbody bag; small charismatic golden tan corgi with cream muzzle, expressive eyebrows, red harness. Park setting: autumn Korean neighborhood dog park with subtle wood fence, grasses, distant trees, sunny gold light, tactile gouache and colored-pencil ink, cream/teal/rust palette. All characters clearly fully composed inside their own panel, useful readable at mobile 390px. Panel 1: dynamic wide scene, corgi enthusiastically sprinting towards right with comically proud grin, owner jogging after it smiling, movement leaves, energetic inviting composition. Panel 2: closer scene, owner suddenly stops, pats her empty trouser pocket, eyebrows raised and worried surprised face; corgi looks back knowingly, front paw raised in a 'wait' gesture; a small discreet waste bag icon/roll near ground as contextual hint, absolutely no visible feces. Panel 3: humorous payoff medium shot, corgi proudly presents a roll of green waste bags in mouth and gives the owner an amused side-eye; owner sheepish smile and hand at back of head, other hand reaching to take bags, warm affection, dog looks better prepared than human. Narrative must visibly differ per panel: joyful motion, surprised pause, humorous resolution. No words, lettering, numerals, signage, logos, watermarks, speech bubbles or captions anywhere. Leave a little calm sky above heads, but prioritize strong visual storytelling and finished art. Clean anatomy, expressive eyes, consistent wardrobe, no photorealism, no generic geometric figures. Target portrait aspect 2:3.

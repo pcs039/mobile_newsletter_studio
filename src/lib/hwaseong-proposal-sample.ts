@@ -2,7 +2,7 @@ import type { ProjectContentArticle } from "@/lib/newsletter-repository";
 
 export const hwaseongSampleSlug = "hwaseong-2026-10-samples";
 export const tourismSource = "https://www.hscity.go.kr/www/intro/trstMap.jsp";
-export type ProposalSample = { article: ProjectContentArticle; cover: string; kind: string; eyebrow: string; headline: string; summary: string; color: string; pale: string; sourceTitle: string };
+export type ProposalSample = { article: ProjectContentArticle; cover: string; kind: string; eyebrow: string; headline: string; summary: string; color: string; pale: string; sourceTitle: string; artDirectionVersion: number };
 
 // This is deliberately a Staging fixture presentation, not a new publication mode.
 export function proposalSample(article: ProjectContentArticle, projectId: string): ProposalSample | null {
@@ -17,8 +17,22 @@ export function proposalSample(article: ProjectContentArticle, projectId: string
   // Never carry an arbitrary external file URL into this authenticated presentation.
   const url = new URL(cover.body, "https://sample.invalid");
   if (url.searchParams.get("bucket") !== "design-production-assets" || !url.searchParams.get("path")?.startsWith(`projects/${projectId}/`)) return null;
-  return { article, cover: cover.body, kind: String(v.kind), eyebrow: String(v.eyebrow), headline: String(v.headline), summary: String(v.summary), color: String(v.color), pale: String(v.pale), sourceTitle: String(v.sourceTitle) };
+  return { article, cover: cover.body, kind: String(v.kind), eyebrow: String(v.eyebrow), headline: String(v.headline), summary: String(v.summary), color: String(v.color), pale: String(v.pale), sourceTitle: String(v.sourceTitle), artDirectionVersion: v.artDirectionVersion === 3 ? 3 : 2 };
 }
+
+// A separate, attributed feature block never replaces the archived original body.
+export function tourismFeature(sample: ProposalSample) {
+  if (sample.kind !== "tourism") return null;
+  const block = sample.article.blocks.find(b => b.type === "paragraph" && b.isVisible && b.metadata.proposal_tourism_feature === 1);
+  if (!block || block.metadata.source !== tourismSource || !block.title.trim() || block.title.length > 120 || !block.body.trim() || block.body.length > 6000) return null;
+  return { title: block.title, paragraphs: block.body.split(/\n\s*\n/).filter(Boolean) };
+}
+
+export const comicScenes = [
+  { speaker: "보호자", line: "오늘은 마음껏 뛰어!", aside: "달릴 준비는 완벽했는데…", alt: "가을 놀이터를 달리는 보호자와 신이 난 코기" },
+  { speaker: "보호자", line: "어? 중요한 걸 깜빡했네…", aside: "빈 주머니를 확인하는 순간, 강아지가 멈춰 섭니다.", alt: "빈 주머니를 확인하며 놀란 보호자와 기다리라는 듯 앞발을 든 코기" },
+  { speaker: "강아지의 속마음", line: "달리기는 내가, 뒷정리는 보호자가!", aside: "오늘의 산책 고수는 누굴까요?", alt: "배변 봉투를 물어 건네는 코기와 머쓱하게 웃는 보호자" },
+] as const;
 
 // Polygons are from the already acquired official 1024 × 700 imagemap.
 // Short descriptions are paraphrases; addresses/phones retain the official source.
