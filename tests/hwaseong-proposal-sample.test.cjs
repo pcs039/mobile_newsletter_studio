@@ -68,7 +68,7 @@ function renderProposal(kind, detail=false) {
  const article={id:'sample',body:'보존 자료',blocks:[],audioFile:null};
  if(kind==='tourism')article.blocks.push({type:'paragraph',title:'관광 특집',body:'공식 관광자료',isVisible:true,metadata:{proposal_tourism_feature:1,source:'https://www.hscity.go.kr/www/intro/trstMap.jsp'}});
  const sample={article,kind,cover:'/image.webp',eyebrow:'시연',headline:'시연 제목',sourceTitle:'기존 10월호 작업본',color:'#123456',pale:'#ffffff',artDirectionVersion:3};
- const load=loader({'next/link':({children,...props})=>React.createElement('a',props,children),'next/navigation':{useRouter:()=>({push:()=>{}})},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null},'@/components/public-article-image-lightbox':{PublicArticleImageLightbox:()=>null},'@/components/public-mobile-article-reader':{ArticleCard:()=>null,PublicNewsletterCoverView:()=>null}});
+ const load=loader({'next/link':({children,...props})=>React.createElement('a',props,children),'next/navigation':{useSearchParams:()=>null,useRouter:()=>({push:()=>{}})},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null},'@/components/public-article-image-lightbox':{PublicArticleImageLightbox:()=>null},'@/components/public-mobile-article-reader':{ArticleCard:()=>null,PublicNewsletterCoverView:()=>null}});
  return renderToStaticMarkup(React.createElement(load('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader,{slug:'hwaseong-2026-10-samples',samples:[sample],fonts:[],backgrounds:{},textDesigns:{},selectedId:article.id,detail,width:390}));
 }
 test('accessible fixture states registered dog, guardian age and free entry without a QR procedure',()=>{
