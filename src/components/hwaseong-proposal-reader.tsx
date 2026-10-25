@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HwaseongEditorialSample } from "@/components/hwaseong-editorial-sample";
-import { useRef, useState, type ComponentProps } from "react";
+import { useMemo, useRef, useState, type ComponentProps } from "react";
 import { ArticleCard, PublicNewsletterCoverView } from "@/components/public-mobile-article-reader";
 import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
@@ -12,8 +12,9 @@ import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import type { FontAsset } from "@/lib/newsletter-repository";
 import type { ArticleHeroBackground } from "@/lib/article-hero-background";
 import type { ArticleTextDesign } from "@/lib/article-text-design";
-import { comicScenes, sampleHref, samplePresentationArticle, tourismFeature, tourismPlaces, tourismSource, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
+import { accessibleSampleEnglish, comicScenes, sampleHref, samplePresentationArticle, tourismFeature, tourismPlaces, tourismSource, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { normalizeSampleInterest, orderProposalSamples, sampleInterests, type SampleInterest } from "@/lib/hwaseong-sample-interest";
+import { buildProposalSearchIndex, searchProposalSamples } from "@/lib/hwaseong-sample-search";
 
 const action = "inline-flex min-h-11 items-center justify-center rounded-xl border border-current px-4 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
 
@@ -134,7 +135,6 @@ function SampleSummary({ sample, href, onImage }: { sample: ProposalSample; href
     ["동물등록 · 보호자 동반", "동물등록을 마친 반려견과 만 13세 이상 보호자가 함께 무료로 이용해요."],
     ["뒷정리와 서로 배려", "배변을 치우고 다른 이용객과 반려견을 배려해요."],
   ] : [];
-  const english = ["Use the area for your dog’s size.", "A registered dog must be accompanied by a guardian aged 13 or older. Admission is free.", "Clean up after your dog and respect others."];
   return <section data-summary-kind={sample.kind} className="pb-5" style={{ backgroundColor: dark ? "#192e46" : sample.pale, color: dark ? "#fff8e8" : "#172e35" }}>
     <div className="px-5 pb-5 pt-4">
       <p className="text-[11px] font-black tracking-[.16em]" style={{ color: dark ? "#eec2a8" : sample.color }}>{sample.eyebrow}</p>
@@ -150,7 +150,7 @@ function SampleSummary({ sample, href, onImage }: { sample: ProposalSample; href
         {facts.map(([title, body], i) => <li key={title} className={`py-3 ${i ? "border-t border-current/15" : ""}`}>
           <h2 data-public-text-scale-target="article-summary" className="text-base font-black leading-7 [overflow-wrap:anywhere]">{title}</h2>
           <p data-public-text-scale-target="article-summary" className={`mt-1 text-sm leading-6 [overflow-wrap:anywhere] ${dark ? "text-[#d0dde5]" : "text-[#435956]"}`}>{body}</p>
-          {sample.kind === "accessible" ? <p data-public-text-scale-target="article-summary" lang="en" className="mt-2 text-sm leading-6 text-[#244dae]">{english[i]}</p> : null}
+          {sample.kind === "accessible" ? <p data-public-text-scale-target="article-summary" lang="en" className="mt-2 text-sm leading-6 text-[#244dae]">{accessibleSampleEnglish[i]}</p> : null}
         </li>)}
       </ol> : sample.kind === "cartoon" ? <><p data-public-text-scale-target="article-summary" className="mt-5 text-lg font-black leading-8">즐거운 놀이터의 마지막 한 걸음,<br />뒷정리와 배려입니다.</p><details className="mt-3 text-sm leading-6"><summary className="min-h-11 cursor-pointer content-center underline">만화 대사 글로 읽기</summary><ol className="space-y-2 pb-3" data-public-text-scale-target="article-summary">{artComic ? comicScenes.map((scene, i) => <li key={scene.line}>{i + 1}. {scene.speaker}: {scene.line} — {scene.aside}</li>) : <><li>1. 드디어 놀이터다! — 신나게 입장해요.</li><li>2. 잠깐! 뒷정리도 함께 해야지. — 보호자가 배변 봉투를 챙겨요.</li><li>3. 다음 산책도 기분 좋게! — 서로 배려하며 함께 웃어요.</li></>}</ol></details></> : null}
       <Link href={href} className={`${action} mt-5 w-full border-transparent text-white`} style={{ backgroundColor: dark ? "#ffe0ae" : sample.color, color: dark ? "#192e46" : "white" }}>상세기사 보기 <span aria-hidden="true" className="ml-3">→</span></Link>
@@ -169,8 +169,15 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
 }) {
   const router = useRouter();
   const [image, setImage] = useState<PublicArticleLightboxImage | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
+  const searchIndex = useMemo(() => buildProposalSearchIndex(samples), [samples]);
   const currentInterest = normalizeSampleInterest(interest);
   const orderedSamples = orderProposalSamples(samples, currentInterest);
+  const isSearching = Boolean(searchQuery.trim());
+  // Filter all seven after ordering: interest changes order, never the search scope.
+  const visibleSamples = isSearching ? searchProposalSamples(orderedSamples, searchIndex, searchQuery)
+    : orderedSamples.map(sample => ({ sample, snippet: "" }));
   const selected = orderedSamples.find(s => s.article.id === selectedId);
   const index = orderedSamples.findIndex(s => s.article.id === selectedId);
   const prev = orderedSamples[index - 1], next = orderedSamples[index + 1];
@@ -187,6 +194,13 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         <p className="mb-2 text-sm font-bold">어떤 소식부터 볼까요?</p>
         <div className="grid grid-cols-2 gap-2">{sampleInterests.map(option => <Link key={option.value} href={sampleHref(slug, undefined, false, width, { contents: !isCoverView, qa, interest: option.value })} aria-current={currentInterest === option.value ? "true" : undefined} className={`min-h-11 content-center rounded-xl border px-3 py-2 text-center text-sm font-bold ${currentInterest === option.value ? "border-[#125e7c] bg-[#125e7c] text-white" : "border-slate-200 bg-white text-slate-700"}`}>{option.label}</Link>)}</div>
         <p className="mt-2 text-xs leading-5 text-slate-500">선택한 주제를 먼저 보여드려요. 7개 기사는 모두 볼 수 있습니다.</p>
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <label htmlFor="sample-article-search" className="text-sm font-bold">기사 검색</label>
+          <div className="mt-2 flex gap-2"><input ref={searchInput} id="sample-article-search" type="search" value={searchQuery} maxLength={100} autoComplete="off" placeholder="반려견, 관광, 재활용, dog"
+            aria-describedby="sample-search-help" onChange={e => setSearchQuery(e.currentTarget.value)} className="h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-base outline-none focus:border-[#125e7c] focus:ring-2 focus:ring-[#125e7c]/30" />
+            {isSearching ? <button type="button" onClick={() => { setSearchQuery(""); searchInput.current?.focus(); }} className="min-h-11 shrink-0 rounded-xl border border-slate-200 px-3 text-sm font-bold">검색 종료</button> : null}</div>
+          <p id="sample-search-help" className="mt-2 text-xs leading-5 text-slate-500">관심분야와 관계없이 전체 {samples.length}개 기사에서 찾습니다.</p>
+        </div>
       </nav> : null}
       {isCoverView && cover ? <>
         <PublicNewsletterCoverView {...cover} compact slug={slug} hasArticles={orderedSamples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." tocLabel={`${orderedSamples.length}가지 콘텐츠 둘러보기`} onOpenToc={() => router.push(contentsHref)} onStartReading={() => router.push(href(orderedSamples[0]?.article.id))} />
@@ -199,8 +213,11 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
 
         </section> : ["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail={false} /> : <SampleSummary key={selected.article.id} sample={selected} href={href(selected.article.id, true)} onImage={setImage} />}
         <nav aria-label="기사 이동" className="grid grid-cols-2 gap-3 border-t border-slate-200 p-5">{prev ? <Link className={action} href={href(prev.article.id)}>← 이전 기사 요약</Link> : <span className="content-center text-center text-xs text-slate-500">첫 기사입니다</span>}{next ? <Link className={action} href={href(next.article.id)}>다음 기사 요약 →</Link> : <span className="content-center text-center text-xs text-slate-500">마지막 기사입니다</span>}</nav>
-      </> : <section className="p-5">{cover ? <Link href={href()} className="mb-4 inline-flex min-h-11 items-center text-sm font-bold">← 표지로 돌아가기</Link> : null}<p className="text-xs font-black text-[#17694c]">{samples.length}가지 디자인, 화성의 여러 표정</p><h1 className="mt-2 text-3xl font-black leading-tight">손안에서 만나는<br />우리 도시의 소식</h1><p className="mt-4 text-sm leading-6 text-slate-600">기존 10월호 작업본·공식 관광자료·공개 인터뷰·공식 영상으로 제작한 비공개 샘플입니다. 요약 첫 화면에서 상세기사로 이어집니다.</p>
-        <ol className="mt-6 space-y-4">{orderedSamples.map(s => <li key={s.article.id}><Link href={href(s.article.id)} className="block overflow-hidden rounded-2xl border border-slate-200"><TocThumbnail sample={s} /><div className="p-4"><p className="text-xs font-black" style={{ color: s.color }}>{s.eyebrow}</p><h2 className="mt-2 text-lg font-black leading-7 [word-break:keep-all]">{s.headline.replace("\n", " ")} →</h2></div></Link></li>)}</ol>
+      </> : <section className="p-5">{cover ? <Link href={href()} className="mb-4 inline-flex min-h-11 items-center text-sm font-bold">← 표지로 돌아가기</Link> : null}
+        {isSearching ? <h1 aria-live="polite" className="text-xl font-black">검색 결과 {visibleSamples.length}건</h1>
+          : <><p className="text-xs font-black text-[#17694c]">{samples.length}가지 디자인, 화성의 여러 표정</p><h1 className="mt-2 text-3xl font-black leading-tight">손안에서 만나는<br />우리 도시의 소식</h1><p className="mt-4 text-sm leading-6 text-slate-600">기존 10월호 작업본·공식 관광자료·공개 인터뷰·공식 영상으로 제작한 비공개 샘플입니다. 요약 첫 화면에서 상세기사로 이어집니다.</p></>}
+        {isSearching && !visibleSamples.length ? <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm leading-6 text-slate-600">검색 결과가 없습니다.<br />다른 검색어를 입력하거나 검색을 종료해 주세요.</p> : null}
+        <ol className="mt-6 space-y-4">{visibleSamples.map(({ sample: s, snippet }) => <li key={s.article.id}><Link href={href(s.article.id)} className="block overflow-hidden rounded-2xl border border-slate-200"><TocThumbnail sample={s} /><div className="p-4"><p className="text-xs font-black" style={{ color: s.color }}>{s.eyebrow}</p><h2 className="mt-2 text-lg font-black leading-7 [word-break:keep-all]">{s.headline.replace("\n", " ")} →</h2>{isSearching ? <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 [overflow-wrap:anywhere]">{snippet}</p> : null}</div></Link></li>)}</ol>
       </section>}
       <footer className="border-t border-slate-200 px-5 py-5 text-xs leading-5 text-slate-500">화성시 담당자 대상 비공개 제안 · 정식 발행물 아님 · 외부 공개·재배포 금지{qa ? <><br />기존 Production 기사·발행 상태는 변경하지 않았습니다.</> : null}</footer>
     </div><PublicArticleImageLightbox image={image} onClose={() => setImage(null)} />

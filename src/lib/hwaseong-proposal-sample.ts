@@ -3,6 +3,7 @@ import { normalizeSampleInterest } from "@/lib/hwaseong-sample-interest";
 
 export const hwaseongSampleSlug = "hwaseong-2026-10-samples";
 export const tourismSource = "https://www.hscity.go.kr/www/intro/trstMap.jsp";
+export const accessibleSampleEnglish = ["Use the area for your dog’s size.", "A registered dog must be accompanied by a guardian aged 13 or older. Admission is free.", "Clean up after your dog and respect others."];
 export type ProposalSample = { article: ProjectContentArticle; cover: string; kind: string; eyebrow: string; headline: string; summary: string; color: string; pale: string; sourceTitle: string; artDirectionVersion: number };
 
 // This is deliberately a Staging fixture presentation, not a new publication mode.

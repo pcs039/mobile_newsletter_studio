@@ -6,6 +6,7 @@ import { ArticleTextDesignElements } from "@/components/article-text-design-elem
 import { hasArticleTextDesign, type ArticleTextDesign } from "@/lib/article-text-design";
 
 import { articleTextColorStyle } from "@/lib/article-text-colors";
+import { articleSearchMatches, buildArticleSearchSnippet, getArticleTitle, getPlainArticleSearchText } from "@/lib/mobile-article-search";
 
 import Link from "next/link";
 import { ResponsiveDesignImage } from "@/components/responsive-design-image";
@@ -925,43 +926,6 @@ function getYoutubeId(value: string) {
   }
 
   return "";
-}
-
-function getArticleTitle(article: ProjectContentArticle, index: number) {
-  return article.title?.trim() || `기사 ${index + 1}`;
-}
-
-function getPlainArticleSearchText(article: ProjectContentArticle, index: number) {
-  const paragraphText = article.blocks
-    .filter((block) => block.isVisible && block.type === "paragraph")
-    .map((block) => block.body)
-    .filter(Boolean)
-    .join(" ");
-
-  return [
-    getArticleTitle(article, index),
-    article.summary,
-    paragraphText || article.body,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function buildArticleSearchSnippet(text: string, query: string) {
-  const normalizedText = text.replace(/\s+/g, " ").trim();
-  const normalizedQuery = query.trim().toLocaleLowerCase("ko-KR");
-  const matchedIndex = normalizedText.toLocaleLowerCase("ko-KR").indexOf(normalizedQuery);
-
-  if (matchedIndex < 0) {
-    return normalizedText.slice(0, 96);
-  }
-
-  const start = Math.max(0, matchedIndex - 36);
-  const end = Math.min(normalizedText.length, matchedIndex + query.length + 64);
-
-  return `${start > 0 ? "..." : ""}${normalizedText.slice(start, end)}${end < normalizedText.length ? "..." : ""}`;
 }
 
 function getSurveyAvailabilityState(survey: ProjectSurveyItem | null | undefined) {
@@ -1886,12 +1850,10 @@ export function PublicMobileArticleReader({
       return [];
     }
 
-    const normalizedQuery = query.toLocaleLowerCase("ko-KR");
-
     return orderedArticles.flatMap((article, index) => {
       const text = getPlainArticleSearchText(article, index);
 
-      if (!text.toLocaleLowerCase("ko-KR").includes(normalizedQuery)) {
+      if (!articleSearchMatches(text, query)) {
         return [];
       }
 
