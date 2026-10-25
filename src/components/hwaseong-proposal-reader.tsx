@@ -179,9 +179,9 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const swipe = useRef<(ReaderPoint & { vertical?: boolean }) | null>(null);
   const [controlsActive, setControlsActive] = useState(false);
   const [warmImages, setWarmImages] = useState(false);
-  const warmSources = useMemo(() => [...new Set(samples.flatMap(s => [s.cover,
+  const warmSources = useMemo(() => [...new Set([...samples.flatMap(s => [s.cover,
     ...s.article.blocks.filter(b => b.isVisible && b.type === "image" && b.body.startsWith("/api/project-files/preview?")).map(b => b.body),
-  ]))].slice(0, 14), [samples]);
+  ]), ...Object.values(backgrounds).filter(b => b.visible).map(b => b.url)])].slice(0, 14), [samples, backgrounds]);
   const [image, setImage] = useState<PublicArticleLightboxImage | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInput = useRef<HTMLInputElement>(null);
