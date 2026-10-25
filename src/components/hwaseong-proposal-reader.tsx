@@ -1,10 +1,10 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Authenticated private assets retain their original URL. */
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { SampleLink as Link, SamplePageControls } from "@/components/hwaseong-sample-navigation";
+import { useSearchParams } from "next/navigation";
 import { HwaseongEditorialSample } from "@/components/hwaseong-editorial-sample";
-import { useMemo, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { ArticleCard, PublicNewsletterCoverView } from "@/components/public-mobile-article-reader";
 import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
@@ -15,6 +15,8 @@ import type { ArticleTextDesign } from "@/lib/article-text-design";
 import { accessibleSampleEnglish, comicScenes, sampleHref, samplePresentationArticle, tourismFeature, tourismPlaces, tourismSource, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { normalizeSampleInterest, orderProposalSamples, sampleInterests, type SampleInterest } from "@/lib/hwaseong-sample-interest";
 import { buildProposalSearchIndex, searchProposalSamples } from "@/lib/hwaseong-sample-search";
+import { canUseSampleHistory, readSampleLocation } from "@/lib/hwaseong-sample-navigation";
+import { isReaderInteractiveTarget, readerSwipeDirection, type ReaderPoint } from "@/lib/mobile-reader-navigation";
 
 const action = "inline-flex min-h-11 items-center justify-center rounded-xl border border-current px-4 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
 
@@ -51,7 +53,7 @@ function TourismMap({ sample, detailHref }: { sample: ProposalSample; detailHref
     bounds.scrollTo({ left: x - bounds.clientWidth / 2, top: y - bounds.clientHeight / 2, behavior: "smooth" });
   }
   function choose(id: string) { setSelected(id); requestAnimationFrame(() => { if (zoomed) centerMap(id); card.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }); }
-  return <section aria-label="화성 관광지도">
+  return <section aria-label="화성 관광지도" data-swipe-navigation-ignore>
     <div className="mb-3 flex items-center justify-between gap-2 px-5"><p className="text-xs font-bold tracking-wide text-[#125e7c]">바다 · 역사 · 초록<br /><span className="font-normal tracking-normal">그림 속 번호로 떠나는 여행</span></p><button className="min-h-11 rounded-full border border-sky-300 bg-white px-4 text-sm font-bold" aria-pressed={zoomed} onClick={() => { setZoomed(!zoomed); requestAnimationFrame(() => centerMap(selected)); }}>{zoomed ? "지도 전체 보기" : "지도 크게 보기"}</button></div>
     <div ref={map} tabIndex={-1} className="scroll-mt-4 overflow-auto border-y border-sky-200 bg-white" style={{ maxHeight: zoomed ? 420 : undefined }}><div className="relative" style={{ minWidth: zoomed ? 680 : undefined }}>
       {/* Original proportions and source polygons stay in the same coordinate system. */}
@@ -161,13 +163,25 @@ function SampleSummary({ sample, href, onImage }: { sample: ProposalSample; href
   </section>;
 }
 
-export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, textDesigns, selectedId, detail, width, cover, contents = false, qa = false, interest = "all" }: {
+export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, textDesigns, selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, cover, serverTimings, contents: initialContents = false, qa: initialQa = false, interest: initialInterest = "all" }: {
   slug: string; samples: ProposalSample[]; fonts: FontAsset[]; backgrounds: Record<string, ArticleHeroBackground>; textDesigns: Record<string, ArticleTextDesign>;
   selectedId?: string; detail: boolean; width: 390 | 520;
   cover?: Pick<ComponentProps<typeof PublicNewsletterCoverView>, "coverImageSrc" | "coverFit" | "coverLayout" | "coverTitle" | "coverSubtitle" | "coverIssueText" | "masthead">;
   contents?: boolean; qa?: boolean; interest?: SampleInterest;
+  serverTimings?: Record<string, number>;
 }) {
-  const router = useRouter();
+  const query = useSearchParams();
+  const { selectedId, detail, width, contents, qa, interest } = query
+    ? readSampleLocation(query, samples.map(s => s.article.id))
+    : { selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, contents: initialContents, qa: initialQa, interest: initialInterest };
+  const mainRef = useRef<HTMLElement>(null);
+  const navigationStarted = useRef<number | null>(null);
+  const swipe = useRef<(ReaderPoint & { vertical?: boolean }) | null>(null);
+  const [controlsActive, setControlsActive] = useState(false);
+  const [warmImages, setWarmImages] = useState(false);
+  const warmSources = useMemo(() => [...new Set([...samples.flatMap(s => [s.cover,
+    ...s.article.blocks.filter(b => b.isVisible && b.type === "image" && b.body.startsWith("/api/project-files/preview?")).map(b => b.body),
+  ]), ...Object.values(backgrounds).filter(b => b.visible).map(b => b.url)])].slice(0, 14), [samples, backgrounds]);
   const [image, setImage] = useState<PublicArticleLightboxImage | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInput = useRef<HTMLInputElement>(null);
@@ -184,7 +198,70 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const isCoverView = Boolean(cover && !selected && !contents);
   const href = (id?: string, d = false, w = width) => sampleHref(slug, id, d, w, { qa, interest: currentInterest });
   const contentsHref = sampleHref(slug, undefined, false, width, { contents: true, qa, interest: currentInterest });
-  return <main className="public-newsletter-screen min-h-screen bg-[#e8edef] py-3 sm:px-2 text-[#172e35] sm:py-8">
+  const previousPage = selected ? prev ? { href: href(prev.article.id, detail), label: "이전 기사로 이동" }
+    : cover ? { href: href(), label: "표지로 이동" } : undefined : undefined;
+  const nextPage = isCoverView && orderedSamples[0] ? { href: href(orderedSamples[0].article.id), label: "첫 기사로 이동" }
+    : selected && next ? { href: href(next.article.id, detail), label: "다음 기사로 이동" } : undefined;
+  const locationKey = `${currentInterest}:${selectedId ?? (isCoverView ? "cover" : "contents")}:${detail}:${width}`;
+  function navigateLocal(target: string) {
+    if (!canUseSampleHistory(target, window.location.href, slug)) return false;
+    const url = new URL(target, window.location.href);
+    if (url.href === window.location.href) return true;
+    // eslint-disable-next-line react-hooks/purity -- Event handler only; never invoked during render.
+    navigationStarted.current = performance.now();
+    window.dispatchEvent(new Event("datadiction:stop-article-audio"));
+    window.history.pushState(null, "", url);
+    return true;
+  }
+  useLayoutEffect(() => {
+    window.dispatchEvent(new Event("datadiction:stop-article-audio"));
+    const hash = window.location.hash;
+    if (hash) { try { document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView(); } catch { /* Invalid hash stays on the current article. */ } }
+    else window.scrollTo({ top: 0, behavior: "instant" });
+    const frame = requestAnimationFrame(() => {
+      if (mainRef.current && navigationStarted.current !== null) {
+        mainRef.current.dataset.sampleNavigationMs = String(Math.round(performance.now() - navigationStarted.current));
+        navigationStarted.current = null;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [locationKey]);
+  useEffect(() => {
+    if (!controlsActive) return;
+    const timer = window.setTimeout(() => setControlsActive(false), 1600);
+    return () => window.clearTimeout(timer);
+  }, [controlsActive]);
+  useEffect(() => {
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? "")) return;
+    // Keep a bounded set of the already-authorized seven articles' images in this
+    // document's decoded-image cache. No public, disk, service-worker or cross-project cache.
+    const timer = window.setTimeout(() => setWarmImages(true), 750);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return <main ref={mainRef} data-sample-location={locationKey} data-sample-initial-fetch={qa ? JSON.stringify(serverTimings) : undefined} onPointerDownCapture={() => setControlsActive(true)}
+    onClickCapture={event => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = event.target instanceof Element ? event.target.closest("a") : null;
+      const target = anchor?.getAttribute("href");
+      if (target && !anchor?.hasAttribute("download") && (!anchor?.target || anchor.target === "_self") && navigateLocal(target)) event.preventDefault();
+    }}
+    onTouchStart={event => {
+      swipe.current = !selected && !isCoverView || image || event.touches.length !== 1 || isReaderInteractiveTarget(event.target)
+        ? null : { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    }} onTouchMove={event => {
+      const start = swipe.current, touch = event.touches[0];
+      if (event.touches.length !== 1) { swipe.current = null; return; }
+      if (start && touch && Math.abs(touch.clientY - start.y) > 10 && Math.abs(touch.clientY - start.y) > Math.abs(touch.clientX - start.x)) start.vertical = true;
+    }} onTouchCancel={() => { swipe.current = null; }} onTouchEnd={event => {
+      const start = swipe.current, touch = event.changedTouches[0]; swipe.current = null;
+      if (!start || start.vertical || !touch || window.getSelection()?.toString()) return;
+      const direction = readerSwipeDirection(start, { x: touch.clientX, y: touch.clientY }, window.innerWidth);
+      const target = direction === "next" ? nextPage : direction === "previous" ? previousPage : undefined;
+      if (target) navigateLocal(target.href);
+    }} className="public-newsletter-screen min-h-screen bg-[#e8edef] py-3 sm:px-2 text-[#172e35] sm:py-8">
+    {warmImages ? <div hidden aria-hidden="true" data-sample-image-warmup>{warmSources.map(src => <img key={src} src={src} alt="" width={1} height={1} decoding="async" fetchPriority="low" />)}</div> : null}
+    {(isCoverView || selected) && !image ? <SamplePageControls previous={previousPage} next={nextPage} onNavigate={navigateLocal} width={width} active={controlsActive} /> : null}
     <div className="mx-auto mb-3 flex w-full flex-wrap items-center justify-between gap-2 text-xs text-slate-600" style={{ maxWidth: width }}>
       <span>{qa ? "STAGING QA · " : ""}비공개 제안 시안 · 정식 발행물 아님</span>{qa ? <div className="flex gap-2">{([390, 520] as const).map(w => <Link key={w} href={sampleHref(slug, selectedId, detail, w, { contents: !isCoverView && !selected, qa, interest: currentInterest })} className="rounded border bg-white px-2 py-2" aria-current={width === w ? "page" : undefined}>{w}px</Link>)}</div> : null}
     </div>
@@ -203,7 +280,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         </div>
       </nav> : null}
       {isCoverView && cover ? <>
-        <PublicNewsletterCoverView {...cover} compact slug={slug} hasArticles={orderedSamples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." tocLabel={`${orderedSamples.length}가지 콘텐츠 둘러보기`} onOpenToc={() => router.push(contentsHref)} onStartReading={() => router.push(href(orderedSamples[0]?.article.id))} />
+        <PublicNewsletterCoverView {...cover} compact slug={slug} hasArticles={orderedSamples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." tocLabel={`${orderedSamples.length}가지 콘텐츠 둘러보기`} onOpenToc={() => navigateLocal(contentsHref)} onStartReading={() => navigateLocal(href(orderedSamples[0]?.article.id))} />
         <div className="px-5 py-4"><p className="mb-3 text-[11px] leading-5 text-slate-600">표지 배경은 Canva AI로 제작한 개념 일러스트이며 실제 장소 사진이 아닙니다.</p><PublicTextSizeToggle compact /></div>
       </> : selected ? <>
         <nav className="flex flex-wrap items-center justify-between gap-2 px-5 pt-2 text-xs"><Link href={contentsHref} className="min-h-11 content-center font-bold">← 목록</Link><span>{currentInterest !== "all" ? `${sampleInterests.find(option => option.value === currentInterest)?.label} · ` : ""}{index + 1} / {orderedSamples.length} · {detail ? "상세기사" : "요약 첫 페이지"}</span></nav>

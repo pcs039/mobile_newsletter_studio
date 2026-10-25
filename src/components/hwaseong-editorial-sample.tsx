@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Private project previews retain authenticated asset URLs. */
-import Link from "next/link";
+import { SampleLink as Link } from "@/components/hwaseong-sample-navigation";
 import { useState } from "react";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import { editorialFeature, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
@@ -8,7 +8,7 @@ import { editorialFeature, type ProposalSample } from "@/lib/hwaseong-proposal-s
 const button = "flex min-h-12 items-center justify-center rounded-full border px-5 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
 function VideoPlayer({ sample, videoId }: { sample: ProposalSample; videoId: string }) {
   const [loaded, setLoaded] = useState(false);
-  return <div id="sample-video" className="scroll-mt-4">
+  return <div id="sample-video" className="scroll-mt-4" data-swipe-navigation-ignore>
     <div className="relative aspect-video overflow-hidden bg-black">
       {loaded ? <iframe title={sample.article.title} src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`} className="absolute inset-0 h-full w-full border-0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /> : <button onClick={() => setLoaded(true)} className="group relative h-full w-full" aria-label="공식 유튜브 영상 불러오기">
         <img src={sample.cover} alt="화성온TV 공식 영상 썸네일" width={1280} height={720} className="h-full w-full object-contain" /><span className="absolute inset-0 flex items-center justify-center bg-black/10"><span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#ffec72] text-2xl text-black shadow-xl">▶</span></span>

@@ -7,7 +7,7 @@ const samples = kinds.map((kind, i) => ({ article: { id: `a${i + 1}`, blocks: []
   artDirectionVersion: 3, cover: `/original-${kind}.webp`, headline: `원래 제목 ${i + 1}`,
   summary: '원래 요약', eyebrow: `0${i + 1}`, pale: '#fff', color: '#123456' }));
 const load = loader({ 'next/link': ({ children, ...p }) => React.createElement('a', p, children),
-  'next/navigation': { useRouter: () => ({ push: () => {} }) },
+  'next/navigation': { useSearchParams:()=>null, useRouter: () => ({ push: () => {} }) },
   '@/components/public-mobile-article-reader': { ArticleCard: () => React.createElement('p', null, '본문 보존') },
   '@/components/public-text-size-toggle': { PublicTextSizeToggle: () => null } });
 const Reader = load('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader;

@@ -7,6 +7,7 @@ import { hasArticleTextDesign, type ArticleTextDesign } from "@/lib/article-text
 
 import { articleTextColorStyle } from "@/lib/article-text-colors";
 import { articleSearchMatches, buildArticleSearchSnippet, getArticleTitle, getPlainArticleSearchText } from "@/lib/mobile-article-search";
+import { isReaderInteractiveTarget, readerSwipeDirection } from "@/lib/mobile-reader-navigation";
 
 import Link from "next/link";
 import { ResponsiveDesignImage } from "@/components/responsive-design-image";
@@ -314,10 +315,7 @@ function parseNewsletterInterestSnapshot(snapshot: string, availableInterestTags
 }
 
 function isInteractiveTouchTarget(target: EventTarget | null) {
-  return (
-    target instanceof Element &&
-    Boolean(target.closest("a, button, input, select, textarea, audio, video, details, summary, [data-swipe-navigation-ignore]"))
-  );
+  return isReaderInteractiveTarget(target);
 }
 
 export function PublicMobileArticleTocButton({
@@ -2277,18 +2275,11 @@ export function PublicMobileArticleReader({
       return;
     }
 
-    const adaptiveThreshold =
-      typeof window === "undefined" ? swipeThreshold : Math.min(90, Math.max(64, window.innerWidth * 0.16));
-
-    if (Math.abs(deltaX) < adaptiveThreshold || Math.abs(deltaX) < Math.abs(deltaY) * 1.35) {
-      return;
-    }
-
-    if (deltaX < 0) {
+    const direction = readerSwipeDirection(start, { x: touch.clientX, y: touch.clientY }, typeof window === "undefined" ? swipeThreshold / 0.16 : window.innerWidth);
+    if (direction === "next") {
       navigateNext();
     }
-
-    if (deltaX > 0 && canGoPrevious) {
+    if (direction === "previous" && canGoPrevious) {
       navigatePrevious();
     }
   }

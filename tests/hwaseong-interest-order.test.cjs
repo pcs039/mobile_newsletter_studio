@@ -8,7 +8,7 @@ const samples=ids.map((id,i)=>({article:{id,sortOrder:(i+1)*10,body:'보존할 �
 const Link=({children,href,...props})=>React.createElement('a',{...props,href},children);
 function render(interest,props={}){
  let coverProps;const pushes=[];
- const load=loader({'next/link':Link,'next/navigation':{useRouter:()=>({push:u=>pushes.push(u)})},'@/components/public-mobile-article-reader':{ArticleCard:()=>React.createElement('p',null,'retained article'),PublicNewsletterCoverView:p=>{coverProps=p;return React.createElement('p',null,'retained cover');}},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null}});
+ const load=loader({'next/link':Link,'next/navigation':{useSearchParams:()=>null,useRouter:()=>({push:u=>pushes.push(u)})},'@/components/public-mobile-article-reader':{ArticleCard:()=>React.createElement('p',null,'retained article'),PublicNewsletterCoverView:p=>{coverProps=p;return React.createElement('p',null,'retained cover');}},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null}});
  const html=renderToStaticMarkup(React.createElement(load('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader,{slug,samples,fonts:[],backgrounds:{},textDesigns:{},detail:false,width:390,interest,cover:{coverTitle:'Cover',coverImageSrc:'/cover.webp'},...props}));
  const links=Array.from(html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g),m=>({url:new URL(m[1].replaceAll('&amp;','&'),'https://fixture.invalid'),text:m[2].replace(/<[^>]*>/g,'').trim()}));
  return {html,links,coverProps,pushes};
@@ -26,7 +26,7 @@ for(const [interest,order] of Object.entries(expected)){
   const toc=render(interest,{contents:true,width:520,qa:true});const storyLinks=toc.links.filter(x=>x.url.searchParams.has('articleId'));
   assert.deepEqual(storyLinks.map(x=>ids.indexOf(x.url.searchParams.get('articleId'))+1),order);assert.match(toc.html,/관심분야 선택/);assert(!toc.html.includes('AI 개인화'));
   for(const link of storyLinks){assert.equal(link.url.searchParams.get('width'),'520');assert.equal(link.url.searchParams.get('qa'),'1');assert.equal(link.url.searchParams.get('interest'),interest==='all'?null:interest);}
-  const cover=render(interest);assert(!cover.html.includes('관심분야 선택'));cover.coverProps.onStartReading();cover.coverProps.onOpenToc();assert.equal(new URL(cover.pushes[0],'https://fixture.invalid').searchParams.get('articleId'),ids[order[0]-1]);assert.equal(new URL(cover.pushes[1],'https://fixture.invalid').searchParams.get('view'),'contents');
+  const cover=render(interest);assert(!cover.html.includes('관심분야 선택'));const oldWindow=global.window;global.window={location:{href:'https://fixture.invalid/projects/'+slug+'/samples'},dispatchEvent:()=>{},history:{pushState:(_s,_t,u)=>cover.pushes.push(String(u))}};try{cover.coverProps.onStartReading();cover.coverProps.onOpenToc();}finally{global.window=oldWindow;}assert.equal(new URL(cover.pushes[0],'https://fixture.invalid').searchParams.get('articleId'),ids[order[0]-1]);assert.equal(new URL(cover.pushes[1],'https://fixture.invalid').searchParams.get('view'),'contents');
   for(let i=0;i<7;i++)for(const detail of [false,true]){
    const shown=render(interest,{selectedId:ids[order[i]-1],detail,width:520,qa:true});
    const prev=shown.links.find(x=>x.text==='← 이전 기사 요약'),next=shown.links.find(x=>x.text==='다음 기사 요약 →');

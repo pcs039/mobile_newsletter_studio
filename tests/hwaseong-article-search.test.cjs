@@ -51,8 +51,8 @@ test('validated interview sections are searchable without exposing source URLs o
 function find(node,predicate){if(!node||typeof node!=='object')return null;if(predicate(node))return node;for(const c of React.Children.toArray(node.props?.children)){const found=find(c,predicate);if(found)return found;}return null;}
 function harness(){
  let cursor=0,focus=0;const states=[],pushes=[];
- const UI=loader({react:{...React,useState(initial){const n=cursor++;if(!(n in states))states[n]=initial;return[states[n],v=>states[n]=v];},useMemo:fn=>fn(),useRef:()=>({current:{focus:()=>focus++}})},
- 'next/link':({children,...p})=>React.createElement('a',p,children),'next/navigation':{useRouter:()=>({push:u=>pushes.push(u)})},
+ const UI=loader({react:{...React,useEffect:()=>{},useLayoutEffect:()=>{},useState(initial){const n=cursor++;if(!(n in states))states[n]=initial;return[states[n],v=>states[n]=v];},useMemo:fn=>fn(),useRef:()=>({current:{focus:()=>focus++}})},
+ 'next/link':({children,...p})=>React.createElement('a',p,children),'next/navigation':{useSearchParams:()=>null,useRouter:()=>({push:u=>pushes.push(u)})},
  '@/components/public-mobile-article-reader':{ArticleCard:()=>null},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null}})('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader;
  const render=interest=>{cursor=0;return UI({slug:'hwaseong-2026-10-samples',samples,fonts:[],backgrounds:{},textDesigns:{},contents:true,detail:false,width:390,interest});};
  return{render,focus:()=>focus,pushes};

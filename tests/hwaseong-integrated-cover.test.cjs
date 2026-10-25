@@ -6,7 +6,7 @@ const cover={coverImageSrc:'/api/public-files/preview?bucket=mobile-assets&path=
 const samples=Array.from({length:7},(_,i)=>({article:{id:`a${i+1}`,blocks:[]},kind:'policy',headline:`기사 ${i+1}`,summary:'기사 요약',cover:'/retained.webp',eyebrow:`0${i+1}`,pale:'#fff',color:'#123456'}));
 const Link=({children,href,...props})=>React.createElement('a',{...props,href},children);
 function render(props={}) {
- const load=loader({'next/link':Link,'next/navigation':{useRouter:()=>({push:()=>{}})},'@/components/public-mobile-article-reader':{ArticleCard:()=>React.createElement('p',null,'보존된 기사 본문'),PublicNewsletterCoverView:p=>React.createElement('section',{'data-cover':true},p.coverTitle,React.createElement('img',{src:p.coverImageSrc,alt:p.coverImageAlt}),React.createElement('button',null,p.tocLabel),React.createElement('button',null,'첫 기사 읽기'))},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null}});
+ const load=loader({'next/link':Link,'next/navigation':{useSearchParams:()=>null,useRouter:()=>({push:()=>{}})},'@/components/public-mobile-article-reader':{ArticleCard:()=>React.createElement('p',null,'보존된 기사 본문'),PublicNewsletterCoverView:p=>React.createElement('section',{'data-cover':true},p.coverTitle,React.createElement('img',{src:p.coverImageSrc,alt:p.coverImageAlt}),React.createElement('button',null,p.tocLabel),React.createElement('button',null,'첫 기사 읽기'))},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null}});
  return renderToStaticMarkup(React.createElement(load('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader,{slug,samples,fonts:[],backgrounds:{},textDesigns:{},detail:false,width:390,cover,...props}));
 }
 test('default entry renders project cover and client notices without QA controls',()=>{
