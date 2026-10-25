@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
+import { cleanupUnreferencedAudioPaths } from "@/lib/audio-file-delete";
 
 export const articleTtsVoices = ["marin", "cedar", "onyx", "coral"] as const;
 export type ArticleTtsVoice = (typeof articleTtsVoices)[number];
@@ -619,18 +620,9 @@ async function deleteAudioSegments(paths: string[], headers: Record<string, stri
     return;
   }
 
-  const endpoint = getSupabaseStorageEndpoint(`/object/${encodeURIComponent(audioBucket)}`);
-
-  if (!endpoint) {
-    return;
-  }
-
-  await fetch(endpoint, {
-    method: "DELETE",
-    headers,
-    body: JSON.stringify({ prefixes: safePaths }),
-    cache: "no-store",
-  }).catch(() => undefined);
+  // A lost metadata response or failed article link can leave a live row referencing new paths.
+  // Never treat that as permission to erase them. Unknown reference reads retain files too.
+  await cleanupUnreferencedAudioPaths(safePaths, headers).catch(() => undefined);
 }
 
 async function upsertArticleAiAudioRow(
