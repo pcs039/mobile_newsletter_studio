@@ -464,6 +464,7 @@ export function PublicNewsletterCoverView({
   coverImageAlt,
   startLabel = "첫 기사 읽기",
   tocLabel = "목차 보기",
+  showTextSizeControl = false,
 }: {
   coverFit: "contain" | "cover";
   coverImageSrc: string;
@@ -482,6 +483,7 @@ export function PublicNewsletterCoverView({
   coverImageAlt?: string;
   startLabel?: string;
   tocLabel?: string;
+  showTextSizeControl?: boolean;
 }) {
   const hasInfo = Boolean(coverTitle || coverSubtitle || coverIssueText);
   const imageFitClass = coverFit === "cover" || coverLayout === "image_overlay" ? "object-cover" : "object-contain";
@@ -502,6 +504,7 @@ export function PublicNewsletterCoverView({
               <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent p-6 text-white">
                 {coverIssueText ? <p className="text-sm font-black text-sky-100">{coverIssueText}</p> : null}
                 {coverTitle ? <h2 className="mt-2 text-4xl font-black leading-tight [word-break:keep-all]">{coverTitle}</h2> : null}
+                {showTextSizeControl ? <div className="mt-3"><PublicTextSizeToggle compact /></div> : null}
                 {coverSubtitle ? <p className="mt-3 text-base font-bold leading-7 text-white/90 [word-break:keep-all]">{coverSubtitle}</p> : null}
               </div>
             ) : null}
@@ -519,6 +522,7 @@ export function PublicNewsletterCoverView({
             {coverLayout === "image_info" && hasInfo ? (
               <div className="border-t border-slate-100 px-5 py-5">
                 {coverTitle ? <h2 data-proposal-cover-title={compact || undefined} data-public-text-scale-target={compact ? "article-title" : undefined} className={`${compact ? "text-[1.9rem] tracking-tight" : "text-2xl"} font-black leading-tight text-[#092046] [word-break:keep-all] [overflow-wrap:anywhere]`}>{coverTitle}</h2> : null}
+                {showTextSizeControl ? <div className="mt-3"><PublicTextSizeToggle compact /></div> : null}
                 {coverSubtitle ? <p data-public-text-scale-target={compact ? "article-summary" : undefined} className="mt-2 text-sm font-bold leading-6 text-slate-600 [word-break:keep-all] [overflow-wrap:anywhere]">{coverSubtitle}</p> : null}
                 {!masthead && coverIssueText ? <p className="mt-3 text-xs font-black text-[#184a88]">{coverIssueText}</p> : null}
               </div>
@@ -1350,6 +1354,7 @@ export function ArticleCard({
   projectBodyFontAssetId,
   projectTitleFontAssetId,
   showTextSizeControl = false,
+  readingToolsBelowTitle = false,
   showAdminPreviewControls,
   showSurveyConnectionStatus = false,
   slug,
@@ -1367,6 +1372,7 @@ export function ArticleCard({
   projectBodyFontAssetId?: string | null;
   projectTitleFontAssetId?: string | null;
   showTextSizeControl?: boolean;
+  readingToolsBelowTitle?: boolean;
   showAdminPreviewControls: boolean;
   showSurveyConnectionStatus?: boolean;
   slug: string;
@@ -1508,9 +1514,8 @@ export function ArticleCard({
     });
   }
 
-  const articleBody = (<>
-      <ArticlePublicInfoCard action={publicInfoAction} article={article} presentation={presentation} />
-      {shouldShowArticleAudio && article.audioFile ? (
+  const articleAudio = (<>
+{shouldShowArticleAudio && article.audioFile ? (
         <section className="mt-3 rounded-xl border border-[#d8e8ff] bg-[#f7fbff] px-2.5 py-2 shadow-sm shadow-blue-950/5">
           {hasAiArticleAudio ? (
             <p className="mb-0.5 px-1 text-[10px] font-bold leading-4 text-slate-500">
@@ -1550,6 +1555,11 @@ export function ArticleCard({
           ) : null}
         </section>
       ) : null}
+  </>);
+
+  const articleBody = (<>
+      <ArticlePublicInfoCard action={publicInfoAction} article={article} presentation={presentation} />
+      {!readingToolsBelowTitle ? articleAudio : null}
       {bodyContentBlocks.length > 0 ? (
         <div className={`public-article-content ${isImageOnly ? "mt-4 space-y-0" : "mt-6 space-y-6"}`}>
           {!hasOriginalVisibleBlocks && article.body ? renderArticleBody(article.body,"mt-3",`article-${article.id}-body`,article.bodyAlignment || article.textAlignment) : null}
@@ -1742,6 +1752,7 @@ export function ArticleCard({
           <PublicTextSizeToggle compact />
         </div>
       ) : null}
+      {readingToolsBelowTitle ? articleAudio : null}
       {article.summary ? (
         <ScrollMotionReveal
           motionEffect={motionSettings.textBox.effect}

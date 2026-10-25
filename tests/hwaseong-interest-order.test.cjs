@@ -29,8 +29,9 @@ for(const [interest,order] of Object.entries(expected)){
   const cover=render(interest);assert(!cover.html.includes('관심분야 선택'));const oldWindow=global.window;global.window={location:{href:'https://fixture.invalid/projects/'+slug+'/samples'},dispatchEvent:()=>{},history:{pushState:(_s,_t,u)=>cover.pushes.push(String(u))}};try{cover.coverProps.onStartReading();cover.coverProps.onOpenToc();}finally{global.window=oldWindow;}assert.equal(new URL(cover.pushes[0],'https://fixture.invalid').searchParams.get('articleId'),ids[order[0]-1]);assert.equal(new URL(cover.pushes[1],'https://fixture.invalid').searchParams.get('view'),'contents');
   for(let i=0;i<7;i++)for(const detail of [false,true]){
    const shown=render(interest,{selectedId:ids[order[i]-1],detail,width:520,qa:true});
-   const prev=shown.links.find(x=>x.text==='← 이전 기사 요약'),next=shown.links.find(x=>x.text==='다음 기사 요약 →');
+   const prev=shown.links.find(x=>x.text==='← 이전 기사'),next=shown.links.find(x=>x.text==='다음 기사 →');
    assert.equal(prev?.url.searchParams.get('articleId'),i?ids[order[i-1]-1]:undefined);assert.equal(next?.url.searchParams.get('articleId'),i<6?ids[order[i+1]-1]:undefined);
+   for(const n of [prev,next].filter(Boolean))assert.equal(n.url.searchParams.get('view'),detail?'detail':null);
    if(detail){const back=shown.links.find(x=>x.text==='← 이전 페이지 · 이 기사 요약');assert.equal(back.url.searchParams.get('articleId'),ids[order[i]-1]);assert(!back.url.searchParams.has('view'));}
    for(const link of shown.links.filter(x=>x.url.pathname.startsWith('/projects/'))){assert.equal(link.url.searchParams.get('interest'),interest==='all'?null:interest);assert.equal(link.url.searchParams.get('width'),link.text==='390px'?'390':'520');assert.equal(link.url.searchParams.get('qa'),'1');}
   }
