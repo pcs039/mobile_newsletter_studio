@@ -38,6 +38,12 @@ export async function sampleAudioIndex(samples?:ProposalSample[]):Promise<Record
  for(const plan of plans){const row=rows.find(r=>r.id===plan.id&&r.ai_tts_text_hash===plan.hash&&r.script_text===plan.text&&r.ai_tts_voice===plan.voice);if(row&&ready(row))result[plan.job]={id:row.id,voice:plan.voice,transcriptText:row.script_text,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts?audio=${row.id}`};}
  return result;
 }
+// Read-only, non-generation check; never returns provider credentials or raw error text.
+export async function checkSampleTtsProvider() {
+ headers(); const key=process.env.OPENAI_API_KEY?.trim();if(!key)return {configured:false};
+ try {const r=await fetch(`https://api.openai.com/v1/models/${sampleTtsModel}`,{headers:{Authorization:`Bearer ${key}`},cache:"no-store",signal:AbortSignal.timeout(15000)});let code="";if(!r.ok){const body=await r.json().catch(()=>null);const value=body?.error?.code;if(typeof value==='string'&&/^[a-z0-9_]{1,64}$/.test(value))code=value;}
+ return {configured:true,model:sampleTtsModel,httpStatus:r.status,code,readOnly:true};}catch{return {configured:true,model:sampleTtsModel,readOnly:true,message:"Provider check unavailable"};}
+}
 export async function sampleTtsStatus() {
  const plans=await sampleTtsPlan(),rows=await sampleTtsRows();
  return {configured:!!process.env.OPENAI_API_KEY?.trim(),model:sampleTtsModel,plans:plans.map(p=>{const row=rows.find(r=>r.id===p.id);return {job:p.job,id:p.id,voice:p.voice,title:p.title,characters:p.text.length,calls:p.chunks.length,state:row?ready(row)?"ready":"unknown":"not_started"};}),audio:await sampleAudioIndex()};
