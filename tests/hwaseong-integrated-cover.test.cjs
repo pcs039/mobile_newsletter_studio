@@ -10,10 +10,10 @@ function render(props={}) {
  return renderToStaticMarkup(React.createElement(load('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader,{slug,samples,fonts:[],backgrounds:{},textDesigns:{},detail:false,width:390,cover,...props}));
 }
 test('default entry renders project cover and client notices without QA controls',()=>{
- const h=render();assert.match(h,/설정에 저장한 제목/);assert.match(h,/7가지 콘텐츠 둘러보기/);assert.match(h,/첫 기사 읽기/);assert.match(h,/실제 화성 풍경 사진이 아닙니다/);assert(!h.includes('>390px<'));assert(!h.includes('Production'));assert.match(h,/정식 발행물 아님/);
+ const h=render();assert.match(h,/설정에 저장한 제목/);assert.match(h,/콘텐츠 둘러보기/);assert.match(h,/첫 기사 읽기/);assert.match(h,/실제 화성 풍경 사진이 아닙니다/);assert(!h.includes('>390px<'));assert(!h.includes('Production'));assert.match(h,/정식 발행물 아님/);
 });
 test('contents and retained article deep links bypass cover; old summary/detail remains available',()=>{
- const toc=render({contents:true});assert(!toc.includes('data-cover'));assert.match(toc,/표지로 돌아가기/);for(let i=1;i<=7;i++)assert(toc.includes(`articleId=a${i}`));
+ const toc=render({contents:true});assert(!toc.includes('data-cover'));assert.match(toc,/처음으로/);for(let i=1;i<=7;i++)assert(toc.includes(`articleId=a${i}`));
  const summary=render({selectedId:'a3'});assert(!summary.includes('data-cover'));assert.match(summary,/view=contents/);assert.match(summary,/articleId=a3&amp;view=detail/);assert.match(summary,/articleId=a2/);assert.match(summary,/articleId=a4/);
  const detail=render({selectedId:'a3',detail:true});assert.match(detail,/보존된 기사 본문/);assert.match(detail,/이전 페이지 · 이 기사 요약/);
  assert(!render({cover:undefined}).includes('data-cover'));assert.match(render({qa:true}),/390px/);

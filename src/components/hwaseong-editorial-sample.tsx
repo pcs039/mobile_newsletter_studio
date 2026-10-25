@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- Private project previews retain authenticated asset URLs. */
 import { SampleLink as Link } from "@/components/hwaseong-sample-navigation";
 import { useState } from "react";
-import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
+import { SampleReadingTools } from "@/components/hwaseong-sample-reading-tools";
 import { editorialFeature, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 
 const button = "flex min-h-12 items-center justify-center rounded-full border px-5 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
@@ -32,6 +32,7 @@ export function HwaseongEditorialSample({ sample, href, detail }: { sample: Prop
     {canvaSummary ? <h1 className="sr-only">{sample.headline}</h1> : <header className="px-6 pb-5 pt-7">
       <p className={`text-[10px] font-bold tracking-[.23em] ${video ? "text-[#ffec72]" : "text-[#6d735b]"}`}>{video ? "07 / PLAY · HWASEONG" : "06 / PEOPLE · CULTURE"}</p>
       <h1 data-public-text-scale-target="article-title" className={`mt-5 whitespace-pre-line text-[2.4rem] leading-[1.18] tracking-[-.05em] [word-break:keep-all] ${video ? "font-black" : "font-serif font-medium"}`}>{sample.headline}</h1>
+      <SampleReadingTools sample={sample} />
       <p data-public-text-scale-target="article-summary" className="mt-4 text-sm leading-7 opacity-80">{sample.summary}</p>
       {!video ? <p className="mt-5 border-t border-[#adb19e] pt-3 text-sm"><strong className="mr-3 text-lg">{e.person}</strong>{e.role}</p> : <p className="mt-4 text-xs tracking-wide text-[#ffec72]">화성특례시 · 화성온TV / {e.publishedDate}</p>}
     </header>}
@@ -44,7 +45,6 @@ export function HwaseongEditorialSample({ sample, href, detail }: { sample: Prop
         <a className={`${button} ${video ? "border-[#ffec72] text-[#ffec72]" : "border-[#30392e]"}`} href={e.sourceUrl} target="_blank" rel="noreferrer">{video ? "유튜브에서 원본 보기" : "인터뷰 원문 읽기"} ↗</a>
         {!video && e.canvaCover ? <details className="border-t border-current/20 pt-2"><summary className="min-h-11 cursor-pointer content-center text-sm">Canva 제작 표지 확인</summary><img src={e.canvaCover} alt="Canva 인물형 02 템플릿으로 제작한 인터뷰 표지. 본문과 핵심 문구는 위 HTML로 읽을 수 있습니다." width={1080} height={1920} className="mt-2 h-auto w-full" /><p className="mt-2 text-xs leading-5 opacity-70">인터뷰·인물형 02 · 메인형 템플릿 제작 결과. 실제 기사 제목·인용·본문은 확대 가능한 HTML로 별도 유지합니다.</p></details> : null}
       </div>}
-      {!canvaSummary ? <div className="mt-6"><PublicTextSizeToggle compact /></div> : null}
       {!video ? <details className="mt-4 border-t border-current/20 pt-1 text-xs leading-6"><summary className="min-h-11 cursor-pointer content-center font-bold">사진·Canva 자산의 외부 사용 권리</summary><p>중부일보 이준도 기자의 사진에 대한 별도 재사용 허가는 확인되지 않았습니다. 출처 표시만으로 외부 제안·재배포 권리가 확보되는 것은 아닙니다.</p><p className="mt-2">Canva 출력 성공은 템플릿과 포함 요소의 모든 이용 조건이나 업로드한 사진의 권리까지 확인했다는 뜻이 아닙니다. 사진 권리와 Canva 요소의 이용 조건을 각각 확인한 뒤 외부 전달·공개 여부를 결정해야 합니다.</p></details> : null}
       <p className="mt-4 text-[10px] leading-5 opacity-65">출처: {sample.sourceTitle} · {e.publishedDate}<br />{e.note}</p>
     </div>
