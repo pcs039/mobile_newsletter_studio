@@ -7,6 +7,7 @@ import { getArticleHeroBackgrounds, getArticleTextDesigns } from "@/lib/article-
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { HwaseongProposalReader } from "@/components/hwaseong-proposal-reader";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
+import { sampleAudioIndex } from "@/lib/hwaseong-sample-tts-server";
 import { normalizeSampleInterest } from "@/lib/hwaseong-sample-interest";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export default async function Samples({ params, searchParams }: {
   const samples = content.articles.map(a => proposalSample(a, project.id)).filter((s): s is ProposalSample => s !== null);
   const ids = samples.map(s => s.article.id);
   const compositionStarted = Date.now();
-  const [backgrounds, textDesigns] = await Promise.all([getArticleHeroBackgrounds(project.id, projectId, ids, "preview"), getArticleTextDesigns(project.id, ids, true)]);
+  const [backgrounds, textDesigns, audioIndex] = await Promise.all([getArticleHeroBackgrounds(project.id, projectId, ids, "preview"), getArticleTextDesigns(project.id, ids, true), sampleAudioIndex(samples).catch(() => ({}))]);
   timings.compositionMs = Date.now() - compositionStarted;
   timings.totalMs = Date.now() - started;
   // Uploaded audio still uses the authenticated existing project-file proxy.
@@ -47,6 +48,6 @@ export default async function Samples({ params, searchParams }: {
     coverTitle: project.coverTitle || project.title, coverSubtitle: project.coverSubtitle,
     coverIssueText: project.coverIssueText || project.issue, masthead: project.title,
   } : undefined;
-  return <><PublicFontFaceStyle fonts={fontData.fonts} /><HwaseongProposalReader slug={projectId} samples={samples} fonts={fontData.fonts} backgrounds={backgrounds} textDesigns={textDesigns} cover={cover} serverTimings={timings}
+  return <><PublicFontFaceStyle fonts={fontData.fonts} /><HwaseongProposalReader slug={projectId} samples={samples} fonts={fontData.fonts} backgrounds={backgrounds} textDesigns={textDesigns} cover={cover} serverTimings={timings} audioIndex={audioIndex}
     selectedId={ids.includes(query.articleId ?? "") ? query.articleId : undefined} detail={query.view === "detail"} contents={query.view === "contents"} qa={query.qa === "1"} interest={normalizeSampleInterest(query.interest)} width={query.width === "520" ? 520 : 390} /></>;
 }
