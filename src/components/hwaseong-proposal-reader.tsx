@@ -19,7 +19,7 @@ const action = "inline-flex min-h-11 items-center justify-center rounded-xl bord
 
 function TocThumbnail({ sample }: { sample: ProposalSample }) {
   // TOC-only crops: the summary and detail keep the complete original image.
-  const position = sample.kind === "policy" || sample.kind === "event" || sample.kind === "accessible"
+  const position = sample.kind === "event" || sample.kind === "accessible"
     ? "center bottom" : sample.kind === "interview" ? "center top" : "center center";
   const comic = sample.kind === "cartoon" && sample.artDirectionVersion === 3;
   return <div data-sample-thumbnail={sample.kind} className="relative aspect-video overflow-hidden" style={{ backgroundColor: sample.pale }}>
@@ -27,6 +27,8 @@ function TocThumbnail({ sample }: { sample: ProposalSample }) {
       style={comic
         // Three stacked scenes; show the first scene without the next panel's border.
         ? { height: "306%", objectPosition: "center top" }
+        // Center the three recycling illustrations, excluding the image's text bands.
+        : sample.kind === "policy" ? { height: "160%", top: "-40%", objectPosition: "center center" }
         : { objectPosition: position, ...(sample.kind === "accessible" ? { transform: "scale(1.05)", transformOrigin: "center bottom" } : {}) }} />
   </div>;
 }

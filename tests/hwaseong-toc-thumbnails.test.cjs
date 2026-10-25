@@ -29,6 +29,7 @@ test('seven TOC frames share 16:9 without replacing assets, HTML labels or artic
 test('comic isolates one scene, accessible illustration keeps people/dog, portrait keeps face', () => {
   const h = render(), image = kind => h.split(`data-sample-thumbnail="${kind}"`)[1].split('</div>')[0];
   assert.match(image('cartoon'), /height:306%;object-position:center top/);
+  assert.match(image('policy'), /height:160%;top:-40%;object-position:center center/);
   assert.match(image('accessible'), /object-position:center bottom;transform:scale\(1.05\);transform-origin:center bottom/);
   assert.match(image('interview'), /object-position:center top/);
   assert.match(image('event'), /object-position:center bottom/);
