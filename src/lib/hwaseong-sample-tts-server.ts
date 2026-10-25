@@ -12,6 +12,9 @@ const prefix = `projects/${sampleProjectId}/sample-tts-v1/`;
 const titlePrefix = "[시연 TTS v1] ";
 type Row = { id:string; article_id:string|null; title:string; file_path:string; script_text:string; script_status:string; ai_tts_voice:ArticleTtsVoice; ai_tts_model:string; ai_tts_text_hash:string; ai_tts_audio_paths:string[]; ai_tts_generated_at:string|null };
 const columns = "id,article_id,title,file_path,script_text,script_status,ai_tts_voice,ai_tts_model,ai_tts_text_hash,ai_tts_audio_paths,ai_tts_generated_at";
+function sampleTtsApiKey() {
+ return stagingEnvironmentConfigured() ? process.env.STAGING_OPENAI_API_KEY?.trim() ?? "" : "";
+}
 function headers() {
   if (!stagingEnvironmentConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) throw Error("Staging configuration required");
   const key=process.env.SUPABASE_SERVICE_ROLE_KEY.trim(); return {apikey:key,Authorization:`Bearer ${key}`};
@@ -40,17 +43,18 @@ export async function sampleAudioIndex(samples?:ProposalSample[]):Promise<Record
 }
 // Read-only, non-generation check; never returns provider credentials or raw error text.
 export async function checkSampleTtsProvider() {
- headers(); const key=process.env.OPENAI_API_KEY?.trim();if(!key)return {configured:false};
+ headers(); const key=sampleTtsApiKey();if(!key)return {configured:false};
  try {const r=await fetch(`https://api.openai.com/v1/models/${sampleTtsModel}`,{headers:{Authorization:`Bearer ${key}`},cache:"no-store",signal:AbortSignal.timeout(15000)});let code="";if(!r.ok){const body=await r.json().catch(()=>null);const value=body?.error?.code;if(typeof value==='string'&&/^[a-z0-9_]{1,64}$/.test(value))code=value;}
  return {configured:true,model:sampleTtsModel,httpStatus:r.status,code,readOnly:true};}catch{return {configured:true,model:sampleTtsModel,readOnly:true,message:"Provider check unavailable"};}
 }
 export async function sampleTtsStatus() {
  const plans=await sampleTtsPlan(),rows=await sampleTtsRows();
- return {configured:!!process.env.OPENAI_API_KEY?.trim(),model:sampleTtsModel,plans:plans.map(p=>{const row=rows.find(r=>r.id===p.id);return {job:p.job,id:p.id,voice:p.voice,title:p.title,characters:p.text.length,calls:p.chunks.length,state:row?ready(row)?"ready":"unknown":"not_started"};}),audio:await sampleAudioIndex()};
+ return {configured:!!sampleTtsApiKey(),model:sampleTtsModel,plans:plans.map(p=>{const row=rows.find(r=>r.id===p.id);return {job:p.job,id:p.id,voice:p.voice,title:p.title,characters:p.text.length,calls:p.chunks.length,state:row?ready(row)?"ready":"unknown":"not_started"};}),audio:await sampleAudioIndex()};
 }
 export async function generateSampleTts(job:string) {
  const plan=(await sampleTtsPlan()).find(p=>p.job===job);if(!plan)return {ok:false,state:"rejected",message:"허용되지 않은 기사 또는 음성입니다."};
- if(!process.env.OPENAI_API_KEY?.trim())return {ok:false,state:"rejected",message:"OpenAI API가 설정되지 않았습니다."};
+ const apiKey=sampleTtsApiKey();
+ if(!apiKey)return {ok:false,state:"rejected",message:"Staging 전용 OpenAI API가 설정되지 않았습니다."};
  if(!job.startsWith('probe-')){const probes=(await sampleTtsPlan()).filter(p=>p.job.startsWith('probe-')),rows=await sampleTtsRows();if(!probes.every(p=>rows.some(r=>r.id===p.id&&ready(r))))return {ok:false,state:"rejected",message:"네 음성 비교 샘플을 먼저 생성·검수하세요."};}
  const h=headers(), paths=plan.chunks.map((_,i)=>`${prefix}${plan.id}/${String(i).padStart(3,'0')}.mp3`);
  // Claim the deterministic primary key before a paid call. Unknown outcomes never regenerate.
@@ -59,7 +63,7 @@ export async function generateSampleTts(job:string) {
  let calls=0,bytes=0;
  try {
  for(let i=0;i<plan.chunks.length;i++){
-  calls++;const speech=await requestOpenAiSpeech(plan.chunks[i],plan.voice,sampleTtsModel);
+  calls++;const speech=await requestOpenAiSpeech(plan.chunks[i],plan.voice,sampleTtsModel,{apiKey});
   if(!speech.ok)return {ok:false,state:"unknown",id:plan.id,calls,providerStatus:speech.httpStatus,message:"음성 생성이 완료되지 않았습니다. 기존 요청을 보존하며 자동 재시도하지 않습니다."};
   const data=new Uint8Array(speech.data);if(data.length<100||data.length>8*1024*1024||!(String.fromCharCode(...data.slice(0,3))==='ID3'||data[0]===255))throw Error("Invalid MP3");
   bytes+=data.length;let uploaded=false;

@@ -476,8 +476,15 @@ function isInputLengthError(status: number, body: string) {
   return status === 400 && (value.includes("maximum") || value.includes("too long") || value.includes("length"));
 }
 
-export async function requestOpenAiSpeech(input: string, voice: ArticleTtsVoice, model: string) {
-  const apiKey = getOpenAiApiKey();
+export async function requestOpenAiSpeech(
+  input: string,
+  voice: ArticleTtsVoice,
+  model: string,
+  credentials?: { apiKey: string | null },
+) {
+  // Existing callers keep the general key. Explicit credentials fail closed,
+  // including a missing/blank key, and never fall back to the general key.
+  const apiKey = credentials === undefined ? getOpenAiApiKey() : credentials.apiKey?.trim() ?? "";
 
   if (!apiKey) {
     return {
@@ -513,7 +520,8 @@ export async function requestOpenAiSpeech(input: string, voice: ArticleTtsVoice,
       httpStatus: response.status,
       isInputTooLong: isInputLengthError(response.status, responseText),
       message: "AI 음성 생성에 실패했습니다.",
-      detail: responseText.slice(0, 300),
+      // A scoped caller must not receive a provider error that echoes its key.
+      detail: credentials === undefined ? responseText.slice(0, 300) : undefined,
     };
   }
 
