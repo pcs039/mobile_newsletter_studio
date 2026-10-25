@@ -1,5 +1,5 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- Authenticated private assets retain their original URL and aspect ratio. */
+/* eslint-disable @next/next/no-img-element -- Authenticated private assets retain their original URL. */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,21 @@ import { comicScenes, sampleHref, samplePresentationArticle, tourismFeature, tou
 import { normalizeSampleInterest, orderProposalSamples, sampleInterests, type SampleInterest } from "@/lib/hwaseong-sample-interest";
 
 const action = "inline-flex min-h-11 items-center justify-center rounded-xl border border-current px-4 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
+
+function TocThumbnail({ sample }: { sample: ProposalSample }) {
+  // TOC-only crops: the summary and detail keep the complete original image.
+  const position = sample.kind === "policy" || sample.kind === "event" || sample.kind === "accessible"
+    ? "center bottom" : sample.kind === "interview" ? "center top" : "center center";
+  const comic = sample.kind === "cartoon" && sample.artDirectionVersion === 3;
+  return <div data-sample-thumbnail={sample.kind} className="relative aspect-video overflow-hidden" style={{ backgroundColor: sample.pale }}>
+    <img src={sample.cover} alt="" loading="lazy" decoding="async" className="absolute inset-x-0 top-0 h-full w-full object-cover"
+      style={comic
+        // Three stacked scenes; show the first scene without the next panel's border.
+        ? { height: "306%", objectPosition: "center top" }
+        : { objectPosition: position, ...(sample.kind === "accessible" ? { transform: "scale(1.05)", transformOrigin: "center bottom" } : {}) }} />
+  </div>;
+}
+
 function TourismMap({ sample, detailHref }: { sample: ProposalSample; detailHref: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -183,7 +198,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         </section> : ["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail={false} /> : <SampleSummary key={selected.article.id} sample={selected} href={href(selected.article.id, true)} onImage={setImage} />}
         <nav aria-label="기사 이동" className="grid grid-cols-2 gap-3 border-t border-slate-200 p-5">{prev ? <Link className={action} href={href(prev.article.id)}>← 이전 기사 요약</Link> : <span className="content-center text-center text-xs text-slate-500">첫 기사입니다</span>}{next ? <Link className={action} href={href(next.article.id)}>다음 기사 요약 →</Link> : <span className="content-center text-center text-xs text-slate-500">마지막 기사입니다</span>}</nav>
       </> : <section className="p-5">{cover ? <Link href={href()} className="mb-4 inline-flex min-h-11 items-center text-sm font-bold">← 표지로 돌아가기</Link> : null}<p className="text-xs font-black text-[#17694c]">{samples.length}가지 디자인, 화성의 여러 표정</p><h1 className="mt-2 text-3xl font-black leading-tight">손안에서 만나는<br />우리 도시의 소식</h1><p className="mt-4 text-sm leading-6 text-slate-600">기존 10월호 작업본·공식 관광자료·공개 인터뷰·공식 영상으로 제작한 비공개 샘플입니다. 요약 첫 화면에서 상세기사로 이어집니다.</p>
-        <ol className="mt-6 space-y-4">{orderedSamples.map(s => <li key={s.article.id}><Link href={href(s.article.id)} className="block overflow-hidden rounded-2xl border border-slate-200"><div className="h-36 overflow-hidden" style={{ backgroundColor: s.pale }}><img src={s.cover} alt="" className="h-full w-full object-contain" /></div><div className="p-4"><p className="text-xs font-black" style={{ color: s.color }}>{s.eyebrow}</p><h2 className="mt-2 text-lg font-black leading-7 [word-break:keep-all]">{s.headline.replace("\n", " ")} →</h2></div></Link></li>)}</ol>
+        <ol className="mt-6 space-y-4">{orderedSamples.map(s => <li key={s.article.id}><Link href={href(s.article.id)} className="block overflow-hidden rounded-2xl border border-slate-200"><TocThumbnail sample={s} /><div className="p-4"><p className="text-xs font-black" style={{ color: s.color }}>{s.eyebrow}</p><h2 className="mt-2 text-lg font-black leading-7 [word-break:keep-all]">{s.headline.replace("\n", " ")} →</h2></div></Link></li>)}</ol>
       </section>}
       <footer className="border-t border-slate-200 px-5 py-5 text-xs leading-5 text-slate-500">화성시 담당자 대상 비공개 제안 · 정식 발행물 아님 · 외부 공개·재배포 금지{qa ? <><br />기존 Production 기사·발행 상태는 변경하지 않았습니다.</> : null}</footer>
     </div><PublicArticleImageLightbox image={image} onClose={() => setImage(null)} />
