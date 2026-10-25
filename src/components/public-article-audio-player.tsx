@@ -47,7 +47,7 @@ function readStoredPlaybackRate() {
 }
 
 function formatPlaybackRate(value: number) {
-  return `${value.toFixed(value === 1 ? 1 : 2).replace(/0$/, "")}×`;
+  return `${value}×`;
 }
 
 function formatAudioTime(value: number) {

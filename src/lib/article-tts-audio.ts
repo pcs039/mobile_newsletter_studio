@@ -476,7 +476,7 @@ function isInputLengthError(status: number, body: string) {
   return status === 400 && (value.includes("maximum") || value.includes("too long") || value.includes("length"));
 }
 
-async function requestOpenAiSpeech(input: string, voice: ArticleTtsVoice, model: string) {
+export async function requestOpenAiSpeech(input: string, voice: ArticleTtsVoice, model: string) {
   const apiKey = getOpenAiApiKey();
 
   if (!apiKey) {

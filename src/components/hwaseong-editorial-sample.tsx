@@ -3,6 +3,7 @@
 import { SampleLink as Link } from "@/components/hwaseong-sample-navigation";
 import { useState } from "react";
 import { SampleReadingTools } from "@/components/hwaseong-sample-reading-tools";
+import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 import { editorialFeature, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 
 const button = "flex min-h-12 items-center justify-center rounded-full border px-5 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
@@ -18,7 +19,7 @@ function VideoPlayer({ sample, videoId }: { sample: ProposalSample; videoId: str
     {loaded ? <button className="mt-2 min-h-11 text-sm underline" onClick={() => setLoaded(false)}>플레이어 닫기 · 재생 중단</button> : null}
   </div>;
 }
-export function HwaseongEditorialSample({ sample, href, detail }: { sample: ProposalSample; href: string; detail: boolean }) {
+export function HwaseongEditorialSample({ sample, href, detail, audio }: { sample: ProposalSample; href: string; detail: boolean; audio?: SampleAudio }) {
   const [coverMode, setCoverMode] = useState<"html" | "canva">("html");
   const e = editorialFeature(sample);
   if (!e) return <p className="p-5">출처 정보가 확인되지 않아 이 샘플을 표시하지 않습니다.</p>;
@@ -32,7 +33,7 @@ export function HwaseongEditorialSample({ sample, href, detail }: { sample: Prop
     {canvaSummary ? <h1 className="sr-only">{sample.headline}</h1> : <header className="px-6 pb-5 pt-7">
       <p className={`text-[10px] font-bold tracking-[.23em] ${video ? "text-[#ffec72]" : "text-[#6d735b]"}`}>{video ? "07 / PLAY · HWASEONG" : "06 / PEOPLE · CULTURE"}</p>
       <h1 data-public-text-scale-target="article-title" className={`mt-5 whitespace-pre-line text-[2.4rem] leading-[1.18] tracking-[-.05em] [word-break:keep-all] ${video ? "font-black" : "font-serif font-medium"}`}>{sample.headline}</h1>
-      <SampleReadingTools sample={sample} />
+      <SampleReadingTools sample={sample} generated={audio} />
       <p data-public-text-scale-target="article-summary" className="mt-4 text-sm leading-7 opacity-80">{sample.summary}</p>
       {!video ? <p className="mt-5 border-t border-[#adb19e] pt-3 text-sm"><strong className="mr-3 text-lg">{e.person}</strong>{e.role}</p> : <p className="mt-4 text-xs tracking-wide text-[#ffec72]">화성특례시 · 화성온TV / {e.publishedDate}</p>}
     </header>}
