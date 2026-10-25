@@ -6,6 +6,8 @@ import { getProjectContent } from "@/lib/newsletter-repository";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { sampleArticleVoice, sampleNarration, sampleTtsModel, sampleVoiceProbe, type SampleAudio } from "@/lib/hwaseong-sample-narration";
+import { marinRecoveryEnabled, resolvedMarinAudio, recoveredMarinDelivery } from "@/lib/hwaseong-marin-recovery-server";
+import { marinParentId, marinRequestHash } from "@/lib/hwaseong-marin-recovery-contract";
 
 export const sampleProjectId = "4cd5297e-a0fd-434c-84d4-fa4d3baf9389";
 const prefix = `projects/${sampleProjectId}/sample-tts-v1/`;
@@ -39,6 +41,7 @@ export async function sampleAudioIndex(samples?:ProposalSample[]):Promise<Record
  if(!stagingEnvironmentConfigured())return {};
  const rows=await sampleTtsRows(),plans=await sampleTtsPlan(samples);const result:Record<string,SampleAudio>={};
  for(const plan of plans){const row=rows.find(r=>r.id===plan.id&&r.ai_tts_text_hash===plan.hash&&r.script_text===plan.text&&r.ai_tts_voice===plan.voice);if(row&&ready(row))result[plan.job]={id:row.id,voice:plan.voice,transcriptText:row.script_text,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts?audio=${row.id}`};}
+ if(marinRecoveryEnabled()) {const recovered=await resolvedMarinAudio();if(recovered&&plans.some(p=>p.job==='probe-marin'&&p.id===marinParentId&&p.hash===marinRequestHash&&p.text===recovered.transcriptText))result['probe-marin']={id:recovered.id,voice:recovered.voice,transcriptText:recovered.transcriptText,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts?audio=${marinParentId}`};}
  return result;
 }
 // Read-only, non-generation check; never returns provider credentials or raw error text.
@@ -49,13 +52,15 @@ export async function checkSampleTtsProvider() {
 }
 export async function sampleTtsStatus() {
  const plans=await sampleTtsPlan(),rows=await sampleTtsRows();
- return {configured:!!sampleTtsApiKey(),model:sampleTtsModel,plans:plans.map(p=>{const row=rows.find(r=>r.id===p.id);return {job:p.job,id:p.id,voice:p.voice,title:p.title,characters:p.text.length,calls:p.chunks.length,state:row?ready(row)?"ready":"unknown":"not_started"};}),audio:await sampleAudioIndex()};
+ const audio=await sampleAudioIndex();
+ return {configured:!!sampleTtsApiKey(),model:sampleTtsModel,plans:plans.map(p=>{const row=rows.find(r=>r.id===p.id);return {job:p.job,id:p.id,voice:p.voice,title:p.title,characters:p.text.length,calls:p.chunks.length,state:audio[p.job]?"ready":row?ready(row)?"ready":"unknown":"not_started"};}),audio};
 }
 export async function generateSampleTts(job:string) {
  const plan=(await sampleTtsPlan()).find(p=>p.job===job);if(!plan)return {ok:false,state:"rejected",message:"허용되지 않은 기사 또는 음성입니다."};
  const apiKey=sampleTtsApiKey();
  if(!apiKey)return {ok:false,state:"rejected",message:"Staging 전용 OpenAI API가 설정되지 않았습니다."};
- if(!job.startsWith('probe-')){const probes=(await sampleTtsPlan()).filter(p=>p.job.startsWith('probe-')),rows=await sampleTtsRows();if(!probes.every(p=>rows.some(r=>r.id===p.id&&ready(r))))return {ok:false,state:"rejected",message:"네 음성 비교 샘플을 먼저 생성·검수하세요."};}
+ if(job==='probe-marin'&&plan.id===marinParentId&&plan.hash===marinRequestHash&&marinRecoveryEnabled()){const recovered=await resolvedMarinAudio();if(recovered)return {ok:true,state:"ready",id:recovered.id,calls:0,voice:recovered.voice,model:sampleTtsModel};}
+ if(!job.startsWith('probe-')){const probes=(await sampleTtsPlan()).filter(p=>p.job.startsWith('probe-')),rows=await sampleTtsRows();const recovered=marinRecoveryEnabled()?await resolvedMarinAudio():null;if(!probes.every(p=>rows.some(r=>r.id===p.id&&ready(r))||(p.id===marinParentId&&p.hash===marinRequestHash&&!!recovered&&p.text===recovered.transcriptText)))return {ok:false,state:"rejected",message:"네 음성 비교 샘플을 먼저 생성·검수하세요."};}
  const h=headers(), paths=plan.chunks.map((_,i)=>`${prefix}${plan.id}/${String(i).padStart(3,'0')}.mp3`);
  // Claim the deterministic primary key before a paid call. Unknown outcomes never regenerate.
  const claim=await fetch(table(),{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({id:plan.id,project_id:sampleProjectId,article_id:null,title:titlePrefix+plan.title,file_path:paths[0],script_text:plan.text,script_status:"pending",source_type:"ai_tts",transcript_type:"custom_script",ai_tts_voice:plan.voice,ai_tts_model:sampleTtsModel,ai_tts_text_hash:plan.hash,ai_tts_audio_paths:paths}),cache:"no-store"});
@@ -77,6 +82,7 @@ export async function generateSampleTts(job:string) {
  }catch{return {ok:false,state:"unknown",id:plan.id,calls,bytes,message:"결과 확인이 필요합니다. 같은 요청 ID를 조회하고 자동 재생성하지 마세요."};}
 }
 export async function sampleTtsDelivery(id:string,segment:string|null,request:Request) {
+ if(id===marinParentId&&marinRecoveryEnabled()&&await resolvedMarinAudio())return recoveredMarinDelivery(segment,request);
  const row=(await sampleTtsRows()).find(r=>r.id===id);const plan=(await sampleTtsPlan()).find(p=>p.id===id);if(!row||!plan||row.ai_tts_text_hash!==plan.hash||!ready(row))return new Response(null,{status:404});
  if(segment===null)return Response.json({hasAudio:true,source:"ai_tts",stale:false,voice:row.ai_tts_voice,segments:row.ai_tts_audio_paths.map((_,index)=>({index,url:`/api/projects/${hwaseongSampleSlug}/sample-tts?audio=${id}&segment=${index}`}))},{headers:{"Cache-Control":"private, no-store"}});
  if(!/^\d{1,2}$/.test(segment)||!row.ai_tts_audio_paths[Number(segment)])return new Response(null,{status:404});

@@ -480,8 +480,11 @@ export async function requestOpenAiSpeech(
   input: string,
   voice: ArticleTtsVoice,
   model: string,
-  credentials?: { apiKey: string | null },
-) {
+  credentials?: { apiKey: string | null; captureReceipt?: boolean; signal?: AbortSignal; maxBytes?: number },
+): Promise<
+  | { ok: false; error: string; message: string; httpStatus: number; detail?: string; isInputTooLong?: boolean; providerRequestId?: string | null }
+  | { ok: true; data: ArrayBuffer; httpStatus?: number; providerRequestId?: string | null }
+> {
   // Existing callers keep the general key. Explicit credentials fail closed,
   // including a missing/blank key, and never fall back to the general key.
   const apiKey = credentials === undefined ? getOpenAiApiKey() : credentials.apiKey?.trim() ?? "";
@@ -509,7 +512,15 @@ export async function requestOpenAiSpeech(
       voice,
     }),
     cache: "no-store",
+    ...(credentials?.signal ? { signal: credentials.signal } : {}),
+    ...(credentials?.captureReceipt ? { redirect: "error" as const } : {}),
   });
+
+  const rawRequestId = credentials?.captureReceipt ? response.headers.get("x-request-id") : null;
+  const receipt = credentials?.captureReceipt ? {
+    httpStatus: response.status,
+    providerRequestId: rawRequestId && !rawRequestId.includes(apiKey) && /^[A-Za-z0-9_-]{1,200}$/.test(rawRequestId) ? rawRequestId : null,
+  } : {};
 
   if (!response.ok) {
     const responseText = await response.text().catch(() => "");
@@ -522,12 +533,29 @@ export async function requestOpenAiSpeech(
       message: "AI 음성 생성에 실패했습니다.",
       // A scoped caller must not receive a provider error that echoes its key.
       detail: credentials === undefined ? responseText.slice(0, 300) : undefined,
+      ...receipt,
     };
   }
 
+  let data: ArrayBuffer;
+  if (credentials?.maxBytes !== undefined) {
+    const limit=credentials.maxBytes;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 8*1024*1024 || !response.body) throw Error("Speech response limit");
+    const reader=response.body.getReader(), chunks: Uint8Array[]=[]; let size=0;
+    try {
+      while (true) {
+        const {done,value}=await reader.read(); if (done) break;
+        size+=value.byteLength; if (size>limit) throw Error("Speech response too large"); chunks.push(value);
+      }
+    } finally { await reader.cancel().catch(()=>{}); reader.releaseLock(); }
+    const all=new Uint8Array(size); let offset=0;
+    for (const chunk of chunks) { all.set(chunk,offset); offset+=chunk.length; }
+    data=all.buffer;
+  } else { data=await response.arrayBuffer(); }
   return {
     ok: true as const,
-    data: await response.arrayBuffer(),
+    data,
+    ...receipt,
   };
 }
 
