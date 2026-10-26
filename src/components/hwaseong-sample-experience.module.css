@@ -62,4 +62,3 @@
 .screen:has(.summary [data-interview-quote]) .detail [data-interview-quote] {
   display: none;
 }
-

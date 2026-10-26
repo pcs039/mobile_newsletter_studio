@@ -95,6 +95,8 @@ test('mouse image drag navigates once and suppresses its zoom/link click; short 
  const h=harness(`articleId=${ids[0]}&view=detail&width=390`),oldElement=global.Element,oldStyle=global.getComputedStyle,E=imageFixture();global.Element=E;global.getComputedStyle=()=>({overflowX:'visible'});
  try{
   const image=new E('img',{},new E('a',{href:'https://source.invalid'})),tree=h.render();let stopped=false,prevented=false;
+  let nativeDragBlocked=false;tree.props.onDragStartCapture({target:image,preventDefault:()=>nativeDragBlocked=true});assert(nativeDragBlocked);
+  const protectedVideo=new E('img',{},new E('div',{'data-swipe-navigation-ignore':''}));nativeDragBlocked=false;tree.props.onDragStartCapture({target:protectedVideo,preventDefault:()=>nativeDragBlocked=true});assert(!nativeDragBlocked);
   const event=(x,y)=>({target:image,button:0,pointerType:'mouse',pointerId:1,clientX:x,clientY:y,preventDefault:()=>{},currentTarget:{setPointerCapture:()=>{}}});
   tree.props.onPointerDownCapture(event(250,100));tree.props.onPointerMoveCapture(event(190,103));tree.props.onPointerUpCapture(event(170,104));assert.equal(h.history.length,1);assert(!new URL(h.history[0]).searchParams.has('view'));
   tree.props.onClickCapture({target:image,detail:1,button:0,preventDefault:()=>prevented=true,stopPropagation:()=>stopped=true});assert(prevented&&stopped);
