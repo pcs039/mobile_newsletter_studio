@@ -6,6 +6,7 @@ import { executeMarinRecovery, reconcileMarinRecovery, type MarinDependencies } 
 import {
   marinParentId, marinProjectId, marinAudioId, marinPath, marinOriginalPath, marinRequestHash,
   marinMaxBytes, inspectMarinMp3, validateMarinParent, validMarinReceipt,
+  bytesHash, marinScriptHash,
   type MarinActor, type MarinReceipt, type MarinParent,
 } from "@/lib/hwaseong-marin-recovery-contract";
 
@@ -55,6 +56,21 @@ async function object(path: string) {
   finally { await reader.cancel().catch(()=>{}); reader.releaseLock(); }
   const bytes=new Uint8Array(size);let offset=0;for(const part of chunks){bytes.set(part,offset);offset+=part.length;}return bytes;
 }
+
+// The journal records a past operation, not a promise that a subsequently deleted file still exists.
+export async function marinRecoveryStatus() {
+  const receipt = await marinRecoveryReceipt();
+  const records = await query<Array<{id:string;script_status:string;ai_tts_generated_at:string|null}>>(
+    `newsletter_audio_files?select=id,script_status,ai_tts_generated_at&project_id=eq.${marinProjectId}&id=in.(${marinParentId},${marinAudioId})`,
+  );
+  const existence = async (path:string) => {
+    try { const bytes=await object(path); return bytes ? "present" as const : "missing" as const; }
+    catch { return "unknown" as const; }
+  };
+  const [original,replacement]=await Promise.all([existence(marinOriginalPath),existence(marinPath)]);
+  const record = (id:string) => {const row=records.find(r=>r.id===id);return {exists:!!row,status:row?.script_status??null,generatedAt:row?.ai_tts_generated_at??null};};
+  return {receipt,records:{original:record(marinParentId),replacement:record(marinAudioId)},objects:{original,replacement}};
+}
 function dependencies(): MarinDependencies {
   return {
     parent,receipt:marinRecoveryReceipt,object,
@@ -80,19 +96,23 @@ export async function finishMarinRecovery(actor: MarinActor) {
   return reconcileMarinRecovery(dependencies(),actor);
 }
 
-// Metadata membership resolver; actual bytes are reverified by delivery before playback.
-export async function resolvedMarinAudio() {
+// A historical ready receipt alone cannot advertise a deleted/replaced object as playable.
+export async function resolvedMarinAudio(verifyBytes = true) {
   if (!marinRecoveryEnabled()) return null;
   const receipt=await marinRecoveryReceipt(); if (!receipt || receipt.phase!=="ready") return null;
-  const p=await parent();
   const rows=await query<Array<MarinParent>>(`newsletter_audio_files?select=*&id=eq.${marinAudioId}&project_id=eq.${marinProjectId}&limit=1`), a=rows[0];
-  if (!a || a.id!==marinAudioId || a.project_id!==marinProjectId || a.article_id!==null || a.source_type!=="ai_tts" || a.transcript_type!=="custom_script" || a.script_text!==p.script_text ||
+  if (!a || a.id!==marinAudioId || a.project_id!==marinProjectId || a.article_id!==null || a.source_type!=="ai_tts" || a.transcript_type!=="custom_script" || typeof a.script_text!=="string" || bytesHash(Buffer.from(a.script_text))!==marinScriptHash ||
       a.ai_tts_text_hash!==marinRequestHash || a.ai_tts_voice!=="marin" || a.ai_tts_model!=="gpt-4o-mini-tts" || a.script_status!=="approved" ||
       !a.ai_tts_generated_at || a.file_path!==marinPath || JSON.stringify(a.ai_tts_audio_paths)!==JSON.stringify([marinPath]) || a.duration_seconds!==receipt.duration_seconds) return null;
-  return {id:marinAudioId,voice:"marin" as const,transcriptText:p.script_text,receipt};
+  if (verifyBytes) {
+    const data=await object(marinPath); if (!data) return null;
+    let proof; try { proof=inspectMarinMp3(data); } catch { return null; }
+    if (proof.hash!==receipt.byte_hash || proof.size!==receipt.byte_size || proof.duration!==receipt.duration_seconds) return null;
+  }
+  return {id:marinAudioId,voice:"marin" as const,transcriptText:a.script_text,receipt};
 }
 export async function recoveredMarinDelivery(segment: string|null, request: Request) {
-  const audio=await resolvedMarinAudio(); if (!audio) return new Response(null,{status:404});
+  const audio=await resolvedMarinAudio(false); if (!audio) return new Response(null,{status:404});
   const data=await object(marinPath); if (!data) return new Response(null,{status:404});
   const proof=inspectMarinMp3(data), r=audio.receipt;
   if (proof.hash!==r.byte_hash || proof.size!==r.byte_size || proof.duration!==r.duration_seconds) return new Response(null,{status:409});

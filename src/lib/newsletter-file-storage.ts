@@ -1,4 +1,5 @@
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
+import { deleteAudioFileRecord } from "@/lib/audio-file-delete";
 
 export type ProjectFileUploadKind = "pdf_original" | "page_image" | "asset_image" | "audio_mp3";
 
@@ -60,12 +61,14 @@ export type ProjectFileDeleteResult =
       path: string;
       kind: ProjectFileUploadKind;
       recordId?: string;
+      outcome?: "deleted";
     }
   | {
       ok: false;
       status: "not_configured" | "invalid_file" | "project_not_found" | "not_found" | "request_failed";
       message: string;
       httpStatus?: number;
+      outcome?: "rejected" | "unknown" | "cleanup_required";
     };
 
 const uploadSettings: Record<
@@ -915,6 +918,12 @@ export async function deleteProjectFile({
       message: "파일을 삭제할 프로젝트를 찾지 못했습니다. 대시보드에서 프로젝트를 다시 열어 주세요.",
       httpStatus: 404,
     };
+  }
+
+  if (kind === "audio_mp3" && recordId) {
+    const result = await deleteAudioFileRecord(project.id, recordId, path, headers);
+    if (!result.ok) return { ...result, status: "request_failed" };
+    return { ok: true, outcome: "deleted", message: result.message, bucket: settings.bucket, path, kind, recordId };
   }
 
   if (!(await projectFileRecordExists({ kind, path, project, recordId, headers }))) {

@@ -9,9 +9,11 @@ DO $$ BEGIN
 END $$;
 
 CREATE TABLE public.hwaseong_marin_recoveries (
-  parent_id uuid PRIMARY KEY REFERENCES public.newsletter_audio_files(id) ON DELETE RESTRICT,
-  project_id uuid NOT NULL REFERENCES public.newsletter_projects(id) ON DELETE RESTRICT,
-  audio_id uuid NOT NULL UNIQUE REFERENCES public.newsletter_audio_files(id) ON DELETE RESTRICT,
+  -- Audit identities, not lifetime pins. Live ownership is checked/locked in the RPCs below.
+  -- Normal audio/project deletion must not cascade away history or be permanently blocked by it.
+  parent_id uuid PRIMARY KEY,
+  project_id uuid NOT NULL,
+  audio_id uuid NOT NULL UNIQUE,
   request_key text NOT NULL UNIQUE, attempt integer NOT NULL DEFAULT 1 CHECK(attempt=1),
   actor_id text NOT NULL, approval_reference text NOT NULL, claim_token uuid NOT NULL,
   parent_snapshot jsonb NOT NULL, phase text NOT NULL DEFAULT 'reserved'

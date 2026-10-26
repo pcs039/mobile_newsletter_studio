@@ -23,11 +23,11 @@ PR #272 head `427c8de7edf4d59a7b882b7ccc5919a26b846c8e`의 [복구 준비 계약
 
 실행 시 원행 전체 JSON snapshot을 DB 잠금 아래 다시 대조한다. 서버와 DB 모두 고정 대본·모델·음성·결합 해시·원래 파일 경로를 검증하고, 검토 당시 제목·null 메모/길이·생성/수정 시각도 검사한다. 이 값이 바뀌었으면 새 유료 호출 전에 재검토가 필요하다.
 
-### 추가 FK의 한정된 영향
+### 감사 이력과 정상 삭제 — 보존 원칙 변경 반영
 
-새 기록의 부모/자식 음성 및 프로젝트 FK는 `ON DELETE RESTRICT`다. 복구 기록이 실제로 생성된 이후 **이 두 음성 행과 해당 Staging 테스트 프로젝트의 hard delete가 제한**된다. 다른 음성·다른 프로젝트에는 새 FK 참조가 생기지 않는다. 이번 단계에서는 새 기록 자체를 원격 생성하지 않는다.
+후속 보완 계약은 [음성 수명주기·Staging 적용 계획](hwaseong-marin-audio-lifecycle-safety-v1.md)을 따른다. 아직 적용하지 않은 SQL 초안에서 부모/자식/프로젝트의 `ON DELETE RESTRICT` FK를 제거했다. UUID와 부모 snapshot은 삭제되지 않는 감사 식별자로 남기고, 살아 있는 행의 소유권·상태는 기존 RPC 잠금 아래 검증한다. 음성/프로젝트를 정상 삭제해도 이력은 남으며 특정 ID/경로를 영구 보호하지 않는다. 삭제 후 이력의 `ready`는 과거 완료 사실이고, 현재 재생 가능 여부는 별도 DB 행·파일 조회로 판정한다.
 
-기존 삭제 API가 파일을 먼저 삭제하고 DB 삭제를 나중에 하는 경우 FK만으로 파일 보존을 보장할 수 없다. 실제 적용 전에는 해당 테스트 프로젝트와 부모·자식에 대해 기존 삭제/정리 UI를 사용하지 않는 운영 통제를 확인해야 한다. 기존 삭제 API를 이번 PR에서 수정하지 않으며, 이 제한을 전체 서비스 삭제 경로가 보호된 것으로 보고하지 않는다. 다른 OPEN PR의 미디어 보호 코드를 가져오지 않는다.
+원래 pending 행과 기존 파일을 이번 작업에서 변경하지 않는다는 실행 제한은 유지한다. 향후 정상 삭제·교체 자체를 금지하는 계약은 아니다. 자산 삭제가 같은 유료 요청을 다시 실행할 권한을 만들지는 않는다. 복구 이력이 있으면 누락 자산을 자동 재생성하지 않는다.
 
 ## 불변 자산과 연결
 
@@ -41,7 +41,7 @@ PR #272 head `427c8de7edf4d59a7b882b7ccc5919a26b846c8e`의 [복구 준비 계약
 
 원래 `/sample-tts-v1/e204…/000.mp3`는 업로드·덮어쓰기·삭제하지 않는다. 새 경로도 기존 객체가 있거나 존재 여부가 불명확하면 선점 전에 중단한다. 업로드는 `x-upsert=false`, 자동 재업로드/삭제/GC 없음이다. 객체 부재는 Supabase의 명시적 `Object not found` JSON만으로 판정하며 권한 거부·일반 404·시간 초과는 부재가 아니다.
 
-복구 완료는 기존 음성 테이블의 **새 자식 행만** approved로 만든다. `article_id=null`이므로 기사 음성 연결·제목·본문·이미지·Composition·정식 발행 상태를 바꾸지 않는다. 복구 record FK가 부모와 자식을 연결하고 부모 snapshot을 보존한다.
+복구 완료는 기존 음성 테이블의 **새 자식 행만** approved로 만든다. `article_id=null`이므로 기사 음성 연결·제목·본문·이미지·Composition·정식 발행 상태를 바꾸지 않는다. 복구 기록의 감사 UUID가 부모와 자식을 연결하고 부모 snapshot을 보존한다.
 
 기존 논리 `probe-marin`의 상태/manifest 및 네 음성 비교 완료 검사는 고정 ID·원래 대본/해시와 일치하는 ready 복구 자산을 해석한다. manifest URL의 `audio`는 부모 ID를 유지하고 실제 파일은 검증된 자식 경로에서 읽는다. 기존 일반 TTS나 다른 세 음성의 ID/자산은 변경하지 않는다. 새 gate가 OFF이면 복구 테이블 조회도 하지 않는다.
 
@@ -91,14 +91,14 @@ claim/proof/complete 응답 유실을 DB 롤백이라고 단정하지 않는다.
 - 2개 연결의 잠금 대기를 관측하여 동시 claim/complete, 버려진 응답 후 재요청, rollback, 부모/프로젝트 writer 경합을 검증한다. 실제 네트워크 패킷 유실 실험 대신 커밋된 결과를 버리는 방식임을 구분한다.
 - 모의 OpenAI/Storage로 제공자 실패·응답 유실·업로드 응답 유실·Storage 성공/DB 실패·MP3 손상·중복 클릭·원행 불변·권한/환경 차단을 검사한다. 실제 adapter의 예약→scoped provider→업로드→확정 및 기존 manifest/Range 경로도 모의 HTTP로 검사한다.
 - `tests/fixtures/marin-recovery-tone.mp3`는 오프라인 FFmpeg로 생성한 0.15초 440Hz 테스트 신호다. 실제 음성이나 OpenAI 산출물이 아니며 Staging에 등록하지 않는다. 생성 명령: `ffmpeg -f lavfi -i sine=frequency=440:sample_rate=44100 -t 0.15 -c:a libmp3lame -b:a 64k -map_metadata -1 ...`. 별도 로컬 FFmpeg 디코딩도 확인했다. 앱 실행에는 FFmpeg 의존성을 추가하지 않는다.
-- 최종 검증: 전체 747/747, skip 0(신규 43개 포함), TypeScript 및 Webpack Production build 통과, lint 오류 0·기존 경고 3개, 문서 링크·diff 검사 통과. 원격 migration/Storage 업로드/speech 호출은 0회다.
+- #273 당시 검증(후속 보완 전): 전체 747/747, skip 0(신규 43개 포함), TypeScript 및 Webpack Production build 통과, lint 오류 0·기존 경고 3개, 문서 링크·diff 검사 통과. 원격 migration/Storage 업로드/speech 호출은 0회다.
 
 C1 PR #248과 공통 수정 파일은 `src/lib/article-tts-audio.ts`다. 이번 변경은 선택적 receipt/응답 제한 인수이고 C1의 Storage namespace·삭제/upsert 코드는 포함하지 않는다. 향후 C1 병합 시 이 함수의 옵션과 C1 Storage 보호를 각각 유지하며 공유 TTS 회귀를 다시 검증한다.
 
 ## Staging 적용·검증 계획 — 이번에는 실행하지 않음
 
 1. 후속 PR 리뷰. #261~#272는 OPEN 유지, Production/main 병합 없음. Vercel 일반 Preview에서 새 API OFF→404 및 빌드 상태를 확인한다.
-2. 별도 승인 후 백업/복구 수단·Staging DB ref·프로젝트·원행/객체 baseline과 실제 schema/grant를 다시 조회한다. 특히 추가 FK가 막는 삭제 경로와 Storage 선삭제 위험을 확인한다. Production 연결이 섞였으면 중단한다.
+2. 별도 승인 후 백업/복구 수단·Staging DB ref·프로젝트·원행/객체 baseline과 실제 schema/grant를 다시 조회한다. DB 우선 삭제의 참조 조회 경합 및 잔여 파일 수동 정리 조건을 확인한다. Production 연결이 섞였으면 중단한다.
 3. migration 전용 세션에 검증된 target guard를 설정한 후 파일을 한 트랜잭션으로 적용한다. guard 문자열만으로 실제 접속 대상이 증명되는 것은 아니다. 적용 후 역할별 ACL/RLS/함수 정의를 읽기 전용 확인한다. 원행/기사 데이터는 변경하지 않는다.
 4. 승인된 코드만 고정 staging 브랜치로 반영·배포한다. 이 단계에서도 flag OFF 유지. 기존 기사·다른 음성·인증·저장·디자인 회귀를 읽기 전용 확인한다.
 5. 별도 유료 실행 승인 후 Staging branch에만 feature flag를 켠다. 관리자 GET으로 기존 pending/새 ledger 없음/객체 부재, 모델 접근 및 최초 작업 종료·과거 비용 미확인을 확인한다. 일반 Preview와 Production에서는 여전히 차단돼야 한다.

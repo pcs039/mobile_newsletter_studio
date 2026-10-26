@@ -2,7 +2,7 @@ import { requireProjectApiAccess } from "@/lib/project-api-access";
 import { requireCanvaSameOrigin } from "@/lib/canva-request-origin";
 import { stagingRequestAllowed } from "@/lib/staging-environment";
 import { marinAttemptKey, marinParentId, marinProjectId } from "@/lib/hwaseong-marin-recovery-contract";
-import { marinRecoveryEnabled, marinRecoveryReceipt, runMarinRecovery, finishMarinRecovery } from "@/lib/hwaseong-marin-recovery-server";
+import { marinRecoveryEnabled, marinRecoveryStatus, runMarinRecovery, finishMarinRecovery } from "@/lib/hwaseong-marin-recovery-server";
 
 export const dynamic="force-dynamic";
 export const runtime="nodejs";
@@ -18,7 +18,7 @@ async function access(request: Request, context: Context) {
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{"Cache-Control":"private, no-store"}});
 export async function GET(request: Request, context: Context) {
   try { const a=await access(request,context);if(a.response)return a.response;
-    return json({parentId:marinParentId,requestKey:marinAttemptKey,receipt:await marinRecoveryReceipt(),readOnly:true});
+    return json({parentId:marinParentId,requestKey:marinAttemptKey,...await marinRecoveryStatus(),readOnly:true});
   } catch { return json({ok:false,state:"unknown",code:"status_unavailable"},503); }
 }
 export async function POST(request: Request, context: Context) {
