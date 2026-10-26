@@ -4,6 +4,8 @@
 }
 
 .arrows {
+  position: relative;
+  z-index: 50;
   animation: arrows-rest 2s linear forwards;
 }
 
@@ -33,6 +35,10 @@
 
 .detail [data-public-text-scale-target="article-body"] {
   scroll-margin-top: 24px;
+}
+
+.detail:focus {
+  outline: none;
 }
 
 @keyframes title-enter {
