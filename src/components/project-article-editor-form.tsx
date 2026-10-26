@@ -11,6 +11,7 @@ import { clearArticleSave, getSavedArticleId, rememberArticleSave, subscribeArti
 import { ArticleSavedDesignRecommendation } from "@/components/article-saved-design-recommendation";
 import { ProjectArticleAiAssistant } from "@/components/project-article-ai-assistant";
 import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
+import { ArticleTtsControls } from "@/components/article-tts-controls";
 import { StatusPill } from "@/components/status-pill";
 import type { ArticleAiDraft, ArticleAiPhotoApplyInput } from "@/lib/article-ai-draft-types";
 import { getArticleContactPhoneStatus } from "@/lib/article-contact-phone";
@@ -765,7 +766,8 @@ export function ProjectArticleEditorForm({
   const [selectedArticleType, setSelectedArticleType] = useState<ArticlePublicInfoType>(article?.articleType ?? "general");
   const [publicInfoValues, setPublicInfoValues] = useState<ArticlePublicInfo>(article?.publicInfo ?? {});
   const [isGeneratingArticleTts, setIsGeneratingArticleTts] = useState(false);
-  const [articleTtsMessage, setArticleTtsMessage] = useState("");
+  const ttsSavedArticleId = useRef<string | null>(null);
+  const ttsSubmission = useRef<{ finish(): void } | null>(null);
   const imageAssets = useMemo(
     () => assets.filter((asset) => asset.mimeType.startsWith("image/") || asset.previewHref),
     [assets],
@@ -1296,7 +1298,7 @@ export function ProjectArticleEditorForm({
 
     return {
       projectSlug,
-      articleId: article?.id ?? "",
+      articleId: article?.id ?? ttsSavedArticleId.current ?? "",
       pageId: getValue(formData, "pageId"),
       sourcePageNumber: Number(getValue(formData, "sourcePageNumber")) || 0,
       sortOrder: Number(getValue(formData, "sortOrder")) || 0,
@@ -1380,6 +1382,7 @@ export function ProjectArticleEditorForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isGeneratingArticleTts) return;
     const submission = submitGate.current.begin();
     if (!submission) return;
     setError("");
@@ -1449,76 +1452,17 @@ export function ProjectArticleEditorForm({
     }
   }
 
-  async function generateArticleTtsAudio() {
-    if (selectedAudioSource !== "ai_tts") {
-      setError("AI 음성 자동 생성을 선택하세요.");
-      return;
-    }
-
-    setError("");
-    setMessage("");
-    setArticleTtsMessage("기사 저장 중...");
-    setIsGeneratingArticleTts(true);
-
-    try {
-      const formData = formRef.current ? new FormData(formRef.current) : null;
-
-      if (!formData) {
-        setError("기사 입력 폼을 확인하지 못했습니다.");
-        return;
-      }
-
-      const savedArticle = await persistArticle(
-        buildArticlePayload(formData, {
-          articleTtsVoice: selectedArticleTtsVoice,
-          audioSource: "ai_tts",
-        }),
-      );
-
-      if (!savedArticle) {
-        setArticleTtsMessage("");
-        return;
-      }
-
-      setArticleTtsMessage("AI 음성 생성 중...");
-
-      const response = await fetch(
-        `/api/projects/${encodeURIComponent(projectSlug)}/articles/${encodeURIComponent(savedArticle.id)}/tts/generate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            force: true,
-            voice: selectedArticleTtsVoice,
-          }),
-        },
-      );
-      const result = (await response.json().catch(() => null)) as { ok?: boolean; message?: string; segments?: number } | null;
-
-      if (!response.ok || result?.ok !== true) {
-        setError(result?.message ?? "AI 음성 생성에 실패했습니다.");
-        setArticleTtsMessage("");
-        return;
-      }
-
-      setArticleTtsMessage(
-        result.segments && result.segments > 1
-          ? `AI 음성을 생성했습니다. (${result.segments}개 구간)`
-          : result.message ?? "AI 음성을 생성했습니다.",
-      );
-      setMessage("현재 입력한 기사 내용을 저장한 뒤 AI 음성을 생성했습니다.");
-      if (!article?.id || article.id !== savedArticle.id) {
-        router.push(`/projects/${projectSlug}/reading?articleId=${savedArticle.id}`);
-      }
-      router.refresh();
-    } catch {
-      setError("AI 음성 생성 요청을 보내지 못했습니다. 네트워크 상태를 확인하세요.");
-      setArticleTtsMessage("");
-    } finally {
-      setIsGeneratingArticleTts(false);
-    }
+  async function saveForArticleTts() {
+    const submission = submitGate.current.begin();
+    if (!submission) return null;
+    ttsSubmission.current = submission;
+    const formData = formRef.current ? new FormData(formRef.current) : null;
+    if (!formData) return null;
+    const saved = await persistArticle(buildArticlePayload(formData, {
+      articleTtsVoice: selectedArticleTtsVoice, audioSource: "ai_tts",
+    }));
+    if (saved) ttsSavedArticleId.current = saved.id;
+    return saved;
   }
 
   return (
@@ -2269,25 +2213,12 @@ export function ProjectArticleEditorForm({
                       ))}
                     </select>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void generateArticleTtsAudio();
-                      }}
-                      disabled={isGeneratingArticleTts}
-                      className="dd-btn dd-btn-primary dd-btn-sm disabled:pointer-events-none disabled:opacity-50"
-                    >
-                      {isGeneratingArticleTts ? "생성 중..." : article?.aiAudioId ? "AI 음성 다시 생성" : "AI 음성 생성"}
-                    </button>
-                  </div>
                 </div>
-                <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
-                  공개 본문 문단을 기준으로 생성합니다. 제목·요약·이미지·링크·영상 텍스트는 낭독 원문에서 제외됩니다.
-                </p>
-                {articleTtsMessage ? (
-                  <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-black text-[#184a88]">{articleTtsMessage}</p>
-                ) : null}
+                <ArticleTtsControls projectSlug={projectSlug} articleId={article?.id ?? null} voice={selectedArticleTtsVoice}
+                  save={saveForArticleTts} onBusyChange={(busy) => {
+                    setIsGeneratingArticleTts(busy);
+                    if (!busy) { ttsSubmission.current?.finish(); ttsSubmission.current = null; }
+                  }} />
               </div>
             ) : (
               <input type="hidden" name="articleTtsVoice" value={selectedArticleTtsVoice} />

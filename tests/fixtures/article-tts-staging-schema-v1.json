@@ -1,0 +1,1441 @@
+{
+  "observedAt": "2026-10-26",
+  "sourceRef": "mvrkpmffuhcqwisqvpqi",
+  "columns": [
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "project_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "page_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "newsletter_articles",
+      "column": "sort_order",
+      "default": "0",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "title",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "summary",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "body",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "contact_name",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "contact_phone",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "status",
+      "default": "'draft'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "representative_asset_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "audio_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_articles",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_articles",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "motion_preset",
+      "default": "'dynamic'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "motion_speed",
+      "default": "'normal'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "title_motion_effect",
+      "default": "'inherit'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "title_motion_speed",
+      "default": "'inherit'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "text_box_motion_effect",
+      "default": "'inherit'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "text_box_motion_speed",
+      "default": "'inherit'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "image_motion_effect",
+      "default": "'inherit'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "image_motion_speed",
+      "default": "'inherit'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "link_motion_effect",
+      "default": "'inherit'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "link_motion_speed",
+      "default": "'inherit'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "title_font_asset_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "body_font_asset_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "caption_font_asset_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "button_font_asset_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "display_title",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "text_alignment",
+      "default": "'left'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "title_alignment",
+      "default": "'left'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "summary_alignment",
+      "default": "'left'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "body_alignment",
+      "default": "'left'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "audio_source",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "article_tts_voice",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "ai_audio_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_articles",
+      "column": "survey_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "_text",
+      "table": "newsletter_articles",
+      "column": "interest_tags",
+      "default": "'{}'::text[]",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "article_type",
+      "default": "'general'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "int2",
+      "table": "newsletter_articles",
+      "column": "institution_priority",
+      "default": "3",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "urgency",
+      "default": "'normal'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_articles",
+      "column": "valid_from",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_articles",
+      "column": "valid_until",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "newsletter_articles",
+      "column": "public_info",
+      "default": "'{}'::jsonb",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_articles",
+      "column": "publication_kind",
+      "default": "'regular'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_audio_files",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_audio_files",
+      "column": "project_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_audio_files",
+      "column": "article_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_audio_files",
+      "column": "title",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_audio_files",
+      "column": "file_path",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "int4",
+      "table": "newsletter_audio_files",
+      "column": "duration_seconds",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_audio_files",
+      "column": "script_text",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_audio_files",
+      "column": "script_status",
+      "default": "'pending'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_audio_files",
+      "column": "pronunciation_note",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_audio_files",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_audio_files",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_audio_files",
+      "column": "transcript_type",
+      "default": "'custom_script'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_audio_files",
+      "column": "source_type",
+      "default": "'uploaded'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "jsonb",
+      "table": "newsletter_audio_files",
+      "column": "ai_tts_audio_paths",
+      "default": "'[]'::jsonb",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_audio_files",
+      "column": "ai_tts_text_hash",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_audio_files",
+      "column": "ai_tts_voice",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_audio_files",
+      "column": "ai_tts_model",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_audio_files",
+      "column": "ai_tts_generated_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_content_blocks",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_content_blocks",
+      "column": "project_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_content_blocks",
+      "column": "article_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "content_block_type",
+      "table": "newsletter_content_blocks",
+      "column": "block_type",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_content_blocks",
+      "column": "title",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_content_blocks",
+      "column": "body",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_content_blocks",
+      "column": "asset_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_content_blocks",
+      "column": "link_action_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "newsletter_content_blocks",
+      "column": "sort_order",
+      "default": "0",
+      "nullable": "NO"
+    },
+    {
+      "type": "jsonb",
+      "table": "newsletter_content_blocks",
+      "column": "metadata",
+      "default": "'{}'::jsonb",
+      "nullable": "NO"
+    },
+    {
+      "type": "bool",
+      "table": "newsletter_content_blocks",
+      "column": "is_visible",
+      "default": "true",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_content_blocks",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_content_blocks",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_content_blocks",
+      "column": "text_alignment",
+      "default": "'left'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_projects",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "title",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "organization_name",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "assignee_name",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "issue_label",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "date",
+      "table": "newsletter_projects",
+      "column": "published_date",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "slug",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "description",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "primary_color",
+      "default": "'#092046'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "project_status",
+      "table": "newsletter_projects",
+      "column": "status",
+      "default": "'draft'::project_status",
+      "nullable": "NO"
+    },
+    {
+      "type": "package_tier",
+      "table": "newsletter_projects",
+      "column": "package_tier",
+      "default": "'standard'::package_tier",
+      "nullable": "NO"
+    },
+    {
+      "type": "production_mode",
+      "table": "newsletter_projects",
+      "column": "production_mode",
+      "default": "'hybrid'::production_mode",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "estimated_hours",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "designer_hours_cap",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "int4",
+      "table": "newsletter_projects",
+      "column": "revision_limit",
+      "default": "2",
+      "nullable": "NO"
+    },
+    {
+      "type": "int4",
+      "table": "newsletter_projects",
+      "column": "page_count",
+      "default": "0",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "pdf_original_path",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "pdf_original_file_name",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_projects",
+      "column": "pdf_original_uploaded_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "external_ebook_url",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "ebook_provider",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_projects",
+      "column": "cloned_from_project_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_projects",
+      "column": "published_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_projects",
+      "column": "archived_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_projects",
+      "column": "deleted_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_projects",
+      "column": "created_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_projects",
+      "column": "updated_at",
+      "default": "now()",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "project_password_hash",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "timestamptz",
+      "table": "newsletter_projects",
+      "column": "project_password_updated_at",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_projects",
+      "column": "title_font_asset_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "uuid",
+      "table": "newsletter_projects",
+      "column": "body_font_asset_id",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "bool",
+      "table": "newsletter_projects",
+      "column": "cover_enabled",
+      "default": "false",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "cover_layout",
+      "default": "'image'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "cover_image_url",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "cover_image_path",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "cover_title",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "cover_subtitle",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "cover_issue_text",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "cover_fit",
+      "default": "'contain'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "ebook_source",
+      "default": "'internal'::text",
+      "nullable": "NO"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "article_tts_voice",
+      "default": "'marin'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "project_type",
+      "default": "'integrated'::text",
+      "nullable": "YES"
+    },
+    {
+      "type": "text",
+      "table": "newsletter_projects",
+      "column": "client_review_recipient_email",
+      "default": null,
+      "nullable": "YES"
+    }
+  ],
+  "constraints": [
+    {
+      "name": "newsletter_projects_article_tts_voice_allowed",
+      "type": "c",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK (((article_tts_voice IS NULL) OR (article_tts_voice = ANY (ARRAY['marin'::text, 'cedar'::text, 'onyx'::text, 'coral'::text]))))"
+    },
+    {
+      "name": "newsletter_projects_body_font_asset_id_fkey",
+      "type": "f",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (body_font_asset_id) REFERENCES font_assets(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_projects_client_review_recipient_email_check",
+      "type": "c",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK (((client_review_recipient_email IS NULL) OR (((char_length(client_review_recipient_email) >= 3) AND (char_length(client_review_recipient_email) <= 254)) AND (client_review_recipient_email = btrim(client_review_recipient_email)))))"
+    },
+    {
+      "name": "newsletter_projects_cloned_from_project_id_fkey",
+      "type": "f",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (cloned_from_project_id) REFERENCES newsletter_projects(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_projects_cover_fit_check",
+      "type": "c",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((cover_fit = ANY (ARRAY['contain'::text, 'cover'::text])))"
+    },
+    {
+      "name": "newsletter_projects_cover_layout_check",
+      "type": "c",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((cover_layout = ANY (ARRAY['image'::text, 'image_info'::text, 'image_overlay'::text])))"
+    },
+    {
+      "name": "newsletter_projects_ebook_source_check",
+      "type": "c",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((ebook_source = ANY (ARRAY['internal'::text, 'external'::text])))"
+    },
+    {
+      "name": "newsletter_projects_pkey",
+      "type": "p",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "newsletter_projects_project_type_check",
+      "type": "c",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK (((project_type IS NULL) OR (project_type = ANY (ARRAY['newsletter'::text, 'ebook'::text, 'engagement'::text, 'integrated'::text]))))"
+    },
+    {
+      "name": "newsletter_projects_slug_key",
+      "type": "u",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "UNIQUE (slug)"
+    },
+    {
+      "name": "newsletter_projects_title_font_asset_id_fkey",
+      "type": "f",
+      "table": "newsletter_projects",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (title_font_asset_id) REFERENCES font_assets(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_content_blocks_article_id_fkey",
+      "type": "f",
+      "table": "newsletter_content_blocks",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (article_id) REFERENCES newsletter_articles(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "newsletter_content_blocks_asset_id_fkey",
+      "type": "f",
+      "table": "newsletter_content_blocks",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (asset_id) REFERENCES newsletter_assets(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_content_blocks_link_action_id_fkey",
+      "type": "f",
+      "table": "newsletter_content_blocks",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (link_action_id) REFERENCES newsletter_link_actions(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_content_blocks_pkey",
+      "type": "p",
+      "table": "newsletter_content_blocks",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "newsletter_content_blocks_project_id_fkey",
+      "type": "f",
+      "table": "newsletter_content_blocks",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (project_id) REFERENCES newsletter_projects(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "newsletter_content_blocks_text_alignment_check",
+      "type": "c",
+      "table": "newsletter_content_blocks",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((text_alignment = ANY (ARRAY['left'::text, 'center'::text, 'right'::text, 'justify'::text])))"
+    },
+    {
+      "name": "newsletter_audio_files_ai_tts_audio_paths_array",
+      "type": "c",
+      "table": "newsletter_audio_files",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((jsonb_typeof(ai_tts_audio_paths) = 'array'::text))"
+    },
+    {
+      "name": "newsletter_audio_files_article_id_fkey",
+      "type": "f",
+      "table": "newsletter_audio_files",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (article_id) REFERENCES newsletter_articles(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_audio_files_pkey",
+      "type": "p",
+      "table": "newsletter_audio_files",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "newsletter_audio_files_project_id_fkey",
+      "type": "f",
+      "table": "newsletter_audio_files",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (project_id) REFERENCES newsletter_projects(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "newsletter_audio_files_source_type_allowed",
+      "type": "c",
+      "table": "newsletter_audio_files",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK (((source_type IS NULL) OR (source_type = ANY (ARRAY['uploaded'::text, 'ai_tts'::text]))))"
+    },
+    {
+      "name": "newsletter_articles_ai_audio_id_fkey",
+      "type": "f",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (ai_audio_id) REFERENCES newsletter_audio_files(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_articles_article_tts_voice_allowed",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK (((article_tts_voice IS NULL) OR (article_tts_voice = ANY (ARRAY['marin'::text, 'cedar'::text, 'onyx'::text, 'coral'::text]))))"
+    },
+    {
+      "name": "newsletter_articles_article_type_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((article_type = ANY (ARRAY['general'::text, 'welfare_health'::text, 'application_recruitment'::text, 'event_festival'::text, 'tourism_place'::text, 'life_civil'::text, 'government_major'::text, 'local_news'::text, 'emergency'::text])))"
+    },
+    {
+      "name": "newsletter_articles_audio_fk",
+      "type": "f",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (audio_id) REFERENCES newsletter_audio_files(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_articles_audio_source_allowed",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK (((audio_source IS NULL) OR (audio_source = ANY (ARRAY['uploaded'::text, 'ai_tts'::text, 'none'::text]))))"
+    },
+    {
+      "name": "newsletter_articles_body_alignment_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((body_alignment = ANY (ARRAY['left'::text, 'center'::text, 'right'::text, 'justify'::text])))"
+    },
+    {
+      "name": "newsletter_articles_body_font_asset_id_fkey",
+      "type": "f",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (body_font_asset_id) REFERENCES font_assets(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_articles_button_font_asset_id_fkey",
+      "type": "f",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (button_font_asset_id) REFERENCES font_assets(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_articles_caption_font_asset_id_fkey",
+      "type": "f",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (caption_font_asset_id) REFERENCES font_assets(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_articles_image_motion_effect_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((image_motion_effect = ANY (ARRAY['inherit'::text, 'none'::text, 'fade_up'::text, 'char_by_char'::text, 'card_lift'::text, 'fade_in'::text, 'reveal_up'::text, 'soft_zoom'::text, 'blur_clear'::text, 'soft_emphasis'::text])))"
+    },
+    {
+      "name": "newsletter_articles_image_motion_speed_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((image_motion_speed = ANY (ARRAY['inherit'::text, 'slow'::text, 'normal'::text, 'fast'::text])))"
+    },
+    {
+      "name": "newsletter_articles_institution_priority_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK (((institution_priority >= 1) AND (institution_priority <= 5)))"
+    },
+    {
+      "name": "newsletter_articles_link_motion_effect_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((link_motion_effect = ANY (ARRAY['inherit'::text, 'none'::text, 'fade_up'::text, 'char_by_char'::text, 'card_lift'::text, 'fade_in'::text, 'reveal_up'::text, 'soft_zoom'::text, 'blur_clear'::text, 'soft_emphasis'::text])))"
+    },
+    {
+      "name": "newsletter_articles_link_motion_speed_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((link_motion_speed = ANY (ARRAY['inherit'::text, 'slow'::text, 'normal'::text, 'fast'::text])))"
+    },
+    {
+      "name": "newsletter_articles_motion_preset_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((motion_preset = ANY (ARRAY['none'::text, 'calm'::text, 'image_focus'::text, 'promotion'::text, 'dynamic'::text])))"
+    },
+    {
+      "name": "newsletter_articles_motion_speed_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((motion_speed = ANY (ARRAY['slow'::text, 'normal'::text, 'fast'::text])))"
+    },
+    {
+      "name": "newsletter_articles_page_id_fkey",
+      "type": "f",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (page_id) REFERENCES newsletter_pages(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_articles_pkey",
+      "type": "p",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "newsletter_articles_project_id_fkey",
+      "type": "f",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (project_id) REFERENCES newsletter_projects(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "newsletter_articles_publication_kind_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((publication_kind = ANY (ARRAY['regular'::text, 'rolling'::text])))"
+    },
+    {
+      "name": "newsletter_articles_representative_asset_fk",
+      "type": "f",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (representative_asset_id) REFERENCES newsletter_assets(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_articles_summary_alignment_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((summary_alignment = ANY (ARRAY['left'::text, 'center'::text, 'right'::text, 'justify'::text])))"
+    },
+    {
+      "name": "newsletter_articles_survey_id_fkey",
+      "type": "f",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (survey_id) REFERENCES newsletter_surveys(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_articles_text_alignment_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((text_alignment = ANY (ARRAY['left'::text, 'center'::text, 'right'::text, 'justify'::text])))"
+    },
+    {
+      "name": "newsletter_articles_text_box_motion_effect_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((text_box_motion_effect = ANY (ARRAY['inherit'::text, 'none'::text, 'fade_up'::text, 'char_by_char'::text, 'card_lift'::text, 'fade_in'::text, 'reveal_up'::text, 'soft_zoom'::text, 'blur_clear'::text, 'soft_emphasis'::text])))"
+    },
+    {
+      "name": "newsletter_articles_text_box_motion_speed_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((text_box_motion_speed = ANY (ARRAY['inherit'::text, 'slow'::text, 'normal'::text, 'fast'::text])))"
+    },
+    {
+      "name": "newsletter_articles_title_alignment_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((title_alignment = ANY (ARRAY['left'::text, 'center'::text, 'right'::text, 'justify'::text])))"
+    },
+    {
+      "name": "newsletter_articles_title_font_asset_id_fkey",
+      "type": "f",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (title_font_asset_id) REFERENCES font_assets(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "newsletter_articles_title_motion_effect_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((title_motion_effect = ANY (ARRAY['inherit'::text, 'none'::text, 'fade_up'::text, 'char_by_char'::text, 'card_lift'::text, 'fade_in'::text, 'reveal_up'::text, 'soft_zoom'::text, 'blur_clear'::text, 'soft_emphasis'::text])))"
+    },
+    {
+      "name": "newsletter_articles_title_motion_speed_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((title_motion_speed = ANY (ARRAY['inherit'::text, 'slow'::text, 'normal'::text, 'fast'::text])))"
+    },
+    {
+      "name": "newsletter_articles_urgency_check",
+      "type": "c",
+      "table": "newsletter_articles",
+      "deferred": false,
+      "deferrable": false,
+      "definition": "CHECK ((urgency = ANY (ARRAY['normal'::text, 'time_sensitive'::text, 'urgent'::text])))"
+    }
+  ],
+  "tables": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "newsletter_projects",
+      "forced": false
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "newsletter_content_blocks",
+      "forced": false
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "newsletter_audio_files",
+      "forced": false
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "newsletter_articles",
+      "forced": false
+    }
+  ],
+  "policies": [],
+  "privileges": [
+    {
+      "table": "newsletter_articles",
+      "delete": true,
+      "insert": true,
+      "select": true,
+      "update": true
+    },
+    {
+      "table": "newsletter_audio_files",
+      "delete": true,
+      "insert": true,
+      "select": true,
+      "update": true
+    },
+    {
+      "table": "newsletter_projects",
+      "delete": true,
+      "insert": true,
+      "select": true,
+      "update": true
+    },
+    {
+      "table": "newsletter_content_blocks",
+      "delete": true,
+      "insert": true,
+      "select": true,
+      "update": true
+    }
+  ],
+  "enums": [
+    {
+      "name": "content_block_type",
+      "label": "paragraph",
+      "position": 1
+    },
+    {
+      "name": "content_block_type",
+      "label": "image",
+      "position": 2
+    },
+    {
+      "name": "content_block_type",
+      "label": "video_link",
+      "position": 3
+    },
+    {
+      "name": "content_block_type",
+      "label": "map_link",
+      "position": 4
+    },
+    {
+      "name": "content_block_type",
+      "label": "button_group",
+      "position": 5
+    },
+    {
+      "name": "content_block_type",
+      "label": "audio",
+      "position": 6
+    },
+    {
+      "name": "content_block_type",
+      "label": "overlay_notice",
+      "position": 7
+    },
+    {
+      "name": "package_tier",
+      "label": "basic",
+      "position": 1
+    },
+    {
+      "name": "package_tier",
+      "label": "standard",
+      "position": 2
+    },
+    {
+      "name": "package_tier",
+      "label": "advanced",
+      "position": 3
+    },
+    {
+      "name": "package_tier",
+      "label": "premium",
+      "position": 4
+    },
+    {
+      "name": "package_tier",
+      "label": "retainer",
+      "position": 5
+    },
+    {
+      "name": "production_mode",
+      "label": "template",
+      "position": 1
+    },
+    {
+      "name": "production_mode",
+      "label": "hybrid",
+      "position": 2
+    },
+    {
+      "name": "production_mode",
+      "label": "full_image",
+      "position": 3
+    },
+    {
+      "name": "production_mode",
+      "label": "external_ebook",
+      "position": 4
+    },
+    {
+      "name": "production_mode",
+      "label": "ocr_assist",
+      "position": 5
+    },
+    {
+      "name": "project_status",
+      "label": "draft",
+      "position": 1
+    },
+    {
+      "name": "project_status",
+      "label": "in_review",
+      "position": 2
+    },
+    {
+      "name": "project_status",
+      "label": "published",
+      "position": 3
+    },
+    {
+      "name": "project_status",
+      "label": "private",
+      "position": 4
+    },
+    {
+      "name": "project_status",
+      "label": "archived",
+      "position": 5
+    }
+  ]
+}
