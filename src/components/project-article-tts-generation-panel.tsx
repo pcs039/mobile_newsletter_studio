@@ -35,6 +35,12 @@ export function ProjectArticleTtsGenerationPanel({
   const pendingItems = status.items.filter(isGeneratable);
 
   async function generateItem(item: ArticleTtsStatusItem, force = false) {
+    const statusUrl = `/api/projects/${encodeURIComponent(projectSlug)}/articles/${encodeURIComponent(item.articleId)}/tts/generate`;
+    const checked = await fetch(statusUrl, { cache: "no-store" });
+    const previous = await checked.json();
+    if (!checked.ok || previous.ok !== true || ["processing", "unknown", "failed"].includes(previous.state)) {
+      throw new Error("기사 작성 화면에서 음성 결과를 먼저 확인하세요. 일괄 생성은 이 요청을 재시도하지 않습니다.");
+    }
     const response = await fetch(
       `/api/projects/${encodeURIComponent(projectSlug)}/articles/${encodeURIComponent(item.articleId)}/tts/generate`,
       {
@@ -43,6 +49,8 @@ export function ProjectArticleTtsGenerationPanel({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          requestId: crypto.randomUUID(),
+          previousRequestId: previous.requestId,
           force,
           voice: item.voice,
         }),

@@ -1,4 +1,5 @@
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
+import { SpeechRequestError, speechFailure, type TtsDiagnostics } from "@/lib/tts-request-diagnostics";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 
 export const articleTtsVoices = ["marin", "cedar", "onyx", "coral"] as const;
@@ -69,8 +70,6 @@ const audioBucket = "audio-files";
 const defaultTtsModel = "gpt-4o-mini-tts";
 const defaultVoice: ArticleTtsVoice = "marin";
 const targetChunkLength = 1200;
-const minimumSplitChunkLength = 400;
-const maxRawArticleTextLength = 80_000;
 export const ARTICLE_TTS_NORMALIZATION_VERSION = "ko-v1";
 
 export function normalizeArticleAudioSource(value: string | null | undefined, hasUploadedAudio: boolean): ArticleAudioSource {
@@ -264,7 +263,7 @@ export function normalizeKoreanTtsText(text: string) {
   return normalizeNarrationText(value);
 }
 
-function hashNarrationText(value: string) {
+export function hashNarrationText(value: string) {
   return createHash("sha256")
     .update(`${ARTICLE_TTS_NORMALIZATION_VERSION}\n${normalizeKoreanTtsText(value)}`, "utf8")
     .digest("hex");
@@ -385,7 +384,7 @@ async function fetchArticleBlocks(articleId: string, headers: Record<string, str
   const endpoint = getSupabaseRestEndpoint(
     `/rest/v1/newsletter_content_blocks?select=block_type,title,body,sort_order,is_visible&article_id=eq.${encodeURIComponent(
       articleId,
-    )}&order=sort_order.asc`,
+    )}&order=sort_order.asc,id.asc`,
   );
 
   if (!endpoint) {
@@ -433,7 +432,7 @@ async function findAudioById(audioId: string | null, projectId: string, headers:
   return rows[0] ?? null;
 }
 
-export async function buildArticleNarrationText(article: ArticleRow, blocks: BlockRow[], _audio: AudioRow | null) {
+export async function buildArticleNarrationText(article: Pick<ArticleRow, "body">, blocks: BlockRow[], _audio: AudioRow | null) {
   void _audio;
 
   const paragraphParts = blocks
@@ -476,8 +475,18 @@ function isInputLengthError(status: number, body: string) {
   return status === 400 && (value.includes("maximum") || value.includes("too long") || value.includes("length"));
 }
 
-async function requestOpenAiSpeech(input: string, voice: ArticleTtsVoice, model: string) {
-  const apiKey = getOpenAiApiKey();
+export async function requestOpenAiSpeech(
+  input: string,
+  voice: ArticleTtsVoice,
+  model: string,
+  credentials?: { apiKey: string | null; captureReceipt?: boolean; signal?: AbortSignal; maxBytes?: number; diagnostics?: TtsDiagnostics },
+): Promise<
+  | { ok: false; error: string; message: string; httpStatus: number; detail?: string; isInputTooLong?: boolean; providerRequestId?: string | null }
+  | { ok: true; data: ArrayBuffer; httpStatus?: number; providerRequestId?: string | null }
+> {
+  // Existing callers keep the general key. Explicit credentials fail closed,
+  // including a missing/blank key, and never fall back to the general key.
+  const apiKey = credentials === undefined ? getOpenAiApiKey() : credentials.apiKey?.trim() ?? "";
 
   if (!apiKey) {
     return {
@@ -488,324 +497,98 @@ async function requestOpenAiSpeech(input: string, voice: ArticleTtsVoice, model:
     };
   }
 
-  const response = await fetch("https://api.openai.com/v1/audio/speech", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      input,
-      instructions: "한국어 공공기관 모바일 소식지 기사 본문을 차분하고 또렷하며 자연스럽게 읽어주세요. 원문에 없는 내용을 추가하거나 요약하지 마세요.",
-      model,
-      response_format: "mp3",
-      voice,
-    }),
-    cache: "no-store",
-  });
+  const diagnostics = credentials?.diagnostics;
+  let phase: "headers" | "body" = "headers";
+  diagnostics?.start("request");
+  diagnostics?.start("headers");
+  try {
+    const response = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "X-Client-Request-Id": diagnostics?.clientRequestId ?? randomUUID(),
+      },
+      body: JSON.stringify({
+        input,
+        instructions: "한국어 공공기관 모바일 소식지 기사 본문을 차분하고 또렷하며 자연스럽게 읽어주세요. 원문에 없는 내용을 추가하거나 요약하지 마세요.",
+        model,
+        response_format: "mp3",
+        voice,
+      }),
+      cache: "no-store",
+      ...(credentials?.signal ? { signal: credentials.signal } : {}),
+      ...(credentials?.captureReceipt ? { redirect: "error" as const } : {}),
+    });
 
-  if (!response.ok) {
-    const responseText = await response.text().catch(() => "");
-
-    return {
-      ok: false as const,
-      error: "TTS_GENERATION_FAILED",
+    const rawRequestId = credentials?.captureReceipt || diagnostics ? response.headers.get("x-request-id") : null;
+    const providerRequestId = rawRequestId && !rawRequestId.includes(apiKey) && /^[A-Za-z0-9_-]{1,200}$/.test(rawRequestId) ? rawRequestId : null;
+    diagnostics?.setReceipt(response.status, providerRequestId);
+    diagnostics?.complete("headers");
+    phase = "body";
+    diagnostics?.start("body");
+    const receipt = credentials?.captureReceipt ? {
       httpStatus: response.status,
-      isInputTooLong: isInputLengthError(response.status, responseText),
-      message: "AI 음성 생성에 실패했습니다.",
-      detail: responseText.slice(0, 300),
-    };
-  }
+      providerRequestId,
+    } : {};
 
-  return {
-    ok: true as const,
-    data: await response.arrayBuffer(),
-  };
-}
+    if (!response.ok) {
+      const responseText = diagnostics ? await response.text() : await response.text().catch(() => "");
+      diagnostics?.complete("body");
+      diagnostics?.fail("request", "provider_http");
 
-async function generateAudioForChunk(input: string, voice: ArticleTtsVoice, model: string, chunkLength: number) {
-  const firstAttempt = await requestOpenAiSpeech(input, voice, model);
-  const shouldSplit =
-    !firstAttempt.ok &&
-    "isInputTooLong" in firstAttempt &&
-    firstAttempt.isInputTooLong &&
-    chunkLength > minimumSplitChunkLength;
-
-  if (firstAttempt.ok || !shouldSplit) {
-    return firstAttempt;
-  }
-
-  const smallerChunks = chunkArticleTtsText(input, Math.max(minimumSplitChunkLength, Math.floor(chunkLength / 2)));
-  const buffers: ArrayBuffer[] = [];
-
-  for (const chunk of smallerChunks) {
-    const retry = await requestOpenAiSpeech(chunk, voice, model);
-
-    if (!retry.ok) {
-      return retry;
-    }
-
-    buffers.push(retry.data);
-  }
-
-  return {
-    ok: true as const,
-    data: buffers,
-  };
-}
-
-async function uploadAudioSegment(path: string, audio: ArrayBuffer, headers: Record<string, string>) {
-  const endpoint = getSupabaseStorageEndpoint(`/object/${audioBucket}/${encodeStoragePath(path)}`);
-
-  if (!endpoint) {
-    return false;
-  }
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      ...headers,
-      "Content-Type": "audio/mpeg",
-      "cache-control": "31536000",
-      "x-upsert": "true",
-    },
-    body: new Blob([audio], { type: "audio/mpeg" }),
-    cache: "no-store",
-  });
-
-  return response.ok;
-}
-
-async function deleteAudioSegments(paths: string[], headers: Record<string, string>) {
-  const safePaths = paths.filter(isSafeStoragePath);
-
-  if (safePaths.length === 0) {
-    return;
-  }
-
-  const endpoint = getSupabaseStorageEndpoint(`/object/${encodeURIComponent(audioBucket)}`);
-
-  if (!endpoint) {
-    return;
-  }
-
-  await fetch(endpoint, {
-    method: "DELETE",
-    headers,
-    body: JSON.stringify({ prefixes: safePaths }),
-    cache: "no-store",
-  }).catch(() => undefined);
-}
-
-async function upsertArticleAiAudioRow(
-  projectId: string,
-  article: ArticleRow,
-  title: string,
-  metadata: {
-    model: string;
-    paths: string[];
-    textHash: string;
-    voice: ArticleTtsVoice;
-  },
-  headers: Record<string, string>,
-) {
-  const existingAudioId = article.ai_audio_id;
-  const endpoint = existingAudioId
-    ? getSupabaseRestEndpoint(
-        `/rest/v1/newsletter_audio_files?id=eq.${encodeURIComponent(existingAudioId)}&project_id=eq.${encodeURIComponent(projectId)}&select=id`,
-      )
-    : getSupabaseRestEndpoint("/rest/v1/newsletter_audio_files?select=id");
-
-  if (!endpoint) {
-    return null;
-  }
-
-  const response = await fetch(endpoint, {
-    method: existingAudioId ? "PATCH" : "POST",
-    headers: {
-      ...headers,
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify({
-      ai_tts_audio_paths: metadata.paths,
-      ai_tts_generated_at: new Date().toISOString(),
-      ai_tts_model: metadata.model,
-      ai_tts_text_hash: metadata.textHash,
-      ai_tts_voice: metadata.voice,
-      article_id: null,
-      file_path: metadata.paths[0] ?? "",
-      project_id: projectId,
-      script_status: "approved",
-      source_type: "ai_tts",
-      title,
-      transcript_type: "custom_script",
-    }),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const rows = (await response.json().catch(() => [])) as Array<{ id: string }>;
-
-  return rows[0]?.id ?? null;
-}
-
-async function updateArticleAiAudioReference(projectId: string, articleId: string, audioId: string, voice: ArticleTtsVoice, headers: Record<string, string>) {
-  const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?id=eq.${encodeURIComponent(articleId)}&project_id=eq.${encodeURIComponent(projectId)}`,
-  );
-
-  if (!endpoint) {
-    return false;
-  }
-
-  const response = await fetch(endpoint, {
-    method: "PATCH",
-    headers: {
-      ...headers,
-      Prefer: "return=minimal",
-    },
-    body: JSON.stringify({
-      ai_audio_id: audioId,
-      article_tts_voice: voice,
-      audio_source: "ai_tts",
-    }),
-    cache: "no-store",
-  });
-
-  return response.ok;
-}
-
-export async function generateArticleTtsAudio(projectSlug: string, articleId: string, voiceInput: string | null, force = false) {
-  const headers = getServiceHeaders();
-  const model = getTtsModel();
-
-  if (!headers) {
-    return { ok: false as const, error: "TTS_GENERATION_FAILED", message: "Supabase 설정을 확인하세요.", httpStatus: 503 };
-  }
-
-  if (!getOpenAiApiKey()) {
-    return { ok: false as const, error: "TTS_PROVIDER_NOT_CONFIGURED", message: "AI 음성 생성 API가 설정되지 않았습니다.", httpStatus: 503 };
-  }
-
-  const voice = normalizeArticleTtsVoice(voiceInput);
-  const project = await findProjectBySlug(projectSlug, headers);
-
-  if (!project) {
-    return { ok: false as const, error: "TTS_ARTICLE_NOT_FOUND", message: "프로젝트를 찾지 못했습니다.", httpStatus: 404 };
-  }
-
-  const article = await findArticle(project.id, articleId, headers);
-
-  if (!article) {
-    return { ok: false as const, error: "TTS_ARTICLE_NOT_FOUND", message: "기사를 찾지 못했습니다.", httpStatus: 404 };
-  }
-
-  const source = normalizeArticleAudioSource(article.audio_source, Boolean(article.audio_id));
-
-  if (source !== "ai_tts") {
-    return { ok: false as const, error: "TTS_FORBIDDEN", message: "AI 음성 자동 생성으로 선택된 기사만 생성할 수 있습니다.", httpStatus: 400 };
-  }
-
-  const [blocks, currentAiAudio] = await Promise.all([
-    fetchArticleBlocks(article.id, headers),
-    findAudioById(article.ai_audio_id, project.id, headers),
-  ]);
-  const narrationText = await buildArticleNarrationText(article, blocks, currentAiAudio);
-
-  if (!narrationText) {
-    return { ok: false as const, error: "TTS_TEXT_EMPTY", message: "낭독할 기사 텍스트가 없습니다.", httpStatus: 400 };
-  }
-
-  if (narrationText.length > maxRawArticleTextLength) {
-    return { ok: false as const, error: "TTS_GENERATION_FAILED", message: "낭독 원문이 너무 깁니다.", httpStatus: 400 };
-  }
-
-  const textHash = hashNarrationText(narrationText);
-  const oldPaths = getAudioPaths(currentAiAudio?.ai_tts_audio_paths);
-
-  if (
-    !force &&
-    oldPaths.length > 0 &&
-    currentAiAudio?.ai_tts_text_hash === textHash &&
-    currentAiAudio.ai_tts_voice === voice &&
-    currentAiAudio.ai_tts_model === model
-  ) {
-    return {
-      ok: true as const,
-      audioId: currentAiAudio.id,
-      message: "이미 최신 AI 음성이 생성되어 있습니다.",
-      segments: oldPaths.length,
-      skipped: true,
-    };
-  }
-
-  const chunks = chunkArticleTtsText(narrationText);
-  const generatedSegments: ArrayBuffer[] = [];
-
-  for (const chunk of chunks) {
-    const generated = await generateAudioForChunk(chunk, voice, model, targetChunkLength);
-
-    if (!generated.ok) {
       return {
         ok: false as const,
-        error: generated.error,
-        detail: generated.detail,
-        httpStatus: generated.httpStatus,
-        message: generated.message,
+        error: "TTS_GENERATION_FAILED",
+        httpStatus: response.status,
+        isInputTooLong: isInputLengthError(response.status, responseText),
+        message: "AI 음성 생성에 실패했습니다.",
+        // A scoped caller must not receive a provider error that echoes its key.
+        detail: credentials === undefined ? responseText.slice(0, 300) : undefined,
+        ...receipt,
       };
     }
 
-    if (Array.isArray(generated.data)) {
-      generatedSegments.push(...generated.data);
-    } else {
-      generatedSegments.push(generated.data);
-    }
+    let data: ArrayBuffer;
+    if (credentials?.maxBytes !== undefined) {
+      const limit=credentials.maxBytes;
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 8*1024*1024 || !response.body) {
+        if (diagnostics) throw new SpeechRequestError("invalid_response", phase, diagnostics);
+        throw Error("Speech response limit");
+      }
+      const reader=response.body.getReader(), chunks: Uint8Array[]=[]; let size=0;
+      try {
+        while (true) {
+          const {done,value}=await reader.read(); if (done) break;
+          size+=value.byteLength;
+          if (size>limit) {
+            if (diagnostics) throw new SpeechRequestError("size_limit", phase, diagnostics);
+            throw Error("Speech response too large");
+          }
+          chunks.push(value);
+        }
+      } finally { await reader.cancel().catch(()=>{}); reader.releaseLock(); }
+      const all=new Uint8Array(size); let offset=0;
+      for (const chunk of chunks) { all.set(chunk,offset); offset+=chunk.length; }
+      data=all.buffer;
+    } else { data=await response.arrayBuffer(); }
+    diagnostics?.complete("body");
+    diagnostics?.complete("request");
+    return {
+      ok: true as const,
+      data,
+      ...receipt,
+    };
+  } catch (error) {
+    // Legacy callers retain their error contract. Scoped diagnostics never serialize raw exceptions.
+    if (!diagnostics) throw error;
+    const failure = speechFailure(error, phase, credentials?.signal);
+    diagnostics.fail(phase, failure);
+    diagnostics.fail("request", failure);
+    throw new SpeechRequestError(failure, phase, diagnostics);
   }
-
-  const newPaths: string[] = [];
-
-  for (const [index, audio] of generatedSegments.entries()) {
-    const path = `ai-tts/${project.id}/${article.id}/${textHash}/${String(index).padStart(3, "0")}.mp3`;
-    const uploaded = await uploadAudioSegment(path, audio, headers);
-
-    if (!uploaded) {
-      await deleteAudioSegments(newPaths, headers);
-
-      return { ok: false as const, error: "TTS_UPLOAD_FAILED", message: "AI 음성 파일을 업로드하지 못했습니다.", httpStatus: 500 };
-    }
-
-    newPaths.push(path);
-  }
-
-  const audioTitle = `${article.title} AI 음성`;
-  const audioId = await upsertArticleAiAudioRow(project.id, article, audioTitle, { model, paths: newPaths, textHash, voice }, headers);
-
-  if (!audioId) {
-    await deleteAudioSegments(newPaths, headers);
-
-    return { ok: false as const, error: "TTS_METADATA_UPDATE_FAILED", message: "AI 음성 메타데이터를 저장하지 못했습니다.", httpStatus: 500 };
-  }
-
-  const articleUpdated = await updateArticleAiAudioReference(project.id, article.id, audioId, voice, headers);
-
-  if (!articleUpdated) {
-    await deleteAudioSegments(newPaths, headers);
-
-    return { ok: false as const, error: "TTS_METADATA_UPDATE_FAILED", message: "기사의 AI 음성 연결 정보를 저장하지 못했습니다.", httpStatus: 500 };
-  }
-
-  await deleteAudioSegments(oldPaths.filter((path) => !newPaths.includes(path)), headers);
-
-  return {
-    ok: true as const,
-    audioId,
-    message: "AI 음성을 생성했습니다.",
-    segments: newPaths.length,
-  };
 }
+
 
 export async function getArticleTtsProjectStatus(projectSlug: string): Promise<ArticleTtsProjectStatus> {
   const headers = getServiceHeaders();

@@ -278,7 +278,7 @@ function isSafeStoragePath(path: string) {
   return Boolean(path) && !path.startsWith("/") && !path.includes("..");
 }
 
-async function deleteStorageObject(bucket: string, path: string, headers: Record<string, string>) {
+export async function deleteStorageObject(bucket: string, path: string, headers: Record<string, string>, signal?: AbortSignal) {
   const endpoint = getSupabaseStorageEndpoint(`/object/${encodeURIComponent(bucket)}`);
 
   if (!endpoint) {
@@ -294,6 +294,7 @@ async function deleteStorageObject(bucket: string, path: string, headers: Record
     headers,
     body: JSON.stringify({ prefixes: [path] }),
     cache: "no-store",
+    ...(signal ? { signal } : {}),
   });
 
   if (response.ok || response.status === 404) {
