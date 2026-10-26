@@ -40,3 +40,81 @@ test('paired OFF check requires existing authenticated status 200, then recovery
  const load=loader(common),existing=load('src/app/api/projects/[projectId]/sample-tts/route.ts'),recovery=load('src/app/api/projects/[projectId]/sample-tts/recovery/route.ts'),ctx={params:Promise.resolve({projectId:'hwaseong-2026-10-samples'})};
  const base='https://canva-staging.datadiction.co.kr/api/projects/hwaseong-2026-10-samples/sample-tts';assert.equal((await existing.GET(new Request(base),ctx)).status,200);assert.equal(accessCalls,1);assert.equal((await recovery.GET(new Request(base+'/recovery'),ctx)).status,404);assert.equal(statusCalls,1);assert.equal(external,0);
 });
+
+const diagnosticsModule=load('src/lib/tts-request-diagnostics.ts');
+function diagnosticFixture() {
+ const f=fixture(),events=[];let at=0;
+ f.d.diagnostics=diagnosticsModule.createTtsDiagnostics(event=>events.push(event),()=>at+=5);
+ return {...f,base:f,events};
+}
+test('mock speech success traces headers, MP3 verification, Storage and DB completion in order',async()=>{
+ const f=diagnosticFixture(),old=global.fetch;
+ try {
+  let posts=0;
+  global.fetch=async(_url,init)=>{posts++;assert.equal(init.headers['X-Client-Request-Id'],f.d.diagnostics.clientRequestId);return new Response(mp3(),{headers:{'x-request-id':'req_pipeline'}});};
+  const speech=load('src/lib/article-tts-audio.ts').requestOpenAiSpeech;
+  f.d.speech=(text,diagnostics)=>speech(text,'marin','gpt-4o-mini-tts',{apiKey:'mock-only',captureReceipt:true,maxBytes:c.marinMaxBytes,diagnostics});
+  assert.equal((await engine.executeMarinRecovery(f.d,actor,approval)).state,'ready');
+  const completed=f.events.filter(e=>e.state==='completed').map(e=>e.phase);
+  assert.deepEqual(completed,['db_claim','headers','body','request','validation','db_record','storage','storage_verification','db_complete']);
+  assert.equal(posts,1);assert.equal(f.base.row.provider_request_id,'req_pipeline');
+  assert.equal(JSON.stringify(f.p),f.before);
+  assert(!JSON.stringify(f.events).includes(f.p.script_text));assert(!JSON.stringify(f.events).includes('mock-only'));
+ } finally {global.fetch=old;}
+});
+for(const [failure,error] of [['body_read',new TypeError('private interrupted body')],['timeout',new DOMException('private timeout','TimeoutError')]]) {
+ test(`${failure} after headers persists receipt in existing unknown journal and cannot regenerate`,async()=>{
+  const f=diagnosticFixture(),old=global.fetch;let posts=0;
+  try {
+   global.fetch=async()=>{posts++;return new Response(new ReadableStream({start(controller){controller.error(error);}}),{headers:{'x-request-id':'req_before_body_loss'}});};
+   const speech=load('src/lib/article-tts-audio.ts').requestOpenAiSpeech;
+   f.d.speech=(text,diagnostics)=>speech(text,'marin','gpt-4o-mini-tts',{apiKey:'mock-only',captureReceipt:true,maxBytes:c.marinMaxBytes,diagnostics});
+   const result=await engine.executeMarinRecovery(f.d,actor,approval);
+   assert.equal(result.code,'query_same_attempt_no_retry');assert.equal(result.state,'unknown');
+   assert.equal(f.base.row.phase,'unknown');assert.equal(f.base.row.last_error,'provider_unknown');
+   assert.equal(f.base.row.provider_status,200);assert.equal(f.base.row.provider_request_id,'req_before_body_loss');
+   assert(f.events.some(e=>e.phase==='body'&&e.state==='failed'&&e.failure===failure));
+   const snapshot=JSON.stringify(f.base.row);
+   assert.equal((await engine.executeMarinRecovery(f.d,actor,approval)).calls,0);
+   assert.equal((await engine.reconcileMarinRecovery(f.d,actor)).state,'unknown');
+   assert.equal(JSON.stringify(f.base.row),snapshot);assert.equal(posts,1);assert.equal(f.counts.put,0);assert.equal(f.objects.size,0);
+   assert.equal(JSON.stringify(f.p),f.before);
+  } finally {global.fetch=old;}
+ });
+}
+test('response loss before provider headers leaves null receipt and retains duplicate lock',async()=>{
+ const f=diagnosticFixture(),old=global.fetch;let posts=0;
+ try {
+  global.fetch=async()=>{posts++;throw TypeError('private network details');};
+  const speech=load('src/lib/article-tts-audio.ts').requestOpenAiSpeech;
+  f.d.speech=(text,diagnostics)=>speech(text,'marin','gpt-4o-mini-tts',{apiKey:'mock-only',captureReceipt:true,diagnostics});
+  assert.equal((await engine.executeMarinRecovery(f.d,actor,approval)).state,'unknown');
+  assert.equal(f.base.row.provider_status,null);assert.equal(f.base.row.provider_request_id,null);
+  assert(f.events.some(e=>e.phase==='headers'&&e.failure==='network'));
+  await engine.executeMarinRecovery(f.d,actor,approval);assert.equal(posts,1);assert.equal(f.counts.put,0);
+ } finally {global.fetch=old;}
+});
+test('Storage response loss is visible but verified bytes can still complete without re-upload',async()=>{
+ const f=diagnosticFixture();f.flags.uploadLoss=true;
+ assert.equal((await engine.executeMarinRecovery(f.d,actor,approval)).state,'ready');
+ assert(f.events.some(e=>e.phase==='storage'&&e.state==='failed'));
+ assert(f.events.some(e=>e.phase==='storage_verification'&&e.state==='completed'));
+ assert(f.events.some(e=>e.phase==='db_complete'&&e.state==='completed'));
+ assert.equal(f.counts.speech,1);assert.equal(f.counts.put,1);
+});
+test('DB completion response loss is logged at DB stage and does not erase ready receipt',async()=>{
+ const f=diagnosticFixture();f.flags.commitLoss=true;
+ assert.equal((await engine.executeMarinRecovery(f.d,actor,approval)).state,'unknown');
+ assert.equal(f.base.row.phase,'ready');assert(f.events.some(e=>e.phase==='db_complete'&&e.state==='failed'));
+ f.flags.commitLoss=false;
+ assert.equal((await engine.executeMarinRecovery(f.d,actor,approval)).calls,0);
+ assert.equal(f.counts.speech,1);assert.equal(f.counts.put,1);
+});
+test('proof response loss and invalid MP3 identify their own stages',async()=>{
+ for(const [flag,phase] of [['recordLoss','db_record'],['badMp3','validation']]) {
+  const f=diagnosticFixture();f.flags[flag]=true;
+  assert.equal((await engine.executeMarinRecovery(f.d,actor,approval)).state,'unknown');
+  assert(f.events.some(e=>e.phase===phase&&e.state==='failed'));assert.equal(f.counts.put,0);
+  await engine.executeMarinRecovery(f.d,actor,approval);assert.equal(f.counts.speech,1);
+ }
+});

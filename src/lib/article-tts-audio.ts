@@ -1,4 +1,5 @@
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
+import { SpeechRequestError, speechFailure, type TtsDiagnostics } from "@/lib/tts-request-diagnostics";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 import { cleanupUnreferencedAudioPaths } from "@/lib/audio-file-delete";
 
@@ -481,7 +482,7 @@ export async function requestOpenAiSpeech(
   input: string,
   voice: ArticleTtsVoice,
   model: string,
-  credentials?: { apiKey: string | null; captureReceipt?: boolean; signal?: AbortSignal; maxBytes?: number },
+  credentials?: { apiKey: string | null; captureReceipt?: boolean; signal?: AbortSignal; maxBytes?: number; diagnostics?: TtsDiagnostics },
 ): Promise<
   | { ok: false; error: string; message: string; httpStatus: number; detail?: string; isInputTooLong?: boolean; providerRequestId?: string | null }
   | { ok: true; data: ArrayBuffer; httpStatus?: number; providerRequestId?: string | null }
@@ -499,65 +500,96 @@ export async function requestOpenAiSpeech(
     };
   }
 
-  const response = await fetch("https://api.openai.com/v1/audio/speech", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      input,
-      instructions: "한국어 공공기관 모바일 소식지 기사 본문을 차분하고 또렷하며 자연스럽게 읽어주세요. 원문에 없는 내용을 추가하거나 요약하지 마세요.",
-      model,
-      response_format: "mp3",
-      voice,
-    }),
-    cache: "no-store",
-    ...(credentials?.signal ? { signal: credentials.signal } : {}),
-    ...(credentials?.captureReceipt ? { redirect: "error" as const } : {}),
-  });
+  const diagnostics = credentials?.diagnostics;
+  let phase: "headers" | "body" = "headers";
+  diagnostics?.start("request");
+  diagnostics?.start("headers");
+  try {
+    const response = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "X-Client-Request-Id": diagnostics?.clientRequestId ?? randomUUID(),
+      },
+      body: JSON.stringify({
+        input,
+        instructions: "한국어 공공기관 모바일 소식지 기사 본문을 차분하고 또렷하며 자연스럽게 읽어주세요. 원문에 없는 내용을 추가하거나 요약하지 마세요.",
+        model,
+        response_format: "mp3",
+        voice,
+      }),
+      cache: "no-store",
+      ...(credentials?.signal ? { signal: credentials.signal } : {}),
+      ...(credentials?.captureReceipt ? { redirect: "error" as const } : {}),
+    });
 
-  const rawRequestId = credentials?.captureReceipt ? response.headers.get("x-request-id") : null;
-  const receipt = credentials?.captureReceipt ? {
-    httpStatus: response.status,
-    providerRequestId: rawRequestId && !rawRequestId.includes(apiKey) && /^[A-Za-z0-9_-]{1,200}$/.test(rawRequestId) ? rawRequestId : null,
-  } : {};
-
-  if (!response.ok) {
-    const responseText = await response.text().catch(() => "");
-
-    return {
-      ok: false as const,
-      error: "TTS_GENERATION_FAILED",
+    const rawRequestId = credentials?.captureReceipt || diagnostics ? response.headers.get("x-request-id") : null;
+    const providerRequestId = rawRequestId && !rawRequestId.includes(apiKey) && /^[A-Za-z0-9_-]{1,200}$/.test(rawRequestId) ? rawRequestId : null;
+    diagnostics?.setReceipt(response.status, providerRequestId);
+    diagnostics?.complete("headers");
+    phase = "body";
+    diagnostics?.start("body");
+    const receipt = credentials?.captureReceipt ? {
       httpStatus: response.status,
-      isInputTooLong: isInputLengthError(response.status, responseText),
-      message: "AI 음성 생성에 실패했습니다.",
-      // A scoped caller must not receive a provider error that echoes its key.
-      detail: credentials === undefined ? responseText.slice(0, 300) : undefined,
+      providerRequestId,
+    } : {};
+
+    if (!response.ok) {
+      const responseText = diagnostics ? await response.text() : await response.text().catch(() => "");
+      diagnostics?.complete("body");
+      diagnostics?.fail("request", "provider_http");
+
+      return {
+        ok: false as const,
+        error: "TTS_GENERATION_FAILED",
+        httpStatus: response.status,
+        isInputTooLong: isInputLengthError(response.status, responseText),
+        message: "AI 음성 생성에 실패했습니다.",
+        // A scoped caller must not receive a provider error that echoes its key.
+        detail: credentials === undefined ? responseText.slice(0, 300) : undefined,
+        ...receipt,
+      };
+    }
+
+    let data: ArrayBuffer;
+    if (credentials?.maxBytes !== undefined) {
+      const limit=credentials.maxBytes;
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 8*1024*1024 || !response.body) {
+        if (diagnostics) throw new SpeechRequestError("invalid_response", phase, diagnostics);
+        throw Error("Speech response limit");
+      }
+      const reader=response.body.getReader(), chunks: Uint8Array[]=[]; let size=0;
+      try {
+        while (true) {
+          const {done,value}=await reader.read(); if (done) break;
+          size+=value.byteLength;
+          if (size>limit) {
+            if (diagnostics) throw new SpeechRequestError("size_limit", phase, diagnostics);
+            throw Error("Speech response too large");
+          }
+          chunks.push(value);
+        }
+      } finally { await reader.cancel().catch(()=>{}); reader.releaseLock(); }
+      const all=new Uint8Array(size); let offset=0;
+      for (const chunk of chunks) { all.set(chunk,offset); offset+=chunk.length; }
+      data=all.buffer;
+    } else { data=await response.arrayBuffer(); }
+    diagnostics?.complete("body");
+    diagnostics?.complete("request");
+    return {
+      ok: true as const,
+      data,
       ...receipt,
     };
+  } catch (error) {
+    // Legacy callers retain their error contract. Scoped diagnostics never serialize raw exceptions.
+    if (!diagnostics) throw error;
+    const failure = speechFailure(error, phase, credentials?.signal);
+    diagnostics.fail(phase, failure);
+    diagnostics.fail("request", failure);
+    throw new SpeechRequestError(failure, phase, diagnostics);
   }
-
-  let data: ArrayBuffer;
-  if (credentials?.maxBytes !== undefined) {
-    const limit=credentials.maxBytes;
-    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 8*1024*1024 || !response.body) throw Error("Speech response limit");
-    const reader=response.body.getReader(), chunks: Uint8Array[]=[]; let size=0;
-    try {
-      while (true) {
-        const {done,value}=await reader.read(); if (done) break;
-        size+=value.byteLength; if (size>limit) throw Error("Speech response too large"); chunks.push(value);
-      }
-    } finally { await reader.cancel().catch(()=>{}); reader.releaseLock(); }
-    const all=new Uint8Array(size); let offset=0;
-    for (const chunk of chunks) { all.set(chunk,offset); offset+=chunk.length; }
-    data=all.buffer;
-  } else { data=await response.arrayBuffer(); }
-  return {
-    ok: true as const,
-    data,
-    ...receipt,
-  };
 }
 
 async function generateAudioForChunk(input: string, voice: ArticleTtsVoice, model: string, chunkLength: number) {

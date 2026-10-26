@@ -2,6 +2,7 @@ import "server-only";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 import { requestOpenAiSpeech } from "@/lib/article-tts-audio";
+import { createTtsDiagnostics, type TtsDiagnostics } from "@/lib/tts-request-diagnostics";
 import { executeMarinRecovery, reconcileMarinRecovery, type MarinDependencies } from "@/lib/hwaseong-marin-recovery-engine";
 import {
   marinParentId, marinProjectId, marinAudioId, marinPath, marinOriginalPath, marinRequestHash,
@@ -71,14 +72,16 @@ export async function marinRecoveryStatus() {
   const record = (id:string) => {const row=records.find(r=>r.id===id);return {exists:!!row,status:row?.script_status??null,generatedAt:row?.ai_tts_generated_at??null};};
   return {receipt,records:{original:record(marinParentId),replacement:record(marinAudioId)},objects:{original,replacement}};
 }
-function dependencies(): MarinDependencies {
+function dependencies(diagnostics?: TtsDiagnostics): MarinDependencies {
   return {
+    diagnostics,
     parent,receipt:marinRecoveryReceipt,object,
     claim:(actor,snapshot,token,approval)=>query("rpc/marin_recovery_claim",{p_actor:actor,p_parent_snapshot:snapshot,p_token:token,p_approval:approval}),
     record:(actor,token,proof,status,requestId,error)=>query("rpc/marin_recovery_record",{p_actor:actor,p_token:token,p_proof:proof,p_status:status,p_request_id:requestId,p_error:error}),
     complete:(actor,proof)=>query("rpc/marin_recovery_complete",{p_actor:actor,p_hash:proof.hash,p_size:proof.size,p_duration:proof.duration}),
-    speech:text=>requestOpenAiSpeech(text,"marin","gpt-4o-mini-tts",{
+    speech:(text,trace)=>requestOpenAiSpeech(text,"marin","gpt-4o-mini-tts",{
       apiKey:process.env.STAGING_OPENAI_API_KEY?.trim()??"",captureReceipt:true,maxBytes:marinMaxBytes,signal:AbortSignal.timeout(90000),
+      diagnostics:trace,
     }),
     put:async(path,bytes)=>{
       const r=await fetch(objectUrl(path),{method:"POST",headers:{...headers(),"Content-Type":"audio/mpeg","x-upsert":"false"},body:Buffer.from(bytes),cache:"no-store",signal:AbortSignal.timeout(20000)});
@@ -89,7 +92,8 @@ function dependencies(): MarinDependencies {
 export async function runMarinRecovery(actor: MarinActor, approval: string) {
   // No DB/Storage or provider request when OFF or scoped key missing. Never fall back.
   if (!marinRecoveryEnabled() || !process.env.STAGING_OPENAI_API_KEY?.trim()) return {ok:false,state:"rejected",calls:0,code:"scoped_recovery_unavailable"};
-  return executeMarinRecovery(dependencies(),actor,approval);
+  const diagnostics=createTtsDiagnostics(event=>console.info(JSON.stringify({event:"marin_recovery_tts",parentId:marinParentId,...event})));
+  return executeMarinRecovery(dependencies(diagnostics),actor,approval);
 }
 export async function finishMarinRecovery(actor: MarinActor) {
   if (!marinRecoveryEnabled()) return {ok:false,state:"rejected",calls:0,code:"recovery_unavailable"};
