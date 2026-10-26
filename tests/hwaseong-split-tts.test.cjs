@@ -41,3 +41,10 @@ test('summary/detail use separate manifests while the shared scope pauses only t
  const a={paused:false,pause(){this.paused=true;}},b={paused:false,pause(){this.paused=true;}};
  Scope({children:null}).props.children.props.onPlayCapture({target:a,currentTarget:{querySelectorAll:()=>[a,b]}});assert.equal(a.paused,false);assert.equal(b.paused,true);
 });
+test('next segment continues when the browser emits pause before ended, without initial autoplay',async()=>{
+ const React=require('react'),effects=[],refs=[],values=[1,[{index:0,url:'/0.mp3'},{index:1,url:'/1.mp3'}],0,false,0,0,'ready'];let stateIndex=0,plays=0;
+ const media={playbackRate:1,play:async()=>{plays++;},pause(){}};
+ const Player=loader({'react':{...React,useRef:v=>{const ref={current:refs.length===0?media:v};refs.push(ref);return ref;},useState:()=>[values[stateIndex++],()=>{}],useCallback:fn=>fn,useEffect:fn=>effects.push(fn)}})('src/components/public-article-audio-player.tsx').PublicArticleAudioPlayer;
+ const tree=Player({ariaLabel:'긴 상세',manifestUrl:'/manifest',isAiGenerated:true});effects.at(-1)();assert.equal(plays,0);
+ tree.props.children[0].props.onPause();tree.props.children[0].props.onEnded();effects.at(-1)();await Promise.resolve();assert.equal(plays,1);
+});

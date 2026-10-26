@@ -263,7 +263,8 @@ export function PublicArticleAudioPlayer({
   }
 
   useEffect(() => {
-    if (!shouldContinueSegmentRef.current || !isPlaying || !audioRef.current) {
+    // Browsers may fire pause before ended; the continuation intent survives that pause.
+    if (!shouldContinueSegmentRef.current || !audioRef.current) {
       return;
     }
 
