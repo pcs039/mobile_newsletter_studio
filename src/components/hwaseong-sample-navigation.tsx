@@ -17,3 +17,7 @@ export function SamplePageControls({ previous, next, onNavigate, width }: {
     <button type="button" aria-label={next?.label ?? "마지막 기사 · 다음 이동 없음"} disabled={!next} onClick={() => next && onNavigate(next.href)} className={className} style={{ right: `max(8px, calc(50% - ${width / 2}px + 8px))` }}>›</button>
   </nav>;
 }
+
+export function SampleDisclosureIcon({ expanded = false }: { expanded?: boolean }) {
+  return <span aria-hidden="true" className="ml-2 inline-block shrink-0 text-lg leading-none">{expanded ? "↑" : "↓"}</span>;
+}

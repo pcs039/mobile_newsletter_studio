@@ -1,14 +1,14 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Authenticated private assets retain their original URL. */
 
-import { SampleLink as Link, SamplePageControls } from "@/components/hwaseong-sample-navigation";
+import { SampleLink as Link, SamplePageControls, SampleDisclosureIcon } from "@/components/hwaseong-sample-navigation";
 import { preload } from "react-dom";
 import styles from "./hwaseong-sample-experience.module.css";
 import { useSearchParams } from "next/navigation";
 import { HwaseongEditorialSample } from "@/components/hwaseong-editorial-sample";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { ArticleCard, PublicNewsletterCoverView } from "@/components/public-mobile-article-reader";
-import { SampleReadingTools } from "@/components/hwaseong-sample-reading-tools";
+import { SampleReadingTools, SampleDetailReadingTools, SampleReadingToolsScope } from "@/components/hwaseong-sample-reading-tools";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import type { FontAsset } from "@/lib/newsletter-repository";
 import type { ArticleHeroBackground } from "@/lib/article-hero-background";
@@ -19,7 +19,7 @@ import { buildProposalSearchIndex, searchProposalSamples } from "@/lib/hwaseong-
 import { HwaseongArticleParticipation } from "@/components/hwaseong-article-participation";
 import { SampleTtsQa } from "@/components/hwaseong-sample-tts-qa";
 import { sampleSummaryFacts, type SampleAudio } from "@/lib/hwaseong-sample-narration";
-import { canUseSampleHistory, readSampleLocation, sampleSwipeDirection } from "@/lib/hwaseong-sample-navigation";
+import { canUseSampleHistory, readSampleLocation, sampleSwipeDirection, isSampleSwipeBlocked, updateSampleSwipe, type SampleSwipe } from "@/lib/hwaseong-sample-navigation";
 import { isReaderInteractiveTarget, type ReaderPoint } from "@/lib/mobile-reader-navigation";
 
 const action = "inline-flex min-h-11 items-center justify-center rounded-xl border border-current px-4 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
@@ -90,7 +90,7 @@ function TourismMap({ sample, detailHref }: { sample: ProposalSample; detailHref
 function ComicStory({ sample, onImage }: { sample: ProposalSample; onImage: (image: PublicArticleLightboxImage) => void }) {
   return <div aria-label="산책 고수 3컷 만평" className="space-y-3 px-3">
     {comicScenes.map((scene, i) => <figure key={scene.line} className="overflow-hidden rounded-2xl border border-[#dccbb4] bg-[#fffdf6]">
-      <button className="relative block w-full overflow-hidden" style={{ aspectRatio: "2 / 1" }} aria-label={`${i + 1}컷 이미지 확대`} onClick={() => onImage({ src: sample.cover, alt: "같은 보호자와 코기의 가을 산책 3컷. 달리기, 깜빡한 봉투, 강아지가 봉투를 건네는 반전." })}>
+      <button data-sample-swipe-image className="relative block w-full overflow-hidden" style={{ aspectRatio: "2 / 1" }} aria-label={`${i + 1}컷 이미지 확대`} onClick={() => onImage({ src: sample.cover, alt: "같은 보호자와 코기의 가을 산책 3컷. 달리기, 깜빡한 봉투, 강아지가 봉투를 건네는 반전." })}>
         {/* One generated equal-panel artwork; CSS framing keeps its original bytes intact. */}
         <img src={sample.cover} alt={scene.alt} className="absolute left-0 top-0 w-full" style={{ height: "300%", transform: `translateY(-${i * 100 / 3}%)` }} />
       </button>
@@ -129,7 +129,7 @@ function SampleSummary({ sample, href, onImage, audio }: { sample: ProposalSampl
       <SampleReadingTools sample={sample} generated={audio} />
       {sample.kind === "accessible" ? <p lang="en" className="mt-3 text-base leading-6 text-[#244dae]">A better day out, together.</p> : null}
     </div>
-    {sample.kind === "tourism" ? <TourismMap key={sample.article.id} sample={sample} detailHref={href} /> : artComic ? <ComicStory sample={sample} onImage={onImage} /> : <button className="block w-full bg-transparent text-left" aria-label="요약 이미지 확대" onClick={() => onImage({ src: sample.cover, alt: imageAlt })}>
+    {sample.kind === "tourism" ? <TourismMap key={sample.article.id} sample={sample} detailHref={href} /> : artComic ? <ComicStory sample={sample} onImage={onImage} /> : <button data-sample-swipe-image className="block w-full bg-transparent text-left" aria-label="요약 이미지 확대" onClick={() => onImage({ src: sample.cover, alt: imageAlt })}>
       <img src={sample.cover} alt={imageAlt} className="block h-auto w-full" />
     </button>}
     <div className="px-5">
@@ -141,7 +141,7 @@ function SampleSummary({ sample, href, onImage, audio }: { sample: ProposalSampl
           {sample.kind === "accessible" ? <p data-public-text-scale-target="article-summary" lang="en" className="mt-2 text-sm leading-6 text-[#244dae]">{accessibleSampleEnglish[i]}</p> : null}
         </li>)}
       </ol> : sample.kind === "cartoon" ? <><p data-public-text-scale-target="article-summary" className="mt-5 text-lg font-black leading-8">즐거운 놀이터의 마지막 한 걸음,<br />뒷정리와 배려입니다.</p><details className="mt-3 text-sm leading-6"><summary className="min-h-11 cursor-pointer content-center underline">만화 대사 글로 읽기</summary><ol className="space-y-2 pb-3" data-public-text-scale-target="article-summary">{artComic ? comicScenes.map((scene, i) => <li key={scene.line}>{i + 1}. {scene.speaker}: {scene.line} — {scene.aside}</li>) : <><li>1. 드디어 놀이터다! — 신나게 입장해요.</li><li>2. 잠깐! 뒷정리도 함께 해야지. — 보호자가 배변 봉투를 챙겨요.</li><li>3. 다음 산책도 기분 좋게! — 서로 배려하며 함께 웃어요.</li></>}</ol></details></> : null}
-      <Link href={href} data-sample-expand className={`${action} mt-5 w-full border-transparent text-white`} style={{ backgroundColor: dark ? "#ffe0ae" : sample.color, color: dark ? "#192e46" : "white" }}>상세기사 보기 <span aria-hidden="true" className="ml-3">→</span></Link>
+      <Link href={href} data-sample-expand className={`${action} mt-5 w-full border-transparent text-white`} style={{ backgroundColor: dark ? "#ffe0ae" : sample.color, color: dark ? "#192e46" : "white" }}>상세기사 보기 <SampleDisclosureIcon /></Link>
       <div className="mt-4 grid gap-3"><span className="text-xs opacity-80">{sample.kind === "cartoon" ? "원문 소재의 창작 시연 만화" : sample.kind === "accessible" ? "영어는 시연 번역 · 공식 공고 아님" : sample.kind === "tourism" ? "공식 관광자료 기반 · 비공개 시연" : "10월호 원문 기반 · 비공개 시연"}</span></div>
       <details className="mt-3 text-xs leading-5 opacity-80"><summary className="min-h-11 cursor-pointer content-center">출처·시연 안내</summary><p>{sample.kind === "tourism" ? "출처: 화성특례시 공식 관광지도. 기존 도시 비전 원문은 보존 자료로 분리했습니다." : <>원문: {sample.sourceTitle}<br />{sample.kind === "cartoon" || sample.kind === "accessible" ? "작업본의 확인 근거 없는 입장 설명만 공식 안내에 맞게 정정했습니다." : "상세 원문은 그대로 보존했습니다."}</>} 최신 행정·행사 공고가 아닙니다. {sample.kind !== "tourism" ? "이미지는 시연용 일러스트입니다." : "장소 안내는 공식 관광지도에 근거합니다."}</p>{!audio && (sample.kind === "tourism" || sample.kind === "cartoon") ? <p className="mt-2">현재 콘텐츠에 맞는 음성은 아직 없습니다. 기존 1차 시연 안내 음성은 보존하고 이 화면에서는 숨겼습니다.</p> : null}</details>
     </div>
@@ -162,7 +162,9 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     : { selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, contents: initialContents, qa: initialQa, interest: initialInterest };
   const mainRef = useRef<HTMLElement>(null);
   const navigationStarted = useRef<number | null>(null);
-  const swipe = useRef<(ReaderPoint & { vertical?: boolean }) | null>(null);
+  const swipe = useRef<SampleSwipe | null>(null);
+  const mouseSwipe = useRef<SampleSwipe | null>(null);
+  const swallowClick = useRef(false);
   const [controlsActivity, setControlsActivity] = useState(0);
   const pointer = useRef<ReaderPoint | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
@@ -202,19 +204,18 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     if (isCoverView || (!url.searchParams.has("articleId") && url.searchParams.get("view") !== "contents")) setCoverVisited(true);
     // eslint-disable-next-line react-hooks/purity -- Event handler only; never invoked during render.
     navigationStarted.current = performance.now();
-    window.dispatchEvent(new Event("datadiction:stop-article-audio"));
+    if (url.searchParams.get("articleId") !== new URL(window.location.href).searchParams.get("articleId")) window.dispatchEvent(new Event("datadiction:stop-article-audio"));
     window.history.pushState(null, "", url);
     return true;
   }
   useLayoutEffect(() => {
-    window.dispatchEvent(new Event("datadiction:stop-article-audio"));
+    if (previousLocation.current.id !== selectedId) window.dispatchEvent(new Event("datadiction:stop-article-audio"));
     const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth";
     const hash = window.location.hash;
     if (hash) { try { document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView(); } catch { /* Invalid hash stays on the current article. */ } }
     else if (selectedId && detail) {
-      const body = detailRef.current?.querySelector<HTMLElement>('[data-public-text-scale-target="article-body"]');
       detailRef.current?.focus({ preventScroll: true });
-      (body ?? detailRef.current)?.scrollIntoView({ block: "start", behavior });
+      detailRef.current?.scrollIntoView({ block: "start", behavior });
     } else if (selectedId && previousLocation.current.id === selectedId && previousLocation.current.detail) {
       summaryRef.current?.scrollIntoView({ block: "start", behavior });
     } else window.scrollTo({ top: 0, behavior: "instant" });
@@ -236,30 +237,56 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     const timer = window.setTimeout(() => setWarmImages(true), 750);
     return () => window.clearTimeout(timer);
   }, [isCoverView]);
-  return <main ref={mainRef} data-sample-location={locationKey} data-sample-initial-fetch={qa ? JSON.stringify(serverTimings) : undefined} onPointerDownCapture={event => { pointer.current = { x: event.clientX, y: event.clientY }; }}
+  function finishSwipe(start: SampleSwipe | null, point: ReaderPoint) {
+    if (!start || image) return;
+    updateSampleSwipe(start, point, window.innerWidth);
+    if (start.horizontal) swallowClick.current = true;
+    if (start.vertical || window.getSelection()?.toString()) return;
+    const direction = sampleSwipeDirection(start, point, window.innerWidth);
+    const target = direction === "next" ? nextPage : direction === "previous" ? previousPage : undefined;
+    if (direction) swallowClick.current = true;
+    if (target) navigateLocal(target.href);
+  }
+  return <main ref={mainRef} data-sample-location={locationKey} data-sample-initial-fetch={qa ? JSON.stringify(serverTimings) : undefined} onPointerDownCapture={event => {
+      swallowClick.current = false;
+      pointer.current = { x: event.clientX, y: event.clientY };
+      mouseSwipe.current = event.pointerType === "touch" || event.button !== 0 || image || isSampleSwipeBlocked(event.target)
+        ? null : { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+    }} onPointerMoveCapture={event => {
+      const start = mouseSwipe.current;
+      if (!start || start.pointerId !== event.pointerId) return;
+      updateSampleSwipe(start, { x: event.clientX, y: event.clientY }, window.innerWidth);
+      if (start.horizontal) {
+        event.preventDefault();
+        try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* Pointer may have left the document. */ }
+      }
+    }} onPointerCancelCapture={() => { mouseSwipe.current = null; pointer.current = null; }}
     onPointerUpCapture={event => {
+      const drag = mouseSwipe.current; mouseSwipe.current = null;
+      if (drag?.pointerId === event.pointerId) finishSwipe(drag, { x: event.clientX, y: event.clientY });
       const start = pointer.current; pointer.current = null;
       if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 10 && !isReaderInteractiveTarget(event.target)) setControlsActivity(value => value + 1);
+    }} onDragStartCapture={event => {
+      if (!isSampleSwipeBlocked(event.target)) event.preventDefault();
     }}
     onClickCapture={event => {
+      if (swallowClick.current && event.detail !== 0) { swallowClick.current = false; event.preventDefault(); event.stopPropagation(); return; }
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const anchor = event.target instanceof Element ? event.target.closest("a") : null;
       const target = anchor?.getAttribute("href");
       if (target && !anchor?.hasAttribute("download") && (!anchor?.target || anchor.target === "_self") && navigateLocal(target)) event.preventDefault();
     }}
     onTouchStart={event => {
-      swipe.current = image || event.touches.length !== 1 || isReaderInteractiveTarget(event.target)
+      if (event.touches.length !== 1) swallowClick.current = true;
+      swipe.current = image || event.touches.length !== 1 || isSampleSwipeBlocked(event.target)
         ? null : { x: event.touches[0].clientX, y: event.touches[0].clientY };
     }} onTouchMove={event => {
       const start = swipe.current, touch = event.touches[0];
-      if (event.touches.length !== 1) { swipe.current = null; return; }
-      if (start && touch && Math.abs(touch.clientY - start.y) > 10 && Math.abs(touch.clientY - start.y) > Math.abs(touch.clientX - start.x)) start.vertical = true;
+      if (event.touches.length !== 1) { swipe.current = null; swallowClick.current = true; return; }
+      if (start && touch) updateSampleSwipe(start, { x: touch.clientX, y: touch.clientY }, window.innerWidth);
     }} onTouchCancel={() => { swipe.current = null; }} onTouchEnd={event => {
       const start = swipe.current, touch = event.changedTouches[0]; swipe.current = null;
-      if (!start || start.vertical || !touch || window.getSelection()?.toString()) return;
-      const direction = sampleSwipeDirection(start, { x: touch.clientX, y: touch.clientY }, window.innerWidth);
-      const target = direction === "next" ? nextPage : direction === "previous" ? previousPage : undefined;
-      if (target) navigateLocal(target.href);
+      if (touch) finishSwipe(start, { x: touch.clientX, y: touch.clientY });
     }} className={`${styles.screen} public-newsletter-screen min-h-screen bg-[#e8edef] py-3 sm:px-2 text-[#172e35] sm:py-8`}>
     {warmImages ? <div hidden aria-hidden="true" data-sample-image-warmup>{warmSources.map(src => <img key={src} src={src} alt="" width={1} height={1} decoding="async" fetchPriority="low" />)}</div> : null}
     {!image ? <SamplePageControls key={`${locationKey}:${controlsActivity}`} previous={previousPage} next={nextPage} onNavigate={navigateLocal} width={width} /> : null}
@@ -291,19 +318,20 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         <PublicNewsletterCoverView {...cover} compact slug={slug} hasArticles={orderedSamples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." showTextSizeControl tocLabel="콘텐츠 둘러보기" onOpenToc={() => navigateLocal(contentsHref)} onStartReading={() => navigateLocal(href(orderedSamples[0]?.article.id))} />
         <div className="px-5 py-4"><p className="mb-3 text-[11px] leading-5 text-slate-600">표지 배경은 Canva AI로 제작한 개념 일러스트이며 실제 장소 사진이 아닙니다.</p></div>
       </div> : null}
-      {isCoverView ? null : selected ? <>
+      {isCoverView ? null : selected ? <SampleReadingToolsScope key={selected.article.id}>
         <nav className="flex flex-wrap items-center justify-between gap-2 px-5 pt-2 text-xs"><span className="py-2 font-bold">기사 읽기</span><span>{currentInterest !== "all" ? `${sampleInterests.find(option => option.value === currentInterest)?.label} · ` : ""}{index + 1} / {orderedSamples.length} · {detail ? "상세기사" : "요약 첫 페이지"}</span></nav>
         <div ref={summaryRef} className={`${styles.summary} scroll-mt-4`} data-sample-summary={selected.kind} data-detail-expanded={detail} key={selected.article.id}>
           {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} detail={false} /> : <SampleSummary sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} onImage={setImage} />}
         </div>
         {detail ? <section ref={detailRef} tabIndex={-1} aria-label="펼친 상세기사" data-sample-inline-detail className={`${styles.detail} scroll-mt-4 border-t border-slate-200 p-3`}>
-          <div className="mb-4 flex items-center justify-between gap-3 px-2"><h2 className="text-lg font-bold">상세기사</h2><Link href={href(selected.article.id)} className={action}>기사 접기 ↑</Link></div>
+          <div className="mb-4 flex items-center justify-between gap-3 px-2"><h2 className="text-lg font-bold">상세기사</h2><Link href={href(selected.article.id)} className={action}>기사 접기 <SampleDisclosureIcon expanded /></Link></div>
+          <SampleDetailReadingTools sample={selected} generated={audioIndex[selected.article.id]} />
           {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail /> : selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard article={{ ...samplePresentationArticle(selected), showPublicTitle: false, summary: "", audioFile: null, audioSource: "none", blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} heroBackground={backgrounds[selected.article.id]} textDesign={{ captionStyled: textDesigns[selected.article.id]?.captionStyled, bodyEmphasis: textDesigns[selected.article.id]?.bodyEmphasis }} />}
           <HwaseongArticleParticipation key={selected.article.id} slug={slug} articleId={selected.article.id} />
-          <Link href={href(selected.article.id)} className={`${action} mt-5 w-full text-slate-700`}>기사 접기 · 요약으로 ↑</Link>
+          <Link href={href(selected.article.id)} className={`${action} mt-5 w-full text-slate-700`}>기사 접기 · 요약으로 <SampleDisclosureIcon expanded /></Link>
         </section> : null}
         <nav aria-label="기사 이동" className="grid grid-cols-2 gap-3 border-t border-slate-200 p-5">{prev ? <Link className={action} href={href(prev.article.id)}>← 이전 기사</Link> : <Link className={action} href={contentsHref}>← 목록</Link>}{next ? <Link className={action} href={href(next.article.id)}>다음 기사 →</Link> : <span className="content-center text-center text-xs text-slate-500">마지막 기사입니다</span>}</nav>
-      </> : <section className="p-5">
+      </SampleReadingToolsScope> : <section className="p-5">
         {isSearching ? <h1 aria-live="polite" className="text-xl font-black">검색 결과 {visibleSamples.length}건</h1>
           : <><p className="text-xs font-black text-[#17694c]">{samples.length}가지 디자인, 화성의 여러 표정</p><h1 className="mt-2 text-3xl font-black leading-tight">손안에서 만나는<br />우리 도시의 소식</h1><p className="mt-4 text-sm leading-6 text-slate-600">기존 10월호 작업본·공식 관광자료·공개 인터뷰·공식 영상으로 제작한 비공개 샘플입니다. 요약 첫 화면에서 상세기사로 이어집니다.</p></>}
         {isSearching && !visibleSamples.length ? <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm leading-6 text-slate-600">검색 결과가 없습니다.<br />다른 검색어를 입력하거나 검색을 종료해 주세요.</p> : null}
