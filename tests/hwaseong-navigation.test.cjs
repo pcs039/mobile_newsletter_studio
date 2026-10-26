@@ -30,7 +30,7 @@ function harness(initial){let query=new URLSearchParams(initial),cursor=0;const 
  const UI=loader({react:{...React,useState(v){const i=cursor++;if(!(i in states))states[i]=v;return[states[i],v=>states[i]=v];},useMemo:f=>f(),useRef:v=>({current:v}),useEffect:()=>{},useLayoutEffect:()=>{}},'next/navigation':{useSearchParams:()=>query},'@/components/public-mobile-article-reader':{ArticleCard:()=>React.createElement('p',null,'원文'),PublicNewsletterCoverView:()=>null},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null}})('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader;
  const oldWindow=global.window,oldElement=global.Element;
  class Anchor{constructor(href,target=''){this.href=href;this.target=target;}closest(){return this;}getAttribute(k){return k==='href'?this.href:null;}hasAttribute(){return false;}}
- global.Element=Anchor;global.window={location:{href:`https://staging.invalid/projects/${slug}/samples?${initial}`},dispatchEvent:e=>events.push(e.type),history:{pushState:(_s,_t,u)=>{history.push(String(u));global.window.location.href=String(u);query=new URL(u).searchParams;}},getSelection:()=>null};
+ global.Element=Anchor;global.window={innerWidth:390,location:{href:`https://staging.invalid/projects/${slug}/samples?${initial}`},dispatchEvent:e=>events.push(e.type),history:{pushState:(_s,_t,u)=>{history.push(String(u));global.window.location.href=String(u);query=new URL(u).searchParams;}},getSelection:()=>null};
  return{render(){cursor=0;return UI({slug,samples,fonts:[],backgrounds:{},textDesigns:{},detail:false,width:390,cover:{coverImageSrc:'/cover.webp'}});},click(tree,href,extra={}){let prevented=false;tree.props.onClickCapture({target:new Anchor(href,extra.target),button:0,preventDefault:()=>prevented=true,...extra});return prevented;},history,events,restore(){global.window=oldWindow;global.Element=oldElement;}};
 }
 test('client navigation updates canonical URL without a server router; new-tab and external links retain native behavior',()=>{
@@ -61,4 +61,12 @@ test('cover, contents and first summary form one sequence; detail is inline with
  const cover=harness('width=390');try {const c=React.Children.toArray(cover.render().props.children).find(n=>n.props?.onNavigate);assert.equal(new URL(c.props.next.href,'https://fixture').searchParams.get('view'),'contents');}finally{cover.restore();}
  const contents=harness('view=contents&width=390');try{const c=React.Children.toArray(contents.render().props.children).find(n=>n.props?.onNavigate);assert.equal(c.props.previous.label,'표지로 이동');assert.equal(new URL(c.props.next.href,'https://fixture').searchParams.get('articleId'),ids[0]);}finally{contents.restore();}
  const detail=harness(`articleId=${ids[0]}&view=detail&width=390`);try{const html=renderToStaticMarkup(detail.render());assert.match(html,/data-sample-inline-detail/);assert.match(html,/기사 접기/);assert.equal((html.match(/data-summary-kind=/g)||[]).length,1);assert.equal((html.match(/data-sample-reading-tools/g)||[]).length,1);}finally{detail.restore();}
+});
+
+test('touch navigation from expanded content opens the next summary; vertical scrolling does not navigate',()=>{
+ const h=harness(`articleId=${ids[0]}&view=detail&width=390`);try{
+  const tree=h.render();tree.props.onTouchStart({target:null,touches:[{clientX:240,clientY:200}]});tree.props.onTouchEnd({changedTouches:[{clientX:195,clientY:205}]});
+  assert.equal(h.history.length,1);const next=new URL(h.history[0]);assert.equal(next.searchParams.get('articleId'),ids[1]);assert(!next.searchParams.has('view'));
+  const again=h.render();again.props.onTouchStart({target:null,touches:[{clientX:240,clientY:200}]});again.props.onTouchMove({touches:[{clientX:230,clientY:230}]});again.props.onTouchEnd({changedTouches:[{clientX:160,clientY:260}]});assert.equal(h.history.length,1);
+ }finally{h.restore();}
 });
