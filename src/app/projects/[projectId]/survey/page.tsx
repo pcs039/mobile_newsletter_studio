@@ -1,3 +1,5 @@
+import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
+import { hwaseongSampleSlug } from "@/lib/hwaseong-proposal-sample";
 import Link from "next/link";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectSurveyForm } from "@/components/project-survey-form";
@@ -80,6 +82,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
             </article>
           )}
 
+          {stagingEnvironmentConfigured() && projectId === hwaseongSampleSlug ? <Link href={`/projects/${projectId}/sample-participation`} className="block rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm font-bold text-[#125e7c]">Staging 기사별 비공개 의견·댓글 승인·설문 결과 관리 →</Link> : null}
           <ProjectSurveyForm projectSlug={projectId} surveys={surveyData.surveys} />
 
           <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
