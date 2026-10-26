@@ -1,4 +1,4 @@
-.screen {
+.screen:global(.public-newsletter-screen) {
   /* The shared page-entry transform otherwise anchors fixed arrows to the document. */
   animation: none;
 }
