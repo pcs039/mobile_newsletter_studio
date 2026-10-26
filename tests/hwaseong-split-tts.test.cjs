@@ -3,23 +3,23 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const base=loader(),model=base('src/lib/hwaseong-proposal-sample.ts'),n=base('src/lib/hwaseong-sample-split-narration.ts'),ids=Object.keys(base('src/lib/hwaseong-sample-interest.ts').sampleOrderRules);
 const samples=ids.map((id,i)=>({kind:'policy',headline:`기사 ${i+1}`,summary:'표시되지 않는 내부 요약',article:{id,blocks:[{type:'paragraph',isVisible:true,title:'본문',body:'실제 상세 본문입니다.',metadata:{}},{type:'paragraph',isVisible:true,title:'자료 구분과 확인 안내',body:'관리자 설명입니다.',metadata:{}}]}}));
 test('fixed alternating voices and separate visible scripts preserve originals; admin/archived content never leaks into narration',()=>{
- assert.deepEqual(ids.map(n.splitArticleVoice),['marin','cedar','coral','onyx','marin','cedar','coral']);const before=JSON.stringify(samples);
+ assert.deepEqual(ids.map(n.splitArticleVoice),['marin','cedar','coral','onyx','marin','coral','coral']);const before=JSON.stringify(samples);
  const summary=n.splitNarration(samples[0],'summary'),detail=n.splitNarration(samples[0],'detail');assert(summary.includes('따로 모으기'));assert(!summary.includes('상세 본문'));assert(!summary.includes('내부 요약'));assert(detail.includes('상세 본문'));assert(!detail.includes('관리자'));assert(!detail.includes('기사 1'));
  const cartoon={...samples[3],kind:'cartoon'};assert(n.splitNarration(cartoon,'detail').includes('빈 주머니'));assert(!n.splitNarration(cartoon,'summary').includes('실제 상세 본문'));
  const accessible={...samples[4],kind:'accessible',article:{...samples[4].article,blocks:[{type:'paragraph',isVisible:true,title:'English',body:'Admission is free. This is a demonstration translation, not an official English notice.',metadata:{}}]}};assert.equal(n.splitNarration(accessible,'detail'),'Admission is free.');
  assert.equal(JSON.stringify(samples),before);assert.equal(n.splitTtsShutdown,'2027-01-06');
 });
-function fixture(){let providerFailure=false,claimLoss=false,commitLoss=false,uploadLoss=false,corrupt=false;const rows=[],objects=new Map(),calls=[];
+function fixture(interviewVoice='coral'){let providerFailure=false,claimLoss=false,commitLoss=false,uploadLoss=false,corrupt=false;const rows=[],objects=new Map(),calls=[];
  const previousFetch=global.fetch,keys=['STAGING_OPENAI_API_KEY','SUPABASE_SERVICE_ROLE_KEY'].map(k=>[k,process.env[k]]);process.env.STAGING_OPENAI_API_KEY='fixture-key';process.env.SUPABASE_SERVICE_ROLE_KEY='fixture-service';
  const mp3=fs.readFileSync(__dirname+'/fixtures/marin-recovery-tone.mp3');
- const contract=loader({'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>true},'@/lib/hwaseong-proposal-sample':{...model,proposalSample:a=>a},'@/lib/newsletter-repository':{getProjectContent:async()=>({source:'supabase',articles:samples})},'@/lib/supabase-config':{getSupabaseRestEndpoint:p=>'https://db.invalid'+p,getSupabaseStorageEndpoint:p=>'https://storage.invalid'+p},'@/lib/article-tts-audio':{normalizeKoreanTtsText:s=>s,chunkArticleTtsText:s=>[s],requestOpenAiSpeech:async(_text,_voice,_model,credentials)=>{assert.equal(credentials.apiKey,'fixture-key');assert(credentials.signal);assert(credentials.diagnostics);calls.push('provider');credentials.diagnostics.setReceipt(providerFailure?401:200,'req_fixture');return providerFailure?{ok:false,httpStatus:401}:{ok:true,data:mp3.buffer.slice(mp3.byteOffset,mp3.byteOffset+mp3.byteLength)};}}})('src/lib/hwaseong-sample-split-tts-server.ts');
+ const contract=loader({'@/lib/hwaseong-sample-split-narration':{...n,splitArticleVoice:id=>id===ids[5]?interviewVoice:n.splitArticleVoice(id)},'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>true},'@/lib/hwaseong-proposal-sample':{...model,proposalSample:a=>a},'@/lib/newsletter-repository':{getProjectContent:async()=>({source:'supabase',articles:samples})},'@/lib/supabase-config':{getSupabaseRestEndpoint:p=>'https://db.invalid'+p,getSupabaseStorageEndpoint:p=>'https://storage.invalid'+p},'@/lib/article-tts-audio':{normalizeKoreanTtsText:s=>s,chunkArticleTtsText:s=>[s],requestOpenAiSpeech:async(_text,_voice,_model,credentials)=>{assert.equal(credentials.apiKey,'fixture-key');assert(credentials.signal);assert(credentials.diagnostics);calls.push('provider');credentials.diagnostics.setReceipt(providerFailure?401:200,'req_fixture');return providerFailure?{ok:false,httpStatus:401}:{ok:true,data:mp3.buffer.slice(mp3.byteOffset,mp3.byteOffset+mp3.byteLength)};}}})('src/lib/hwaseong-sample-split-tts-server.ts');
  global.fetch=async(url,init={})=>{const method=init.method||'GET',u=new URL(url);if(u.hostname==='db.invalid'){
   if(method==='POST'){const r=JSON.parse(init.body);if(rows.some(x=>x.id===r.id))return new Response(null,{status:409});rows.push({...r,ai_tts_generated_at:null,duration_seconds:null});if(claimLoss)throw Error('Lost reservation');return new Response(null,{status:201});}
   if(method==='PATCH'){const id=u.searchParams.get('id').slice(3),r=rows.find(r=>r.id===id);Object.assign(r,JSON.parse(init.body));if(commitLoss)throw Error('Lost completion');return Response.json([r]);}
   const offset=Number(u.searchParams.get('offset')||0);return Response.json(rows.slice(offset,offset+100));
  }const path=u.pathname;if(method==='POST'){assert.equal(init.headers['x-upsert'],'false');assert(!objects.has(path));objects.set(path,corrupt?Buffer.from('bad'):Buffer.from(init.body));if(uploadLoss)throw Error('Upload response lost');return new Response(null,{status:201});}
  return objects.has(path)?new Response(objects.get(path),{headers:{'Content-Type':'audio/mpeg'}}):new Response(null,{status:404});};
- return {...contract,rows,objects,calls,set:k=>{if(k==='provider')providerFailure=true;if(k==='claim')claimLoss=true;if(k==='commit')commitLoss=true;if(k==='upload')uploadLoss=true;if(k==='corrupt')corrupt=true;},restore(){global.fetch=previousFetch;keys.forEach(([k,v])=>{if(v===undefined)delete process.env[k];else process.env[k]=v;});}};
+ return {...contract,rows,objects,calls,setInterviewVoice:v=>{interviewVoice=v;},set:k=>{if(k==='provider')providerFailure=true;if(k==='claim')claimLoss=true;if(k==='commit')commitLoss=true;if(k==='upload')uploadLoss=true;if(k==='corrupt')corrupt=true;},restore(){global.fetch=previousFetch;keys.forEach(([k,v])=>{if(v===undefined)delete process.env[k];else process.env[k]=v;});}};
 }
 test('18 plans are distinct; old files are never overwritten; full cutover waits for every summary/detail',async()=>{const f=fixture();try{const plans=await f.splitTtsPlans();assert.equal(plans.length,18);assert.equal(new Set(plans.map(p=>p.id)).size,18);assert.deepEqual(await f.splitAudioIndex(),{});
  for(const p of plans){const r=await f.generateSplitTts(p.job);assert.equal(r.state,'ready');assert.equal(r.calls,1);assert.equal(r.proofs.length,1);assert.equal(r.receipts[0].providerRequestId,'req_fixture');}
@@ -48,3 +48,12 @@ test('next segment continues when the browser emits pause before ended, without 
  const tree=Player({ariaLabel:'긴 상세',manifestUrl:'/manifest',isAiGenerated:true});effects.at(-1)();assert.equal(plays,0);
  tree.props.children[0].props.onPause();tree.props.children[0].props.onEnded();effects.at(-1)();await Promise.resolve();assert.equal(plays,1);
 });
+
+test('interview replacement preserves all other players and keeps Cedar until both Coral parts are ready',async()=>{const f=fixture('cedar');try{
+ for(const p of await f.splitTtsPlans())assert.equal((await f.generateSplitTts(p.job)).state,'ready');
+ const before=await f.splitAudioIndex();f.setInterviewVoice('coral');assert.deepEqual(await f.splitAudioIndex(),before);
+ const changed=(await f.splitTtsPlans()).filter(p=>p.job.startsWith(ids[5]+':'));assert.equal(changed.length,2);
+ await f.generateSplitTts(changed[0].job);assert.deepEqual(await f.splitAudioIndex(),before);
+ await f.generateSplitTts(changed[1].job);const after=await f.splitAudioIndex();assert.equal(after[ids[5]].voice,'coral');assert.equal(after[ids[5]].detail.voice,'coral');assert.notEqual(after[ids[5]].id,before[ids[5]].id);
+ for(const id of ids.filter(id=>id!==ids[5]))assert.deepEqual(after[id],before[id]);assert.equal(f.calls.length,20);
+ }finally{f.restore();}});

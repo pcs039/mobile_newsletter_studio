@@ -8,7 +8,7 @@ export const splitTtsModel = "gpt-4o-mini-tts";
 export const splitTtsShutdown = "2027-01-06";
 export type NarrationPart = "summary" | "detail";
 export const splitProbeText = sampleVoiceProbe;
-const voices: ArticleTtsVoice[] = ["marin", "cedar", "coral", "onyx", "marin", "cedar", "coral"];
+const voices: ArticleTtsVoice[] = ["marin", "cedar", "coral", "onyx", "marin", "coral", "coral"];
 export function splitArticleVoice(id: string) { return voices[Object.keys(sampleOrderRules).indexOf(id)] ?? null; }
 export function splitNarration(sample: ProposalSample, part: NarrationPart) {
   const e = editorialFeature(sample), t = tourismFeature(sample);

@@ -22,14 +22,21 @@ export async function splitTtsPlans(provided?:ProposalSample[]){
  headers();let samples=provided;if(!samples){const content=await getProjectContent(hwaseongSampleSlug);if(content.source!=="supabase")throw Error("Content unavailable");samples=content.articles.map(a=>proposalSample(a,projectId)).filter((s):s is ProposalSample=>!!s);}
  if(samples.length!==7||new Set(samples.map(s=>s.article.id)).size!==7||samples.some(s=>!splitArticleVoice(s.article.id)))throw Error("Seven sample membership required");
  const jobs=[...probeVoices.map(voice=>({job:`probe-v2-${voice}`,voice,title:`음질 비교 ${voice}`,text:splitProbeText})),...samples.flatMap(s=>(["summary","detail"] as const).map(part=>({job:`${s.article.id}:${part}`,voice:splitArticleVoice(s.article.id)!,title:`${s.headline.replaceAll('\n',' ')} · ${part==='summary'?'요약':'상세'}`,text:splitNarration(s,part)})))];
- return jobs.map(p=>{const text=normalizeKoreanTtsText(p.text);if(!text||text.length>8000)throw Error("Narration limits");const digest=hash(`sample-tts-v2\n${p.job}\n${p.voice}\n${splitTtsModel}\n${text}`),id=`${digest.slice(0,8)}-${digest.slice(8,12)}-5${digest.slice(13,16)}-a${digest.slice(17,20)}-${digest.slice(20,32)}`;const chunks=chunkArticleTtsText(text,600);return {...p,text,id,hash:digest,scriptHash:hash(text),chunks,paths:chunks.map((_,i)=>`${prefix}${id}/${String(i).padStart(3,'0')}.mp3`)};});
+ return jobs.map(p=>identifyPlan(p));
 }
+function identifyPlan(p:{job:string;voice:ArticleTtsVoice;title:string;text:string}){const text=normalizeKoreanTtsText(p.text);if(!text||text.length>8000)throw Error("Narration limits");const digest=hash(`sample-tts-v2\n${p.job}\n${p.voice}\n${splitTtsModel}\n${text}`),id=`${digest.slice(0,8)}-${digest.slice(8,12)}-5${digest.slice(13,16)}-a${digest.slice(17,20)}-${digest.slice(20,32)}`;const chunks=chunkArticleTtsText(text,600);return {...p,text,id,hash:digest,scriptHash:hash(text),chunks,paths:chunks.map((_,i)=>`${prefix}${id}/${String(i).padStart(3,'0')}.mp3`)};}
 type Plan=Awaited<ReturnType<typeof splitTtsPlans>>[number];
 export async function splitTtsRows(){const out:Row[]=[];for(let offset=0;offset<1000;offset+=100){const q=new URLSearchParams({select:columns,project_id:`eq.${projectId}`,title:`like.${titlePrefix}*`,order:'id.asc',limit:'100',offset:String(offset)});const r=await fetch(table('?'+q),{headers:headers(),cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error("Audio status unavailable");const page:Row[]=await r.json();if(!Array.isArray(page))throw Error("Invalid status");out.push(...page);if(page.length<100)return out;}throw Error("Unconfirmed pagination");}
 function ready(row:Row|undefined,p:Plan){return !!row&&row.project_id===projectId&&row.article_id===null&&row.script_status==='approved'&&!!row.ai_tts_generated_at&&row.ai_tts_model===splitTtsModel&&row.ai_tts_voice===p.voice&&row.ai_tts_text_hash===p.hash&&row.script_text===p.text&&JSON.stringify(row.ai_tts_audio_paths)===JSON.stringify(p.paths)&&row.file_path===p.paths[0];}
 function audio(p:Plan):SampleAudio{return {id:p.id,voice:p.voice,transcriptText:p.text,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts?version=2&audio=${p.id}`};}
 export async function splitAudioIndex(provided?:ProposalSample[]):Promise<Record<string,SampleAudio>>{
- if(!stagingEnvironmentConfigured())return {};const [plans,rows]=await Promise.all([splitTtsPlans(provided),splitTtsRows()]);const stories=plans.filter(p=>!p.job.startsWith('probe-'));
+ if(!stagingEnvironmentConfigured())return {};const [plans,rows]=await Promise.all([splitTtsPlans(provided),splitTtsRows()]);let stories=plans.filter(p=>!p.job.startsWith('probe-'));
+ // Keep the verified interview pair until BOTH replacement parts are ready. Other articles are untouched.
+ const interview=stories.filter(p=>p.job.startsWith('a802c522-becf-496e-b78f-e374e4b7e98d:'));
+ if(interview.length===2&&!interview.every(p=>ready(rows.find(r=>r.id===p.id),p))){
+  const previous=interview.map(p=>identifyPlan({...p,voice:'cedar'}));
+  if(previous.every(p=>ready(rows.find(r=>r.id===p.id),p)))stories=stories.map(p=>previous.find(old=>old.job===p.job)??p);
+ }
  // Atomic presentation cutover: never replace legacy players with a partial set.
  if(stories.length!==14||!stories.every(p=>ready(rows.find(r=>r.id===p.id),p)))return {};
  const result:Record<string,SampleAudio>={};for(const p of stories.filter(p=>p.job.endsWith(':summary'))){const id=p.job.split(':')[0],detail=stories.find(d=>d.job===`${id}:detail`)!;result[id]={...audio(p),detail:audio(detail)};}return result;
