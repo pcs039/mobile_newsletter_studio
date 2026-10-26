@@ -18,7 +18,8 @@ test('seven TOC frames share 16:9 without replacing assets, HTML labels or artic
   const before = JSON.stringify(samples), h = render();
   assert.equal((h.match(/data-sample-thumbnail=/g) || []).length, 7);
   assert.equal((h.match(/relative aspect-video overflow-hidden/g) || []).length, 7);
-  assert.equal((h.match(/loading="lazy" decoding="async"/g) || []).length, 7);
+  assert.equal((h.match(/loading="eager" fetchPriority="high"/g) || []).length, 2);
+  assert.equal((h.match(/loading="lazy" fetchPriority="low"/g) || []).length, 5);
   for (const [i, kind] of kinds.entries()) {
     assert(h.includes(`src="/original-${kind}.webp"`));
     assert(h.includes(`articleId=a${i + 1}`));
@@ -44,4 +45,10 @@ test('TOC crops do not enter existing summary/detail rendering or replace summar
   assert.match(summary, /src="\/original-policy.webp"/); assert.match(summary, /상세기사 보기/);
   const detail = render({ contents: false, selectedId: 'a1', detail: true });
   assert(!detail.includes('data-sample-thumbnail')); assert.match(detail, /본문 보존/);
+});
+test('prepared TOC frames avoid double cropping and leave summary originals untouched', () => {
+  const thumbnailIndex=Object.fromEntries(samples.map(s=>[s.article.id,'data:image/webp;base64,fixture']));
+  const h=render({thumbnailIndex});assert.equal((h.match(/src="data:image\/webp;base64,fixture"/g)||[]).length,7);
+  assert(!h.includes('height:306%'));assert(!h.includes('height:160%'));assert(!h.includes('transform:scale(1.05)'));
+  const summary=render({thumbnailIndex,contents:false,selectedId:'a1'});assert.match(summary,/src="\/original-policy.webp"/);assert(!summary.includes('src="data:image/webp;base64,fixture"'));
 });

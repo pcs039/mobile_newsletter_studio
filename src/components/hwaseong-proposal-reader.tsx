@@ -26,14 +26,15 @@ import { isReaderInteractiveTarget, type ReaderPoint } from "@/lib/mobile-reader
 
 const action = "inline-flex min-h-11 items-center justify-center rounded-xl border border-current px-4 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
 
-function TocThumbnail({ sample }: { sample: ProposalSample }) {
+function TocThumbnail({ sample, thumbnail, priority }: { sample: ProposalSample; thumbnail?: string; priority?: boolean }) {
+  const framed = thumbnail?.startsWith("data:image/webp;base64,") ? thumbnail : undefined;
   // TOC-only crops: the summary and detail keep the complete original image.
   const position = sample.kind === "event" || sample.kind === "accessible"
     ? "center bottom" : sample.kind === "interview" ? "center top" : "center center";
   const comic = sample.kind === "cartoon" && sample.artDirectionVersion === 3;
   return <div data-sample-thumbnail={sample.kind} className="relative aspect-video overflow-hidden" style={{ backgroundColor: sample.pale }}>
-    <img src={sample.cover} alt="" loading="lazy" decoding="async" className="absolute inset-x-0 top-0 h-full w-full object-cover"
-      style={comic
+    <img src={framed || sample.cover} alt="" loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "low"} decoding="async" className="absolute inset-x-0 top-0 h-full w-full object-cover"
+      style={framed ? undefined : comic
         // Three stacked scenes; show the first scene without the next panel's border.
         ? { height: "306%", objectPosition: "center top" }
         // Center the three recycling illustrations, excluding the image's text bands.
@@ -149,13 +150,14 @@ function SampleSummary({ sample, href, onImage, audio }: { sample: ProposalSampl
   </section>;
 }
 
-export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, textDesigns, selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, cover, serverTimings, audioIndex = {}, contents: initialContents = false, qa: initialQa = false, interest: initialInterest = "all" }: {
+export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, textDesigns, selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, cover, serverTimings, audioIndex = {}, thumbnailIndex = {}, contents: initialContents = false, qa: initialQa = false, interest: initialInterest = "all" }: {
   slug: string; samples: ProposalSample[]; fonts: FontAsset[]; backgrounds: Record<string, ArticleHeroBackground>; textDesigns: Record<string, ArticleTextDesign>;
   selectedId?: string; detail: boolean; width: 390 | 520;
   cover?: Pick<ComponentProps<typeof PublicNewsletterCoverView>, "coverImageSrc" | "coverFit" | "coverLayout" | "coverTitle" | "coverSubtitle" | "coverIssueText" | "masthead">;
   contents?: boolean; qa?: boolean; interest?: SampleInterest;
   serverTimings?: Record<string, number>;
   audioIndex?: Record<string, SampleAudio>;
+  thumbnailIndex?: Record<string, string>;
 }) {
   const query = useSearchParams();
   const { selectedId, detail, width, contents, qa, interest } = query
@@ -173,9 +175,17 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const previousLocation = useRef<{ id?: string; detail: boolean }>({ id: undefined, detail: false });
   const [warmImages, setWarmImages] = useState(false);
   const [coverVisited, setCoverVisited] = useState(!initialSelectedId && !initialContents);
-  const warmSources = useMemo(() => [...new Set([...samples.flatMap(s => [s.cover,
-    ...s.article.blocks.filter(b => b.isVisible && b.type === "image" && b.body.startsWith("/api/project-files/preview?")).map(b => b.body),
-  ]), ...Object.values(backgrounds).filter(b => b.visible).map(b => b.url)])].slice(0, 14), [samples, backgrounds]);
+  const warmSources = (() => {
+    if (!selectedId) return [];
+    const ordered = orderProposalSamples(samples, normalizeSampleInterest(interest));
+    const position = ordered.findIndex(s => s.article.id === selectedId);
+    if (position < 0) return [];
+    const nearby = ordered.slice(Math.max(0, position - 1), position + 2);
+    return [...new Set(nearby.flatMap(s => [s.cover,
+      ...s.article.blocks.filter(b => b.isVisible && b.type === "image" && b.body.startsWith("/api/project-files/preview?")).map(b => b.body),
+      ...(backgrounds[s.article.id]?.visible ? [backgrounds[s.article.id].url] : []),
+    ]))].slice(0, 6);
+  })();
   const [image, setImage] = useState<PublicArticleLightboxImage | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInput = useRef<HTMLInputElement>(null);
@@ -230,14 +240,14 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     return () => cancelAnimationFrame(frame);
   }, [locationKey, selectedId, detail]);
   useEffect(() => {
-    if (isCoverView) return; // Do not compete with the main cover for authenticated image requests.
+    if (isCoverView || !selectedId) return; // No original-image warmup on the cover or TOC.
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
     if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? "")) return;
-    // Keep a bounded set of the already-authorized seven articles' images in this
+    // Warm only the current/adjacent authorized articles in this
     // document's decoded-image cache. No public, disk, service-worker or cross-project cache.
     const timer = window.setTimeout(() => setWarmImages(true), 750);
     return () => window.clearTimeout(timer);
-  }, [isCoverView]);
+  }, [isCoverView, selectedId]);
   function finishSwipe(start: SampleSwipe | null, point: ReaderPoint) {
     if (!start || image) return;
     updateSampleSwipe(start, point, window.innerWidth);
@@ -343,7 +353,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         {isSearching ? <h1 aria-live="polite" className="text-xl font-black">검색 결과 {visibleSamples.length}건</h1>
           : <><p className="text-xs font-black text-[#17694c]">{samples.length}가지 디자인, 화성의 여러 표정</p><h1 className="mt-2 text-3xl font-black leading-tight">손안에서 만나는<br />우리 도시의 소식</h1><p className="mt-4 text-sm leading-6 text-slate-600">기존 10월호 작업본·공식 관광자료·공개 인터뷰·공식 영상으로 제작한 비공개 샘플입니다. 요약 첫 화면에서 상세기사로 이어집니다.</p></>}
         {isSearching && !visibleSamples.length ? <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm leading-6 text-slate-600">검색 결과가 없습니다.<br />다른 검색어를 입력하거나 검색을 종료해 주세요.</p> : null}
-        <ol className="mt-6 space-y-4">{visibleSamples.map(({ sample: s, snippet }) => <li key={s.article.id}><Link href={href(s.article.id)} className="block overflow-hidden rounded-2xl border border-slate-200"><TocThumbnail sample={s} /><div className="p-4"><p className="text-xs font-black" style={{ color: s.color }}>{s.eyebrow}</p><h2 className="mt-2 text-lg font-black leading-7 [word-break:keep-all]">{s.headline.replace("\n", " ")} →</h2>{isSearching ? <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 [overflow-wrap:anywhere]">{snippet}</p> : null}</div></Link></li>)}</ol>
+        <ol className="mt-6 space-y-4">{visibleSamples.map(({ sample: s, snippet }, visibleIndex) => <li key={s.article.id}><Link href={href(s.article.id)} className="block overflow-hidden rounded-2xl border border-slate-200"><TocThumbnail sample={s} thumbnail={thumbnailIndex[s.article.id]} priority={visibleIndex < 2} /><div className="p-4"><p className="text-xs font-black" style={{ color: s.color }}>{s.eyebrow}</p><h2 className="mt-2 text-lg font-black leading-7 [word-break:keep-all]">{s.headline.replace("\n", " ")} →</h2>{isSearching ? <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 [overflow-wrap:anywhere]">{snippet}</p> : null}</div></Link></li>)}</ol>
       </section>}
       {qa ? <SampleTtsQa slug={slug} /> : null}
       <footer className="border-t border-slate-200 px-5 py-5 text-xs leading-5 text-slate-500">화성시 담당자 대상 비공개 제안 · 정식 발행물 아님 · 외부 공개·재배포 금지{qa ? <><br />기존 Production 기사·발행 상태는 변경하지 않았습니다.</> : null}</footer>
