@@ -7,6 +7,13 @@ import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 import { editorialFeature, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 
 const button = "flex min-h-12 items-center justify-center rounded-full border px-5 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
+export function SampleEditorialText({ articleId, text }: { articleId: string; text: string }) {
+  const title = "[화성특급] 화성시 사람들 다 모였다! #화성에코팜테마파크 #선셋콘서트";
+  const start = text.indexOf(title);
+  if (articleId !== "50bf808f-15b5-4484-8fee-38f7a8acb99d" || start < 0) return text;
+  // Blocks change visual line breaks only: every original character/space stays.
+  return <>{text.slice(0, start)}{title.split(/(#화성에코팜테마파크|#선셋콘서트)/).map((part, i) => part.startsWith("#") ? <span key={i} data-video-description-tag className="my-1 block">{part}</span> : part)}{text.slice(start + title.length)}</>;
+}
 function VideoPlayer({ sample, videoId }: { sample: ProposalSample; videoId: string }) {
   const [loaded, setLoaded] = useState(false);
   return <div id="sample-video" className="scroll-mt-4" data-swipe-navigation-ignore>
@@ -43,7 +50,7 @@ export function HwaseongEditorialSample({ sample, href, detail, audio }: { sampl
       {!video && (detail || !canvaSummary) ? <blockquote data-interview-quote className="my-6 border-l border-[#8c966e] pl-5"><span aria-hidden="true" className="block h-8 font-serif text-5xl text-[#77835b]">“</span><p data-public-text-scale-target="article-summary" className="font-serif text-[1.4rem] leading-[1.7] tracking-tight">{e.quote}</p><footer className="mt-3 text-xs opacity-70">신현정 · 중부일보 인터뷰 중</footer></blockquote> : null}
       {!detail ? <>{canvaSummary ? <p className="mt-4 text-xs leading-6">표지의 글자는 이미지입니다. 표지를 눌러 상세기사에서 본문·인용문을 글자로 확대해 읽을 수 있습니다.</p> : null}{video ? <a className={`${button} mt-3 border-white/30`} href={e.sourceUrl} target="_blank" rel="noreferrer">유튜브에서 보기 ↗</a> : null}</> : <div className="mt-7 space-y-7">
         <p className="border-y border-current/20 py-4 text-xs leading-6 opacity-75">{e.note}</p>
-        {e.sections.map((s, i) => <section key={s.title}><p className={`mb-2 text-[10px] tracking-[.2em] ${video ? "text-[#ffec72]" : "text-[#77835b]"}`}>0{i + 1} / {video ? "OFFICIAL VIDEO NOTES" : "ARTIST NOTES"}</p><h2 data-public-text-scale-target="article-summary" className="text-xl font-bold leading-8">{s.title}</h2><p data-public-text-scale-target="article-body" className="mt-3 whitespace-pre-line text-base leading-[1.95]">{s.text}</p></section>)}
+        {e.sections.map((s, i) => <section key={s.title}><p className={`mb-2 text-[10px] tracking-[.2em] ${video ? "text-[#ffec72]" : "text-[#77835b]"}`}>0{i + 1} / {video ? "OFFICIAL VIDEO NOTES" : "ARTIST NOTES"}</p><h2 data-public-text-scale-target="article-summary" className="text-xl font-bold leading-8">{s.title}</h2><p data-public-text-scale-target="article-body" className="mt-3 whitespace-pre-line text-base leading-[1.95]"><SampleEditorialText articleId={sample.article.id} text={s.text} /></p></section>)}
         <a className={`${button} ${video ? "border-[#ffec72] text-[#ffec72]" : "border-[#30392e]"}`} href={e.sourceUrl} target="_blank" rel="noreferrer">{video ? "유튜브에서 원본 보기" : "인터뷰 원문 읽기"} ↗</a>
         {!video && e.canvaCover ? <details className="border-t border-current/20 pt-2"><summary className="min-h-11 cursor-pointer content-center text-sm">Canva 제작 표지 확인</summary><img src={e.canvaCover} alt="Canva 인물형 02 템플릿으로 제작한 인터뷰 표지. 본문과 핵심 문구는 위 HTML로 읽을 수 있습니다." width={1080} height={1920} className="mt-2 h-auto w-full" /><p className="mt-2 text-xs leading-5 opacity-70">인터뷰·인물형 02 · 메인형 템플릿 제작 결과. 실제 기사 제목·인용·본문은 확대 가능한 HTML로 별도 유지합니다.</p></details> : null}
       </div>}

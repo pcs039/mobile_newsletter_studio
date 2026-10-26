@@ -41,8 +41,8 @@ test('summary expand precedes one participation section; expanded body and colla
  for(const detail of [false,true]){
   const html=readerFixture(`articleId=${ids[0]}${detail?'&view=detail':''}`).render();
   assert.equal((html.match(/data-sample-participation=/g)||[]).length,1);
-  if(detail)assert(html.indexOf('의견 · 댓글 · 설문 · 공유')<html.indexOf('기사 접기 · 요약으로'));
-  else assert(html.indexOf('상세기사 보기')<html.indexOf('의견 · 댓글 · 설문 · 공유'));
+  if(detail)assert(html.indexOf('시민 참여 · 공유')<html.indexOf('기사 접기 · 요약으로'));
+  else assert(html.indexOf('상세기사 보기')<html.indexOf('시민 참여 · 공유'));
   if(detail)assert(html.indexOf('보존 상세 본문')<html.indexOf('data-sample-participation='));
   assert(!html.includes('시연 의견·댓글·설문 결과 관리'));
  }
@@ -55,12 +55,34 @@ test('shared article entry keeps summary and full-news navigation within its iss
  const cover=renderToStaticMarkup(React.createElement(SampleShareAction,{target:sampleShareTarget(slug,'소식지'),label:'소식지 공유하기'}));
  assert.match(cover,/disabled=""/);assert.match(cover,/승인된 외부 열람 링크/);assert(!cover.includes('/projects/'));assert(!cover.includes('href='));
 });
-test('four uniform disclosures retain moderation/privacy and survey inputs but omit reader admin links',()=>{
+test('compact actions retain mounted forms, privacy, moderation and disabled private sharing without admin links',()=>{
  const data={token:'fixture',isAdmin:true,commentsEnabled:true,comments:[],survey:{id:'survey',title:'기존 설문',questions:[]}};
- const load=loader({react:{...React,useState:v=>[v===null?data:v,()=>{}]}});
+ let first=true;const load=loader({react:{...React,useState:v=>{if(first){first=false;return[data,()=>{}];}return[v,()=>{}];}}});
  const Component=load('src/components/hwaseong-article-participation.tsx').HwaseongArticleParticipation;
  const html=renderToStaticMarkup(React.createElement(Component,{slug,articleId,articleTitle:'실제 제목'}));
- for(const label of ['비공개 의견 보내기','댓글 남기기','이 기사, 도움이 되었나요?','기사 공유하기'])assert(html.includes(label));
- assert.equal((html.match(/<details /g)||[]).length,4);assert.match(html,/검토·승인한 댓글만/);assert.match(html,/다른 독자에게 공개되지 않습니다/);
- assert(!html.includes('시연 의견·댓글·설문 결과 관리'));assert(!html.includes('승인된 댓글 ·'));assert(!html.includes('간단 설문 ·'));
+ assert.match(html,/시민 참여 · 공유/);for(const label of ['의견','댓글','설문','공유'])assert(html.includes(label));
+ assert.equal((html.match(/role="region"/g)||[]).length,3);assert.equal((html.match(/hidden=""/g)||[]).length,3);assert.equal((html.match(/<form /g)||[]).length,3);
+ assert.match(html,/검토·승인한 댓글만/);assert.match(html,/다른 독자에게 공개되지 않습니다/);assert.match(html,/개인정보·보관 안내/);assert.match(html,/30일/);assert.match(html,/동의합니다/);
+ assert(!html.includes('시연 의견·댓글·설문 결과 관리'));assert.match(html,/disabled=""/);
+});
+test('action buttons open at most one panel and can collapse it without removing other forms',()=>{
+ let cursor=0;const states=[];const data={token:'fixture',commentsEnabled:true,comments:[],survey:{id:'survey',questions:[]}};
+ const load=loader({react:{...React,useEffect:()=>{},useState:v=>{const i=cursor++;if(!(i in states))states[i]=i===0?data:v;return[states[i],v=>{states[i]=typeof v==='function'?v(states[i]):v;}];}}});
+ const Component=load('src/components/hwaseong-article-participation.tsx').HwaseongArticleParticipation;
+ function walk(node,predicate){if(!node||typeof node!=='object')return; if(predicate(node))return node;for(const child of React.Children.toArray(node.props?.children)){const found=walk(child,predicate);if(found)return found;}}
+ function render(){cursor=0;return Component({slug,articleId,articleTitle:'기존 제목'});}
+ for(const kind of ['private','comment','survey']){
+  const tree=render();walk(tree,n=>n.type==='button'&&n.props['aria-controls']===`participation-${articleId}-${kind}`).props.onClick();
+  const opened=render();for(const other of ['private','comment','survey'])assert.equal(walk(opened,n=>n.props?.id===`participation-${articleId}-${other}`).props.hidden,other!==kind);
+ }
+ const tree=render();walk(tree,n=>n.type==='button'&&n.props['aria-controls']===`participation-${articleId}-survey`).props.onClick();
+ const closed=render();for(const kind of ['private','comment','survey'])assert.equal(walk(closed,n=>n.props?.id===`participation-${articleId}-${kind}`).props.hidden,true);
+});
+test('only the verified video title gets independent hashtag blocks; every original space and character stays',()=>{
+ const Text=loader()('src/components/hwaseong-editorial-sample.tsx').SampleEditorialText;
+ const original='공식 영상 제목은 ‘[화성특급] 화성시 사람들 다 모였다! #화성에코팜테마파크 #선셋콘서트’입니다. 게시일 등 기존 문장은 유지합니다.';
+ const render=(id,text)=>renderToStaticMarkup(React.createElement(Text,{articleId:id,text}));
+ const html=render('50bf808f-15b5-4484-8fee-38f7a8acb99d',original);
+ assert.equal((html.match(/data-video-description-tag/g)||[]).length,2);assert.match(html,/>#화성에코팜테마파크<\/span>/);assert.match(html,/>#선셋콘서트<\/span>/);assert.equal(html.replace(/<[^>]*>/g,''),original);
+ for(const [id,text] of [['other',original],['50bf808f-15b5-4484-8fee-38f7a8acb99d','일반 #기호 https://example.invalid/#화성에코팜테마파크 #선셋콘서트']])assert(!render(id,text).includes('data-video-description-tag'));
 });
