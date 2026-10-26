@@ -152,6 +152,26 @@
 .editorialArticle[data-editorial-feature="video"] [data-editorial-chapter] { border-color: #ffffff26; }
 .editorialArticle[data-editorial-feature="video"] .editorialFlow > a { background: #d9ff62; border-color: #d9ff62; color: #111d29; }
 
+/* Extend the existing alignment attributes to the sample's HTML editorial prose.
+   Preserve authored line breaks; only balance within each existing title line. */
+.summary h1:not(:global(.sr-only)),
+.tourismEssay h2,
+.placeGuideHeading h2,
+.editorialChapterHeading h2 {
+  text-wrap: balance;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.editorialFlow [data-editorial-chapter] > p { hyphens: none; }
+:global([data-public-text-scale="large"]) .editorialFlow [data-text-alignment="justify"],
+:global([data-public-text-scale="xlarge"]) .editorialFlow [data-text-alignment="justify"] {
+  text-align: left;
+  text-align-last: left;
+  text-wrap: pretty;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 /* Keep the shared scale controls authoritative despite the editorial selectors. */
 :global([data-public-text-scale="large"]) .detail [data-public-text-scale-target="article-body"] { font-size: 1.5rem !important; line-height: 1.85 !important; }
 :global([data-public-text-scale="xlarge"]) .detail [data-public-text-scale-target="article-body"] { font-size: 2rem !important; line-height: 1.75 !important; }

@@ -80,3 +80,14 @@ test('event presentation retains original subjects while separating archived int
 test('tourism search links use a place-search label without claiming route calculation',()=>{
  const html=renderProposal('tourism',true);assert.equal((html.match(/지도에서 장소 찾기/g)||[]).length,6);assert(!html.includes('길찾기'));assert.equal((html.match(/https:\/\/map.kakao.com\/link\/search\//g)||[]).length,6);assert.equal((html.match(/href="tel:/g)||[]).length,5);
 });
+test('editorial paragraphs reuse saved alignment and retain source text without duplicate decorative numbering',()=>{
+ const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+ const feature={sourceUrl:'https://www.youtube.com/watch?v=cLHilm6oBjI',publishedDate:'2026-10-15',credit:'공식 출처',person:'',role:'',quote:'',note:'기존 출처 고지',videoId:'cLHilm6oBjI',canvaCover:'',sections:[{title:'01 · 원래 소제목',text:'확인한 원문 그대로.\n문단과 음성 대본은 바꾸지 않습니다.'}]};
+ const load=loader({'@/lib/hwaseong-proposal-sample':{editorialFeature:()=>feature}}),Component=load('src/components/hwaseong-editorial-sample.tsx').HwaseongEditorialSample;
+ for(const alignment of ['left','center','right','justify']){
+  const sample={kind:'video',headline:'기존 제목',sourceTitle:'기존 출처',article:{id:'video',bodyAlignment:alignment}},before=JSON.stringify({sample,feature});
+  const html=renderToStaticMarkup(React.createElement(Component,{sample,href:'/detail',detail:true}));
+  assert(html.includes(`data-text-alignment="${alignment}"`));assert(html.includes('확인한 원문 그대로.\n문단과 음성 대본은 바꾸지 않습니다.'));
+  assert.equal((html.match(/01 · 원래 소제목/g)||[]).length,1);assert(!html.includes('aria-hidden="true"'));assert.equal(JSON.stringify({sample,feature}),before);
+ }
+});
