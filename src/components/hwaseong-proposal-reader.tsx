@@ -257,7 +257,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       const direction = sampleSwipeDirection(start, { x: touch.clientX, y: touch.clientY }, window.innerWidth);
       const target = direction === "next" ? nextPage : direction === "previous" ? previousPage : undefined;
       if (target) navigateLocal(target.href);
-    }} className="public-newsletter-screen min-h-screen bg-[#e8edef] py-3 sm:px-2 text-[#172e35] sm:py-8">
+    }} className={`${styles.screen} public-newsletter-screen min-h-screen bg-[#e8edef] py-3 sm:px-2 text-[#172e35] sm:py-8`}>
     {warmImages ? <div hidden aria-hidden="true" data-sample-image-warmup>{warmSources.map(src => <img key={src} src={src} alt="" width={1} height={1} decoding="async" fetchPriority="low" />)}</div> : null}
     {!image ? <SamplePageControls key={`${locationKey}:${controlsActivity}`} previous={previousPage} next={nextPage} onNavigate={navigateLocal} width={width} /> : null}
     <div className="mx-auto mb-3 flex w-full flex-wrap items-center justify-between gap-2 text-xs text-slate-600" style={{ maxWidth: width }}>

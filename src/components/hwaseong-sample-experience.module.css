@@ -1,3 +1,8 @@
+.screen {
+  /* The shared page-entry transform otherwise anchors fixed arrows to the document. */
+  animation: none;
+}
+
 .arrows {
   animation: arrows-rest 2s linear forwards;
 }
