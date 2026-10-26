@@ -14,8 +14,8 @@
 }
 
 @keyframes arrows-rest {
-  0%, 85% { opacity: .7; }
-  99% { opacity: 0; }
+  0%, 85% { opacity: .7; pointer-events: auto; }
+  99% { opacity: 0; pointer-events: auto; }
   100% { opacity: 0; pointer-events: none; }
 }
 
