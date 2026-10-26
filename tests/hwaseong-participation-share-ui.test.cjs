@@ -36,12 +36,13 @@ function readerFixture(query){
  const tree=load('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader;
  return {ids,render:()=>renderToStaticMarkup(React.createElement(tree,{slug,samples,fonts:[],backgrounds:{},textDesigns:{},detail:false,width:390}))};
 }
-test('one participation section precedes expand/collapse and follows expanded body; reader never shows admin management',()=>{
+test('summary expand precedes one participation section; expanded body and collapse keep their order',()=>{
  const ids=Object.keys(loader()('src/lib/hwaseong-sample-interest.ts').sampleOrderRules);
  for(const detail of [false,true]){
   const html=readerFixture(`articleId=${ids[0]}${detail?'&view=detail':''}`).render();
   assert.equal((html.match(/data-sample-participation=/g)||[]).length,1);
-  assert(html.indexOf('의견 · 댓글 · 설문 · 공유')<html.indexOf(detail?'기사 접기 · 요약으로':'상세기사 보기'));
+  if(detail)assert(html.indexOf('의견 · 댓글 · 설문 · 공유')<html.indexOf('기사 접기 · 요약으로'));
+  else assert(html.indexOf('상세기사 보기')<html.indexOf('의견 · 댓글 · 설문 · 공유'));
   if(detail)assert(html.indexOf('보존 상세 본문')<html.indexOf('data-sample-participation='));
   assert(!html.includes('시연 의견·댓글·설문 결과 관리'));
  }
