@@ -17,6 +17,8 @@ import { accessibleSampleEnglish, comicScenes, sampleHref, samplePresentationArt
 import { normalizeSampleInterest, orderProposalSamples, sampleInterests, type SampleInterest } from "@/lib/hwaseong-sample-interest";
 import { buildProposalSearchIndex, searchProposalSamples } from "@/lib/hwaseong-sample-search";
 import { HwaseongArticleParticipation } from "@/components/hwaseong-article-participation";
+import { SampleShareAction } from "@/components/hwaseong-sample-share";
+import { sampleShareTarget } from "@/lib/hwaseong-sample-share";
 import { SampleTtsQa } from "@/components/hwaseong-sample-tts-qa";
 import { sampleSummaryFacts, type SampleAudio } from "@/lib/hwaseong-sample-narration";
 import { canUseSampleHistory, readSampleLocation, sampleSwipeDirection, isSampleSwipeBlocked, updateSampleSwipe, type SampleSwipe } from "@/lib/hwaseong-sample-navigation";
@@ -141,7 +143,6 @@ function SampleSummary({ sample, href, onImage, audio }: { sample: ProposalSampl
           {sample.kind === "accessible" ? <p data-public-text-scale-target="article-summary" lang="en" className="mt-2 text-sm leading-6 text-[#244dae]">{accessibleSampleEnglish[i]}</p> : null}
         </li>)}
       </ol> : sample.kind === "cartoon" ? <><p data-public-text-scale-target="article-summary" className="mt-5 text-lg font-black leading-8">즐거운 놀이터의 마지막 한 걸음,<br />뒷정리와 배려입니다.</p><details className="mt-3 text-sm leading-6"><summary className="min-h-11 cursor-pointer content-center underline">만화 대사 글로 읽기</summary><ol className="space-y-2 pb-3" data-public-text-scale-target="article-summary">{artComic ? comicScenes.map((scene, i) => <li key={scene.line}>{i + 1}. {scene.speaker}: {scene.line} — {scene.aside}</li>) : <><li>1. 드디어 놀이터다! — 신나게 입장해요.</li><li>2. 잠깐! 뒷정리도 함께 해야지. — 보호자가 배변 봉투를 챙겨요.</li><li>3. 다음 산책도 기분 좋게! — 서로 배려하며 함께 웃어요.</li></>}</ol></details></> : null}
-      <Link href={href} data-sample-expand className={`${action} mt-5 w-full border-transparent text-white`} style={{ backgroundColor: dark ? "#ffe0ae" : sample.color, color: dark ? "#192e46" : "white" }}>상세기사 보기 <SampleDisclosureIcon /></Link>
       <div className="mt-4 grid gap-3"><span className="text-xs opacity-80">{sample.kind === "cartoon" ? "원문 소재의 창작 시연 만화" : sample.kind === "accessible" ? "영어는 시연 번역 · 공식 공고 아님" : sample.kind === "tourism" ? "공식 관광자료 기반 · 비공개 시연" : "10월호 원문 기반 · 비공개 시연"}</span></div>
       <details className="mt-3 text-xs leading-5 opacity-80"><summary className="min-h-11 cursor-pointer content-center">출처·시연 안내</summary><p>{sample.kind === "tourism" ? "출처: 화성특례시 공식 관광지도. 기존 도시 비전 원문은 보존 자료로 분리했습니다." : <>원문: {sample.sourceTitle}<br />{sample.kind === "cartoon" || sample.kind === "accessible" ? "작업본의 확인 근거 없는 입장 설명만 공식 안내에 맞게 정정했습니다." : "상세 원문은 그대로 보존했습니다."}</>} 최신 행정·행사 공고가 아닙니다. {sample.kind !== "tourism" ? "이미지는 시연용 일러스트입니다." : "장소 안내는 공식 관광지도에 근거합니다."}</p>{!audio && (sample.kind === "tourism" || sample.kind === "cartoon") ? <p className="mt-2">현재 콘텐츠에 맞는 음성은 아직 없습니다. 기존 1차 시연 안내 음성은 보존하고 이 화면에서는 숨겼습니다.</p> : null}</details>
     </div>
@@ -189,7 +190,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const index = orderedSamples.findIndex(s => s.article.id === selectedId);
   const prev = orderedSamples[index - 1], next = orderedSamples[index + 1];
   const isCoverView = Boolean(cover && !selected && !contents);
-  const href = (id?: string, d = false, w = width) => sampleHref(slug, id, d, w, { qa, interest: currentInterest });
+  const href = (id?: string, d = false, w = width) => sampleHref(slug, id, d, w, { qa, interest: currentInterest, sharedEntry: query?.get("entry") === "share" });
   const contentsHref = sampleHref(slug, undefined, false, width, { contents: true, qa, interest: currentInterest });
   if (isCoverView && cover) preload(cover.coverImageSrc, { as: "image", fetchPriority: "high" });
   const previousPage = selected ? prev ? { href: href(prev.article.id), label: "이전 기사로 이동" }
@@ -300,7 +301,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
         <span className="text-sm font-black tracking-tight">화성, 가까이</span>
         <nav aria-label="소식지 공통 이동" className="flex gap-2">
-          {([{ label: "처음으로", url: href(), current: isCoverView }, { label: "목록", url: contentsHref, current: !isCoverView && !selected }] as const).map(item => item.current
+          {([{ label: "처음으로", url: href(), current: isCoverView }, { label: selected && query?.get("entry") === "share" ? "전체 소식 보기" : "목록", url: contentsHref, current: !isCoverView && !selected }] as const).map(item => item.current
             ? <button key={item.label} type="button" disabled aria-current="page" className="min-h-11 rounded-xl border border-slate-300 bg-slate-100 px-4 text-sm font-bold text-slate-500">{item.label}</button>
             : <Link key={item.label} href={item.url} className="inline-flex min-h-11 items-center rounded-xl border border-[#125e7c] bg-[#125e7c] px-4 text-sm font-bold text-white shadow-sm hover:bg-[#093c56]">{item.label}</Link>)}
         </nav>
@@ -318,21 +319,25 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         </div>
       </nav> : null}
       {cover && (isCoverView || coverVisited) ? <div hidden={!isCoverView} data-sample-cover-persisted>
-        <PublicNewsletterCoverView {...cover} compact slug={slug} hasArticles={orderedSamples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." showTextSizeControl tocLabel="콘텐츠 둘러보기" onOpenToc={() => navigateLocal(contentsHref)} onStartReading={() => navigateLocal(href(orderedSamples[0]?.article.id))} />
-        <div className="px-5 py-4"><p className="mb-3 text-[11px] leading-5 text-slate-600">표지 배경은 Canva AI로 제작한 개념 일러스트이며 실제 장소 사진이 아닙니다.</p></div>
+        <PublicNewsletterCoverView {...cover} compact slug={slug} hasArticles={orderedSamples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." showTextSizeControl tocLabel="소식지 둘러보기" onOpenToc={() => navigateLocal(contentsHref)} onStartReading={() => navigateLocal(href(orderedSamples[0]?.article.id))} />
+        <div className="px-5 pb-4"><SampleShareAction target={sampleShareTarget(slug, [cover.masthead, cover.coverIssueText].filter(Boolean).join(" · "))} label="소식지 공유하기" /><p className="mb-3 mt-4 text-[11px] leading-5 text-slate-600">표지 배경은 Canva AI로 제작한 개념 일러스트이며 실제 장소 사진이 아닙니다.</p></div>
       </div> : null}
       {isCoverView ? null : selected ? <SampleReadingToolsScope key={selected.article.id}>
         <nav className="flex flex-wrap items-center justify-between gap-2 px-5 pt-2 text-xs"><span className="py-2 font-bold">기사 읽기</span><span>{currentInterest !== "all" ? `${sampleInterests.find(option => option.value === currentInterest)?.label} · ` : ""}{index + 1} / {orderedSamples.length} · {detail ? "상세기사" : "요약 첫 페이지"}</span></nav>
         <div ref={summaryRef} className={`${styles.summary} scroll-mt-4`} data-sample-summary={selected.kind} data-detail-expanded={detail} key={selected.article.id}>
           {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} detail={false} /> : <SampleSummary sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} onImage={setImage} />}
         </div>
-        {detail ? <section ref={detailRef} tabIndex={-1} aria-label="펼친 상세기사" data-sample-inline-detail className={`${styles.detail} scroll-mt-4 border-t border-slate-200 p-3`}>
+        {/* Stable section/form identity: toggling detail only inserts/removes its body. */}
+        <section ref={detailRef} tabIndex={-1} aria-label={detail ? "펼친 상세기사" : "요약 기사 참여"} data-sample-inline-detail={detail ? "" : undefined} className={`${detail ? styles.detail : ""} scroll-mt-4 border-t border-slate-200 p-5`}>
+          {detail ? <div key="detail-body">
           <div className="mb-4 flex items-center justify-between gap-3 px-2"><h2 className="text-lg font-bold">상세기사</h2><Link href={href(selected.article.id)} className={action}>기사 접기 <SampleDisclosureIcon expanded /></Link></div>
           <SampleDetailReadingTools sample={selected} generated={audioIndex[selected.article.id]} />
           {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail /> : selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard article={{ ...samplePresentationArticle(selected), showPublicTitle: false, summary: "", audioFile: null, audioSource: "none", blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} heroBackground={backgrounds[selected.article.id]} textDesign={{ captionStyled: textDesigns[selected.article.id]?.captionStyled, bodyEmphasis: textDesigns[selected.article.id]?.bodyEmphasis }} />}
-          <HwaseongArticleParticipation key={selected.article.id} slug={slug} articleId={selected.article.id} />
-          <Link href={href(selected.article.id)} className={`${action} mt-5 w-full text-slate-700`}>기사 접기 · 요약으로 <SampleDisclosureIcon expanded /></Link>
-        </section> : null}
+          </div> : null}
+          <HwaseongArticleParticipation key="participation" slug={slug} articleId={selected.article.id} articleTitle={selected.article.title} />
+          {detail ? <Link href={href(selected.article.id)} className={`${action} mt-5 w-full text-slate-700`}>기사 접기 · 요약으로 <SampleDisclosureIcon expanded /></Link>
+            : <Link key="expand" href={href(selected.article.id, true)} data-sample-expand className={`${action} mt-5 w-full border-transparent bg-[#125e7c] text-white`}>상세기사 보기 <SampleDisclosureIcon /></Link>}
+        </section>
         <nav aria-label="기사 이동" className="grid grid-cols-2 gap-3 border-t border-slate-200 p-5">{prev ? <Link className={action} href={href(prev.article.id)}>← 이전 기사</Link> : <Link className={action} href={contentsHref}>← 목록</Link>}{next ? <Link className={action} href={href(next.article.id)}>다음 기사 →</Link> : <span className="content-center text-center text-xs text-slate-500">마지막 기사입니다</span>}</nav>
       </SampleReadingToolsScope> : <section className="p-5">
         {isSearching ? <h1 aria-live="polite" className="text-xl font-black">검색 결과 {visibleSamples.length}건</h1>

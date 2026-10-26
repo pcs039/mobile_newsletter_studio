@@ -1,9 +1,12 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { SampleParticipationIcon, SampleShareAction } from "@/components/hwaseong-sample-share";
+import { sampleShareTarget } from "@/lib/hwaseong-sample-share";
 import { QuestionInput } from "@/components/public-survey-response-form";
 import type { ParticipationData, ParticipationKind } from "@/lib/hwaseong-participation-contract";
 
 const button = "min-h-11 rounded-xl border border-[#125e7c] bg-[#125e7c] px-4 py-3 text-sm font-bold text-white disabled:bg-slate-400 disabled:border-slate-400";
+const disclosure = "flex min-h-11 cursor-pointer items-center gap-3 text-sm font-bold after:ml-auto after:text-slate-400 after:content-['＋'] group-open:after:content-['−']";
 const api = (slug: string) => `/api/projects/${encodeURIComponent(slug)}/sample-participation`;
 type Result = { message: string; phase: "idle" | "saving" | "done" | "unknown" };
 function ParticipationForm({ slug, articleId, kind, data, onSubmitted }: { slug: string; articleId: string; kind: ParticipationKind; data: ParticipationData; onSubmitted: () => void }) {
@@ -61,7 +64,7 @@ function ParticipationForm({ slug, articleId, kind, data, onSubmitted }: { slug:
     {result.message ? <p role="status" className="text-sm leading-6 text-slate-700">{result.message}</p> : null}
   </form>;
 }
-export function HwaseongArticleParticipation({ slug, articleId }: { slug: string; articleId: string }) {
+export function HwaseongArticleParticipation({ slug, articleId, articleTitle }: { slug: string; articleId: string; articleTitle: string }) {
   const [data, setData] = useState<ParticipationData | null>(null), [message, setMessage] = useState("");
   const [revision, setRevision] = useState(0);
   useEffect(() => {
@@ -72,14 +75,14 @@ export function HwaseongArticleParticipation({ slug, articleId }: { slug: string
     }).catch(() => { if (current) setMessage("참여 영역을 불러오지 못했습니다."); });
     return () => { current = false; controller.abort(); };
   }, [slug, articleId, revision]);
-  return <section aria-label="기사 참여" className="mt-6 rounded-2xl border border-slate-200 bg-[#f5f9fa] p-5 text-slate-800" data-swipe-navigation-ignore>
-    <h2 className="text-xl font-black">이 기사에 참여하기</h2>
-    <p className="mt-2 text-xs leading-6 text-slate-600">비공개 제작 시연입니다. 공식 민원 접수나 답변 서비스가 아닙니다. 이름·연락처·민감정보를 입력하지 마세요. 응답은 30일간 운영 화면에서 확인하며 만료 후 후속 접수 시 정리합니다.</p>
+  return <section aria-label="의견 · 댓글 · 설문 · 공유" data-sample-participation={articleId} className="mt-6 rounded-2xl border border-slate-200 bg-[#f5f9fa] p-5 text-slate-800" data-swipe-navigation-ignore>
+    <h2 className="text-lg font-bold">의견 · 댓글 · 설문 · 공유</h2>
+    <p className="mt-2 text-xs leading-6 text-slate-600">비공개 제작 시연 · 공식 민원창구가 아닙니다.<br />이름·연락처·민감정보는 적지 마세요. 응답은 30일간 확인하며 만료 후 후속 접수 시 정리합니다.</p>
     {message ? <div role="status" className="mt-3 text-sm"><p>{message}</p><button className={`${button} mt-2`} onClick={() => setRevision(r => r + 1)}>다시 불러오기</button></div> : !data ? <p role="status" className="mt-3 text-sm">참여 기능을 불러오는 중입니다.</p> : <div className="mt-4 divide-y divide-slate-200">
-      <details className="py-3"><summary className="min-h-11 cursor-pointer content-center font-bold">비공개 의견 보내기</summary><p className="mt-2 text-xs leading-6">프로젝트 관리자만 확인합니다. 다른 독자에게 공개되지 않습니다.</p><ParticipationForm slug={slug} articleId={articleId} kind="private" data={data} onSubmitted={() => setRevision(r => r + 1)} /></details>
-      {data.commentsEnabled ? <details className="py-3"><summary className="min-h-11 cursor-pointer content-center font-bold">승인된 댓글 · 댓글 남기기</summary><p className="text-xs leading-6">관리자가 검토·승인한 댓글만 이 인증된 시연 화면에 표시됩니다.</p><ul className="mt-3 space-y-3">{data.comments.map(c => <li key={c.id} className="rounded-xl bg-white p-3"><p className="whitespace-pre-wrap text-sm leading-7 [overflow-wrap:anywhere]">{c.body}</p><p className="mt-2 text-xs text-slate-500">시연 참여자 · {new Date(c.created_at).toLocaleDateString("ko-KR")}</p></li>)}</ul>{!data.comments.length ? <p className="my-3 text-sm text-slate-500">아직 승인된 댓글이 없습니다.</p> : null}<ParticipationForm slug={slug} articleId={articleId} kind="comment" data={data} onSubmitted={() => setRevision(r => r + 1)} /></details> : <p className="py-4 text-xs text-slate-500">댓글은 기관의 현재 프로젝트 설정에서 사용하지 않습니다.</p>}
-      {data.survey ? <details className="py-3"><summary className="min-h-11 cursor-pointer content-center font-bold">간단 설문 · {data.survey.title}</summary><ParticipationForm slug={slug} articleId={articleId} kind="survey" data={data} onSubmitted={() => setRevision(r => r + 1)} /></details> : <p className="py-4 text-xs text-slate-500">현재 연결된 진행 중 설문이 없습니다.</p>}
-      {data.isAdmin ? <a href={`/projects/${slug}/sample-participation`} className="inline-block min-h-11 content-center pt-3 text-sm font-bold underline">시연 의견·댓글·설문 결과 관리</a> : null}
+      <details className="group py-3"><summary className={disclosure}><SampleParticipationIcon kind="private" />비공개 의견 보내기</summary><p className="mt-2 text-xs leading-6">프로젝트 관리자만 확인합니다. 다른 독자에게 공개되지 않습니다.</p><ParticipationForm slug={slug} articleId={articleId} kind="private" data={data} onSubmitted={() => setRevision(r => r + 1)} /></details>
+      {data.commentsEnabled ? <details className="group py-3"><summary className={disclosure}><SampleParticipationIcon kind="comment" />댓글 남기기</summary><p className="text-xs leading-6">관리자가 검토·승인한 댓글만 이 인증된 시연 화면에 표시됩니다.</p><ul className="mt-3 space-y-3">{data.comments.map(c => <li key={c.id} className="rounded-xl bg-white p-3"><p className="whitespace-pre-wrap text-sm leading-7 [overflow-wrap:anywhere]">{c.body}</p><p className="mt-2 text-xs text-slate-500">시연 참여자 · {new Date(c.created_at).toLocaleDateString("ko-KR")}</p></li>)}</ul>{!data.comments.length ? <p className="my-3 text-sm text-slate-500">아직 승인된 댓글이 없습니다.</p> : null}<ParticipationForm slug={slug} articleId={articleId} kind="comment" data={data} onSubmitted={() => setRevision(r => r + 1)} /></details> : <p className="py-4 text-xs text-slate-500">댓글은 기관의 현재 프로젝트 설정에서 사용하지 않습니다.</p>}
+      {data.survey ? <details className="group py-3"><summary className={disclosure}><SampleParticipationIcon kind="survey" />이 기사, 도움이 되었나요?</summary><ParticipationForm slug={slug} articleId={articleId} kind="survey" data={data} onSubmitted={() => setRevision(r => r + 1)} /></details> : <p className="py-4 text-xs text-slate-500">현재 연결된 진행 중 설문이 없습니다.</p>}
     </div>}
+    <details className="group border-t border-slate-200 py-3"><summary className={disclosure}><SampleParticipationIcon kind="share" />기사 공유하기</summary><div className="pt-3"><SampleShareAction target={sampleShareTarget(slug, articleTitle, articleId)} label="기사 공유하기" /></div></details>
   </section>;
 }

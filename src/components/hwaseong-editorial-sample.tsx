@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Private project previews retain authenticated asset URLs. */
-import { SampleLink as Link, SampleDisclosureIcon } from "@/components/hwaseong-sample-navigation";
+import { SampleLink as Link } from "@/components/hwaseong-sample-navigation";
 import { useState } from "react";
 import { SampleReadingTools } from "@/components/hwaseong-sample-reading-tools";
 import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
@@ -41,7 +41,7 @@ export function HwaseongEditorialSample({ sample, href, detail, audio }: { sampl
     <div className="px-6">
       {canvaSummary ? <SampleReadingTools sample={sample} generated={audio} /> : null}
       {!video && (detail || !canvaSummary) ? <blockquote data-interview-quote className="my-6 border-l border-[#8c966e] pl-5"><span aria-hidden="true" className="block h-8 font-serif text-5xl text-[#77835b]">“</span><p data-public-text-scale-target="article-summary" className="font-serif text-[1.4rem] leading-[1.7] tracking-tight">{e.quote}</p><footer className="mt-3 text-xs opacity-70">신현정 · 중부일보 인터뷰 중</footer></blockquote> : null}
-      {!detail ? <>{canvaSummary ? <p className="mt-4 text-xs leading-6">표지의 글자는 이미지입니다. 표지를 눌러 상세기사에서 본문·인용문을 글자로 확대해 읽을 수 있습니다.</p> : <Link data-sample-expand className={`${button} mt-6 ${video ? "border-[#ffec72] bg-[#ffec72] text-[#111d29]" : "border-[#30392e] bg-[#30392e] text-white"}`} href={href}>상세기사 보기 <SampleDisclosureIcon /></Link>}{video ? <a className={`${button} mt-3 border-white/30`} href={e.sourceUrl} target="_blank" rel="noreferrer">유튜브에서 보기 ↗</a> : null}</> : <div className="mt-7 space-y-7">
+      {!detail ? <>{canvaSummary ? <p className="mt-4 text-xs leading-6">표지의 글자는 이미지입니다. 표지를 눌러 상세기사에서 본문·인용문을 글자로 확대해 읽을 수 있습니다.</p> : null}{video ? <a className={`${button} mt-3 border-white/30`} href={e.sourceUrl} target="_blank" rel="noreferrer">유튜브에서 보기 ↗</a> : null}</> : <div className="mt-7 space-y-7">
         <p className="border-y border-current/20 py-4 text-xs leading-6 opacity-75">{e.note}</p>
         {e.sections.map((s, i) => <section key={s.title}><p className={`mb-2 text-[10px] tracking-[.2em] ${video ? "text-[#ffec72]" : "text-[#77835b]"}`}>0{i + 1} / {video ? "OFFICIAL VIDEO NOTES" : "ARTIST NOTES"}</p><h2 data-public-text-scale-target="article-summary" className="text-xl font-bold leading-8">{s.title}</h2><p data-public-text-scale-target="article-body" className="mt-3 whitespace-pre-line text-base leading-[1.95]">{s.text}</p></section>)}
         <a className={`${button} ${video ? "border-[#ffec72] text-[#ffec72]" : "border-[#30392e]"}`} href={e.sourceUrl} target="_blank" rel="noreferrer">{video ? "유튜브에서 원본 보기" : "인터뷰 원문 읽기"} ↗</a>
