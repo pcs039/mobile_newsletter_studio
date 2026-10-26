@@ -1,0 +1,48 @@
+.arrows {
+  animation: arrows-rest 2s linear forwards;
+}
+
+.arrows:focus-within {
+  animation: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@keyframes arrows-rest {
+  0%, 85% { opacity: .7; }
+  99% { opacity: 0; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+.summary h1:not(:global(.sr-only)) {
+  animation: title-enter 280ms ease-out both;
+}
+
+.summary[data-sample-summary="interview"] h1:not(:global(.sr-only)) {
+  animation: serif-enter 360ms ease-out both;
+}
+
+.summary[data-detail-expanded="true"] [data-sample-expand] {
+  display: none;
+}
+
+.detail [data-public-text-scale-target="article-body"] {
+  scroll-margin-top: 24px;
+}
+
+@keyframes title-enter {
+  from { opacity: .25; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes serif-enter {
+  from { opacity: .3; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summary h1:not(:global(.sr-only)),
+  .summary[data-sample-summary="interview"] h1:not(:global(.sr-only)) {
+    animation: none;
+  }
+}

@@ -19,3 +19,10 @@ export function canUseSampleHistory(href: string, current: string, slug: string)
     return next.origin === previous.origin && next.pathname === `/projects/${encodeURIComponent(slug)}/samples`;
   } catch { return false; }
 }
+
+// Sample-only tuning; the ordinary reader keeps its existing gesture contract.
+export function sampleSwipeDirection(start: { x: number; y: number }, end: { x: number; y: number }, viewportWidth: number) {
+  const dx = end.x - start.x, dy = end.y - start.y;
+  const threshold = Math.min(60, Math.max(40, viewportWidth * 0.1));
+  return Math.abs(dx) < threshold || Math.abs(dx) < Math.abs(dy) * 1.5 ? null : dx < 0 ? "next" : "previous";
+}

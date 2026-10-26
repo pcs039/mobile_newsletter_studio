@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Isolated native-history and gesture fixtures. */
 const test=require('node:test'),assert=require('node:assert/strict'),React=require('react');
 const {renderToStaticMarkup}=require('react-dom/server'),loader=require('./canva-test-loader.cjs');
-const load=loader(),{readSampleLocation,canUseSampleHistory}=load('src/lib/hwaseong-sample-navigation.ts');
+const load=loader(),{readSampleLocation,canUseSampleHistory,sampleSwipeDirection}=load('src/lib/hwaseong-sample-navigation.ts');
 const {readerSwipeDirection,isReaderInteractiveTarget}=load('src/lib/mobile-reader-navigation.ts');
 const ids=Object.keys(load('src/lib/hwaseong-sample-interest.ts').sampleOrderRules),slug='hwaseong-2026-10-samples';
 test('location parser preserves validated deep links, width, interest and detail, rejects repeated interests/unknown IDs',()=>{
@@ -42,13 +42,23 @@ test('client navigation updates canonical URL without a server router; new-tab a
   assert(!h.click(tree,'https://external.invalid/'));assert.equal(h.history.length,1);
  }finally{h.restore();}
 });
-test('arrows preserve detail and interest order; first/last boundaries remain explicit',()=>{
+test('arrows always open neighboring summaries, preserve interest order and first/last boundaries',()=>{
  const h=harness(`width=520&articleId=${ids[0]}&view=detail&interest=pets`);try{
   const tree=h.render(),controls=React.Children.toArray(tree.props.children).find(n=>n.props?.onNavigate);
   assert.equal(new URL(controls.props.previous.href,'https://fixture').searchParams.get('articleId'),ids[4]);
   assert.equal(new URL(controls.props.next.href,'https://fixture').searchParams.get('articleId'),ids[1]);
-  assert.equal(new URL(controls.props.next.href,'https://fixture').searchParams.get('view'),'detail');assert.equal(new URL(controls.props.next.href,'https://fixture').searchParams.get('interest'),'pets');
+  assert.equal(new URL(controls.props.next.href,'https://fixture').searchParams.get('view'),null);assert.equal(new URL(controls.props.next.href,'https://fixture').searchParams.get('interest'),'pets');
  }finally{h.restore();}
- const first=harness(`width=390&articleId=${ids[0]}`);try{const c=React.Children.toArray(first.render().props.children).find(n=>n.props?.onNavigate);assert.equal(c.props.previous.label,'표지로 이동');}finally{first.restore();}
+ const first=harness(`width=390&articleId=${ids[0]}`);try{const c=React.Children.toArray(first.render().props.children).find(n=>n.props?.onNavigate);assert.equal(c.props.previous.label,'목차로 이동');}finally{first.restore();}
  const last=harness(`width=390&articleId=${ids[6]}`);try{const c=React.Children.toArray(last.render().props.children).find(n=>n.props?.onNavigate);assert.equal(c.props.next,undefined);const html=renderToStaticMarkup(c);assert.match(html,/disabled=""/);assert.match(html,/마지막 기사/);}finally{last.restore();}
+});
+
+test('sample swipe is lighter while rejecting vertical scroll, diagonal motion and taps',()=>{
+ const s={x:200,y:100};assert.equal(sampleSwipeDirection(s,{x:157,y:105},390),'next');assert.equal(sampleSwipeDirection(s,{x:254,y:105},520),'previous');
+ for(const p of [{x:170,y:100},{x:150,y:140},{x:210,y:170}])assert.equal(sampleSwipeDirection(s,p,390),null);
+});
+test('cover, contents and first summary form one sequence; detail is inline without a second summary',()=>{
+ const cover=harness('width=390');try {const c=React.Children.toArray(cover.render().props.children).find(n=>n.props?.onNavigate);assert.equal(new URL(c.props.next.href,'https://fixture').searchParams.get('view'),'contents');}finally{cover.restore();}
+ const contents=harness('view=contents&width=390');try{const c=React.Children.toArray(contents.render().props.children).find(n=>n.props?.onNavigate);assert.equal(c.props.previous.label,'표지로 이동');assert.equal(new URL(c.props.next.href,'https://fixture').searchParams.get('articleId'),ids[0]);}finally{contents.restore();}
+ const detail=harness(`articleId=${ids[0]}&view=detail&width=390`);try{const html=renderToStaticMarkup(detail.render());assert.match(html,/data-sample-inline-detail/);assert.match(html,/기사 접기/);assert.equal((html.match(/data-summary-kind=/g)||[]).length,1);assert.equal((html.match(/data-sample-reading-tools/g)||[]).length,1);}finally{detail.restore();}
 });

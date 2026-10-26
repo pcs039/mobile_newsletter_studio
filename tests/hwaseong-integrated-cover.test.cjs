@@ -15,7 +15,7 @@ test('default entry renders project cover and client notices without QA controls
 test('contents and retained article deep links bypass cover; old summary/detail remains available',()=>{
  const toc=render({contents:true});assert(!toc.includes('data-cover'));assert.match(toc,/처음으로/);for(let i=1;i<=7;i++)assert(toc.includes(`articleId=a${i}`));
  const summary=render({selectedId:'a3'});assert(!summary.includes('data-cover'));assert.match(summary,/view=contents/);assert.match(summary,/articleId=a3&amp;view=detail/);assert.match(summary,/articleId=a2/);assert.match(summary,/articleId=a4/);
- const detail=render({selectedId:'a3',detail:true});assert.match(detail,/보존된 기사 본문/);assert.match(detail,/이전 페이지 · 이 기사 요약/);
+ const detail=render({selectedId:'a3',detail:true});assert.match(detail,/보존된 기사 본문/);assert.match(detail,/기사 접기 · 요약으로/);
  assert(!render({cover:undefined}).includes('data-cover'));assert.match(render({qa:true}),/390px/);
 });
 test('navigation preserves QA, width and article context; contents is distinct from cover',()=>{

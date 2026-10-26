@@ -1,4 +1,5 @@
 /* eslint-disable react-hooks/purity -- Per-request diagnostics in this authenticated force-dynamic server route. */
+import { preload } from "react-dom";
 import { notFound } from "next/navigation";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { requireProjectAdminPreviewAccess } from "@/lib/project-admin-preview-access";
@@ -27,8 +28,12 @@ export default async function Samples({ params, searchParams }: {
   const authStarted = Date.now();
   if (!project || !(await requireProjectAdminPreviewAccess(project, `/projects/${projectId}/samples`))) notFound();
   timings.authMs = Date.now() - authStarted;
+  // Start the existing cover request before waiting for article/font/Composition reads.
+  const query = await searchParams;
+  const coverImageSrc = project.coverImagePath ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) : project.coverImageUrl;
+  if (project.coverEnabled && coverImageSrc && !query.articleId && query.view !== "contents") preload(coverImageSrc, { as: "image", fetchPriority: "high" });
   const contentStarted = Date.now();
-  const [content, fontData, query] = await Promise.all([getProjectContent(projectId), getFontAssets({ activeOnly: true }), searchParams]);
+  const [content, fontData] = await Promise.all([getProjectContent(projectId), getFontAssets({ activeOnly: true })]);
   timings.contentAndFontsMs = Date.now() - contentStarted;
   if (content.source !== "supabase") notFound();
   const samples = content.articles.map(a => proposalSample(a, project.id)).filter((s): s is ProposalSample => s !== null);
@@ -42,7 +47,6 @@ export default async function Samples({ params, searchParams }: {
     const u = new URL(s.article.audioFile.previewHref, "https://sample.invalid");
     s.article = { ...s.article, audioFile: { ...s.article.audioFile, previewHref: `/api/project-files/preview?${u.searchParams}` } };
   }
-  const coverImageSrc = project.coverImagePath ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) : project.coverImageUrl;
   const cover = project.coverEnabled && coverImageSrc ? {
     coverImageSrc, coverFit: project.coverFit, coverLayout: project.coverLayout,
     coverTitle: project.coverTitle || project.title, coverSubtitle: project.coverSubtitle,

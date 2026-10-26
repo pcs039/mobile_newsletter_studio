@@ -31,8 +31,8 @@ for(const [interest,order] of Object.entries(expected)){
    const shown=render(interest,{selectedId:ids[order[i]-1],detail,width:520,qa:true});
    const prev=shown.links.find(x=>x.text==='← 이전 기사'),next=shown.links.find(x=>x.text==='다음 기사 →');
    assert.equal(prev?.url.searchParams.get('articleId'),i?ids[order[i-1]-1]:undefined);assert.equal(next?.url.searchParams.get('articleId'),i<6?ids[order[i+1]-1]:undefined);
-   for(const n of [prev,next].filter(Boolean))assert.equal(n.url.searchParams.get('view'),detail?'detail':null);
-   if(detail){const back=shown.links.find(x=>x.text==='← 이전 페이지 · 이 기사 요약');assert.equal(back.url.searchParams.get('articleId'),ids[order[i]-1]);assert(!back.url.searchParams.has('view'));}
+   for(const n of [prev,next].filter(Boolean))assert.equal(n.url.searchParams.get('view'),null);
+   if(detail){const back=shown.links.find(x=>x.text==='기사 접기 · 요약으로 ↑');assert.equal(back.url.searchParams.get('articleId'),ids[order[i]-1]);assert(!back.url.searchParams.has('view'));}
    for(const link of shown.links.filter(x=>x.url.pathname.startsWith('/projects/'))){assert.equal(link.url.searchParams.get('interest'),interest==='all'?null:interest);assert.equal(link.url.searchParams.get('width'),link.text==='390px'?'390':'520');assert.equal(link.url.searchParams.get('qa'),'1');}
   }
  });
