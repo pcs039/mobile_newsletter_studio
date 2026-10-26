@@ -153,7 +153,7 @@
 .editorialArticle[data-editorial-feature="video"] .editorialFlow > a { background: #d9ff62; border-color: #d9ff62; color: #111d29; }
 
 /* Keep the shared scale controls authoritative despite the editorial selectors. */
-:global([data-public-text-scale="large"]) .screen .detail[data-detail-kind] [data-public-text-scale-target="article-body"] { font-size: 1.5rem; line-height: 1.85; }
-:global([data-public-text-scale="xlarge"]) .screen .detail[data-detail-kind] [data-public-text-scale-target="article-body"] { font-size: 2rem; line-height: 1.75; }
-:global([data-public-text-scale="large"]) .screen .detail[data-detail-kind] [data-public-text-scale-target="article-summary"] { font-size: 1.3125rem; line-height: 1.65; }
-:global([data-public-text-scale="xlarge"]) .screen .detail[data-detail-kind] [data-public-text-scale-target="article-summary"] { font-size: 1.625rem; line-height: 1.6; }
+:global([data-public-text-scale="large"]) .detail [data-public-text-scale-target="article-body"] { font-size: 1.5rem !important; line-height: 1.85 !important; }
+:global([data-public-text-scale="xlarge"]) .detail [data-public-text-scale-target="article-body"] { font-size: 2rem !important; line-height: 1.75 !important; }
+:global([data-public-text-scale="large"]) .detail [data-public-text-scale-target="article-summary"] { font-size: 1.3125rem !important; line-height: 1.65 !important; }
+:global([data-public-text-scale="xlarge"]) .detail [data-public-text-scale-target="article-summary"] { font-size: 1.625rem !important; line-height: 1.6 !important; }
