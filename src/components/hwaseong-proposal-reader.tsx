@@ -192,7 +192,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const isCoverView = Boolean(cover && !selected && !contents);
   const href = (id?: string, d = false, w = width) => sampleHref(slug, id, d, w, { qa, interest: currentInterest, sharedEntry: query?.get("entry") === "share" });
   const contentsHref = sampleHref(slug, undefined, false, width, { contents: true, qa, interest: currentInterest });
-  if (isCoverView && cover) preload(cover.coverImageSrc, { as: "image", fetchPriority: "high" });
+  if (isCoverView && cover && !cover.coverImageSrc.startsWith("data:")) preload(cover.coverImageSrc, { as: "image", fetchPriority: "high" });
   const previousPage = selected ? prev ? { href: href(prev.article.id), label: "이전 기사로 이동" }
     : { href: contentsHref, label: "목차로 이동" } : contents && cover ? { href: href(), label: "표지로 이동" } : undefined;
   const nextPage = isCoverView ? { href: contentsHref, label: "목차로 이동" } : !selected && orderedSamples[0] ? { href: href(orderedSamples[0].article.id), label: "첫 기사로 이동" }
@@ -319,7 +319,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         </div>
       </nav> : null}
       {cover && (isCoverView || coverVisited) ? <div hidden={!isCoverView} data-sample-cover-persisted>
-        <PublicNewsletterCoverView {...cover} compact slug={slug} hasArticles={orderedSamples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." showTextSizeControl tocPrimary tocLabel="소식지 둘러보기" onOpenToc={() => navigateLocal(contentsHref)} onStartReading={() => navigateLocal(href(orderedSamples[0]?.article.id))} />
+        <PublicNewsletterCoverView {...cover} compact coverImagePriority slug={slug} hasArticles={orderedSamples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." showTextSizeControl tocPrimary tocLabel="소식지 둘러보기" onOpenToc={() => navigateLocal(contentsHref)} onStartReading={() => navigateLocal(href(orderedSamples[0]?.article.id))} />
         <div className="px-5 pb-4"><SampleShareAction target={sampleShareTarget(slug, [cover.masthead, cover.coverIssueText].filter(Boolean).join(" · "))} label="소식지 공유하기" /><p className="mb-3 mt-4 text-[11px] leading-5 text-slate-600">표지 배경은 Canva AI로 제작한 개념 일러스트이며 실제 장소 사진이 아닙니다.</p></div>
       </div> : null}
       {isCoverView ? null : selected ? <SampleReadingToolsScope key={selected.article.id}>
