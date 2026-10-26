@@ -223,6 +223,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const isCoverView = Boolean(cover && !selected && !contents);
   const href = (id?: string, d = false, w = width) => sampleHref(slug, id, d, w, { qa, interest: currentInterest, sharedEntry: query?.get("entry") === "share" });
   const contentsHref = sampleHref(slug, undefined, false, width, { contents: true, qa, interest: currentInterest });
+  const hasSplitAudio = Boolean(audioIndex[selectedId ?? ""]?.detail);
   if (isCoverView && cover && !cover.coverImageSrc.startsWith("data:")) preload(cover.coverImageSrc, { as: "image", fetchPriority: "high" });
   const previousPage = selected ? prev ? { href: href(prev.article.id), label: "이전 기사로 이동" }
     : { href: contentsHref, label: "목차로 이동" } : contents && cover ? { href: href(), label: "표지로 이동" } : undefined;
@@ -241,7 +242,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     return true;
   }
   useLayoutEffect(() => {
-    if (previousLocation.current.id !== selectedId) window.dispatchEvent(new Event("datadiction:stop-article-audio"));
+    if (previousLocation.current.id !== selectedId || (previousLocation.current.detail !== detail && hasSplitAudio)) window.dispatchEvent(new Event("datadiction:stop-article-audio"));
     const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth";
     const hash = window.location.hash;
     if (hash) { try { document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView(); } catch { /* Invalid hash stays on the current article. */ } }
@@ -259,7 +260,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [locationKey, selectedId, detail]);
+  }, [locationKey, selectedId, detail, hasSplitAudio]);
   useEffect(() => {
     if (isCoverView || !selectedId) return; // No original-image warmup on the cover or TOC.
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
@@ -362,7 +363,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
           {detail ? <div key="detail-body">
           <div className={styles.detailHeading}><div><p>{({ policy: "LIVING GUIDE · 생활과 행정", tourism: "TRAVEL NOTES · 화성 여행", event: "CULTURE JOURNAL · 문화 기록", cartoon: "BEHIND THE SCENES · 만평의 바탕", accessible: "EASY READ · 한국어 원문", interview: "PEOPLE & CULTURE · 인물 탐방", video: "VIDEO JOURNAL · 영상 이야기" })[selected.kind]}</p><h2>상세기사</h2></div><Link href={href(selected.article.id)} className={action}>기사 접기 <SampleDisclosureIcon expanded /></Link></div>
           <SampleDetailReadingTools sample={selected} generated={audioIndex[selected.article.id]} />
-          <div data-sample-detail-body>{["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail /> : selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard className={styles.originalBody} article={{ ...samplePresentationArticle(selected), showPublicTitle: false, summary: "", audioFile: null, audioSource: "none", blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} heroBackground={backgrounds[selected.article.id]} textDesign={{ captionStyled: textDesigns[selected.article.id]?.captionStyled, bodyEmphasis: textDesigns[selected.article.id]?.bodyEmphasis }} />}</div>
+          <div data-sample-detail-body>{selected.kind === "cartoon" ? <section aria-label="만평 장면과 대사" className="mb-7 space-y-5">{comicScenes.map((scene,i)=><section key={scene.line} className="rounded-xl border border-[#dac4a7] bg-[#fff4df] p-4"><h3 className="mb-2 text-sm font-bold">{i+1}컷</h3><p data-public-text-scale-target="article-body" className="text-sm leading-7">{scene.alt}</p><blockquote data-public-text-scale-target="article-body" className="my-3 font-bold leading-8">{scene.speaker}: {scene.line}</blockquote><p data-public-text-scale-target="article-body" className="text-sm leading-7">{scene.aside}</p></section>)}</section> : null}{["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail /> : selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard className={styles.originalBody} article={{ ...samplePresentationArticle(selected), showPublicTitle: false, summary: "", audioFile: null, audioSource: "none", blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} heroBackground={backgrounds[selected.article.id]} textDesign={{ captionStyled: textDesigns[selected.article.id]?.captionStyled, bodyEmphasis: textDesigns[selected.article.id]?.bodyEmphasis }} />}</div>
           </div> : null}
           {!detail ? <Link key="expand" href={href(selected.article.id, true)} data-sample-expand className={`${action} w-full border-transparent bg-[#125e7c] text-white`}>상세기사 보기 <SampleDisclosureIcon /></Link> : null}
           <HwaseongArticleParticipation key="participation" slug={slug} articleId={selected.article.id} articleTitle={selected.headline.replaceAll("\n", " ")} />

@@ -40,4 +40,4 @@ export function sampleNarration(sample: ProposalSample) {
   }
   return parts.filter(Boolean).join("\n\n").trim();
 }
-export type SampleAudio = { id: string; voice: ArticleTtsVoice; manifestHref: string; transcriptText: string };
+export type SampleAudio = { id: string; voice: ArticleTtsVoice; manifestHref: string; transcriptText: string; detail?: SampleAudio };

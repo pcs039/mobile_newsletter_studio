@@ -1,0 +1,42 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Isolated provider/Storage fixtures only. */
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),loader=require('./canva-test-loader.cjs');
+const base=loader(),model=base('src/lib/hwaseong-proposal-sample.ts'),n=base('src/lib/hwaseong-sample-split-narration.ts'),ids=Object.keys(base('src/lib/hwaseong-sample-interest.ts').sampleOrderRules);
+const samples=ids.map((id,i)=>({kind:'policy',headline:`기사 ${i+1}`,summary:'표시되지 않는 내부 요약',article:{id,blocks:[{type:'paragraph',isVisible:true,title:'본문',body:'실제 상세 본문입니다.',metadata:{}},{type:'paragraph',isVisible:true,title:'자료 구분과 확인 안내',body:'관리자 설명입니다.',metadata:{}}]}}));
+test('fixed alternating voices and separate visible scripts preserve originals; admin/archived content never leaks into narration',()=>{
+ assert.deepEqual(ids.map(n.splitArticleVoice),['marin','cedar','coral','onyx','marin','cedar','coral']);const before=JSON.stringify(samples);
+ const summary=n.splitNarration(samples[0],'summary'),detail=n.splitNarration(samples[0],'detail');assert(summary.includes('따로 모으기'));assert(!summary.includes('상세 본문'));assert(!summary.includes('내부 요약'));assert(detail.includes('상세 본문'));assert(!detail.includes('관리자'));assert(!detail.includes('기사 1'));
+ const cartoon={...samples[3],kind:'cartoon'};assert(n.splitNarration(cartoon,'detail').includes('빈 주머니'));assert(!n.splitNarration(cartoon,'summary').includes('실제 상세 본문'));
+ assert.equal(JSON.stringify(samples),before);assert.equal(n.splitTtsShutdown,'2027-01-06');
+});
+function fixture(){let providerFailure=false,claimLoss=false,commitLoss=false,uploadLoss=false,corrupt=false;const rows=[],objects=new Map(),calls=[];
+ const previousFetch=global.fetch,keys=['STAGING_OPENAI_API_KEY','SUPABASE_SERVICE_ROLE_KEY'].map(k=>[k,process.env[k]]);process.env.STAGING_OPENAI_API_KEY='fixture-key';process.env.SUPABASE_SERVICE_ROLE_KEY='fixture-service';
+ const mp3=fs.readFileSync(__dirname+'/fixtures/marin-recovery-tone.mp3');
+ const contract=loader({'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>true},'@/lib/hwaseong-proposal-sample':{...model,proposalSample:a=>a},'@/lib/newsletter-repository':{getProjectContent:async()=>({source:'supabase',articles:samples})},'@/lib/supabase-config':{getSupabaseRestEndpoint:p=>'https://db.invalid'+p,getSupabaseStorageEndpoint:p=>'https://storage.invalid'+p},'@/lib/article-tts-audio':{normalizeKoreanTtsText:s=>s,chunkArticleTtsText:s=>[s],requestOpenAiSpeech:async(_text,_voice,_model,credentials)=>{assert.equal(credentials.apiKey,'fixture-key');assert(credentials.signal);assert(credentials.diagnostics);calls.push('provider');credentials.diagnostics.setReceipt(providerFailure?401:200,'req_fixture');return providerFailure?{ok:false,httpStatus:401}:{ok:true,data:mp3.buffer.slice(mp3.byteOffset,mp3.byteOffset+mp3.byteLength)};}}})('src/lib/hwaseong-sample-split-tts-server.ts');
+ global.fetch=async(url,init={})=>{const method=init.method||'GET',u=new URL(url);if(u.hostname==='db.invalid'){
+  if(method==='POST'){const r=JSON.parse(init.body);if(rows.some(x=>x.id===r.id))return new Response(null,{status:409});rows.push({...r,ai_tts_generated_at:null,duration_seconds:null});if(claimLoss)throw Error('Lost reservation');return new Response(null,{status:201});}
+  if(method==='PATCH'){const id=u.searchParams.get('id').slice(3),r=rows.find(r=>r.id===id);Object.assign(r,JSON.parse(init.body));if(commitLoss)throw Error('Lost completion');return Response.json([r]);}
+  const offset=Number(u.searchParams.get('offset')||0);return Response.json(rows.slice(offset,offset+100));
+ }const path=u.pathname;if(method==='POST'){assert.equal(init.headers['x-upsert'],'false');assert(!objects.has(path));objects.set(path,corrupt?Buffer.from('bad'):Buffer.from(init.body));if(uploadLoss)throw Error('Upload response lost');return new Response(null,{status:201});}
+ return objects.has(path)?new Response(objects.get(path),{headers:{'Content-Type':'audio/mpeg'}}):new Response(null,{status:404});};
+ return {...contract,rows,objects,calls,set:k=>{if(k==='provider')providerFailure=true;if(k==='claim')claimLoss=true;if(k==='commit')commitLoss=true;if(k==='upload')uploadLoss=true;if(k==='corrupt')corrupt=true;},restore(){global.fetch=previousFetch;keys.forEach(([k,v])=>{if(v===undefined)delete process.env[k];else process.env[k]=v;});}};
+}
+test('18 plans are distinct; old files are never overwritten; full cutover waits for every summary/detail',async()=>{const f=fixture();try{const plans=await f.splitTtsPlans();assert.equal(plans.length,18);assert.equal(new Set(plans.map(p=>p.id)).size,18);assert.deepEqual(await f.splitAudioIndex(),{});
+ for(const p of plans){const r=await f.generateSplitTts(p.job);assert.equal(r.state,'ready');assert.equal(r.calls,1);assert.equal(r.proofs.length,1);assert.equal(r.receipts[0].providerRequestId,'req_fixture');}
+ const index=await f.splitAudioIndex();assert.equal(Object.keys(index).length,7);for(const id of ids){assert(index[id].detail);assert.notEqual(index[id].manifestHref,index[id].detail.manifestHref);assert.equal(index[id].voice,index[id].detail.voice);}
+ const repeat=await f.generateSplitTts(plans[0].job);assert.equal(repeat.calls,0);assert.equal(f.calls.length,18);assert.equal(f.objects.size,18);
+ const denied=await f.splitTtsDelivery('unknown',null,new Request('https://fixture.invalid'));assert.equal(denied.status,404);
+}finally{f.restore();}});
+test('same job concurrency makes at most one provider call; missing probes block article generation',async()=>{const f=fixture();try{assert.equal((await f.generateSplitTts(ids[0]+':summary')).state,'rejected');await Promise.all([f.generateSplitTts('probe-v2-marin'),f.generateSplitTts('probe-v2-marin')]);assert.equal(f.calls.length,1);assert.equal(f.rows.length,1);}finally{f.restore();}});
+for(const mode of ['provider','claim','commit','upload','corrupt'])test(`${mode} failure preserves reservation and never pays twice`,async()=>{const f=fixture();try{f.set(mode);const result=await f.generateSplitTts('probe-v2-marin');assert.equal(result.state,['commit','provider','claim','corrupt'].includes(mode)?'unknown':'ready');const calls=f.calls.length;const reread=await f.splitTtsStatus();assert.equal(reread.plans[0].id,result.id);await f.generateSplitTts('probe-v2-marin');assert.equal(f.calls.length,calls);assert.equal(f.rows.length,1);if(mode==='provider'||mode==='corrupt'){assert.equal((await f.generateSplitTts('probe-v2-cedar')).state,'unknown');assert.equal(f.calls.length,1);}}finally{f.restore();}});
+test('pagination includes records beyond the old twenty-row cap without losing the 18 current plans',async()=>{const f=fixture();try{for(let i=0;i<125;i++)f.rows.push({id:'old-'+i});assert.equal((await f.splitTtsRows()).length,125);assert.equal((await f.splitTtsStatus()).plans.length,18);}finally{f.restore();}});
+test('summary/detail use separate manifests while the shared scope pauses only the other audio',()=>{
+ const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+ const loaded=loader({'@/components/public-article-audio-player':{PublicArticleAudioPlayer:p=>React.createElement('audio',{'data-manifest':p.manifestUrl})}})('src/components/hwaseong-sample-reading-tools.tsx');
+ const generated={id:'summary',voice:'marin',transcriptText:'요약만',manifestHref:'/summary',detail:{id:'detail',voice:'marin',transcriptText:'상세만',manifestHref:'/detail'}};
+ const sample={kind:'policy',article:{id:ids[0],audioFile:null}};
+ const html=renderToStaticMarkup(React.createElement(loaded.SampleReadingToolsScope,null,React.createElement(loaded.SampleReadingTools,{sample,generated}),React.createElement(loaded.SampleDetailReadingTools,{sample,generated})));
+ assert(html.includes('기사 요약 듣기'));assert(html.includes('상세기사 듣기'));assert.equal((html.match(/<audio /g)||[]).length,2);assert(html.includes('data-manifest="/summary"'));assert(html.includes('data-manifest="/detail"'));assert(!html.includes('autoPlay'));
+ const Scope=loader({'react':{...React,useState:()=>[null,()=>{}]}})('src/components/hwaseong-sample-reading-tools.tsx').SampleReadingToolsScope;
+ const a={paused:false,pause(){this.paused=true;}},b={paused:false,pause(){this.paused=true;}};
+ Scope({children:null}).props.children.props.onPlayCapture({target:a,currentTarget:{querySelectorAll:()=>[a,b]}});assert.equal(a.paused,false);assert.equal(b.paused,true);
+});
