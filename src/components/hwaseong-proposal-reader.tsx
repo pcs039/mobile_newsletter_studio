@@ -43,11 +43,21 @@ function TocThumbnail({ sample, thumbnail, priority }: { sample: ProposalSample;
   </div>;
 }
 
-function TourismMap({ sample, detailHref }: { sample: ProposalSample; detailHref: string }) {
+// Pin tips stay inside the original polygons, away from the nearby place labels.
+export const tourismPinPositions = [[148, 197], [221, 280], [82, 408], [631, 109], [935, 349], [633, 505]] as const;
+export function TourismMap({ sample, detailHref, mapImage }: { sample: ProposalSample; detailHref: string; mapImage?: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const card = useRef<HTMLDivElement>(null);
   const map = useRef<HTMLDivElement>(null);
   const [zoomed, setZoomed] = useState(false);
+  const source = mapImage || sample.cover;
+  const image = useRef<HTMLImageElement>(null);
+  const [loadedSource, setLoadedSource] = useState("");
+  const ready = loadedSource === source;
+  useLayoutEffect(() => {
+    // DOM readiness also covers an image decoded before hydration / restored from cache.
+    if (image.current?.complete && image.current.naturalWidth > 0) setLoadedSource(source);
+  }, [source]);
   const place = tourismPlaces.find(p => p.id === selected);
   function centerMap(id: string | null) {
     const bounds = map.current;
@@ -62,17 +72,21 @@ function TourismMap({ sample, detailHref }: { sample: ProposalSample; detailHref
   function choose(id: string) { setSelected(id); requestAnimationFrame(() => { if (zoomed) centerMap(id); card.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }); }
   return <section aria-label="화성 관광지도" data-swipe-navigation-ignore>
     <div className="mb-3 flex items-center justify-between gap-2 px-5"><p className="text-xs font-bold tracking-wide text-[#125e7c]">바다 · 역사 · 초록<br /><span className="font-normal tracking-normal">그림 속 번호로 떠나는 여행</span></p><button className="min-h-11 rounded-full border border-sky-300 bg-white px-4 text-sm font-bold" aria-pressed={zoomed} onClick={() => { setZoomed(!zoomed); requestAnimationFrame(() => centerMap(selected)); }}>{zoomed ? "지도 전체 보기" : "지도 크게 보기"}</button></div>
-    <div ref={map} tabIndex={-1} className="scroll-mt-4 overflow-auto border-y border-sky-200 bg-white" style={{ maxHeight: zoomed ? 420 : undefined }}><div className="relative" style={{ minWidth: zoomed ? 680 : undefined }}>
+    <div ref={map} tabIndex={-1} className="scroll-mt-4 overflow-auto border-y border-sky-200 bg-white" style={{ maxHeight: zoomed ? 420 : undefined }}><div data-tourism-map-frame className="relative" style={{ minWidth: zoomed ? 680 : undefined, aspectRatio: "1024 / 700" }}>
       {/* Original proportions and source polygons stay in the same coordinate system. */}
-      <img src={sample.cover} alt="화성시 공식 관광 그림지도. 아래 큰 관광지 선택 버튼으로도 이용할 수 있습니다." width={1024} height={700} className="block h-auto w-full" />
-      <svg viewBox="0 0 1024 700" className="absolute inset-0 h-full w-full" role="group" aria-label="지도 관광지 터치 영역">
-        {tourismPlaces.map((p, i) => <g key={p.id}>
+      <img ref={image} src={source} alt="화성시 공식 관광 그림지도. 아래 큰 관광지 선택 버튼으로도 이용할 수 있습니다." width={1024} height={700} loading="eager" fetchPriority="high" draggable={false} onLoad={() => setLoadedSource(source)} onError={() => setLoadedSource("")} className="absolute inset-0 block h-full w-full" />
+      <div data-map-overlays style={{ visibility: ready ? "visible" : "hidden" }}>
+      <svg viewBox="0 0 1024 700" className="pointer-events-none absolute inset-0 h-full w-full" role="group" aria-label="지도 관광지 터치 영역">
+        {tourismPlaces.map(p => <g key={p.id}>
           <polygon points={p.points} role="button" tabIndex={0} aria-label={`${p.name} 정보 열기`} aria-pressed={selected === p.id}
             onClick={() => choose(p.id)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(p.id); } }}
-            fill={selected === p.id ? "#f9b93466" : "transparent"} stroke={selected === p.id ? "#9b5216" : "#125e7c"} strokeWidth={3} className="cursor-pointer focus:fill-amber-200/60" />
-          <text x={Number(p.points.split(" ")[0].split(",")[0]) + 7} y={Number(p.points.split(" ")[0].split(",")[1]) + 24} fill="#073c54" stroke="white" strokeWidth={2} paintOrder="stroke" fontSize={28} fontWeight="900" pointerEvents="none">{i + 1}</text>
+            pointerEvents="all" fill={selected === p.id ? "#ffec7233" : "transparent"} stroke={selected === p.id ? "#234e43" : "transparent"} strokeWidth={3} className="cursor-pointer focus:fill-amber-200/60" />
         </g>)}
       </svg>
+      {tourismPlaces.map((p, i) => <button key={p.id} type="button" data-map-pin={p.id} aria-label={`${i + 1}번 ${p.name} 정보 열기`} aria-pressed={selected === p.id} onClick={() => choose(p.id)} className="absolute flex h-11 w-11 -translate-x-1/2 -translate-y-full items-end justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#234e43]" style={{ left: `${tourismPinPositions[i][0] / 1024 * 100}%`, top: `${tourismPinPositions[i][1] / 700 * 100}%` }}>
+        <svg viewBox="0 0 32 40" aria-hidden="true" className="h-10 w-8 drop-shadow-md"><path d="M16 38C13 33 2 23 2 15a14 14 0 1 1 28 0c0 8-11 18-14 23Z" fill={selected === p.id ? "#0b786a" : "#234e43"} stroke={selected === p.id ? "#ffec72" : "white"} strokeWidth="2" /><text x="16" y="21" textAnchor="middle" fill="white" fontSize="17" fontWeight="800">{i + 1}</text></svg>
+      </button>)}
+      </div>
     </div></div>
     <p className="mx-5 mt-2 text-xs leading-5 text-slate-600">{zoomed ? "확대한 지도는 좌우·위아래로 움직여 볼 수 있어요." : "장소 이름을 눌러도 같은 안내가 열려요."}</p>
     <div className="mt-3 grid grid-cols-2 gap-2 px-5">{tourismPlaces.map((p, i) => <button key={p.id} onClick={() => choose(p.id)} aria-pressed={selected === p.id} className={`min-h-[76px] rounded-xl border p-3 text-left ${selected === p.id ? "border-[#125e7c] bg-[#125e7c] text-white" : "border-sky-200 bg-white text-[#125e7c]"}`}><span className="block text-[10px] tracking-wider opacity-80">0{i + 1} / {i < 3 ? "바다" : i === 3 ? "역사" : "초록"}</span><span className="mt-1 block text-sm font-black [word-break:keep-all]">{p.name}</span></button>)}</div>
@@ -120,7 +134,7 @@ function TourismDetail({ sample }: { sample: ProposalSample }) {
 }
 
 // Only the five private fixtures use this editorial presentation. Saved detail content stays in ArticleCard.
-function SampleSummary({ sample, href, onImage, audio }: { sample: ProposalSample; href: string; onImage: (image: PublicArticleLightboxImage) => void; audio?: SampleAudio }) {
+function SampleSummary({ sample, href, onImage, audio, mapImage }: { sample: ProposalSample; href: string; onImage: (image: PublicArticleLightboxImage) => void; audio?: SampleAudio; mapImage?: string }) {
   const dark = sample.kind === "event";
   const artComic = sample.kind === "cartoon" && sample.artDirectionVersion === 3;
   const imageAlt = sample.kind === "cartoon" ? "창작 3컷: 놀이터 입장에 신난 보호자와 강아지, 뒷정리를 깨닫는 장면, 두 강아지와 함께 웃는 다음 산책" : sample.headline;
@@ -132,7 +146,7 @@ function SampleSummary({ sample, href, onImage, audio }: { sample: ProposalSampl
       <SampleReadingTools sample={sample} generated={audio} />
       {sample.kind === "accessible" ? <p lang="en" className="mt-3 text-base leading-6 text-[#244dae]">A better day out, together.</p> : null}
     </div>
-    {sample.kind === "tourism" ? <TourismMap key={sample.article.id} sample={sample} detailHref={href} /> : artComic ? <ComicStory sample={sample} onImage={onImage} /> : <button data-sample-swipe-image className="block w-full bg-transparent text-left" aria-label="요약 이미지 확대" onClick={() => onImage({ src: sample.cover, alt: imageAlt })}>
+    {sample.kind === "tourism" ? <TourismMap key={sample.article.id} sample={sample} detailHref={href} mapImage={mapImage} /> : artComic ? <ComicStory sample={sample} onImage={onImage} /> : <button data-sample-swipe-image className="block w-full bg-transparent text-left" aria-label="요약 이미지 확대" onClick={() => onImage({ src: sample.cover, alt: imageAlt })}>
       <img src={sample.cover} alt={imageAlt} className="block h-auto w-full" />
     </button>}
     <div className="px-5">
@@ -150,7 +164,7 @@ function SampleSummary({ sample, href, onImage, audio }: { sample: ProposalSampl
   </section>;
 }
 
-export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, textDesigns, selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, cover, serverTimings, audioIndex = {}, thumbnailIndex = {}, contents: initialContents = false, qa: initialQa = false, interest: initialInterest = "all" }: {
+export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, textDesigns, selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, cover, serverTimings, audioIndex = {}, thumbnailIndex = {}, mapImage, contents: initialContents = false, qa: initialQa = false, interest: initialInterest = "all" }: {
   slug: string; samples: ProposalSample[]; fonts: FontAsset[]; backgrounds: Record<string, ArticleHeroBackground>; textDesigns: Record<string, ArticleTextDesign>;
   selectedId?: string; detail: boolean; width: 390 | 520;
   cover?: Pick<ComponentProps<typeof PublicNewsletterCoverView>, "coverImageSrc" | "coverFit" | "coverLayout" | "coverTitle" | "coverSubtitle" | "coverIssueText" | "masthead">;
@@ -158,6 +172,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   serverTimings?: Record<string, number>;
   audioIndex?: Record<string, SampleAudio>;
   thumbnailIndex?: Record<string, string>;
+  mapImage?: string;
 }) {
   const query = useSearchParams();
   const { selectedId, detail, width, contents, qa, interest } = query
@@ -181,10 +196,11 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     const position = ordered.findIndex(s => s.article.id === selectedId);
     if (position < 0) return [];
     const nearby = ordered.slice(Math.max(0, position - 1), position + 2);
+    const preparedMapSource = mapImage ? samples.find(s => s.kind === "tourism")?.cover : undefined;
     return [...new Set(nearby.flatMap(s => [s.cover,
       ...s.article.blocks.filter(b => b.isVisible && b.type === "image" && b.body.startsWith("/api/project-files/preview?")).map(b => b.body),
       ...(backgrounds[s.article.id]?.visible ? [backgrounds[s.article.id].url] : []),
-    ]))].slice(0, 6);
+    ]))].filter(src => src !== preparedMapSource).slice(0, 6);
   })();
   const [image, setImage] = useState<PublicArticleLightboxImage | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -334,7 +350,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       {isCoverView ? null : selected ? <SampleReadingToolsScope key={selected.article.id}>
         <nav className="flex flex-wrap items-center justify-between gap-2 px-5 pt-2 text-xs"><span className="py-2 font-bold">기사 읽기</span><span>{currentInterest !== "all" ? `${sampleInterests.find(option => option.value === currentInterest)?.label} · ` : ""}{index + 1} / {orderedSamples.length} · {detail ? "상세기사" : "요약 첫 페이지"}</span></nav>
         <div ref={summaryRef} className={`${styles.summary} scroll-mt-4`} data-sample-summary={selected.kind} data-detail-expanded={detail} key={selected.article.id}>
-          {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} detail={false} /> : <SampleSummary sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} onImage={setImage} />}
+          {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} detail={false} /> : <SampleSummary sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} onImage={setImage} mapImage={mapImage} />}
         </div>
         {/* Stable section/form identity: toggling detail only inserts/removes its body. */}
         <section ref={detailRef} tabIndex={-1} aria-label={detail ? "펼친 상세기사" : "요약 기사 참여"} data-sample-inline-detail={detail ? "" : undefined} className={`${detail ? styles.detail : ""} scroll-mt-4 border-t border-slate-200 p-5`}>

@@ -35,3 +35,12 @@ test('inactive or mismatched ownership is rechecked even after derived bytes wer
 test('truncated or corrupt source files fall back without returning unverified frames',async()=>fixture(async f=>{
  f.body(Buffer.alloc(20));assert.deepEqual(await f.prepareSampleToc(project,slug,samples),{});
 }));
+test('the single full map is lossless, keeps 1024x700 coordinates and never changes its source',async()=>fixture(async f=>{
+ const original=await sharp({create:{width:1024,height:700,channels:3,background:'#ab7654'}}).png().toBuffer();
+ f.body(original);f.rows([{project_id:project,storage_path:path(1),storage_bucket:'design-production-assets',mime_type:'image/png',file_size_bytes:original.length,is_active:true}]);
+ const result=await f.prepareSampleMap(project,slug,samples),bytes=Buffer.from(result.split(',')[1],'base64'),meta=await sharp(bytes).metadata();
+ assert.equal(meta.width,1024);assert.equal(meta.height,700);assert.equal(meta.format,'webp');
+ assert.deepEqual(await sharp(bytes).raw().toBuffer(),await sharp(original).raw().toBuffer());
+ assert.equal(f.requests.length,2);assert(f.requests[1].url.endsWith('/1.png'));assert(bytes.length<=512*1024);
+ f.enabled(false);assert.equal(await f.prepareSampleMap(project,slug,samples),undefined);
+}));

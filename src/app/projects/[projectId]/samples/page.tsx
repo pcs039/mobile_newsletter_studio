@@ -11,7 +11,7 @@ import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/h
 import { sampleAudioIndex } from "@/lib/hwaseong-sample-tts-server";
 import { normalizeSampleInterest } from "@/lib/hwaseong-sample-interest";
 import { prepareSampleCover } from "@/lib/hwaseong-sample-cover-server";
-import { prepareSampleToc } from "@/lib/hwaseong-sample-toc-server";
+import { prepareSampleToc, prepareSampleMap } from "@/lib/hwaseong-sample-toc-server";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "화성 10월호 · 비공개 제안 샘플", robots: { index: false, follow: false }, referrer: "no-referrer" as const };
@@ -42,7 +42,7 @@ export default async function Samples({ params, searchParams }: {
   const samples = content.articles.map(a => proposalSample(a, project.id)).filter((s): s is ProposalSample => s !== null);
   const ids = samples.map(s => s.article.id);
   const compositionStarted = Date.now();
-  const [backgrounds, textDesigns, audioIndex, inlineCover, thumbnailIndex] = await Promise.all([getArticleHeroBackgrounds(project.id, projectId, ids, "preview"), getArticleTextDesigns(project.id, ids, true), sampleAudioIndex(samples).catch(() => ({})), preparedCover, prepareSampleToc(project.id, projectId, samples)]);
+  const [backgrounds, textDesigns, audioIndex, inlineCover, thumbnailIndex, mapImage] = await Promise.all([getArticleHeroBackgrounds(project.id, projectId, ids, "preview"), getArticleTextDesigns(project.id, ids, true), sampleAudioIndex(samples).catch(() => ({})), preparedCover, prepareSampleToc(project.id, projectId, samples), prepareSampleMap(project.id, projectId, samples)]);
   timings.compositionMs = Date.now() - compositionStarted;
   timings.totalMs = Date.now() - started;
   // Uploaded audio still uses the authenticated existing project-file proxy.
@@ -56,6 +56,6 @@ export default async function Samples({ params, searchParams }: {
     coverIssueText: project.coverIssueText || project.issue, masthead: project.title,
   } : undefined;
   if (isCoverEntry && !inlineCover) preload(coverImageSrc, { as: "image", fetchPriority: "high" });
-  return <><PublicFontFaceStyle fonts={fontData.fonts} /><HwaseongProposalReader slug={projectId} samples={samples} fonts={fontData.fonts} backgrounds={backgrounds} textDesigns={textDesigns} cover={cover} serverTimings={timings} audioIndex={audioIndex} thumbnailIndex={thumbnailIndex}
+  return <><PublicFontFaceStyle fonts={fontData.fonts} /><HwaseongProposalReader slug={projectId} samples={samples} fonts={fontData.fonts} backgrounds={backgrounds} textDesigns={textDesigns} cover={cover} serverTimings={timings} audioIndex={audioIndex} thumbnailIndex={thumbnailIndex} mapImage={mapImage}
     selectedId={ids.includes(query.articleId ?? "") ? query.articleId : undefined} detail={query.view === "detail"} contents={query.view === "contents"} qa={query.qa === "1"} interest={normalizeSampleInterest(query.interest)} width={query.width === "520" ? 520 : 390} /></>;
 }

@@ -27,6 +27,17 @@ export function sampleTocCrop(width: number, height: number, kind: string, artVe
 
 type Asset = { project_id: string; storage_path: string; storage_bucket: string; mime_type: string; file_size_bytes: number; is_active: boolean };
 export async function prepareSampleToc(projectId: string, slug: string, samples: ProposalSample[]): Promise<Record<string, string>> {
+  return prepareSampleImages(projectId, slug, samples, false);
+}
+
+// One full, lossless map for local article navigation; never preload all originals.
+export async function prepareSampleMap(projectId: string, slug: string, samples: ProposalSample[]): Promise<string | undefined> {
+  const map = samples.find(s => s.kind === "tourism");
+  if (!map) return undefined;
+  return (await prepareSampleImages(projectId, slug, [map], true))[map.article.id];
+}
+
+async function prepareSampleImages(projectId: string, slug: string, samples: ProposalSample[], fullMap: boolean): Promise<Record<string, string>> {
   if (!stagingEnvironmentConfigured() || slug !== hwaseongSampleSlug || !/^[a-f0-9-]{36}$/i.test(projectId) || samples.length > 7) return {};
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!key) return {};
@@ -78,23 +89,29 @@ export async function prepareSampleToc(projectId: string, slug: string, samples:
           } finally { reader.releaseLock(); }
           if (length > maxSource || length !== asset.file_size_bytes) continue;
           const bytes = Buffer.concat(chunks);
-          const hash = createHash("sha256").update(bytes).update(`${asset.mime_type}:${sample.kind}:${sample.artDirectionVersion}:toc-v1`).digest("hex");
+          const hash = createHash("sha256").update(bytes).update(`${asset.mime_type}:${sample.kind}:${sample.artDirectionVersion}:${fullMap ? "map-v1" : "toc-v1"}`).digest("hex");
           let thumbnail = thumbnails.get(hash);
           if (!thumbnail) {
             const image = sharp(bytes, { limitInputPixels: 4_000_000, failOn: "error" });
             const meta = await image.metadata();
             if (!meta.width || !meta.height || (meta.orientation && meta.orientation !== 1) || (meta.pages ?? 1) > 1
               || `image/${meta.format === "jpeg" ? "jpeg" : meta.format}` !== asset.mime_type) continue;
-            const cropped = image.extract(sampleTocCrop(meta.width, meta.height, sample.kind, sample.artDirectionVersion));
-            for (const [width, height, quality] of [[768, 432, 82], [640, 360, 76], [512, 288, 74]]) {
-              thumbnail = await cropped.clone().resize(width, height).webp({ quality, effort: 3 }).timeout({ seconds: 1 }).toBuffer();
-              if (thumbnail.length <= maxThumbnail) break;
+            if (fullMap) {
+              // Original 1024×700 coordinate system and decoded pixels are preserved.
+              if (meta.width !== 1024 || meta.height !== 700) continue;
+              thumbnail = await image.webp({ lossless: true, effort: 3 }).timeout({ seconds: 1 }).toBuffer();
+            } else {
+              const cropped = image.extract(sampleTocCrop(meta.width, meta.height, sample.kind, sample.artDirectionVersion));
+              for (const [width, height, quality] of [[768, 432, 82], [640, 360, 76], [512, 288, 74]]) {
+                thumbnail = await cropped.clone().resize(width, height).webp({ quality, effort: 3 }).timeout({ seconds: 1 }).toBuffer();
+                if (thumbnail.length <= maxThumbnail) break;
+              }
             }
-            if (!thumbnail || thumbnail.length > maxThumbnail) continue;
+            if (!thumbnail || thumbnail.length > (fullMap ? 512 * 1024 : maxThumbnail)) continue;
             if (thumbnails.size >= 16) thumbnails.delete(thumbnails.keys().next().value!);
             thumbnails.set(hash, thumbnail);
           }
-          if (outputBytes + thumbnail.length > 256 * 1024) continue;
+          if (outputBytes + thumbnail.length > (fullMap ? 512 * 1024 : 256 * 1024)) continue;
           outputBytes += thumbnail.length;
           result[sample.article.id] = `data:image/webp;base64,${thumbnail.toString("base64")}`;
         } catch { /* Keep this card's original, authenticated image on failure. */ }
