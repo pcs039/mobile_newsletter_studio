@@ -84,5 +84,6 @@ test('only the verified video title gets independent hashtag blocks; every origi
  const render=(id,text)=>renderToStaticMarkup(React.createElement(Text,{articleId:id,text}));
  const html=render('50bf808f-15b5-4484-8fee-38f7a8acb99d',original);
  assert.equal((html.match(/data-video-description-tag/g)||[]).length,2);assert.match(html,/>#화성에코팜테마파크<\/span>/);assert.match(html,/>#선셋콘서트<\/span>/);assert.equal(html.replace(/<[^>]*>/g,''),original);
+ assert.equal((html.match(/text-\[#d9ff62\]/g)||[]).length,2);
  for(const [id,text] of [['other',original],['50bf808f-15b5-4484-8fee-38f7a8acb99d','일반 #기호 https://example.invalid/#화성에코팜테마파크 #선셋콘서트']])assert(!render(id,text).includes('data-video-description-tag'));
 });

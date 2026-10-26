@@ -12,7 +12,7 @@ export function SampleEditorialText({ articleId, text }: { articleId: string; te
   const start = text.indexOf(title);
   if (articleId !== "50bf808f-15b5-4484-8fee-38f7a8acb99d" || start < 0) return text;
   // Blocks change visual line breaks only: every original character/space stays.
-  return <>{text.slice(0, start)}{title.split(/(#화성에코팜테마파크|#선셋콘서트)/).map((part, i) => part.startsWith("#") ? <span key={i} data-video-description-tag className="my-1 block">{part}</span> : part)}{text.slice(start + title.length)}</>;
+  return <>{text.slice(0, start)}{title.split(/(#화성에코팜테마파크|#선셋콘서트)/).map((part, i) => part.startsWith("#") ? <span key={i} data-video-description-tag className="my-1 block font-semibold text-[#d9ff62]">{part}</span> : part)}{text.slice(start + title.length)}</>;
 }
 function VideoPlayer({ sample, videoId }: { sample: ProposalSample; videoId: string }) {
   const [loaded, setLoaded] = useState(false);
