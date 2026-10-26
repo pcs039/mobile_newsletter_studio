@@ -168,6 +168,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const detailRef = useRef<HTMLElement>(null);
   const previousLocation = useRef<{ id?: string; detail: boolean }>({ id: undefined, detail: false });
   const [warmImages, setWarmImages] = useState(false);
+  const [coverVisited, setCoverVisited] = useState(!initialSelectedId && !initialContents);
   const warmSources = useMemo(() => [...new Set([...samples.flatMap(s => [s.cover,
     ...s.article.blocks.filter(b => b.isVisible && b.type === "image" && b.body.startsWith("/api/project-files/preview?")).map(b => b.body),
   ]), ...Object.values(backgrounds).filter(b => b.visible).map(b => b.url)])].slice(0, 14), [samples, backgrounds]);
@@ -197,6 +198,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     if (!canUseSampleHistory(target, window.location.href, slug)) return false;
     const url = new URL(target, window.location.href);
     if (url.href === window.location.href) return true;
+    if (isCoverView || (!url.searchParams.has("articleId") && url.searchParams.get("view") !== "contents")) setCoverVisited(true);
     // eslint-disable-next-line react-hooks/purity -- Event handler only; never invoked during render.
     navigationStarted.current = performance.now();
     window.dispatchEvent(new Event("datadiction:stop-article-audio"));
@@ -284,10 +286,11 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
           <p id="sample-search-help" className="mt-2 text-xs leading-5 text-slate-500">관심분야와 관계없이 전체 {samples.length}개 기사에서 찾습니다.</p>
         </div>
       </nav> : null}
-      {isCoverView && cover ? <>
+      {cover && (isCoverView || coverVisited) ? <div hidden={!isCoverView} data-sample-cover-persisted>
         <PublicNewsletterCoverView {...cover} compact slug={slug} hasArticles={orderedSamples.length > 0} coverImageAlt="바다와 도시, 가을 숲, 문화예술과 시민의 일상을 표현한 Canva AI 시연 일러스트. 실제 화성 풍경 사진이 아닙니다." showTextSizeControl tocLabel="콘텐츠 둘러보기" onOpenToc={() => navigateLocal(contentsHref)} onStartReading={() => navigateLocal(href(orderedSamples[0]?.article.id))} />
         <div className="px-5 py-4"><p className="mb-3 text-[11px] leading-5 text-slate-600">표지 배경은 Canva AI로 제작한 개념 일러스트이며 실제 장소 사진이 아닙니다.</p></div>
-      </> : selected ? <>
+      </div> : null}
+      {isCoverView ? null : selected ? <>
         <nav className="flex flex-wrap items-center justify-between gap-2 px-5 pt-2 text-xs"><span className="py-2 font-bold">기사 읽기</span><span>{currentInterest !== "all" ? `${sampleInterests.find(option => option.value === currentInterest)?.label} · ` : ""}{index + 1} / {orderedSamples.length} · {detail ? "상세기사" : "요약 첫 페이지"}</span></nav>
         <div ref={summaryRef} className={`${styles.summary} scroll-mt-4`} data-sample-summary={selected.kind} data-detail-expanded={detail} key={selected.article.id}>
           {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} detail={false} /> : <SampleSummary sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} onImage={setImage} />}
