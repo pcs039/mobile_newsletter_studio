@@ -104,14 +104,16 @@
   margin-bottom: 1.75rem; border-left: 3px solid var(--detail-accent); padding: 1.2rem 1.1rem; background: #e9f1e7; font-weight: 600;
 }
 .originalBody :global(.public-article-content) > section + section { margin-top: 2rem; border-top: 1px solid #b7c4b650; padding-top: 1.25rem; }
-.originalBody :global(.public-article-content) > section + section > h3 { font-size: .8rem; color: #586861; }
-.originalBody :global(.public-article-content) > section + section :global(.public-article-body) { font-size: .8125rem; line-height: 1.9; color: #5d6e66; }
+.originalBody :global(.public-article-content) > section + section > h3 { font-size: 1rem; color: var(--detail-accent); }
+.originalBody :global(.public-article-content) > section:last-of-type:not(:first-child) > h3 { font-size: .8rem; color: #586861; }
+.originalBody :global(.public-article-content) > section:last-of-type:not(:first-child) :global(.public-article-body) { font-size: .8125rem; line-height: 1.9; color: #5d6e66; }
 .detail[data-detail-kind="policy"] .originalBody :global(.public-article-content) > section:first-child :global(.public-article-paragraph) + :global(.public-article-paragraph) { padding-left: 1rem; border-left: 1px solid #a2bba6; }
 .detail[data-detail-kind="event"] .originalBody :global(.public-article-content) > section:first-child :global(.public-article-paragraph):first-child { border-left: 0; border-top: 3px solid #a25236; background: #f5e9dc; }
 .detail[data-detail-kind="event"] .originalBody :global(.public-article-content) > section:first-child > h3 { letter-spacing: .09em; }
 .detail[data-detail-kind="cartoon"] .originalBody :global(.public-article-content) > section:first-child :global(.public-article-paragraph):first-child { border: 1px solid #dac4a7; border-radius: 22px 22px 22px 4px; background: #fff4df; }
 .detail[data-detail-kind="accessible"] .originalBody :global(.public-article-body) { font-size: 1.125rem; line-height: 2; }
 .detail[data-detail-kind="accessible"] .originalBody :global(.public-article-content) > section:first-child :global(.public-article-paragraph):first-child { border-color: #355888; background: #eaf1fb; }
+.detail[data-detail-kind="accessible"] .originalBody :global(.public-article-content) > section:nth-of-type(2) { border: 0; border-radius: 18px; padding: 1.25rem; background: #edf2fa; }
 
 .tourismArticle { padding-bottom: 1rem; color: #233f36; }
 .tourismEssay > section { position: relative; border-top: 1px solid #b7cdbd; padding: 1.8rem 0 1.8rem 1.1rem; }
@@ -134,6 +136,7 @@
 
 .editorialArticle { padding-top: .25rem; }
 .editorialArticle > div:last-child { padding-right: 0; padding-left: 0; }
+.editorialArticle > div:last-child > p:last-child { font-size: .75rem; line-height: 1.9; }
 .editorialFlow > [data-editorial-chapter] { padding: 2rem 0; border-bottom: 1px solid #b7bba54d; }
 .editorialFlow > [data-editorial-chapter] > p { font-size: 1.0625rem; line-height: 2; }
 .editorialChapterHeading { display: grid; grid-template-columns: 2.5rem minmax(0,1fr); align-items: start; gap: .75rem; }
