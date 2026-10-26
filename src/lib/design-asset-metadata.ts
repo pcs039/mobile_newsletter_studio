@@ -15,6 +15,7 @@ export type DesignAssetMetadata = {
   usageTags?: Array<keyof typeof assetUsageTagLabels>;
   reuseScope?: keyof typeof assetReuseScopeLabels;
   transparency?: keyof typeof assetTransparencyLabels;
+  adobeProcessing?: { sourceAssetId: string; operation: "remove_background" | "upscale" | "extend_canvas"; operationVersion: "v1"; processingKey: string };
   informationGraphic?: { articleId: string; graphicType: "steps" | "key_numbers" | "comparison" | "checklist" | "schedule"; specVersion: "v1"; generationKey: string };
   imageGeneration?: { generatedForArticleId: string; visualStrategy: "ai_generated_image"; generationPurpose: "article_visual"; promptVersion: "v1"; generationKey: string; factualityMode: "conceptual"; textInImage: false };
   canvaExport?: { designId: string; format: "png"; articleId?: string; templateId?: string; importedAt?: string };
@@ -35,7 +36,15 @@ export function validateDesignAssetMetadata(value: unknown):
   if (value === null) return { ok: true, metadata: null };
   if (!value || typeof value !== "object" || Array.isArray(value)) return invalid;
   const record = value as Record<string, unknown>;
-  if (Object.keys(record).some((key) => !["source", "usageTags", "reuseScope", "transparency", "canvaExport", "imageGeneration", "informationGraphic"].includes(key))) return invalid;
+  if (Object.keys(record).some((key) => !["source", "usageTags", "reuseScope", "transparency", "canvaExport", "imageGeneration", "informationGraphic", "adobeProcessing"].includes(key))) return invalid;
+  if ("adobeProcessing" in record) {
+    const p = record.adobeProcessing as Record<string, unknown> | null;
+    if (!p || typeof p !== "object" || Array.isArray(p) || record.source !== "adobe" || Object.keys(p).length !== 4 ||
+      Object.keys(p).some(k => !["sourceAssetId", "operation", "operationVersion", "processingKey"].includes(k)) ||
+      typeof p.sourceAssetId !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(p.sourceAssetId) ||
+      !["remove_background", "upscale", "extend_canvas"].includes(String(p.operation)) || p.operationVersion !== "v1" ||
+      typeof p.processingKey !== "string" || !/^[a-f0-9]{64}$/.test(p.processingKey)) return invalid;
+  }
   if ("informationGraphic" in record) {
     const p=record.informationGraphic as Record<string,unknown>|null;
     if(!p||typeof p!=="object"||Array.isArray(p)||record.source!=="internal"||Object.keys(p).length!==4||Object.keys(p).some(k=>!["articleId","graphicType","specVersion","generationKey"].includes(k))||
@@ -78,6 +87,7 @@ export function validateDesignAssetMetadata(value: unknown):
   }
   if ("imageGeneration" in record) metadata.imageGeneration = { ...record.imageGeneration as NonNullable<DesignAssetMetadata["imageGeneration"]> };
   if ("informationGraphic" in record) metadata.informationGraphic = {...record.informationGraphic as NonNullable<DesignAssetMetadata["informationGraphic"]>};
+  if ("adobeProcessing" in record) metadata.adobeProcessing = { ...record.adobeProcessing as NonNullable<DesignAssetMetadata["adobeProcessing"]> };
   return { ok: true, metadata };
 }
 
