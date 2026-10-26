@@ -33,7 +33,7 @@ function getChoiceOptions(question: ProjectSurveyQuestion) {
   return ["매우 그렇다", "그렇다", "보통이다", "그렇지 않다"];
 }
 
-function QuestionInput({ question }: { question: ProjectSurveyQuestion }) {
+export function QuestionInput({ question }: { question: ProjectSurveyQuestion }) {
   if (question.typeCode === "single_choice") {
     const options = getChoiceOptions(question);
 

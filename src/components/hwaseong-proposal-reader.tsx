@@ -16,6 +16,7 @@ import type { ArticleTextDesign } from "@/lib/article-text-design";
 import { accessibleSampleEnglish, comicScenes, sampleHref, samplePresentationArticle, tourismFeature, tourismPlaces, tourismSource, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { normalizeSampleInterest, orderProposalSamples, sampleInterests, type SampleInterest } from "@/lib/hwaseong-sample-interest";
 import { buildProposalSearchIndex, searchProposalSamples } from "@/lib/hwaseong-sample-search";
+import { HwaseongArticleParticipation } from "@/components/hwaseong-article-participation";
 import { SampleTtsQa } from "@/components/hwaseong-sample-tts-qa";
 import { sampleSummaryFacts, type SampleAudio } from "@/lib/hwaseong-sample-narration";
 import { canUseSampleHistory, readSampleLocation, sampleSwipeDirection } from "@/lib/hwaseong-sample-navigation";
@@ -298,6 +299,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         {detail ? <section ref={detailRef} tabIndex={-1} aria-label="펼친 상세기사" data-sample-inline-detail className={`${styles.detail} scroll-mt-4 border-t border-slate-200 p-3`}>
           <div className="mb-4 flex items-center justify-between gap-3 px-2"><h2 className="text-lg font-bold">상세기사</h2><Link href={href(selected.article.id)} className={action}>기사 접기 ↑</Link></div>
           {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail /> : selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard article={{ ...samplePresentationArticle(selected), showPublicTitle: false, summary: "", audioFile: null, audioSource: "none", blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} heroBackground={backgrounds[selected.article.id]} textDesign={{ captionStyled: textDesigns[selected.article.id]?.captionStyled, bodyEmphasis: textDesigns[selected.article.id]?.bodyEmphasis }} />}
+          <HwaseongArticleParticipation key={selected.article.id} slug={slug} articleId={selected.article.id} />
           <Link href={href(selected.article.id)} className={`${action} mt-5 w-full text-slate-700`}>기사 접기 · 요약으로 ↑</Link>
         </section> : null}
         <nav aria-label="기사 이동" className="grid grid-cols-2 gap-3 border-t border-slate-200 p-5">{prev ? <Link className={action} href={href(prev.article.id)}>← 이전 기사</Link> : <Link className={action} href={contentsHref}>← 목록</Link>}{next ? <Link className={action} href={href(next.article.id)}>다음 기사 →</Link> : <span className="content-center text-center text-xs text-slate-500">마지막 기사입니다</span>}</nav>

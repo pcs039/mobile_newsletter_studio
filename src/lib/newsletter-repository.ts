@@ -5083,7 +5083,7 @@ function isEmptySurveyAnswer(value: string | string[]) {
   return Array.isArray(value) ? value.length === 0 : value.length === 0;
 }
 
-function getValidatedSurveyAnswer(
+export function getValidatedSurveyAnswer(
   question: Pick<NewsletterSurveyQuestionRow, "id" | "title" | "question_type" | "options" | "is_required">,
   value: unknown,
 ) {
