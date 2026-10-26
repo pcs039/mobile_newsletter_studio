@@ -464,6 +464,7 @@ export function PublicNewsletterCoverView({
   coverImageAlt,
   startLabel = "첫 기사 읽기",
   tocLabel = "목차 보기",
+  tocPrimary = false,
   showTextSizeControl = false,
 }: {
   coverFit: "contain" | "cover";
@@ -483,6 +484,7 @@ export function PublicNewsletterCoverView({
   coverImageAlt?: string;
   startLabel?: string;
   tocLabel?: string;
+  tocPrimary?: boolean;
   showTextSizeControl?: boolean;
 }) {
   const hasInfo = Boolean(coverTitle || coverSubtitle || coverIssueText);
@@ -535,7 +537,7 @@ export function PublicNewsletterCoverView({
           type="button"
           onClick={onStartReading}
           disabled={!hasArticles}
-          className={`dd-btn dd-btn-primary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45 ${compact ? "order-2" : ""}`}
+          className={`dd-btn ${tocPrimary ? "dd-btn-secondary" : "dd-btn-primary"} min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45 ${compact ? "order-2" : ""}`}
         >
           {startLabel}
         </button>
@@ -543,7 +545,7 @@ export function PublicNewsletterCoverView({
           type="button"
           onClick={onOpenToc}
           disabled={!hasArticles}
-          className={`dd-btn dd-btn-secondary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45 ${compact ? "order-1" : ""}`}
+          className={`dd-btn ${tocPrimary ? "dd-btn-primary" : "dd-btn-secondary"} min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45 ${compact ? "order-1" : ""}`}
         >
           {tocLabel}
         </button>
