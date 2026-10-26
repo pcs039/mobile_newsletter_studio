@@ -91,3 +91,11 @@ test('editorial paragraphs reuse saved alignment and retain source text without 
   assert.equal((html.match(/01 · 원래 소제목/g)||[]).length,1);assert(!html.includes('aria-hidden="true"'));assert.equal(JSON.stringify({sample,feature}),before);
  }
 });
+test('only the fixed Staging sample replaces the audio example with its saved read-only transcript',async()=>{
+ const React=require('react');let staging=true;
+ const load=loader({'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>staging},'@/lib/newsletter-repository':{getProjectAudioFiles:async()=>({files:[{id:'audio',sourceType:'uploaded',title:'등록된 요약 음성',transcriptText:'실제 저장 대본',articleId:null,previewHref:'/retained.m4a',duration:'19초'}],source:'supabase'}),getProjectContent:async()=>({articles:[]})},'@/lib/article-tts-audio':{getArticleTtsProjectStatus:async()=>({articles:[]})}});
+ const page=load('src/app/projects/[projectId]/audio/page.tsx').default;
+ function find(node){if(node?.type==='textarea')return node;for(const child of React.Children.toArray(node?.props?.children)){const f=find(child);if(f)return f;}}
+ const sample=find(await page({params:Promise.resolve({projectId:'hwaseong-2026-10-samples'})}));assert.equal(sample.props.defaultValue,'실제 저장 대본');assert.equal(sample.props.readOnly,true);
+ for(const [enabled,projectId] of [[false,'hwaseong-2026-10-samples'],[true,'other-project']]){staging=enabled;const other=find(await page({params:Promise.resolve({projectId})}));assert(other.props.defaultValue.startsWith('무안군의 주요 정책'));assert.equal(other.props.readOnly,false);}
+});

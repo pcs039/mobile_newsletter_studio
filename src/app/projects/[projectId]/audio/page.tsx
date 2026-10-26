@@ -9,6 +9,8 @@ import { getArticleTtsProjectStatus } from "@/lib/article-tts-audio";
 import { getDisplayArticleTitle } from "@/lib/korean-title-breaks";
 import { audioReviewChecks, audioWorkflow } from "@/lib/newsletter-data";
 import { getProjectAudioFiles, getProjectContent } from "@/lib/newsletter-repository";
+import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
+import { hwaseongSampleSlug } from "@/lib/hwaseong-proposal-sample";
 
 function BrowserAudioControl({ src, title }: { src: string; title: string }) {
   if (!src) {
@@ -36,6 +38,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
   const audioFiles = audioData.files;
   const uploadedAudioFiles = audioFiles.filter((file) => file.sourceType === "uploaded");
   const firstAudioFile = uploadedAudioFiles[0];
+  const isSampleReview = stagingEnvironmentConfigured() && projectId === hwaseongSampleSlug;
   const articleOptions: ProjectAudioLinkArticleOption[] = contentData.articles.map((article, index) => ({
     body: [article.body, ...article.blocks.filter((block) => block.isVisible).map((block) => block.body)]
       .filter(Boolean)
@@ -214,11 +217,14 @@ export default async function AudioManagementPage({ params }: { params: Promise<
               <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <summary className="cursor-pointer text-sm font-black text-[#092046]">
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">보조</span>
-                  <span className="ml-2">선택 기사 대본 확인</span>
+                  <span className="ml-2">{isSampleReview ? "재생 미리보기 대본 확인" : "선택 기사 대본 확인"}</span>
                 </summary>
-                <p className="mt-2 text-sm leading-6 text-slate-500">최종 대본을 확인합니다.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{isSampleReview ? `재생 미리보기의 ‘${firstAudioFile?.title || "미등록 음성"}’에 저장된 대본입니다. 기사별 대본은 해당 파일의 ‘연결 관리’에서 확인합니다.` : "최종 대본을 확인합니다."}</p>
                 <textarea
-                  defaultValue={`무안군의 주요 정책과 생활 정보를 안내드립니다. 이번 소식에서는 군정 주요 사업, 생활 지원 정보, 문화 행사 일정을 확인할 수 있습니다.\n\n자세한 내용은 화면의 본문과 연결 버튼을 함께 확인해 주세요.`}
+                  defaultValue={isSampleReview ? firstAudioFile?.transcriptText || "" : `무안군의 주요 정책과 생활 정보를 안내드립니다. 이번 소식에서는 군정 주요 사업, 생활 지원 정보, 문화 행사 일정을 확인할 수 있습니다.\n\n자세한 내용은 화면의 본문과 연결 버튼을 함께 확인해 주세요.`}
+                  readOnly={isSampleReview}
+                  aria-label={isSampleReview ? "재생 미리보기 음성의 저장된 대본" : undefined}
+                  placeholder={isSampleReview ? "이 음성 파일에 등록된 대본이 없습니다." : undefined}
                   className="mt-4 min-h-36 w-full resize-y rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
                 />
               </details>
