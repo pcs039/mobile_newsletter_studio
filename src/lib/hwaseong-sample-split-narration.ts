@@ -29,5 +29,6 @@ export function splitNarration(sample: ProposalSample, part: NarrationPart) {
     && !["자료 구분과 확인 안내", "원문·사실 확인 안내", "원문 정합성 안내"].includes(b.title.trim())
     && !/^(위 원문은 기존|기존 화성시 2026년 10월호 작업본의 확인 근거)/.test(b.body.trim())).map(b => b.body);
   const scenes = sample.kind === "cartoon" ? comicScenes.flatMap((s, i) => [`${i + 1}컷`, s.alt, `${s.speaker}: ${s.line}`, s.aside]) : [];
-  return [...scenes, ...prose].filter(Boolean).join("\n\n");
+  return [...scenes, ...prose].filter(Boolean).join("\n\n")
+    .replace("This is a demonstration translation, not an official English notice.", "").trim();
 }

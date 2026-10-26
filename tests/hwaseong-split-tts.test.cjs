@@ -6,6 +6,7 @@ test('fixed alternating voices and separate visible scripts preserve originals; 
  assert.deepEqual(ids.map(n.splitArticleVoice),['marin','cedar','coral','onyx','marin','cedar','coral']);const before=JSON.stringify(samples);
  const summary=n.splitNarration(samples[0],'summary'),detail=n.splitNarration(samples[0],'detail');assert(summary.includes('따로 모으기'));assert(!summary.includes('상세 본문'));assert(!summary.includes('내부 요약'));assert(detail.includes('상세 본문'));assert(!detail.includes('관리자'));assert(!detail.includes('기사 1'));
  const cartoon={...samples[3],kind:'cartoon'};assert(n.splitNarration(cartoon,'detail').includes('빈 주머니'));assert(!n.splitNarration(cartoon,'summary').includes('실제 상세 본문'));
+ const accessible={...samples[4],kind:'accessible',article:{...samples[4].article,blocks:[{type:'paragraph',isVisible:true,title:'English',body:'Admission is free. This is a demonstration translation, not an official English notice.',metadata:{}}]}};assert.equal(n.splitNarration(accessible,'detail'),'Admission is free.');
  assert.equal(JSON.stringify(samples),before);assert.equal(n.splitTtsShutdown,'2027-01-06');
 });
 function fixture(){let providerFailure=false,claimLoss=false,commitLoss=false,uploadLoss=false,corrupt=false;const rows=[],objects=new Map(),calls=[];
