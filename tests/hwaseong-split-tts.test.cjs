@@ -51,7 +51,7 @@ test('next segment continues when the browser emits pause before ended, without 
 
 test('interview replacement preserves all other players and keeps Cedar until both Coral parts are ready',async()=>{const f=fixture('cedar');try{
  for(const p of await f.splitTtsPlans())assert.equal((await f.generateSplitTts(p.job)).state,'ready');
- const before=await f.splitAudioIndex();f.setInterviewVoice('coral');assert.deepEqual(await f.splitAudioIndex(),before);
+ const before=await f.splitAudioIndex();f.setInterviewVoice('coral');assert.deepEqual(await f.splitAudioIndex(),before);assert.equal((await f.splitTtsDelivery(before[ids[5]].id,null,new Request('https://fixture.invalid'))).status,200);assert.equal((await f.splitTtsDelivery(before[ids[5]].id,'0',new Request('https://fixture.invalid'))).status,200);
  const changed=(await f.splitTtsPlans()).filter(p=>p.job.startsWith(ids[5]+':'));assert.equal(changed.length,2);
  await f.generateSplitTts(changed[0].job);assert.deepEqual(await f.splitAudioIndex(),before);
  await f.generateSplitTts(changed[1].job);const after=await f.splitAudioIndex();assert.equal(after[ids[5]].voice,'coral');assert.equal(after[ids[5]].detail.voice,'coral');assert.notEqual(after[ids[5]].id,before[ids[5]].id);
