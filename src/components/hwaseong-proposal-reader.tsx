@@ -166,7 +166,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const mouseSwipe = useRef<SampleSwipe | null>(null);
   const swallowClick = useRef(false);
   const [controlsActivity, setControlsActivity] = useState(0);
-  const pointer = useRef<ReaderPoint | null>(null);
+  const pointer = useRef<(ReaderPoint & { protectedImage?: boolean }) | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLElement>(null);
   const previousLocation = useRef<{ id?: string; detail: boolean }>({ id: undefined, detail: false });
@@ -249,8 +249,10 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   }
   return <main ref={mainRef} data-sample-location={locationKey} data-sample-initial-fetch={qa ? JSON.stringify(serverTimings) : undefined} onPointerDownCapture={event => {
       swallowClick.current = false;
-      pointer.current = { x: event.clientX, y: event.clientY };
-      mouseSwipe.current = event.pointerType === "touch" || event.button !== 0 || image || isSampleSwipeBlocked(event.target)
+      const blocked = isSampleSwipeBlocked(event.target);
+      const visual = event.target instanceof Element && (event.target.closest("img") || event.target.closest("button, a")?.querySelector("img"));
+      pointer.current = { x: event.clientX, y: event.clientY, protectedImage: blocked && Boolean(visual) };
+      mouseSwipe.current = event.pointerType === "touch" || event.button !== 0 || image || blocked
         ? null : { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
     }} onPointerMoveCapture={event => {
       const start = mouseSwipe.current;
@@ -265,6 +267,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       const drag = mouseSwipe.current; mouseSwipe.current = null;
       if (drag?.pointerId === event.pointerId) finishSwipe(drag, { x: event.clientX, y: event.clientY });
       const start = pointer.current; pointer.current = null;
+      if (start?.protectedImage && sampleSwipeDirection(start, { x: event.clientX, y: event.clientY }, window.innerWidth)) swallowClick.current = true;
       if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 10 && !isReaderInteractiveTarget(event.target)) setControlsActivity(value => value + 1);
     }} onDragStartCapture={event => {
       if (!isSampleSwipeBlocked(event.target)) event.preventDefault();
