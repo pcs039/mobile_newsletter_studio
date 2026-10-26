@@ -99,3 +99,10 @@ test('only the fixed Staging sample replaces the audio example with its saved re
  const sample=find(await page({params:Promise.resolve({projectId:'hwaseong-2026-10-samples'})}));assert.equal(sample.props.defaultValue,'실제 저장 대본');assert.equal(sample.props.readOnly,true);
  for(const [enabled,projectId] of [[false,'hwaseong-2026-10-samples'],[true,'other-project']]){staging=enabled;const other=find(await page({params:Promise.resolve({projectId})}));assert(other.props.defaultValue.startsWith('무안군의 주요 정책'));assert.equal(other.props.readOnly,false);}
 });
+test('sample sharing uses the visible editorial headline while retaining the original article title and identity',()=>{
+ const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+ const sample={kind:'policy',headline:'표시 제목\n두 번째 줄',eyebrow:'01',pale:'#fff',color:'#234e43',cover:'/retained.webp',article:{id:'retained-id',title:'보존 원제',blocks:[],body:'보존 원문',audioFile:null}};const before=JSON.stringify(sample);
+ const load=loader({'next/navigation':{useSearchParams:()=>null},'@/components/hwaseong-article-participation':{HwaseongArticleParticipation:p=>React.createElement('span',{'data-share-title':p.articleTitle,'data-article-id':p.articleId})}});
+ const html=renderToStaticMarkup(React.createElement(load('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader,{slug:'hwaseong-2026-10-samples',samples:[sample],selectedId:'retained-id',detail:false,width:390,fonts:[],backgrounds:{},textDesigns:{}}));
+ assert(html.includes('data-share-title="표시 제목 두 번째 줄"'));assert(html.includes('data-article-id="retained-id"'));assert.equal(JSON.stringify(sample),before);
+});
