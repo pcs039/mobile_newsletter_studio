@@ -62,3 +62,18 @@
 .screen:has(.summary [data-interview-quote]) .detail [data-interview-quote] {
   display: none;
 }
+.interestTools {
+  container: interest-tools / inline-size;
+}
+
+.interestGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@container interest-tools (min-width: 27.5rem) {
+  .interestGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
