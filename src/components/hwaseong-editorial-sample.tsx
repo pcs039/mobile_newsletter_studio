@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- Private project previews retain authenticated asset URLs. */
 import { SampleLink as Link } from "@/components/hwaseong-sample-navigation";
 import { useState } from "react";
+import styles from "./hwaseong-sample-experience.module.css";
 import { SampleReadingTools } from "@/components/hwaseong-sample-reading-tools";
 import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 import { editorialFeature, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
@@ -33,7 +34,7 @@ export function HwaseongEditorialSample({ sample, href, detail, audio }: { sampl
   const video = sample.kind === "video";
   const compare = !video && !detail && !!e.canvaCover;
   const canvaSummary = compare && coverMode === "canva";
-  return <article className={`${video ? "bg-[#111d29] text-[#f7f4e9]" : "bg-[#f6f3ec] text-[#30392e]"} pb-7 [overflow-wrap:anywhere]`}>
+  return <article data-editorial-feature={detail ? (video ? "video" : "interview") : undefined} className={`${detail ? styles.editorialArticle : ""} ${video ? "bg-[#111d29] text-[#f7f4e9]" : "bg-[#f6f3ec] text-[#30392e]"} pb-7 [overflow-wrap:anywhere]`}>
     {compare ? <div className="px-4 pt-4"><div role="group" aria-label="인터뷰 표지 비교" className="grid grid-cols-2 gap-2 rounded-xl border border-[#c7c9b8] p-1">
       {([ ["html", "A · HTML 편집형"], ["canva", "B · Canva 표지형"] ] as const).map(([mode, label]) => <button key={mode} type="button" aria-pressed={coverMode === mode} onClick={() => setCoverMode(mode)} className={`min-h-11 rounded-lg px-2 py-2 text-xs font-bold ${coverMode === mode ? "bg-[#30392e] text-white" : "text-[#30392e]"}`}>{label}</button>)}
     </div></div> : null}
@@ -48,9 +49,9 @@ export function HwaseongEditorialSample({ sample, href, detail, audio }: { sampl
     <div className="px-6">
       {canvaSummary ? <SampleReadingTools sample={sample} generated={audio} /> : null}
       {!video && (detail || !canvaSummary) ? <blockquote data-interview-quote className="my-6 border-l border-[#8c966e] pl-5"><span aria-hidden="true" className="block h-8 font-serif text-5xl text-[#77835b]">“</span><p data-public-text-scale-target="article-summary" className="font-serif text-[1.4rem] leading-[1.7] tracking-tight">{e.quote}</p><footer className="mt-3 text-xs opacity-70">신현정 · 중부일보 인터뷰 중</footer></blockquote> : null}
-      {!detail ? <>{canvaSummary ? <p className="mt-4 text-xs leading-6">표지의 글자는 이미지입니다. 표지를 눌러 상세기사에서 본문·인용문을 글자로 확대해 읽을 수 있습니다.</p> : null}{video ? <a className={`${button} mt-3 border-white/30`} href={e.sourceUrl} target="_blank" rel="noreferrer">유튜브에서 보기 ↗</a> : null}</> : <div className="mt-7 space-y-7">
-        <p className="border-y border-current/20 py-4 text-xs leading-6 opacity-75">{e.note}</p>
-        {e.sections.map((s, i) => <section key={s.title}><p className={`mb-2 text-[10px] tracking-[.2em] ${video ? "text-[#ffec72]" : "text-[#77835b]"}`}>0{i + 1} / {video ? "OFFICIAL VIDEO NOTES" : "ARTIST NOTES"}</p><h2 data-public-text-scale-target="article-summary" className="text-xl font-bold leading-8">{s.title}</h2><p data-public-text-scale-target="article-body" className="mt-3 whitespace-pre-line text-base leading-[1.95]"><SampleEditorialText articleId={sample.article.id} text={s.text} /></p></section>)}
+      {!detail ? <>{canvaSummary ? <p className="mt-4 text-xs leading-6">표지의 글자는 이미지입니다. 표지를 눌러 상세기사에서 본문·인용문을 글자로 확대해 읽을 수 있습니다.</p> : null}{video ? <a className={`${button} mt-3 border-white/30`} href={e.sourceUrl} target="_blank" rel="noreferrer">유튜브에서 보기 ↗</a> : null}</> : <div className={styles.editorialFlow}>
+        <p className={styles.editorialNote}>{e.note}</p>
+        {e.sections.map((s, i) => <section data-editorial-chapter key={s.title}><div className={styles.editorialChapterHeading}><p aria-hidden="true" className={styles.chapterNumber}>0{i + 1}</p><h2 data-public-text-scale-target="article-summary">{s.title}</h2></div><p data-public-text-scale-target="article-body" className="mt-4 whitespace-pre-line [overflow-wrap:anywhere]"><SampleEditorialText articleId={sample.article.id} text={s.text} /></p></section>)}
         <a className={`${button} ${video ? "border-[#ffec72] text-[#ffec72]" : "border-[#30392e]"}`} href={e.sourceUrl} target="_blank" rel="noreferrer">{video ? "유튜브에서 원본 보기" : "인터뷰 원문 읽기"} ↗</a>
         {!video && e.canvaCover ? <details className="border-t border-current/20 pt-2"><summary className="min-h-11 cursor-pointer content-center text-sm">Canva 제작 표지 확인</summary><img src={e.canvaCover} alt="Canva 인물형 02 템플릿으로 제작한 인터뷰 표지. 본문과 핵심 문구는 위 HTML로 읽을 수 있습니다." width={1080} height={1920} className="mt-2 h-auto w-full" /><p className="mt-2 text-xs leading-5 opacity-70">인터뷰·인물형 02 · 메인형 템플릿 제작 결과. 실제 기사 제목·인용·본문은 확대 가능한 HTML로 별도 유지합니다.</p></details> : null}
       </div>}

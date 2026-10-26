@@ -45,6 +45,9 @@ function TocThumbnail({ sample, thumbnail, priority }: { sample: ProposalSample;
 
 // Pin tips stay inside the original polygons, away from the nearby place labels.
 export const tourismPinPositions = [[148, 197], [221, 280], [82, 408], [631, 109], [935, 349], [633, 505]] as const;
+function TourismPin({ number, selected = false }: { number: number; selected?: boolean }) {
+  return <svg viewBox="0 0 32 40" aria-hidden="true" className="h-10 w-8 drop-shadow-md"><path d="M16 38C13 33 2 23 2 15a14 14 0 1 1 28 0c0 8-11 18-14 23Z" fill={selected ? "#0b786a" : "#234e43"} stroke={selected ? "#ffec72" : "white"} strokeWidth="2" /><text x="16" y="21" textAnchor="middle" fill="white" fontSize="17" fontWeight="800">{number}</text></svg>;
+}
 export function TourismMap({ sample, detailHref, mapImage }: { sample: ProposalSample; detailHref: string; mapImage?: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -70,7 +73,7 @@ export function TourismMap({ sample, detailHref, mapImage }: { sample: ProposalS
     bounds.scrollTo({ left: x - bounds.clientWidth / 2, top: y - bounds.clientHeight / 2, behavior: "smooth" });
   }
   function choose(id: string) { setSelected(id); requestAnimationFrame(() => { if (zoomed) centerMap(id); card.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }); }
-  return <section aria-label="화성 관광지도" data-swipe-navigation-ignore>
+  return <section id="sample-tourism-map" aria-label="화성 관광지도" data-swipe-navigation-ignore>
     <div className="mb-3 flex items-center justify-between gap-2 px-5"><p className="text-xs font-bold tracking-wide text-[#125e7c]">바다 · 역사 · 초록<br /><span className="font-normal tracking-normal">그림 속 번호로 떠나는 여행</span></p><button className="min-h-11 rounded-full border border-sky-300 bg-white px-4 text-sm font-bold" aria-pressed={zoomed} onClick={() => { setZoomed(!zoomed); requestAnimationFrame(() => centerMap(selected)); }}>{zoomed ? "지도 전체 보기" : "지도 크게 보기"}</button></div>
     <div ref={map} tabIndex={-1} className="scroll-mt-4 overflow-auto border-y border-sky-200 bg-white" style={{ maxHeight: zoomed ? 420 : undefined }}><div data-tourism-map-frame className="relative" style={{ minWidth: zoomed ? 680 : undefined, aspectRatio: "1024 / 700" }}>
       {/* Original proportions and source polygons stay in the same coordinate system. */}
@@ -84,7 +87,7 @@ export function TourismMap({ sample, detailHref, mapImage }: { sample: ProposalS
         </g>)}
       </svg>
       {tourismPlaces.map((p, i) => <button key={p.id} type="button" data-map-pin={p.id} aria-label={`${i + 1}번 ${p.name} 정보 열기`} aria-pressed={selected === p.id} onClick={() => choose(p.id)} className="absolute flex h-11 w-11 -translate-x-1/2 -translate-y-full items-end justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#234e43]" style={{ left: `${tourismPinPositions[i][0] / 1024 * 100}%`, top: `${tourismPinPositions[i][1] / 700 * 100}%` }}>
-        <svg viewBox="0 0 32 40" aria-hidden="true" className="h-10 w-8 drop-shadow-md"><path d="M16 38C13 33 2 23 2 15a14 14 0 1 1 28 0c0 8-11 18-14 23Z" fill={selected === p.id ? "#0b786a" : "#234e43"} stroke={selected === p.id ? "#ffec72" : "white"} strokeWidth="2" /><text x="16" y="21" textAnchor="middle" fill="white" fontSize="17" fontWeight="800">{i + 1}</text></svg>
+        <TourismPin number={i + 1} selected={selected === p.id} />
       </button>)}
       </div>
     </div></div>
@@ -123,10 +126,12 @@ function ComicStory({ sample, onImage }: { sample: ProposalSample; onImage: (ima
 function TourismDetail({ sample }: { sample: ProposalSample }) {
   const feature = tourismFeature(sample);
   if (!feature) return <p className="p-5">관광 특집 저장본을 확인할 수 없습니다. 요약 지도로 돌아가 주세요.</p>;
-  return <article className="px-3 pb-5" aria-label="화성 관광 특집 상세">
-    <div className="space-y-5 px-2 py-6">{feature.paragraphs.map((paragraph, i) => { const [heading, ...lines] = paragraph.split("\n"); return <section key={heading}><p className="text-xs font-black tracking-widest text-[#125e7c]">0{i + 1}</p><h2 data-public-text-scale-target="article-summary" className="mt-1 text-xl font-black">{heading}</h2><p data-public-text-scale-target="article-body" className="mt-2 whitespace-pre-line text-base leading-8 [overflow-wrap:anywhere]">{lines.join("\n")}</p></section>; })}</div>
-    <h2 className="px-2 text-lg font-black">마음에 든 곳, 찾아가기</h2>
-    <div className="mt-3 space-y-3">{tourismPlaces.map(p => <section id={`place-${p.id}`} key={p.id} className="scroll-mt-4 rounded-xl border border-sky-100 bg-[#f8fbfc] p-4"><h3 className="text-lg font-black">{p.name}</h3><p data-public-text-scale-target="article-summary" className="mt-2 text-sm leading-7">{p.description}</p><p className="mt-2 text-xs leading-6 text-slate-600">{p.address}</p><div className="mt-3 flex flex-wrap gap-2"><a className={action} target="_blank" rel="noreferrer" href={`https://map.kakao.com/link/search/${encodeURIComponent(p.address + " " + p.name)}`}>지도에서 장소 찾기 ↗</a>{p.phone ? <a className={action} href={`tel:${p.phone}`}>전화</a> : null}</div></section>)}</div>
+  return <article className={styles.tourismArticle} aria-label="화성 관광 특집 상세">
+    <div className={styles.tourismEssay}>{feature.paragraphs.map((paragraph, i) => { const [heading, ...lines] = paragraph.split("\n"); return <section key={heading}><p className={styles.chapterNumber}>0{i + 1}</p><h2 data-public-text-scale-target="article-summary">{heading}</h2><p data-public-text-scale-target="article-body" className="whitespace-pre-line [overflow-wrap:anywhere]">{lines.join("\n")}</p></section>; })}</div>
+    <div className={styles.placeGuideHeading}><p>지도 속 여섯 장소</p><h2 data-public-text-scale-target="article-summary">마음에 든 곳, 찾아가기</h2><a href="#sample-tourism-map" className="inline-flex min-h-11 items-center text-sm font-bold underline underline-offset-4">지도 다시 보기 ↑</a></div>
+    <div className={styles.placeGuide}>{tourismPlaces.map((p, i) => <section id={`place-${p.id}`} key={p.id} className={styles.placeEntry}>
+      <div className={styles.placeNumber}><TourismPin number={i + 1} /></div><div className="min-w-0"><p className={styles.placeCategory}>{i < 3 ? "바다" : i === 3 ? "역사" : "초록"}</p><h3 data-public-text-scale-target="article-summary">{p.name}</h3><p data-public-text-scale-target="article-body" className={styles.placeDescription}>{p.description}</p><p data-public-text-scale-target="article-summary" className={styles.placeAddress}>{p.address}</p><div className="mt-4 flex flex-wrap gap-2"><a className={`${action} bg-white`} target="_blank" rel="noreferrer" href={`https://map.kakao.com/link/search/${encodeURIComponent(p.address + " " + p.name)}`}>지도에서 장소 찾기 ↗</a>{p.phone ? <a className={`${action} bg-white`} href={`tel:${p.phone}`}>전화</a> : null}</div></div>
+    </section>)}</div>
     <p className="mt-5 px-2 text-xs leading-6 text-slate-500">출처: <a className="underline" href={tourismSource} target="_blank" rel="noreferrer">화성특례시 「화성 여행 꿀팁」</a>. 공식 자료를 바탕으로 재구성한 비공개 제안용 특집입니다. 추천 장소 묶음이며 이동 시간·실제 여행 코스를 보장하지 않습니다. 운영 시간·요금·바닷길 통행은 방문 전 확인하세요.</p>
 
     <details className="mt-4 rounded-xl border border-slate-200 p-4"><summary className="min-h-11 cursor-pointer content-center text-sm font-bold">기존 도시 비전 원문 · 보존 자료</summary><p className="mt-2 text-xs leading-6 text-slate-500">관광 특집의 출처와 다른 기존 기사이며 원문을 변경하지 않았습니다.</p><p data-public-text-scale-target="article-body" className="mt-3 whitespace-pre-wrap text-base leading-8">{sample.article.body}</p></details>
@@ -353,11 +358,11 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
           {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} detail={false} /> : <SampleSummary sample={selected} audio={audioIndex[selected.article.id]} href={href(selected.article.id, true)} onImage={setImage} mapImage={mapImage} />}
         </div>
         {/* Stable section/form identity: toggling detail only inserts/removes its body. */}
-        <section ref={detailRef} tabIndex={-1} aria-label={detail ? "펼친 상세기사" : "요약 기사 참여"} data-sample-inline-detail={detail ? "" : undefined} className={`${detail ? styles.detail : ""} scroll-mt-4 border-t border-slate-200 p-5`}>
+        <section ref={detailRef} tabIndex={-1} aria-label={detail ? "펼친 상세기사" : "요약 기사 참여"} data-sample-inline-detail={detail ? "" : undefined} data-detail-kind={detail ? selected.kind : undefined} className={`${detail ? styles.detail : ""} scroll-mt-4 border-t border-slate-200 p-5`}>
           {detail ? <div key="detail-body">
-          <div className="mb-4 flex items-center justify-between gap-3 px-2"><h2 className="text-lg font-bold">상세기사</h2><Link href={href(selected.article.id)} className={action}>기사 접기 <SampleDisclosureIcon expanded /></Link></div>
+          <div className={styles.detailHeading}><div><p>{({ policy: "LIVING GUIDE · 생활과 행정", tourism: "TRAVEL NOTES · 화성 여행", event: "CULTURE JOURNAL · 문화 기록", cartoon: "BEHIND THE SCENES · 만평의 바탕", accessible: "EASY READ · 한국어 원문", interview: "PEOPLE & CULTURE · 인물 탐방", video: "VIDEO JOURNAL · 영상 이야기" })[selected.kind]}</p><h2>상세기사</h2></div><Link href={href(selected.article.id)} className={action}>기사 접기 <SampleDisclosureIcon expanded /></Link></div>
           <SampleDetailReadingTools sample={selected} generated={audioIndex[selected.article.id]} />
-          {["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail /> : selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard article={{ ...samplePresentationArticle(selected), showPublicTitle: false, summary: "", audioFile: null, audioSource: "none", blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} heroBackground={backgrounds[selected.article.id]} textDesign={{ captionStyled: textDesigns[selected.article.id]?.captionStyled, bodyEmphasis: textDesigns[selected.article.id]?.bodyEmphasis }} />}
+          <div data-sample-detail-body>{["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail /> : selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard className={styles.originalBody} article={{ ...samplePresentationArticle(selected), showPublicTitle: false, summary: "", audioFile: null, audioSource: "none", blocks: selected.article.blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} heroBackground={backgrounds[selected.article.id]} textDesign={{ captionStyled: textDesigns[selected.article.id]?.captionStyled, bodyEmphasis: textDesigns[selected.article.id]?.bodyEmphasis }} />}</div>
           </div> : null}
           {!detail ? <Link key="expand" href={href(selected.article.id, true)} data-sample-expand className={`${action} w-full border-transparent bg-[#125e7c] text-white`}>상세기사 보기 <SampleDisclosureIcon /></Link> : null}
           <HwaseongArticleParticipation key="participation" slug={slug} articleId={selected.article.id} articleTitle={selected.article.title} />
