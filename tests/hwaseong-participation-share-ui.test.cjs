@@ -60,9 +60,9 @@ test('compact actions retain mounted forms, privacy, moderation and disabled pri
  let first=true;const load=loader({react:{...React,useState:v=>{if(first){first=false;return[data,()=>{}];}return[v,()=>{}];}}});
  const Component=load('src/components/hwaseong-article-participation.tsx').HwaseongArticleParticipation;
  const html=renderToStaticMarkup(React.createElement(Component,{slug,articleId,articleTitle:'실제 제목'}));
- assert.match(html,/시민 참여 · 공유/);for(const label of ['의견','댓글','설문','공유'])assert(html.includes(label));
- assert.equal((html.match(/role="region"/g)||[]).length,3);assert.equal((html.match(/hidden=""/g)||[]).length,3);assert.equal((html.match(/<form /g)||[]).length,3);
- assert.match(html,/검토·승인한 댓글만/);assert.match(html,/다른 독자에게 공개되지 않습니다/);assert.match(html,/개인정보·보관 안내/);assert.match(html,/30일/);assert.match(html,/동의합니다/);
+ assert.match(html,/시민 참여 · 공유/);for(const label of ['의견','설문','공유'])assert(html.includes(label));
+ assert.equal((html.match(/role="region"/g)||[]).length,2);assert.equal((html.match(/hidden=""/g)||[]).length,2);assert.equal((html.match(/<form /g)||[]).length,2);
+ assert(!html.includes('댓글'));assert.match(html,/grid-cols-3/);assert.match(html,/다른 독자에게 공개되지 않습니다/);assert.match(html,/개인정보·보관 안내/);assert.match(html,/30일/);assert.match(html,/동의합니다/);
  assert(!html.includes('시연 의견·댓글·설문 결과 관리'));assert.match(html,/disabled=""/);
 });
 test('action buttons open at most one panel and can collapse it without removing other forms',()=>{
@@ -71,12 +71,12 @@ test('action buttons open at most one panel and can collapse it without removing
  const Component=load('src/components/hwaseong-article-participation.tsx').HwaseongArticleParticipation;
  function walk(node,predicate){if(!node||typeof node!=='object')return; if(predicate(node))return node;for(const child of React.Children.toArray(node.props?.children)){const found=walk(child,predicate);if(found)return found;}}
  function render(){cursor=0;return Component({slug,articleId,articleTitle:'기존 제목'});}
- for(const kind of ['private','comment','survey']){
+ for(const kind of ['private','survey']){
   const tree=render();walk(tree,n=>n.type==='button'&&n.props['aria-controls']===`participation-${articleId}-${kind}`).props.onClick();
-  const opened=render();for(const other of ['private','comment','survey'])assert.equal(walk(opened,n=>n.props?.id===`participation-${articleId}-${other}`).props.hidden,other!==kind);
+  const opened=render();for(const other of ['private','survey'])assert.equal(walk(opened,n=>n.props?.id===`participation-${articleId}-${other}`).props.hidden,other!==kind);
  }
  const tree=render();walk(tree,n=>n.type==='button'&&n.props['aria-controls']===`participation-${articleId}-survey`).props.onClick();
- const closed=render();for(const kind of ['private','comment','survey'])assert.equal(walk(closed,n=>n.props?.id===`participation-${articleId}-${kind}`).props.hidden,true);
+ const closed=render();for(const kind of ['private','survey'])assert.equal(walk(closed,n=>n.props?.id===`participation-${articleId}-${kind}`).props.hidden,true);
 });
 test('only the verified video title gets independent hashtag blocks; every original space and character stays',()=>{
  const Text=loader()('src/components/hwaseong-editorial-sample.tsx').SampleEditorialText;

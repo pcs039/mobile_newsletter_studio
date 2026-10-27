@@ -30,6 +30,7 @@ export async function GET(request: Request, ctx: Context) {
   try {
     const a = await access(request, ctx); if (a instanceof Response) return a;
     const q = new URL(request.url).searchParams, actor = participationActor(a.user.id);
+    if (q.get("kind") === "comment" || q.get("comments") === "1") return json({ ok: false, code: "comments_removed" }, 403);
     if (q.get("admin") === "1") { if (a.user.role !== "admin") return json({ ok: false }, 403); return json({ ok: true, ...await participationAdminData() }); }
     const articleId = q.get("articleId") ?? ""; await requireParticipationArticle(articleId);
     if (q.has("requestId")) { const id = q.get("requestId")!; if (!participationUuid.test(id)) return json({ ok: false }, 400); return json({ ok: true, receipt: await participationReceipt(articleId, id, actor) }); }
@@ -43,11 +44,11 @@ export async function POST(request: Request, ctx: Context) {
     const input = await boundedBody(request), actor = participationActor(a.user.id);
     if (input.action !== undefined) {
       if (a.user.role !== "admin") return json({ ok: false }, 403);
-      if (!["settings", "approve", "reject"].includes(String(input.action))) return json({ ok: false }, 400);
-      if (input.action === "approve" && input.privacyChecked !== true) return json({ ok: false, message: "공개할 내용의 개인정보·부적절 표현 여부를 확인해 주세요." }, 400);
-      if (input.action === "settings" ? typeof input.commentsEnabled !== "boolean" || (input.surveyId !== "" && !participationUuid.test(String(input.surveyId))) : !participationUuid.test(String(input.id))) return json({ ok: false }, 400);
+      if (input.action !== "settings" || (input.commentsEnabled !== undefined && input.commentsEnabled !== false)) return json({ ok: false, code: "comments_removed" }, 403);
+      if (input.surveyId !== "" && !participationUuid.test(String(input.surveyId))) return json({ ok: false }, 400);
       return json(await manageParticipation(input, actor));
     }
+    if (input.kind === "comment") return json({ ok: false, code: "comments_removed" }, 403);
     if (!participationKinds.includes(input.kind as typeof participationKinds[number]) || !participationUuid.test(String(input.requestId)) || !participationUuid.test(String(input.articleId))) return json({ ok: false, message: "기사와 요청을 다시 확인해 주세요." }, 400);
     const articleId = input.articleId as string; await requireParticipationArticle(articleId);
     verifyParticipationToken(input.token, articleId, actor);

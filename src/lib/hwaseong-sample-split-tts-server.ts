@@ -26,16 +26,20 @@ export async function splitTtsPlans(provided?:ProposalSample[]){
 }
 function identifyPlan(p:{job:string;voice:ArticleTtsVoice;title:string;text:string}){const text=normalizeKoreanTtsText(p.text);if(!text||text.length>8000)throw Error("Narration limits");const digest=hash(`sample-tts-v2\n${p.job}\n${p.voice}\n${splitTtsModel}\n${text}`),id=`${digest.slice(0,8)}-${digest.slice(8,12)}-5${digest.slice(13,16)}-a${digest.slice(17,20)}-${digest.slice(20,32)}`;const chunks=chunkArticleTtsText(text,600);return {...p,text,id,hash:digest,scriptHash:hash(text),chunks,paths:chunks.map((_,i)=>`${prefix}${id}/${String(i).padStart(3,'0')}.mp3`)};}
 type Plan=Awaited<ReturnType<typeof splitTtsPlans>>[number];
+const previousVoices:Record<string,ArticleTtsVoice>={'723d4dff-9d15-4515-af0a-0d725eb94b5e':'onyx','a802c522-becf-496e-b78f-e374e4b7e98d':'cedar'};
+function previousPlans(plans:Plan[]){return plans.flatMap(p=>{const voice=previousVoices[p.job.split(':')[0]];return voice?[identifyPlan({...p,voice})]:[];});}
 export async function splitTtsRows(){const out:Row[]=[];for(let offset=0;offset<1000;offset+=100){const q=new URLSearchParams({select:columns,project_id:`eq.${projectId}`,title:`like.${titlePrefix}*`,order:'id.asc',limit:'100',offset:String(offset)});const r=await fetch(table('?'+q),{headers:headers(),cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error("Audio status unavailable");const page:Row[]=await r.json();if(!Array.isArray(page))throw Error("Invalid status");out.push(...page);if(page.length<100)return out;}throw Error("Unconfirmed pagination");}
 function ready(row:Row|undefined,p:Plan){return !!row&&row.project_id===projectId&&row.article_id===null&&row.script_status==='approved'&&!!row.ai_tts_generated_at&&row.ai_tts_model===splitTtsModel&&row.ai_tts_voice===p.voice&&row.ai_tts_text_hash===p.hash&&row.script_text===p.text&&JSON.stringify(row.ai_tts_audio_paths)===JSON.stringify(p.paths)&&row.file_path===p.paths[0];}
 function audio(p:Plan):SampleAudio{return {id:p.id,voice:p.voice,transcriptText:p.text,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts?version=2&audio=${p.id}`};}
 export async function splitAudioIndex(provided?:ProposalSample[]):Promise<Record<string,SampleAudio>>{
  if(!stagingEnvironmentConfigured())return {};const [plans,rows]=await Promise.all([splitTtsPlans(provided),splitTtsRows()]);let stories=plans.filter(p=>!p.job.startsWith('probe-'));
- // Keep the verified interview pair until BOTH replacement parts are ready. Other articles are untouched.
- const interview=stories.filter(p=>p.job.startsWith('a802c522-becf-496e-b78f-e374e4b7e98d:'));
- if(interview.length===2&&!interview.every(p=>ready(rows.find(r=>r.id===p.id),p))){
-  const previous=interview.map(p=>identifyPlan({...p,voice:'cedar'}));
-  if(previous.every(p=>ready(rows.find(r=>r.id===p.id),p)))stories=stories.map(p=>previous.find(old=>old.job===p.job)??p);
+ // Keep each verified pair until BOTH replacement parts are ready. Other articles are untouched.
+ for(const id of Object.keys(previousVoices)){
+  const pair=stories.filter(p=>p.job.startsWith(id+':'));
+  if(pair.length===2&&!pair.every(p=>ready(rows.find(r=>r.id===p.id),p))){
+   const previous=previousPlans(pair);
+   if(previous.every(p=>ready(rows.find(r=>r.id===p.id),p)))stories=stories.map(p=>previous.find(old=>old.job===p.job)??p);
+  }
  }
  // Atomic presentation cutover: never replace legacy players with a partial set.
  if(stories.length!==14||!stories.every(p=>ready(rows.find(r=>r.id===p.id),p)))return {};
@@ -63,7 +67,7 @@ export async function generateSplitTts(job:string){
  return {ok:true,state:'ready',id:p.id,calls,voice:p.voice,model:splitTtsModel,receipts,proofs,paths:p.paths};
  }catch(error){return {ok:false,state:'unknown',id:p.id,calls,phase,receipts,proofs,...(error instanceof SpeechRequestError?{failure:error.failure,providerStatus:error.httpStatus}:{}),message:'결과 확인 필요. POST 재실행 없이 GET으로만 확인하세요.'};}
 }
-export async function splitTtsDelivery(id:string,segment:string|null,request:Request){const [plans,rows]=await Promise.all([splitTtsPlans(),splitTtsRows()]);const previousInterview=plans.filter(p=>p.job.startsWith('a802c522-becf-496e-b78f-e374e4b7e98d:')).map(p=>identifyPlan({...p,voice:'cedar'}));const p=[...plans,...previousInterview].find(p=>p.id===id);if(!p||!ready(rows.find(r=>r.id===id),p))return new Response(null,{status:404});const privateHeaders={'Cache-Control':'private, no-store'};
+export async function splitTtsDelivery(id:string,segment:string|null,request:Request){const [plans,rows]=await Promise.all([splitTtsPlans(),splitTtsRows()]);const p=[...plans,...previousPlans(plans)].find(p=>p.id===id);if(!p||!ready(rows.find(r=>r.id===id),p))return new Response(null,{status:404});const privateHeaders={'Cache-Control':'private, no-store'};
  if(segment===null)return Response.json({hasAudio:true,source:'ai_tts',stale:false,voice:p.voice,segments:p.paths.map((_,index)=>({index,url:`/api/projects/${hwaseongSampleSlug}/sample-tts?version=2&audio=${id}&segment=${index}`}))},{headers:privateHeaders});
  if(!/^\d{1,2}$/.test(segment)||!p.paths[Number(segment)])return new Response(null,{status:404});const r=await fetch(object(p.paths[Number(segment)]),{headers:{...headers(),...(request.headers.has('range')?{Range:request.headers.get('range')!}:{})},cache:'no-store',signal:AbortSignal.timeout(15000)});const h=new Headers({...privateHeaders,'Content-Type':'audio/mpeg','X-Content-Type-Options':'nosniff'});for(const key of ['content-length','content-range','accept-ranges']){const v=r.headers.get(key);if(v)h.set(key,v);}return new Response(r.body,{status:r.status,headers:h});
 }
