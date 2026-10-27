@@ -152,6 +152,7 @@ export default async function ReadingEditorPage({
           composition={
             selectedArticle && compositionData ? (
               <ArticleCompositionEditor
+                key={compositionData.data?.id ?? selectedArticle.id}
                 article={{
                   body: selectedArticle.body,
                   articleType: selectedArticle.articleType,

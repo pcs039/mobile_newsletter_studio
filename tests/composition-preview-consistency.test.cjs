@@ -58,3 +58,9 @@ test('hidden title, ordinary image article and full-layout preserve the exact sh
 test('renderer inputs and source content are not mutated',()=>{
  const a={...article,blocks:[block('second','paragraph','두 번째',{sortOrder:20}),block('first','paragraph','첫 번째',{sortOrder:0})]},before=JSON.stringify({a,composition});preview(a);assert.equal(JSON.stringify({a,composition}),before);
 });
+test('saved font roles and refreshed font-only props reach the shared preview without replacing its local design draft',()=>{
+ const regular={id:'5389c81c-4694-5312-a281-28dcc6365a3a',cssFamily:'Registered',weight:'400',style:'normal',fileUrl:'/font.ttf',fileFormat:'ttf',isActive:true,webfontAllowed:true};const bold={...regular,id:'0a55dd35-1fb8-5694-ad38-ba17770d3f2d',weight:'700',fileUrl:'/bold.ttf'};
+ const c={...composition,settings:{...composition.settings,fontDesign:{title:regular.id,body:regular.id}}};const before=JSON.stringify(c);
+ const html=renderToStaticMarkup(React.createElement(CompositionMobilePreview,{article,composition:c,assets:[],selectedPlacementId:null,context:{fontAssets:[regular,bold]},fontDesign:{title:bold.id,body:regular.id}}));
+ assert(html.includes('--article-title-weight:700'));assert(html.includes('--article-body-weight:400'));assert(html.includes('RegisteredFace_0a55dd351fb85694ad38ba17770d3f2d'));assert(html.includes('HTML 소제목'));assert.equal(JSON.stringify(c),before);
+});

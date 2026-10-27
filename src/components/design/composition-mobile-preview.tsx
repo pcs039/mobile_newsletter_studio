@@ -6,6 +6,7 @@ import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import { mapAdminArticleAudio, previewAudioNotice } from "@/lib/admin-article-preview";
+import { validateArticleFontDesign, type ArticleFontDesign } from "@/lib/article-font-design";
 import { readArticleTextDesign } from "@/lib/article-text-design";
 import { validateArticleCompositionPlacementSettings, type ProjectArticleComposition } from "@/lib/article-composition";
 import type { ArticleHeroBackground } from "@/lib/article-hero-background";
@@ -25,6 +26,7 @@ type CompositionMobilePreviewProps = {
   composition: ProjectArticleComposition;
   selectedPlacementId: string | null;
   context?: CompositionPreviewContext;
+  fontDesign?: ArticleFontDesign;
 };
 
 // Local drafts intentionally remain visible regardless of ready/approval state.
@@ -42,7 +44,7 @@ export function localPreviewLayer(composition: ProjectArticleComposition, assets
   }
 }
 
-export function CompositionMobilePreview({ article, assets, composition, selectedPlacementId, context = {} }: CompositionMobilePreviewProps) {
+export function CompositionMobilePreview({ article, assets, composition, selectedPlacementId, context = {}, fontDesign }: CompositionMobilePreviewProps) {
   const [width, setWidth] = useState(390);
   const [lightbox, setLightbox] = useState<PublicArticleLightboxImage | null>(null);
   const selected = composition.assets.find(p => p.id === selectedPlacementId);
@@ -80,7 +82,7 @@ export function CompositionMobilePreview({ article, assets, composition, selecte
               survey={context.survey} showAdminPreviewControls={false}
               heroBackground={localPreviewLayer(composition, assets, "hero_background")}
               topIllustration={localPreviewLayer(composition, assets, "hero_illustration")}
-              textDesign={readArticleTextDesign(composition.settings.textDesign)}
+              textDesign={{ ...readArticleTextDesign(composition.settings.textDesign), fontDesign: fontDesign ?? validateArticleFontDesign(composition.settings.fontDesign) ?? undefined }}
               className="mx-5 my-5" onOpenArticleImage={setLightbox} />
           </div>
         </div>
