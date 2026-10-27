@@ -10,7 +10,7 @@ function render(props={}) {
  return renderToStaticMarkup(React.createElement(load('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader,{slug,samples,fonts:[],backgrounds:{},textDesigns:{},detail:false,width:390,cover,...props}));
 }
 test('default entry renders project cover and client notices without QA controls',()=>{
- const h=render();assert.match(h,/설정에 저장한 제목/);assert.match(h,/콘텐츠 둘러보기/);assert.match(h,/첫 기사 읽기/);assert.match(h,/실제 화성 풍경 사진이 아닙니다/);assert(!h.includes('>390px<'));assert(!h.includes('Production'));assert.match(h,/정식 발행물 아님/);
+ const h=render();assert.match(h,/설정에 저장한 제목/);assert.match(h,/소식지 둘러보기/);assert.match(h,/첫 기사 읽기/);assert.match(h,/실제 화성 풍경 사진이 아닙니다/);assert(!h.includes('>390px<'));assert(!h.includes('Production'));assert.match(h,/정식 발행물 아님/);
 });
 test('contents and retained article deep links bypass cover; old summary/detail remains available',()=>{
  const toc=render({contents:true});assert(!toc.includes('data-cover'));assert.match(toc,/처음으로/);for(let i=1;i<=7;i++)assert(toc.includes(`articleId=a${i}`));
@@ -29,6 +29,7 @@ test('shared cover retains ordinary reader defaults and renders HTML independent
  const props={...cover,masthead:undefined,slug,hasArticles:true,onOpenToc:()=>{},onStartReading:()=>{}};
  const normal=renderToStaticMarkup(React.createElement(View,props));assert.match(normal,/목차 보기/);assert.match(normal,/첫 기사 읽기/);assert(!normal.includes('30svh'));assert(!normal.includes('data-public-text-scale-target'));
  const compact=renderToStaticMarkup(React.createElement(View,{...props,compact:true,masthead:'프로젝트 제호',tocLabel:'7가지 콘텐츠 둘러보기'}));assert.match(compact,/data-public-text-scale-target="article-title"/);assert.match(compact,/설정에 저장한 부제/);assert.match(compact,/프로젝트 제호/);assert.equal((compact.match(/<img /g)||[]).length,1);
+ const primary=renderToStaticMarkup(React.createElement(View,{...props,tocPrimary:true}));assert.match(primary,/class="dd-btn dd-btn-primary[^"]*"[^>]*>목차 보기/);assert.match(normal,/class="dd-btn dd-btn-secondary[^"]*"[^>]*>목차 보기/);
 });
 test('Staging route uses the existing project cover contract and retains access guard',async()=>{
  const project={id:'p',coverEnabled:true,coverImagePath:'path/cover.webp',coverImageUrl:'ignored',coverFit:'contain',coverLayout:'image_info',coverTitle:'DB 제목',coverSubtitle:'DB 부제',coverIssueText:'DB 호수',title:'DB 제호'};

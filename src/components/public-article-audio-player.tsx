@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type PublicArticleAudioPlayerProps = {
   ariaLabel: string;
   className?: string;
+  controlsPortalTarget?: HTMLElement | null;
   isAiGenerated?: boolean;
   manifestUrl?: string;
   onPlaybackStart?: () => void;
@@ -65,6 +67,7 @@ function formatAudioTime(value: number) {
 export function PublicArticleAudioPlayer({
   ariaLabel,
   className = "",
+  controlsPortalTarget,
   isAiGenerated = false,
   manifestUrl,
   onPlaybackStart,
@@ -260,7 +263,8 @@ export function PublicArticleAudioPlayer({
   }
 
   useEffect(() => {
-    if (!shouldContinueSegmentRef.current || !isPlaying || !audioRef.current) {
+    // Browsers may fire pause before ended; the continuation intent survives that pause.
+    if (!shouldContinueSegmentRef.current || !audioRef.current) {
       return;
     }
 
@@ -273,27 +277,8 @@ export function PublicArticleAudioPlayer({
   const isReady = loadState === "ready" && segments.length > 0;
   const progressValue = duration > 0 ? Math.min(currentTime, duration) : 0;
 
-  return (
-    <div className={`space-y-1.5 ${className}`}>
-      <audio
-        ref={audioRef}
-        aria-label={ariaLabel}
-        onCanPlay={applyPlaybackRate}
-        onEnded={handleEnded}
-        onLoadedMetadata={handleLoadedMetadata}
-        onPause={() => setIsPlaying(false)}
-        onPlay={() => {
-          setIsPlaying(true);
-
-          if (!hasNotifiedPlaybackStartRef.current) {
-            hasNotifiedPlaybackStartRef.current = true;
-            onPlaybackStart?.();
-          }
-        }}
-        onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-        preload="metadata"
-        src={currentSrc || undefined}
-      />
+  // Optional second control surface for the same audio element/state, never a second player.
+  const controls = <>
       <div className="flex min-w-0 items-center gap-1.5">
         <button
           type="button"
@@ -337,6 +322,31 @@ export function PublicArticleAudioPlayer({
         {segments.length > 1 ? <span>{segmentIndex + 1} / {segments.length}</span> : null}
         {loadState === "loading" ? <span>준비 중</span> : loadState === "error" ? <span>재생 불가</span> : null}
       </div>
+  </>;
+
+  return (
+    <div className={`space-y-1.5 ${className}`}>
+      <audio
+        ref={audioRef}
+        aria-label={ariaLabel}
+        onCanPlay={applyPlaybackRate}
+        onEnded={handleEnded}
+        onLoadedMetadata={handleLoadedMetadata}
+        onPause={() => setIsPlaying(false)}
+        onPlay={() => {
+          setIsPlaying(true);
+
+          if (!hasNotifiedPlaybackStartRef.current) {
+            hasNotifiedPlaybackStartRef.current = true;
+            onPlaybackStart?.();
+          }
+        }}
+        onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+        preload="metadata"
+        src={currentSrc || undefined}
+      />
+      {controls}
+      {controlsPortalTarget ? createPortal(<div data-shared-audio-controls className="space-y-1.5">{controls}</div>, controlsPortalTarget) : null}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { getProjectSurveys, getValidatedSurveyAnswer, isProjectSurveyPubliclyActive, type ProjectSurveyItem } from "@/lib/newsletter-repository";
 import { hwaseongSampleSlug } from "@/lib/hwaseong-proposal-sample";
 import { sampleOrderRules } from "@/lib/hwaseong-sample-interest";
-import { safeParticipationText, type ParticipationEntry, type ParticipationKind } from "@/lib/hwaseong-participation-contract";
+import { participationKinds, safeParticipationText, type ParticipationEntry, type ParticipationKind } from "@/lib/hwaseong-participation-contract";
 
 export const participationProjectId = "4cd5297e-a0fd-434c-84d4-fa4d3baf9389";
 export class ParticipationError extends Error { constructor(public status: number, message: string) { super(message); } }
@@ -50,21 +50,20 @@ function snapshotSurvey(s: SurveySnapshot | null): ProjectSurveyItem | null {
 }
 export async function participationSettings() {
   const rows = await db<{ comments_enabled: boolean; survey_id: string | null; survey_snapshot: SurveySnapshot | null }[]>(`newsletter_sample_participation_settings?select=comments_enabled,survey_id,survey_snapshot&project_id=eq.${participationProjectId}&limit=1`);
-  return rows[0] ?? { comments_enabled: false, survey_id: null, survey_snapshot: null };
+  return { survey_id: rows[0]?.survey_id ?? null, survey_snapshot: rows[0]?.survey_snapshot ?? null };
 }
 export async function participationView(articleId: string, actor: string, isAdmin: boolean) {
   const settings = await participationSettings();
-  const comments = await (
-    settings.comments_enabled ? db<Pick<ParticipationEntry, "id" | "body" | "created_at">[]>(`newsletter_sample_participation?select=id,body,created_at&project_id=eq.${participationProjectId}&article_id=eq.${articleId}&kind=eq.comment&state=eq.approved&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=created_at.desc&limit=20`) : Promise.resolve([]));
   const candidate = snapshotSurvey(settings.survey_snapshot);
   const survey = candidate && isProjectSurveyPubliclyActive(candidate) ? candidate : null;
-  return { commentsEnabled: settings.comments_enabled, survey, comments, token: participationToken(articleId, actor), isAdmin };
+  return { survey, token: participationToken(articleId, actor), isAdmin };
 }
 export async function participationReceipt(articleId: string, id: string, actor: string) {
-  const rows = await db<Pick<ParticipationEntry, "id" | "state" | "kind">[]>(`newsletter_sample_participation?select=id,state,kind&id=eq.${id}&project_id=eq.${participationProjectId}&article_id=eq.${articleId}&actor_key=eq.${actor}&limit=1`);
-  return rows[0] ?? null;
+  const rows = await db<Pick<ParticipationEntry, "id" | "state" | "kind">[]>(`newsletter_sample_participation?select=id,state,kind&kind=in.(private,survey)&id=eq.${id}&project_id=eq.${participationProjectId}&article_id=eq.${articleId}&actor_key=eq.${actor}&limit=1`);
+  return rows[0] && participationKinds.includes(rows[0].kind as ParticipationKind) ? rows[0] : null;
 }
 export async function submitParticipation(articleId: string, actor: string, input: Record<string, unknown>) {
+  if (!participationKinds.includes(input.kind as ParticipationKind)) throw new ParticipationError(403, "사용할 수 없는 참여 유형입니다.");
   if (input.consent !== true || input.website !== "") throw new ParticipationError(400, "개인정보 제외 안내를 확인해 주세요.");
   const kind = input.kind as ParticipationKind;
   let body: string | null = null, surveyId: string | null = null;
@@ -83,14 +82,15 @@ export async function submitParticipation(articleId: string, actor: string, inpu
     }
     surveyId = survey.id;
   } else {
-    try { body = safeParticipationText(input.body, kind === "comment" ? 300 : 1000); } catch (e) { throw new ParticipationError(400, (e as Error).message); }
+    try { body = safeParticipationText(input.body, 1000); } catch (e) { throw new ParticipationError(400, (e as Error).message); }
   }
   return db<{ id: string; state: string }>("rpc/sample_participation_submit", { method: "POST", body: JSON.stringify({ p_id: input.requestId, p_project_id: participationProjectId, p_article_id: articleId, p_actor_key: actor, p_kind: kind, p_body: body, p_answers: answers, p_survey_id: surveyId }) });
 }
 export async function participationAdminData() {
-  const [settings, entries, surveyData] = await Promise.all([participationSettings(), db<ParticipationEntry[]>(`newsletter_sample_participation?select=id,article_id,kind,body,answers,survey_id,state,created_at&project_id=eq.${participationProjectId}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=created_at.desc&limit=200`), getProjectSurveys(hwaseongSampleSlug)]);
-  return { settings, entries, surveys: surveyData.surveys.map(s => s.id === settings.survey_id ? snapshotSurvey(settings.survey_snapshot) ?? s : s) };
+  const [settings, entries, surveyData] = await Promise.all([participationSettings(), db<ParticipationEntry[]>(`newsletter_sample_participation?select=id,article_id,kind,body,answers,survey_id,state,created_at&kind=in.(private,survey)&project_id=eq.${participationProjectId}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=created_at.desc&limit=200`), getProjectSurveys(hwaseongSampleSlug)]);
+  return { settings, entries: entries.filter(e => participationKinds.includes(e.kind as ParticipationKind)), surveys: surveyData.surveys.map(s => s.id === settings.survey_id ? snapshotSurvey(settings.survey_snapshot) ?? s : s) };
 }
 export function manageParticipation(input: Record<string, unknown>, actor: string) {
-  return db("rpc/sample_participation_manage", { method: "POST", body: JSON.stringify({ p_project_id: participationProjectId, p_action: input.action, p_id: input.id ?? null, p_enabled: input.commentsEnabled ?? null, p_survey_id: input.surveyId || null, p_reviewer_key: actor }) });
+  if (input.action !== "settings" || (input.commentsEnabled !== undefined && input.commentsEnabled !== false)) throw new ParticipationError(403, "사용할 수 없는 관리 요청입니다.");
+  return db("rpc/sample_participation_manage", { method: "POST", body: JSON.stringify({ p_project_id: participationProjectId, p_action: "settings", p_id: null, p_enabled: false, p_survey_id: input.surveyId || null, p_reviewer_key: actor }) });
 }

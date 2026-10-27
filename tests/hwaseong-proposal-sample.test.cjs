@@ -80,3 +80,29 @@ test('event presentation retains original subjects while separating archived int
 test('tourism search links use a place-search label without claiming route calculation',()=>{
  const html=renderProposal('tourism',true);assert.equal((html.match(/지도에서 장소 찾기/g)||[]).length,6);assert(!html.includes('길찾기'));assert.equal((html.match(/https:\/\/map.kakao.com\/link\/search\//g)||[]).length,6);assert.equal((html.match(/href="tel:/g)||[]).length,5);
 });
+test('editorial paragraphs reuse saved alignment and retain source text without duplicate decorative numbering',()=>{
+ const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+ const feature={sourceUrl:'https://www.youtube.com/watch?v=cLHilm6oBjI',publishedDate:'2026-10-15',credit:'공식 출처',person:'',role:'',quote:'',note:'기존 출처 고지',videoId:'cLHilm6oBjI',canvaCover:'',sections:[{title:'01 · 원래 소제목',text:'확인한 원문 그대로.\n문단과 음성 대본은 바꾸지 않습니다.'}]};
+ const load=loader({'@/lib/hwaseong-proposal-sample':{editorialFeature:()=>feature}}),Component=load('src/components/hwaseong-editorial-sample.tsx').HwaseongEditorialSample;
+ for(const alignment of ['left','center','right','justify']){
+  const sample={kind:'video',headline:'기존 제목',sourceTitle:'기존 출처',article:{id:'video',bodyAlignment:alignment}},before=JSON.stringify({sample,feature});
+  const html=renderToStaticMarkup(React.createElement(Component,{sample,href:'/detail',detail:true}));
+  assert(html.includes(`data-text-alignment="${alignment}"`));assert(html.includes('확인한 원문 그대로.\n문단과 음성 대본은 바꾸지 않습니다.'));
+  assert.equal((html.match(/01 · 원래 소제목/g)||[]).length,1);assert(!html.includes('aria-hidden="true"'));assert.equal(JSON.stringify({sample,feature}),before);
+ }
+});
+test('only the fixed Staging sample replaces the audio example with its saved read-only transcript',async()=>{
+ const React=require('react');let staging=true;
+ const load=loader({'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>staging},'@/lib/newsletter-repository':{getProjectAudioFiles:async()=>({files:[{id:'audio',sourceType:'uploaded',title:'등록된 요약 음성',transcriptText:'실제 저장 대본',articleId:null,previewHref:'/retained.m4a',duration:'19초'}],source:'supabase'}),getProjectContent:async()=>({articles:[]})},'@/lib/article-tts-audio':{getArticleTtsProjectStatus:async()=>({articles:[]})}});
+ const page=load('src/app/projects/[projectId]/audio/page.tsx').default;
+ function find(node){if(node?.type==='textarea')return node;for(const child of React.Children.toArray(node?.props?.children)){const f=find(child);if(f)return f;}}
+ const sample=find(await page({params:Promise.resolve({projectId:'hwaseong-2026-10-samples'})}));assert.equal(sample.props.defaultValue,'실제 저장 대본');assert.equal(sample.props.readOnly,true);
+ for(const [enabled,projectId] of [[false,'hwaseong-2026-10-samples'],[true,'other-project']]){staging=enabled;const other=find(await page({params:Promise.resolve({projectId})}));assert(other.props.defaultValue.startsWith('무안군의 주요 정책'));assert.equal(other.props.readOnly,false);}
+});
+test('sample sharing uses the visible editorial headline while retaining the original article title and identity',()=>{
+ const React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+ const sample={kind:'policy',headline:'표시 제목\n두 번째 줄',eyebrow:'01',pale:'#fff',color:'#234e43',cover:'/retained.webp',article:{id:'retained-id',title:'보존 원제',blocks:[],body:'보존 원문',audioFile:null}};const before=JSON.stringify(sample);
+ const load=loader({'next/navigation':{useSearchParams:()=>null},'@/components/hwaseong-article-participation':{HwaseongArticleParticipation:p=>React.createElement('span',{'data-share-title':p.articleTitle,'data-article-id':p.articleId})}});
+ const html=renderToStaticMarkup(React.createElement(load('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader,{slug:'hwaseong-2026-10-samples',samples:[sample],selectedId:'retained-id',detail:false,width:390,fonts:[],backgrounds:{},textDesigns:{}}));
+ assert(html.includes('data-share-title="표시 제목 두 번째 줄"'));assert(html.includes('data-article-id="retained-id"'));assert.equal(JSON.stringify(sample),before);
+});

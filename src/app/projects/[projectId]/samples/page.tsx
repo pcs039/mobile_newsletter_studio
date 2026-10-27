@@ -9,7 +9,11 @@ import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { HwaseongProposalReader } from "@/components/hwaseong-proposal-reader";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { sampleAudioIndex } from "@/lib/hwaseong-sample-tts-server";
+import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
+import { splitAudioIndex } from "@/lib/hwaseong-sample-split-tts-server";
 import { normalizeSampleInterest } from "@/lib/hwaseong-sample-interest";
+import { prepareSampleCover } from "@/lib/hwaseong-sample-cover-server";
+import { prepareSampleToc, prepareSampleMap } from "@/lib/hwaseong-sample-toc-server";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "화성 10월호 · 비공개 제안 샘플", robots: { index: false, follow: false }, referrer: "no-referrer" as const };
@@ -28,18 +32,22 @@ export default async function Samples({ params, searchParams }: {
   const authStarted = Date.now();
   if (!project || !(await requireProjectAdminPreviewAccess(project, `/projects/${projectId}/samples`))) notFound();
   timings.authMs = Date.now() - authStarted;
-  // Start the existing cover request before waiting for article/font/Composition reads.
+  // Prepare just the initial cover alongside existing data reads, after access.
   const query = await searchParams;
   const coverImageSrc = project.coverImagePath ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) : project.coverImageUrl;
-  if (project.coverEnabled && coverImageSrc && !query.articleId && query.view !== "contents") preload(coverImageSrc, { as: "image", fetchPriority: "high" });
+  const isCoverEntry = project.coverEnabled && coverImageSrc && !query.articleId && query.view !== "contents";
+  const preparedCover = isCoverEntry ? prepareSampleCover(project.id, projectId, coverImageSrc) : Promise.resolve(null);
   const contentStarted = Date.now();
   const [content, fontData] = await Promise.all([getProjectContent(projectId), getFontAssets({ activeOnly: true })]);
   timings.contentAndFontsMs = Date.now() - contentStarted;
   if (content.source !== "supabase") notFound();
-  const samples = content.articles.map(a => proposalSample(a, project.id)).filter((s): s is ProposalSample => s !== null);
+  const allSamples = content.articles.map(a => proposalSample(a, project.id)).filter((s): s is ProposalSample => s !== null);
+  const regularSamples=allSamples.filter(s=>!s.editorTest);
+  const editorPreview=allSamples.find(s=>s.editorTest&&s.article.id===query.articleId);
+  const samples=editorPreview?[editorPreview]:regularSamples;
   const ids = samples.map(s => s.article.id);
   const compositionStarted = Date.now();
-  const [backgrounds, textDesigns, audioIndex] = await Promise.all([getArticleHeroBackgrounds(project.id, projectId, ids, "preview"), getArticleTextDesigns(project.id, ids, true), sampleAudioIndex(samples).catch(() => ({}))]);
+  const [backgrounds, textDesigns, audioIndex, inlineCover, thumbnailIndex, mapImage] = await Promise.all([getArticleHeroBackgrounds(project.id, projectId, ids, "preview"), getArticleTextDesigns(project.id, ids, true), Promise.all([sampleAudioIndex(regularSamples).catch((): Record<string,SampleAudio> => ({})),splitAudioIndex(regularSamples).catch((): Record<string,SampleAudio> => ({}))]).then(([old,split])=>{ const audio={...old,...split}; for(const s of regularSamples)if(s.authorEdited&&!split[s.article.id])delete audio[s.article.id]; return audio; }), preparedCover, prepareSampleToc(project.id, projectId, samples), prepareSampleMap(project.id, projectId, samples)]);
   timings.compositionMs = Date.now() - compositionStarted;
   timings.totalMs = Date.now() - started;
   // Uploaded audio still uses the authenticated existing project-file proxy.
@@ -48,10 +56,11 @@ export default async function Samples({ params, searchParams }: {
     s.article = { ...s.article, audioFile: { ...s.article.audioFile, previewHref: `/api/project-files/preview?${u.searchParams}` } };
   }
   const cover = project.coverEnabled && coverImageSrc ? {
-    coverImageSrc, coverFit: project.coverFit, coverLayout: project.coverLayout,
+    coverImageSrc: inlineCover || coverImageSrc, coverFit: project.coverFit, coverLayout: project.coverLayout,
     coverTitle: project.coverTitle || project.title, coverSubtitle: project.coverSubtitle,
     coverIssueText: project.coverIssueText || project.issue, masthead: project.title,
   } : undefined;
-  return <><PublicFontFaceStyle fonts={fontData.fonts} /><HwaseongProposalReader slug={projectId} samples={samples} fonts={fontData.fonts} backgrounds={backgrounds} textDesigns={textDesigns} cover={cover} serverTimings={timings} audioIndex={audioIndex}
+  if (isCoverEntry && !inlineCover) preload(coverImageSrc, { as: "image", fetchPriority: "high" });
+  return <><PublicFontFaceStyle fonts={fontData.fonts} /><HwaseongProposalReader slug={projectId} samples={samples} fonts={fontData.fonts} backgrounds={backgrounds} textDesigns={textDesigns} cover={cover} serverTimings={timings} audioIndex={audioIndex} thumbnailIndex={thumbnailIndex} mapImage={mapImage}
     selectedId={ids.includes(query.articleId ?? "") ? query.articleId : undefined} detail={query.view === "detail"} contents={query.view === "contents"} qa={query.qa === "1"} interest={normalizeSampleInterest(query.interest)} width={query.width === "520" ? 520 : 390} /></>;
 }

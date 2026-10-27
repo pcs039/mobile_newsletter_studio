@@ -1,4 +1,6 @@
 import { articleBaseOrderQuery, compareArticleBaseOrder } from "@/lib/article-order";
+import { saveSampleTextIfProtected } from "@/lib/hwaseong-sample-text-edit-server";
+import type { SampleTextEditState } from "@/lib/hwaseong-sample-text-edit";
 import { readFullLayout } from "@/lib/article-full-layout";
 import { readDesignAssetMetadata, type DesignAssetMetadata } from "@/lib/design-asset-metadata";
 import { getSupabaseConfigStatus, getSupabaseRestEndpoint } from "@/lib/supabase-config";
@@ -1316,6 +1318,7 @@ export type AudioTranscriptReviewStatus = "pending" | "approved" | "needs_revisi
 export type ArticleTextAlignment = "left" | "center" | "right" | "justify";
 
 export type UpsertProjectArticleInput = {
+  sampleTextEdit?: { revision: string; patch: unknown };
   projectSlug: string;
   articleId?: string;
   audioSource?: string;
@@ -1386,6 +1389,8 @@ export type UpsertProjectArticleInput = {
 export type UpsertProjectArticleResult =
   | {
       ok: true;
+      sampleTextState?: SampleTextEditState;
+      message?: string;
       article: Pick<ProjectContentArticle, "id" | "title">;
     }
   | {
@@ -6786,6 +6791,8 @@ export async function upsertProjectArticle(
       };
     }
 
+    const sampleSave = await saveSampleTextIfProtected(input, project.id, headers);
+    if (sampleSave) return sampleSave;
     const requestedPageNumber = normalizeArticleSortOrder(input.sourcePageNumber);
     let validFrom = normalizeArticleValidityDate(input.validFrom);
     const validUntil = normalizeArticleValidityDate(input.validUntil);

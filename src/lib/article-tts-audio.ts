@@ -479,7 +479,7 @@ export async function requestOpenAiSpeech(
   input: string,
   voice: ArticleTtsVoice,
   model: string,
-  credentials?: { apiKey: string | null; captureReceipt?: boolean; signal?: AbortSignal; maxBytes?: number; diagnostics?: TtsDiagnostics },
+  credentials?: { apiKey: string | null; captureReceipt?: boolean; signal?: AbortSignal; maxBytes?: number; diagnostics?: TtsDiagnostics; narration?: { speed: 1; instructions: string } },
 ): Promise<
   | { ok: false; error: string; message: string; httpStatus: number; detail?: string; isInputTooLong?: boolean; providerRequestId?: string | null }
   | { ok: true; data: ArrayBuffer; httpStatus?: number; providerRequestId?: string | null }
@@ -511,7 +511,8 @@ export async function requestOpenAiSpeech(
       },
       body: JSON.stringify({
         input,
-        instructions: "한국어 공공기관 모바일 소식지 기사 본문을 차분하고 또렷하며 자연스럽게 읽어주세요. 원문에 없는 내용을 추가하거나 요약하지 마세요.",
+        instructions: credentials?.narration?.instructions ?? "한국어 공공기관 모바일 소식지 기사 본문을 차분하고 또렷하며 자연스럽게 읽어주세요. 원문에 없는 내용을 추가하거나 요약하지 마세요.",
+        ...(credentials?.narration ? { speed: credentials.narration.speed } : {}),
         model,
         response_format: "mp3",
         voice,

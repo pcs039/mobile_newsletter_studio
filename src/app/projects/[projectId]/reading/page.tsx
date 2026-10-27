@@ -1,4 +1,5 @@
 import { mapFullLayouts } from "@/lib/article-full-layout-server";
+import { getSampleTextEditAccess } from "@/lib/hwaseong-sample-text-edit-server";
 import { mapAiImageArticles } from "@/lib/ai-image-article-server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -95,10 +96,13 @@ export default async function ReadingEditorPage({
     compositionSourceData?.data.map((source) => [source.articleId, source]) ?? [],
   );
   const previewArticle = selectedArticle && project ? (await mapAiImageArticles(project.id,projectId,await mapFullLayouts(project.id,projectId,[selectedArticle],"preview"),"preview"))[0] : selectedArticle;
-  const mobilePreviewHref = selectedArticle
+  const isSampleArticle=projectId==="hwaseong-2026-10-samples"&&selectedArticle?.blocks.some(b=>Object.hasOwn(b.metadata,"proposal_sample"));
+  const mobilePreviewHref = isSampleArticle&&selectedArticle ? `/projects/${projectId}/samples?articleId=${selectedArticle.id}&view=detail&width=390` : selectedArticle
     ? `/newsletters/${projectId}?preview=admin&articleId=${selectedArticle.id}`
     : `/newsletters/${projectId}?preview=admin`;
   const listArticles = articles;
+  const sampleTextEdit=isSampleArticle&&selectedArticle
+    ? await getSampleTextEditAccess(selectedArticle.id) : undefined;
 
   return (
     <ProjectAdminShell
@@ -128,6 +132,7 @@ export default async function ReadingEditorPage({
             <ProjectArticleEditorForm
               key={selectedArticle?.id ?? "new"}
               article={selectedArticle}
+              sampleTextEdit={sampleTextEdit}
               assets={assetData.assets}
               pages={pageImageData.pages}
               surveys={surveyData.surveys}
@@ -136,7 +141,7 @@ export default async function ReadingEditorPage({
               showReviewActions={false}
             />
           }
-          fontSettings={selectedArticle ? <ArticleFontSettings
+          fontSettings={selectedArticle&&!isSampleArticle ? <ArticleFontSettings
             key={selectedArticle.id} articleId={selectedArticle.id} fonts={fontData.fonts}
             projectTitleFontAssetId={project?.titleFontAssetId} projectBodyFontAssetId={project?.bodyFontAssetId}
             initialValues={{ title: selectedArticle.titleFontAssetId ?? "", body: selectedArticle.bodyFontAssetId ?? "", caption: selectedArticle.captionFontAssetId ?? "", button: selectedArticle.buttonFontAssetId ?? "" }}

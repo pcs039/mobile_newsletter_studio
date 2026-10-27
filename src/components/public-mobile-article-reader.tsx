@@ -464,6 +464,8 @@ export function PublicNewsletterCoverView({
   coverImageAlt,
   startLabel = "첫 기사 읽기",
   tocLabel = "목차 보기",
+  tocPrimary = false,
+  coverImagePriority = false,
   showTextSizeControl = false,
 }: {
   coverFit: "contain" | "cover";
@@ -483,6 +485,8 @@ export function PublicNewsletterCoverView({
   coverImageAlt?: string;
   startLabel?: string;
   tocLabel?: string;
+  tocPrimary?: boolean;
+  coverImagePriority?: boolean;
   showTextSizeControl?: boolean;
 }) {
   const hasInfo = Boolean(coverTitle || coverSubtitle || coverIssueText);
@@ -497,6 +501,9 @@ export function PublicNewsletterCoverView({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImageSrc}
+              loading={coverImagePriority ? "eager" : undefined}
+              fetchPriority={coverImagePriority ? "high" : undefined}
+              decoding={coverImagePriority ? "sync" : undefined}
               alt={coverImageAlt || coverTitle || "모바일 소식지 표지"}
               className={`absolute inset-0 h-full w-full ${imageFitClass}`}
             />
@@ -515,6 +522,9 @@ export function PublicNewsletterCoverView({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={coverImageSrc}
+                loading={coverImagePriority ? "eager" : undefined}
+                fetchPriority={coverImagePriority ? "high" : undefined}
+                decoding={coverImagePriority ? "sync" : undefined}
                 alt={coverImageAlt || coverTitle || "모바일 소식지 표지"}
                 className={`mx-auto w-full rounded-[1.1rem] ${compact ? "h-[clamp(180px,30svh,300px)]" : "max-h-[82vh]"} ${imageFitClass}`}
               />
@@ -535,7 +545,7 @@ export function PublicNewsletterCoverView({
           type="button"
           onClick={onStartReading}
           disabled={!hasArticles}
-          className={`dd-btn dd-btn-primary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45 ${compact ? "order-2" : ""}`}
+          className={`dd-btn ${tocPrimary ? "dd-btn-secondary" : "dd-btn-primary"} min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45 ${compact ? "order-2" : ""}`}
         >
           {startLabel}
         </button>
@@ -543,7 +553,7 @@ export function PublicNewsletterCoverView({
           type="button"
           onClick={onOpenToc}
           disabled={!hasArticles}
-          className={`dd-btn dd-btn-secondary min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45 ${compact ? "order-1" : ""}`}
+          className={`dd-btn ${tocPrimary ? "dd-btn-primary" : "dd-btn-secondary"} min-h-11 justify-center rounded-full px-4 text-sm disabled:pointer-events-none disabled:opacity-45 ${compact ? "order-1" : ""}`}
         >
           {tocLabel}
         </button>
