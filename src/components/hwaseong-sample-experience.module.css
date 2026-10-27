@@ -257,3 +257,5 @@
   .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .editorialSummary[data-editorial-compare="true"] .summaryArt { grid-row: 2 / span 2; }
   .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .editorialSummary[data-editorial-compare="true"] .summaryFacts { grid-row: 3; }
 }
+.displayModes button, .bookToolbar button { color: #123f4b; }
+.displayModes button[aria-pressed="true"] { color: white; }

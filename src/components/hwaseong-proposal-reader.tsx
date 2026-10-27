@@ -262,7 +262,8 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     if (hash) { try { document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView(); } catch { /* Invalid hash stays on the current article. */ } }
     else if (selectedId && detail) {
       detailRef.current?.focus({ preventScroll: true });
-      detailRef.current?.scrollIntoView({ block: "start", behavior });
+      if(mainRef.current?.dataset.sampleDisplay === "ebook" && mainRef.current.dataset.sampleSpread === "double" && window.matchMedia("(min-width:1100px) and (min-height:600px)").matches) { detailRef.current?.scrollTo({top:0,behavior:"instant"}); scrollRef.current?.scrollTo({top:0,behavior:"instant"}); }
+      else detailRef.current?.scrollIntoView({ block: "start", behavior });
     } else if (selectedId && previousLocation.current.id === selectedId && previousLocation.current.detail) {
       summaryRef.current?.scrollIntoView({ block: "start", behavior });
     } else { scrollRef.current?.scrollTo({top:0,left:0,behavior:"instant"}); window.scrollTo({ top: 0, behavior: "instant" }); }
