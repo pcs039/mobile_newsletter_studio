@@ -38,3 +38,9 @@ test('legacy equal-weight faces remain independently selectable and reference th
  const output=css.getFontFaceCss([face,other]);const first=css.getFontFaceFamilyValue(face).split(', var(')[0],second=css.getFontFaceFamilyValue(other).split(', var(')[0];
  assert.notEqual(first,second);assert(output.includes(`font-family: ${first};\n  src: url("/font.ttf")`));assert(output.includes(`font-family: ${second};\n  src: url("/different.ttf")`));assert.equal(css.getFontFamilyValue(face),css.getFontFamilyValue(other));
 });
+test('draft preview projects saved fonts without enabling other unpublished text decorations',async()=>{
+ const oldFetch=global.fetch,oldKey=process.env.SUPABASE_SERVICE_ROLE_KEY;process.env.SUPABASE_SERVICE_ROLE_KEY='fixture';let compositionQuery;
+ global.fetch=async url=>{if(url.includes('newsletter_article_compositions')){compositionQuery=new URL(url).searchParams;return Response.json([{article_id:aid,status:'draft',settings:{textDesign:{captionStyled:true},fontDesign:{title:id}}}]);}return Response.json([{id:aid,status:'draft',publication_kind:'issue'}]);};
+ try{const repo=loader({'@/lib/supabase-config':{getSupabaseConfigStatus:()=>({isConfigured:true,hasServiceRoleKey:true}),getSupabaseRestEndpoint:p=>'https://fixture.invalid'+p}})('src/lib/article-composition-repository.ts');const result=await repo.getArticleTextDesigns(pid,[aid],true);assert.deepEqual(result[aid].fontDesign,{title:id});assert.equal(result[aid].captionStyled,undefined);assert(!compositionQuery.has('status'));}
+ finally{global.fetch=oldFetch;if(oldKey===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=oldKey;}
+});

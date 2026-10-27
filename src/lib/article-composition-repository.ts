@@ -728,15 +728,15 @@ export async function getArticleTextDesigns(projectId: string, articleIds: strin
     const ids = [...new Set(articleIds)];
     for (let start = 0; start < ids.length; start += 100) {
       const filter = `in.(${ids.slice(start, start + 100).join(",")})`;
-      const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_article_compositions?${new URLSearchParams({ select: "article_id,settings", project_id: `eq.${projectId}`, article_id: filter, ...(!includeDraftArticles ? { status: "eq.ready" } : {}), limit: "100" })}`);
+      const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_article_compositions?${new URLSearchParams({ select: "article_id,status,settings", project_id: `eq.${projectId}`, article_id: filter, ...(!includeDraftArticles ? { status: "eq.ready" } : {}), limit: "100" })}`);
       const articleEndpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_articles?${new URLSearchParams({ select: "id,status,publication_kind,valid_from,valid_until", project_id: `eq.${projectId}`, id: filter, limit: "100" })}`);
       if (!endpoint || !articleEndpoint) return {};
       const [response, articleResponse] = await Promise.all([fetch(endpoint, { headers, cache: "no-store" }), fetch(articleEndpoint, { headers, cache: "no-store" })]);
       if (!response.ok || !articleResponse.ok) return {};
       const articles = await articleResponse.json() as Array<{ id: string; status: string; publication_kind: string; valid_from: string | null; valid_until: string | null }>;
       const allowed = new Set(articles.filter((a) => includeDraftArticles || isArticlePubliclyVisible({ id: a.id, status: a.status, publicationKind: normalizeArticlePublicationKind(a.publication_kind), validFrom: a.valid_from, validUntil: a.valid_until })).map((a) => a.id));
-      for (const row of await response.json() as Array<{ article_id: string; settings: Record<string, unknown> }>) {
-        if (allowed.has(row.article_id)) result[row.article_id] = { ...readArticleTextDesign(row.settings?.textDesign), fontDesign: validateArticleFontDesign(row.settings?.fontDesign) ?? undefined };
+      for (const row of await response.json() as Array<{ article_id: string; status: string; settings: Record<string, unknown> }>) {
+        if (allowed.has(row.article_id)) result[row.article_id] = { ...(row.status === "ready" ? readArticleTextDesign(row.settings?.textDesign) : {}), fontDesign: validateArticleFontDesign(row.settings?.fontDesign) ?? undefined };
       }
     }
     return result;
