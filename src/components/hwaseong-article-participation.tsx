@@ -8,6 +8,9 @@ import type { ParticipationData, ParticipationKind } from "@/lib/hwaseong-partic
 const button = "min-h-11 rounded-xl border border-[#125e7c] bg-[#125e7c] px-4 py-3 text-sm font-bold text-white disabled:bg-slate-400 disabled:border-slate-400";
 const api = (slug: string) => `/api/projects/${encodeURIComponent(slug)}/sample-participation`;
 type Result = { message: string; phase: "idle" | "saving" | "done" | "unknown" };
+export function confirmedParticipationReceipt(kind: ParticipationKind, id: string, value: { id?: unknown; kind?: unknown; state?: unknown } | null | undefined) {
+  return value?.id === id && (value.kind === undefined || value.kind === kind) && value.state === (kind === "private" ? "private" : "recorded");
+}
 function ParticipationForm({ slug, articleId, kind, data, onSubmitted }: { slug: string; articleId: string; kind: ParticipationKind; data: ParticipationData; onSubmitted: () => void }) {
   const [result, setResult] = useState<Result>({ phase: "idle", message: "" });
   const busy = useRef(false), requestId = useRef<string | null>(null);
@@ -19,7 +22,7 @@ function ParticipationForm({ slug, articleId, kind, data, onSubmitted }: { slug:
     try {
       const r = await fetch(`${api(slug)}?${new URLSearchParams({ articleId, requestId: id })}`, { cache: "no-store" });
       const value = await r.json();
-      if (r.ok && value.ok && value.receipt) { setResult({ phase: "done", message: "접수가 확인됐습니다. 감사합니다." }); onSubmitted(); }
+      if (r.ok && value.ok && confirmedParticipationReceipt(kind,id,value.receipt)) { setResult({ phase: "done", message: "접수가 확인됐습니다. 감사합니다." }); onSubmitted(); }
       else setResult({ phase: "unknown", message: "아직 접수 여부를 확인할 수 없습니다. 다시 제출하지 말고 잠시 후 저장 상태만 확인해 주세요." });
     } catch { setResult({ phase: "unknown", message: "저장 상태를 확인하지 못했습니다. 자동 재제출하지 않습니다." }); }
     finally { busy.current = false; }
@@ -31,12 +34,12 @@ function ParticipationForm({ slug, articleId, kind, data, onSubmitted }: { slug:
       if (id) {
         requestId.current = id;
         void fetch(`${api(slug)}?${new URLSearchParams({ articleId, requestId: id })}`, { cache: "no-store" }).then(async r => {
-          const value = await r.json(); if (!cancelled) setResult({ phase: r.ok && value.ok && value.receipt ? "done" : "unknown", message: value.receipt ? "이 화면에서 제출한 참여가 접수됐습니다." : "이전 요청의 결과 확인이 필요합니다. 자동 재제출하지 않습니다." });
+          const value = await r.json(); const done=r.ok && value.ok && confirmedParticipationReceipt(kind,id,value.receipt); if (!cancelled) setResult({ phase: done ? "done" : "unknown", message: done ? "이 화면에서 제출한 참여가 접수됐습니다." : "이전 요청의 결과 확인이 필요합니다. 자동 재제출하지 않습니다." });
         }).catch(() => { if (!cancelled) setResult({ phase: "unknown", message: "이전 요청의 저장 상태를 확인해 주세요." }); });
       }
     } catch { /* Browser storage can be disabled. */ }
     return () => { cancelled = true; };
-  }, [storageKey, articleId, slug]);
+  }, [storageKey, articleId, slug, kind]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (busy.current || result.phase !== "idle") return;
     if (requestId.current) { setResult({ phase: "unknown", message: "이전 요청의 저장 상태를 먼저 확인해 주세요." }); void status(); return; }
@@ -46,7 +49,7 @@ function ParticipationForm({ slug, articleId, kind, data, onSubmitted }: { slug:
     try {
       const r = await fetch(api(slug), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ articleId, requestId: id, kind, token: data.token, consent: fields.get("consent") === "on", website: String(fields.get("website") ?? ""), ...(kind === "survey" ? { surveyId: data.survey?.id, answers } : { body: String(fields.get("body") ?? "") }) }) });
       const value = await r.json().catch(() => null);
-      if (r.ok && value?.ok && value.receipt?.id === id) {
+      if (r.ok && value?.ok && confirmedParticipationReceipt(kind,id,value.receipt)) {
         form.reset(); setResult({ phase: "done", message: "비공개로 접수했습니다. 감사합니다." }); onSubmitted();
       } else if ([400, 401, 403, 404, 413, 415, 429].includes(r.status)) {
         remember(null); setResult({ phase: "idle", message: value?.message ?? "입력과 참여 상태를 확인해 주세요." });
@@ -54,6 +57,7 @@ function ParticipationForm({ slug, articleId, kind, data, onSubmitted }: { slug:
     } catch { setResult({ phase: "unknown", message: "응답을 받지 못했습니다. 접수됐을 수 있으므로 다시 제출하지 마세요." }); }
     finally { busy.current = false; }
   }
+  if (result.phase === "done" && kind === "private") return <div role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-7 text-emerald-950" data-swipe-navigation-ignore><p className="font-bold">의견이 접수되었습니다. 감사합니다.</p><p>비공개 의견은 기관 관리자만 확인하며 다른 독자에게 공개되지 않습니다.</p></div>;
   return <form onSubmit={submit} className="mt-4 space-y-4" data-swipe-navigation-ignore>
     {kind === "survey" ? data.survey?.questions.map(q => <fieldset key={q.id} className="space-y-2"><legend className="mb-2 text-sm font-bold">{q.title}{q.isRequired ? " (필수)" : ""}</legend><QuestionInput question={q} /></fieldset>) : <label className="block text-sm font-bold">관리자에게 보낼 비공개 의견<textarea name="body" required maxLength={1000} rows={4} placeholder="이름·전화번호·이메일 등 개인정보는 적지 마세요." className="mt-2 block w-full rounded-xl border border-slate-300 bg-white p-3 text-base leading-7 text-slate-800" /></label>}
     <label className="hidden" aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label>

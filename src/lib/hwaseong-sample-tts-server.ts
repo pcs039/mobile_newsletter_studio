@@ -29,7 +29,7 @@ export function sampleTtsIdentity(job:string,voice:ArticleTtsVoice,text:string) 
  return {id:`${digest.slice(0,8)}-${digest.slice(8,12)}-5${digest.slice(13,16)}-a${digest.slice(17,20)}-${digest.slice(20,32)}`,hash:digest};
 }
 export async function sampleTtsPlan(provided?: ProposalSample[]) {
- headers(); let samples=provided; if(!samples){const content=await getProjectContent(hwaseongSampleSlug);if(content.source!=="supabase")throw Error("Sample content unavailable");samples=content.articles.map(a=>proposalSample(a,sampleProjectId)).filter((s):s is ProposalSample=>!!s);}
+ headers(); let samples=provided; if(!samples){const content=await getProjectContent(hwaseongSampleSlug);if(content.source!=="supabase")throw Error("Sample content unavailable");samples=content.articles.map(a=>proposalSample(a,sampleProjectId)).filter((s):s is ProposalSample=>!!s&&!s.editorTest);}
  const plans=samples.flatMap(s=>{const a=s.article,voice=sampleArticleVoice(a.id);if(!s||!voice)return [];const text=normalizeKoreanTtsText(sampleNarration(s));if(!text||text.length>16000)throw Error("Narration limit");return [{job:a.id,voice,text,title:s.headline.replaceAll('\n',' ')}];});
  return [...articleTtsVoices.map(voice=>({job:`probe-${voice}`,voice,text:normalizeKoreanTtsText(sampleVoiceProbe),title:`음질 비교 ${voice}`})),...plans].map(p=>({...p,...sampleTtsIdentity(p.job,p.voice,p.text),chunks:chunkArticleTtsText(p.text)}));
 }

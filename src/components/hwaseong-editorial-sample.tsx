@@ -38,7 +38,7 @@ export function HwaseongEditorialSample({ sample, href, detail, audio }: { sampl
     {compare ? <div className="px-4 pt-4"><div role="group" aria-label="인터뷰 표지 비교" className="grid grid-cols-2 gap-2 rounded-xl border border-[#c7c9b8] p-1">
       {([ ["html", "A · HTML 편집형"], ["canva", "B · Canva 표지형"] ] as const).map(([mode, label]) => <button key={mode} type="button" aria-pressed={coverMode === mode} onClick={() => setCoverMode(mode)} className={`min-h-11 rounded-lg px-2 py-2 text-xs font-bold ${coverMode === mode ? "bg-[#30392e] text-white" : "text-[#30392e]"}`}>{label}</button>)}
     </div></div> : null}
-    {detail ? null : canvaSummary ? <h1 className="sr-only">{sample.headline}</h1> : <header className="px-6 pb-5 pt-7">
+    {detail ? null : canvaSummary ? <div className={sample.authorEdited?"px-6 pt-5":"sr-only"}><h1 data-public-text-scale-target={sample.authorEdited?"article-title":undefined} className="whitespace-pre-line font-serif text-3xl leading-tight">{sample.headline}</h1>{sample.authorEdited?<><p data-public-text-scale-target="article-summary" className="mt-3 leading-7">{sample.summary}</p><p className="mt-2 text-xs leading-6">아래 Canva 이미지는 기존 표지입니다. 이미지 안 문구는 자동 수정되지 않으며 최신 제목·요약은 위 HTML을 기준으로 확인하세요.</p></>:null}</div> : <header className="px-6 pb-5 pt-7">
       <p className={`text-[10px] font-bold tracking-[.23em] ${video ? "text-[#ffec72]" : "text-[#6d735b]"}`}>{video ? "07 / PLAY · HWASEONG" : "06 / PEOPLE · CULTURE"}</p>
       <h1 data-public-text-scale-target="article-title" className={`mt-5 whitespace-pre-line text-[2.4rem] leading-[1.18] tracking-[-.05em] [word-break:keep-all] ${video ? "font-black" : "font-serif font-medium"}`}>{sample.headline}</h1>
       <SampleReadingTools sample={sample} generated={audio} />

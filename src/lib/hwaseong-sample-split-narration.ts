@@ -14,6 +14,7 @@ export function splitNarration(sample: ProposalSample, part: NarrationPart) {
   const e = editorialFeature(sample), t = tourismFeature(sample);
   if (part === "summary") {
     const parts = [sample.headline.replaceAll("\n", " ")];
+    if(sample.authorEdited&&!e)parts.push(sample.summary);
     if (e) parts.push(sample.summary, ...(!e.videoId ? [e.person, e.role, e.quote] : []));
     else if (t) parts.push("바다 · 역사 · 초록", "그림 속 번호로 떠나는 여행", ...tourismPlaces.map(p => p.name));
     else if (sample.kind === "cartoon") parts.push("즐거운 놀이터의 마지막 한 걸음, 뒷정리와 배려입니다.");

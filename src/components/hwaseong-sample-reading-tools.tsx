@@ -25,6 +25,7 @@ export function SampleDetailReadingTools({ sample, generated }: { sample: Propos
   const audio = samplePresentationArticle(sample).audioFile;
   return <div data-sample-reading-tools="detail" role="group" aria-label="상세기사 읽기 도구" className="mb-5 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-800" data-swipe-navigation-ignore>
     <PublicTextSizeToggle compact />
+    {(sample.authorEdited||sample.editorTest)&&!generated ? <p role="status" className="text-xs leading-6 text-amber-800">원고와 일치하는 음성이 없습니다. 요약·상세 음성을 확인하고 필요한 음성을 재생성해 주세요. 자동 생성하지 않습니다.</p> : null}
     {generated?.detail ? <SplitNarrationPlayer audio={generated.detail} detail /> : generated || audio?.previewHref ? <><p className="text-xs leading-5 text-slate-600">{generated ? `AI 기사 해설 · ${generated.voice}` : "기존 요약 음성"} · 요약과 같은 재생 위치</p><div ref={scope?.setTarget} /></> : null}
   </div>;
 }
@@ -35,6 +36,7 @@ export function SampleReadingTools({ sample, generated }: { sample: ProposalSamp
   const scope = useContext(SampleAudioControlsContext);
   return <div data-sample-reading-tools="summary" role="group" aria-label="요약 읽기 도구" className="mt-3 space-y-2 text-slate-800">
     <PublicTextSizeToggle compact />
+    {(sample.authorEdited||sample.editorTest)&&!generated ? <p role="status" className="text-xs leading-6 text-amber-800">원고와 일치하는 음성이 없습니다. 요약·상세 음성을 확인하고 필요한 음성을 재생성해 주세요. 자동 생성하지 않습니다.</p> : null}
     {generated?.detail ? <SplitNarrationPlayer audio={generated} /> : generated ? <details className="rounded-xl border border-slate-200 bg-white px-3">
       <summary className="min-h-11 cursor-pointer content-center text-sm font-bold">기사 해설 듣기 · {generated.voice}</summary>
       <div className="pb-3"><p className="mb-2 text-xs text-slate-500">AI 생성 음성 · {sample.kind === "video" ? "원본 영상의 음성이 아닌 기사 해설" : "현재 시연 기사 낭독"}</p>

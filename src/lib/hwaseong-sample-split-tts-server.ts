@@ -19,7 +19,7 @@ function headers(){if(!stagingEnvironmentConfigured()||!process.env.SUPABASE_SER
 function table(q=""){const u=getSupabaseRestEndpoint('/rest/v1/newsletter_audio_files'+q);if(!u)throw Error("Database unavailable");return u;}
 function object(path:string){if(!path.startsWith(prefix)||path.includes('..'))throw Error("Invalid membership");const u=getSupabaseStorageEndpoint('/object/audio-files/'+path.split('/').map(encodeURIComponent).join('/'));if(!u)throw Error("Storage unavailable");return u;}
 export async function splitTtsPlans(provided?:ProposalSample[]){
- headers();let samples=provided;if(!samples){const content=await getProjectContent(hwaseongSampleSlug);if(content.source!=="supabase")throw Error("Content unavailable");samples=content.articles.map(a=>proposalSample(a,projectId)).filter((s):s is ProposalSample=>!!s);}
+ headers();let samples=provided;if(!samples){const content=await getProjectContent(hwaseongSampleSlug);if(content.source!=="supabase")throw Error("Content unavailable");samples=content.articles.map(a=>proposalSample(a,projectId)).filter((s):s is ProposalSample=>!!s&&!s.editorTest);}
  if(samples.length!==7||new Set(samples.map(s=>s.article.id)).size!==7||samples.some(s=>!splitArticleVoice(s.article.id)))throw Error("Seven sample membership required");
  const jobs=[...probeVoices.map(voice=>({job:`probe-v2-${voice}`,voice,title:`음질 비교 ${voice}`,text:splitProbeText})),...samples.flatMap(s=>(["summary","detail"] as const).map(part=>({job:`${s.article.id}:${part}`,voice:splitArticleVoice(s.article.id)!,title:`${s.headline.replaceAll('\n',' ')} · ${part==='summary'?'요약':'상세'}`,text:splitNarration(s,part)})))];
  return jobs.map(p=>identifyPlan(p));
@@ -42,8 +42,12 @@ export async function splitAudioIndex(provided?:ProposalSample[]):Promise<Record
   }
  }
  // Atomic presentation cutover: never replace legacy players with a partial set.
- if(stories.length!==14||!stories.every(p=>ready(rows.find(r=>r.id===p.id),p)))return {};
- const result:Record<string,SampleAudio>={};for(const p of stories.filter(p=>p.job.endsWith(':summary'))){const id=p.job.split(':')[0],detail=stories.find(d=>d.job===`${id}:detail`)!;result[id]={...audio(p),detail:audio(detail)};}return result;
+ if(stories.length!==14)return {};
+ // After an explicit author edit, stale audio is withheld for that article only.
+ // Initial generation and unrelated incomplete jobs retain the existing full-set gate.
+ const authored=provided??(await getProjectContent(hwaseongSampleSlug)).articles.map(a=>proposalSample(a,projectId)).filter((s):s is ProposalSample=>!!s&&!s.editorTest);
+ if(stories.some(p=>!ready(rows.find(r=>r.id===p.id),p)&&!authored.find(s=>s.article.id===p.job.split(':')[0])?.authorEdited))return {};
+ const result:Record<string,SampleAudio>={};for(const p of stories.filter(p=>p.job.endsWith(':summary'))){const id=p.job.split(':')[0],detail=stories.find(d=>d.job===`${id}:detail`)!;if(ready(rows.find(r=>r.id===p.id),p)&&ready(rows.find(r=>r.id===detail.id),detail))result[id]={...audio(p),detail:audio(detail)};}return result;
 }
 export async function splitTtsStatus(){const [plans,rows]=await Promise.all([splitTtsPlans(),splitTtsRows()]);return {version:2,configured:!!process.env.STAGING_OPENAI_API_KEY?.trim(),model:splitTtsModel,shutdown:splitTtsShutdown,totalCalls:plans.reduce((n,p)=>n+p.chunks.length,0),plans:plans.map(p=>({job:p.job,id:p.id,title:p.title,voice:p.voice,text:p.text,scriptHash:p.scriptHash,characters:p.text.length,calls:p.chunks.length,state:ready(rows.find(r=>r.id===p.id),p)?'ready':rows.some(r=>r.id===p.id)?'unknown':'not_started'})),audio:Object.fromEntries(plans.filter(p=>ready(rows.find(r=>r.id===p.id),p)).map(p=>[p.job,audio(p)]))};}
 export async function generateSplitTts(job:string){

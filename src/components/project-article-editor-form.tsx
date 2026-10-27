@@ -1,6 +1,8 @@
 "use client";
 
 import { readArticleBodyDesign, type ArticleBodyDesign } from "@/lib/article-body-design";
+import type { SampleTextEditAccess } from "@/lib/hwaseong-sample-text-edit";
+import { HwaseongSampleTextEditFields } from "@/components/hwaseong-sample-text-edit-fields";
 
 import Link from "next/link";
 import { articlePublicInfoTypeOptions } from "@/lib/article-type-options";
@@ -43,6 +45,7 @@ import type {
 } from "@/lib/newsletter-repository";
 
 type ProjectArticleEditorFormProps = {
+  sampleTextEdit?: SampleTextEditAccess;
   projectSlug: string;
   pages: ProjectPageImage[];
   surveys?: ProjectSurveyItem[];
@@ -694,7 +697,14 @@ function ElementMotionSettingRow({
   );
 }
 
-export function ProjectArticleEditorForm({
+export function ProjectArticleEditorForm(props: ProjectArticleEditorFormProps) {
+  // A stale/alternate editor cannot silently fall back to destructive whole-block replacement.
+  const protectedSample=props.projectSlug==="hwaseong-2026-10-samples"&&props.article?.blocks.some(b=>Object.hasOwn(b.metadata,"proposal_sample"));
+  if(protectedSample&&props.article)return <HwaseongSampleTextEditFields projectSlug={props.projectSlug} articleId={props.article.id} access={props.sampleTextEdit??{state:null,message:"안전한 텍스트 편집을 준비하지 못해 일반 저장을 차단했습니다."}}/>;
+  return <GeneralProjectArticleEditorForm {...props}/>;
+}
+
+function GeneralProjectArticleEditorForm({
   projectSlug,
   pages,
   surveys = [],

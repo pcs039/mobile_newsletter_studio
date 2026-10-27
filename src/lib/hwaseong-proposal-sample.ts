@@ -4,7 +4,7 @@ import { normalizeSampleInterest } from "@/lib/hwaseong-sample-interest";
 export const hwaseongSampleSlug = "hwaseong-2026-10-samples";
 export const tourismSource = "https://www.hscity.go.kr/www/intro/trstMap.jsp";
 export const accessibleSampleEnglish = ["Use the area for your dog’s size.", "A registered dog must be accompanied by a guardian aged 13 or older. Admission is free.", "Clean up after your dog and respect others."];
-export type ProposalSample = { article: ProjectContentArticle; cover: string; kind: string; eyebrow: string; headline: string; summary: string; color: string; pale: string; sourceTitle: string; artDirectionVersion: number };
+export type ProposalSample = { article: ProjectContentArticle; cover: string; kind: string; eyebrow: string; headline: string; summary: string; color: string; pale: string; sourceTitle: string; artDirectionVersion: number; authorEdited?: boolean; editorTest?: boolean };
 
 // This is deliberately a Staging fixture presentation, not a new publication mode.
 export function proposalSample(article: ProjectContentArticle, projectId: string): ProposalSample | null {
@@ -19,7 +19,7 @@ export function proposalSample(article: ProjectContentArticle, projectId: string
   // Never carry an arbitrary external file URL into this authenticated presentation.
   const url = new URL(cover.body, "https://sample.invalid");
   if (url.searchParams.get("bucket") !== "design-production-assets" || !url.searchParams.get("path")?.startsWith(`projects/${projectId}/`)) return null;
-  return { article, cover: cover.body, kind: String(v.kind), eyebrow: String(v.eyebrow), headline: String(v.headline), summary: String(v.summary), color: String(v.color), pale: String(v.pale), sourceTitle: String(v.sourceTitle), artDirectionVersion: v.artDirectionVersion === 3 ? 3 : 2 };
+  return { article, cover: cover.body, kind: String(v.kind), eyebrow: String(v.eyebrow), headline: String(v.headline), summary: String(v.summary), color: String(v.color), pale: String(v.pale), sourceTitle: String(v.sourceTitle), artDirectionVersion: v.artDirectionVersion === 3 ? 3 : 2, authorEdited: v.authorEdited === true, editorTest: cover.metadata.proposal_editor_test === 1 };
 }
 
 // A separate, attributed feature block never replaces the archived original body.
@@ -33,9 +33,16 @@ export function tourismFeature(sample: ProposalSample) {
 // These two retained recordings describe the first sample, not the current feature/comic.
 // Hide their players without changing or deleting the stored audio or article.
 export function samplePresentationArticle(sample: ProposalSample): ProjectContentArticle {
-  return sample.kind === "tourism" || sample.kind === "cartoon"
-    ? { ...sample.article, audioSource: "none", audioFile: null }
-    : sample.article;
+  const article=sample.authorEdited?{...sample.article,blocks:sample.article.blocks.map(b=>b.metadata.proposal_original_text&&b.title==="기존 10월호 원문 · 그대로 보존"?{...b,title:"작성자 편집 본문"}:["자료 구분과 확인 안내","원문·사실 확인 안내","원문 정합성 안내"].includes(b.title)?{...b,body:"작성자가 편집한 본문입니다. 편집 전 원문은 보존 자료에서 확인할 수 있습니다. 최신 이용 조건과 일정은 공식 안내를 확인하세요."}:b)}:sample.article;
+  return sample.authorEdited || sample.editorTest || sample.kind === "tourism" || sample.kind === "cartoon"
+    ? { ...article, audioSource: "none", audioFile: null }
+    : article;
+}
+
+export function sampleOriginalBody(sample: ProposalSample) {
+  const original=sample.article.blocks.find(b=>b.metadata.proposal_sample)?.metadata.proposal_original_article;
+  const body=original&&typeof original==='object'&&!Array.isArray(original)?(original as Record<string,unknown>).body:null;
+  return typeof body==='string'?body:sample.article.body;
 }
 
 export const comicScenes = [

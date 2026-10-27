@@ -62,3 +62,8 @@ test('cartoon Coral replacement preserves its Onyx pair until both parts are rea
  for(const p of await f.splitTtsPlans())assert.equal((await f.generateSplitTts(p.job)).state,'ready');const before=await f.splitAudioIndex();f.setCartoonVoice('coral');assert.deepEqual(await f.splitAudioIndex(),before);assert.equal((await f.splitTtsDelivery(before[ids[3]].id,'0',new Request('https://fixture.invalid'))).status,200);
  const changed=(await f.splitTtsPlans()).filter(p=>p.job.startsWith(ids[3]+':'));await f.generateSplitTts(changed[0].job);assert.deepEqual(await f.splitAudioIndex(),before);await f.generateSplitTts(changed[1].job);const after=await f.splitAudioIndex();assert.equal(after[ids[3]].voice,'coral');assert.equal(after[ids[3]].detail.voice,'coral');for(const id of ids.filter(id=>id!==ids[3]))assert.deepEqual(after[id],before[id]);assert.equal(f.calls.length,20);
  }finally{f.restore();}});
+
+test('an author edit with stale narration withholds only that article, preserving other six and every old file',async()=>{const f=fixture(),original={headline:samples[0].headline,authorEdited:samples[0].authorEdited};try{
+ for(const p of await f.splitTtsPlans())await f.generateSplitTts(p.job);const before=await f.splitAudioIndex(),oldRows=JSON.stringify(f.rows),calls=f.calls.length;
+ samples[0].authorEdited=true;samples[0].headline='작성자가 수정한 제목';const after=await f.splitAudioIndex();assert.equal(after[ids[0]],undefined);for(const id of ids.slice(1))assert.deepEqual(after[id],before[id]);assert.equal(JSON.stringify(f.rows),oldRows);assert.equal(f.calls.length,calls);
+ }finally{samples[0].headline=original.headline;if(original.authorEdited===undefined)delete samples[0].authorEdited;else samples[0].authorEdited=original.authorEdited;f.restore();}});

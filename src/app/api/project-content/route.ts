@@ -1,6 +1,8 @@
 import { validateArticleBodyDesign } from "@/lib/article-body-design";
 import { NextResponse } from "next/server";
 import { requireProjectApiAccess } from "@/lib/project-api-access";
+import { requireCanvaSameOrigin } from "@/lib/canva-request-origin";
+import { hwaseongSampleSlug } from "@/lib/hwaseong-proposal-sample";
 import {
   deleteProjectArticleAtomic,
   upsertProjectArticle,
@@ -117,6 +119,7 @@ export async function POST(request: Request) {
   } catch (error) { return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "설정을 확인해 주세요." }, { status: 400 }); }
 
   const input: UpsertProjectArticleInput = {
+    sampleTextEdit: payload.sampleTextEdit && typeof payload.sampleTextEdit === "object" ? payload.sampleTextEdit as UpsertProjectArticleInput["sampleTextEdit"] : undefined,
     projectSlug: asText(payload.projectSlug),
     articleId: asText(payload.articleId) || undefined,
     audioSource: asText(payload.audioSource),
@@ -174,6 +177,10 @@ export async function POST(request: Request) {
 
   if (!access.ok) {
     return access.response;
+  }
+
+  if (input.projectSlug === hwaseongSampleSlug) {
+    try { requireCanvaSameOrigin(request); } catch { return NextResponse.json({ok:false,message:"같은 Staging 작성 화면에서 저장해 주세요."},{status:403}); }
   }
 
   const result = await upsertProjectArticle(input);

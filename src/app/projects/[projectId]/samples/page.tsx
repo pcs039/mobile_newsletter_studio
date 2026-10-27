@@ -9,6 +9,7 @@ import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { HwaseongProposalReader } from "@/components/hwaseong-proposal-reader";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { sampleAudioIndex } from "@/lib/hwaseong-sample-tts-server";
+import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 import { splitAudioIndex } from "@/lib/hwaseong-sample-split-tts-server";
 import { normalizeSampleInterest } from "@/lib/hwaseong-sample-interest";
 import { prepareSampleCover } from "@/lib/hwaseong-sample-cover-server";
@@ -40,10 +41,13 @@ export default async function Samples({ params, searchParams }: {
   const [content, fontData] = await Promise.all([getProjectContent(projectId), getFontAssets({ activeOnly: true })]);
   timings.contentAndFontsMs = Date.now() - contentStarted;
   if (content.source !== "supabase") notFound();
-  const samples = content.articles.map(a => proposalSample(a, project.id)).filter((s): s is ProposalSample => s !== null);
+  const allSamples = content.articles.map(a => proposalSample(a, project.id)).filter((s): s is ProposalSample => s !== null);
+  const regularSamples=allSamples.filter(s=>!s.editorTest);
+  const editorPreview=allSamples.find(s=>s.editorTest&&s.article.id===query.articleId);
+  const samples=editorPreview?[editorPreview]:regularSamples;
   const ids = samples.map(s => s.article.id);
   const compositionStarted = Date.now();
-  const [backgrounds, textDesigns, audioIndex, inlineCover, thumbnailIndex, mapImage] = await Promise.all([getArticleHeroBackgrounds(project.id, projectId, ids, "preview"), getArticleTextDesigns(project.id, ids, true), Promise.all([sampleAudioIndex(samples).catch(() => ({})),splitAudioIndex(samples).catch(() => ({}))]).then(([old,split])=>({...old,...split})), preparedCover, prepareSampleToc(project.id, projectId, samples), prepareSampleMap(project.id, projectId, samples)]);
+  const [backgrounds, textDesigns, audioIndex, inlineCover, thumbnailIndex, mapImage] = await Promise.all([getArticleHeroBackgrounds(project.id, projectId, ids, "preview"), getArticleTextDesigns(project.id, ids, true), Promise.all([sampleAudioIndex(regularSamples).catch((): Record<string,SampleAudio> => ({})),splitAudioIndex(regularSamples).catch((): Record<string,SampleAudio> => ({}))]).then(([old,split])=>{ const audio={...old,...split}; for(const s of regularSamples)if(s.authorEdited&&!split[s.article.id])delete audio[s.article.id]; return audio; }), preparedCover, prepareSampleToc(project.id, projectId, samples), prepareSampleMap(project.id, projectId, samples)]);
   timings.compositionMs = Date.now() - compositionStarted;
   timings.totalMs = Date.now() - started;
   // Uploaded audio still uses the authenticated existing project-file proxy.
