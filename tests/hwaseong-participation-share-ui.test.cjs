@@ -55,7 +55,7 @@ test('shared article entry keeps summary and full-news navigation within its iss
  const cover=renderToStaticMarkup(React.createElement(SampleShareAction,{target:sampleShareTarget(slug,'소식지'),label:'소식지 공유하기'}));
  assert.match(cover,/disabled=""/);assert.match(cover,/승인된 외부 열람 링크/);assert(!cover.includes('/projects/'));assert(!cover.includes('href='));
 });
-test('compact actions retain mounted forms, privacy, moderation and disabled private sharing without admin links',()=>{
+test('three compact actions retain mounted forms, privacy and disabled private sharing without comments or admin links',()=>{
  const data={token:'fixture',isAdmin:true,commentsEnabled:true,comments:[],survey:{id:'survey',title:'기존 설문',questions:[]}};
  let first=true;const load=loader({react:{...React,useState:v=>{if(first){first=false;return[data,()=>{}];}return[v,()=>{}];}}});
  const Component=load('src/components/hwaseong-article-participation.tsx').HwaseongArticleParticipation;
@@ -64,6 +64,13 @@ test('compact actions retain mounted forms, privacy, moderation and disabled pri
  assert.equal((html.match(/role="region"/g)||[]).length,2);assert.equal((html.match(/hidden=""/g)||[]).length,2);assert.equal((html.match(/<form /g)||[]).length,2);
  assert(!html.includes('댓글'));assert.match(html,/grid-cols-3/);assert.match(html,/다른 독자에게 공개되지 않습니다/);assert.match(html,/개인정보·보관 안내/);assert.match(html,/30일/);assert.match(html,/동의합니다/);
  assert(!html.includes('시연 의견·댓글·설문 결과 관리'));assert.match(html,/disabled=""/);
+});
+test('all seven articles and admin results omit comment controls, counts and historical comment content',()=>{
+ const ids=Object.keys(loader()('src/lib/hwaseong-sample-interest.ts').sampleOrderRules);
+ for(const id of ids){const html=readerFixture(`articleId=${id}&view=detail`).render();assert(!html.includes('댓글'));assert.equal((html.match(/data-sample-participation=/g)||[]).length,1);assert(html.includes('grid-cols-3'));}
+ const load=loader({'next/navigation':{useRouter:()=>({refresh(){}})}}),Admin=load('src/components/hwaseong-participation-admin.tsx').HwaseongParticipationAdmin;
+ const html=renderToStaticMarkup(React.createElement(Admin,{slug,organization:'화성시',settings:{survey_id:null,comments_enabled:true},articles:[{id:articleId,title:'보존 기사'}],surveys:[],entries:[{id:'private',article_id:articleId,kind:'private',body:'관리자 비공개 의견'},{id:'comment',article_id:articleId,kind:'comment',body:'절대 노출하지 않을 기존 댓글',state:'approved'}]}));
+ assert(html.includes('관리자 비공개 의견'));assert(!html.includes('절대 노출'));assert(!html.includes('댓글'));assert(!html.includes('name="comments"'));assert(!html.includes('>승인<'));assert(html.includes('설정 저장'));
 });
 test('action buttons open at most one panel and can collapse it without removing other forms',()=>{
  let cursor=0;const states=[];const data={token:'fixture',commentsEnabled:true,comments:[],survey:{id:'survey',questions:[]}};
