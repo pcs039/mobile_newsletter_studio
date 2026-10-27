@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { FontAsset } from "@/lib/newsletter-repository";
-import { getFontAssetById, getFontFamilyValue } from "@/lib/font-css";
+import { getFontAssetById, getFontFaceFamilyValue } from "@/lib/font-css";
 
 export const articleFontRoles = ["title", "summary", "body", "subheading", "caption", "button"] as const;
 export type ArticleFontRole = typeof articleFontRoles[number];
@@ -26,7 +26,7 @@ export function articleFontDesignStyle(design: ArticleFontDesign | undefined, fo
   for (const role of articleFontRoles) {
     const font = getFontAssetById(fonts, design?.[role]);
     if (!font) continue; // Missing/disallowed file retains the template/system fallback.
-    result[`--article-${role}-family`] = getFontFamilyValue(font)!;
+    result[`--article-${role}-family`] = getFontFaceFamilyValue(font)!;
     result[`--article-${role}-weight`] = font.weight || "400";
     result[`--article-${role}-style`] = font.style || "normal";
   }

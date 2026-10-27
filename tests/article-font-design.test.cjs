@@ -33,3 +33,8 @@ test('actual-face picker saves selected weight, preview requests that face, exis
  const component=loader({'react':{useId:()=> 'f',useState(v){const i=cursor++;if(!(i in states))states[i]=v;return [states[i],v=>states[i]=v];},useMemo:fn=>fn(),useEffect:fn=>effects.push(fn)}})('src/components/searchable-font-select.tsx').SearchableFontSelect;
  const fonts=[face,{...face,id:'0a55dd35-1fb8-5694-ad38-ba17770d3f2d',weight:'700'}];const render=()=>{cursor=0;return component({fonts,defaultValue:id,label:'제목',name:'title',inheritLabel:'기존 디자인',selectFace:true});};let tree=render();nodes(tree,e=>e.type==='select'&&e.props['aria-label']==='제목 굵기 · 스타일')[0].props.onChange({target:{value:fonts[1].id}});tree=render();assert.equal(nodes(tree,e=>e.type==='input'&&e.props.type==='hidden')[0].props.value,fonts[1].id);const preview=nodes(tree,e=>e.props.style?.fontSynthesis==='none')[0];assert.equal(preview.props.style.fontWeight,700);
 });
+test('legacy equal-weight faces remain independently selectable and reference their exact files',()=>{
+ const css=loader()('src/lib/font-css.ts'),other={...face,id:'0a55dd35-1fb8-5694-ad38-ba17770d3f2d',fileUrl:'/different.ttf'};
+ const output=css.getFontFaceCss([face,other]);const first=css.getFontFaceFamilyValue(face).split(', var(')[0],second=css.getFontFaceFamilyValue(other).split(', var(')[0];
+ assert.notEqual(first,second);assert(output.includes(`font-family: ${first};\n  src: url("/font.ttf")`));assert(output.includes(`font-family: ${second};\n  src: url("/different.ttf")`));assert.equal(css.getFontFamilyValue(face),css.getFontFamilyValue(other));
+});
