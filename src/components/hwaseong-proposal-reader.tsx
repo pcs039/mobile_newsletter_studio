@@ -359,7 +359,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     }} className={`${styles.screen} public-newsletter-screen min-h-screen bg-[#e8edef] py-3 sm:px-2 text-[#172e35] sm:py-8`}>
     {warmImages ? <div hidden aria-hidden="true" data-sample-image-warmup>{warmSources.map(src => <img key={src} src={src} alt="" width={1} height={1} decoding="async" fetchPriority="low" />)}</div> : null}
     {!image ? <SamplePageControls key={`${locationKey}:${controlsActivity}`} previous={previousPage} next={nextPage} onNavigate={navigateLocal} width={qa ? width : undefined} /> : null}
-    <SampleDisplayToolbar mode={display} onMode={chooseDisplay} spread={spread} onSpread={double=>{setSpread(double);if(double&&selected&&!detail)navigateLocal(href(selected.article.id,true));}} zoom={zoom} onZoom={setZoom} article={!!selected} previous={bookPages[bookIndex-1]} next={bookPages[bookIndex+1]} contentsHref={contentsHref} onNavigate={navigateBook}/>
+    <SampleDisplayToolbar mode={display} onMode={chooseDisplay} spread={spread} onSpread={double=>{setSpread(double);if(double&&selected&&!detail)navigateLocal(href(selected.article.id,true));if(double)requestAnimationFrame(()=>scrollRef.current?.scrollTo({top:0,left:0,behavior:"instant"}));}} zoom={zoom} onZoom={setZoom} article={!!selected} previous={bookPages[bookIndex-1]} next={bookPages[bookIndex+1]} contentsHref={contentsHref} onNavigate={navigateBook}/>
     <div className={styles.workspace}>
     <SampleEbookThumbnails pages={bookPages} currentId={bookCurrentId} visible={display==="ebook"} onNavigate={navigateBook}/>
     <div ref={scrollRef} className={`${styles.readingViewport} public-desktop-ebook-scroll-container`} data-sample-scroll>
