@@ -4,9 +4,12 @@
 import { SampleLink as Link, SamplePageControls, SampleDisclosureIcon } from "@/components/hwaseong-sample-navigation";
 import { preload } from "react-dom";
 import styles from "./hwaseong-sample-experience.module.css";
+import { SampleDisplayToolbar, SampleEbookThumbnails, useSampleDesktopSuggestion, type HtmlEbookPage } from "@/components/sample-html-ebook-chrome";
+import { ebookKeyboardDirection, sampleDisplay, withSampleDisplay, type SampleDisplay } from "@/lib/sample-reader-display";
+import { playPageTurnSound, readPageTurnSoundPreference } from "@/lib/page-turn-sound";
 import { useSearchParams } from "next/navigation";
 import { HwaseongEditorialSample } from "@/components/hwaseong-editorial-sample";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from "react";
 import { ArticleCard, PublicNewsletterCoverView } from "@/components/public-mobile-article-reader";
 import { SampleReadingTools, SampleDetailReadingTools, SampleReadingToolsScope } from "@/components/hwaseong-sample-reading-tools";
 import { PublicArticleImageLightbox, type PublicArticleLightboxImage } from "@/components/public-article-image-lightbox";
@@ -73,7 +76,7 @@ export function TourismMap({ sample, detailHref, mapImage }: { sample: ProposalS
     bounds.scrollTo({ left: x - bounds.clientWidth / 2, top: y - bounds.clientHeight / 2, behavior: "smooth" });
   }
   function choose(id: string) { setSelected(id); requestAnimationFrame(() => { if (zoomed) centerMap(id); card.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }); }
-  return <section id="sample-tourism-map" aria-label="화성 관광지도" data-swipe-navigation-ignore>
+  return <section className={styles.summaryArt} id="sample-tourism-map" aria-label="화성 관광지도" data-swipe-navigation-ignore>
     <div className="mb-3 flex items-center justify-between gap-2 px-5"><p className="text-xs font-bold tracking-wide text-[#125e7c]">바다 · 역사 · 초록<br /><span className="font-normal tracking-normal">그림 속 번호로 떠나는 여행</span></p><button className="min-h-11 rounded-full border border-sky-300 bg-white px-4 text-sm font-bold" aria-pressed={zoomed} onClick={() => { setZoomed(!zoomed); requestAnimationFrame(() => centerMap(selected)); }}>{zoomed ? "지도 전체 보기" : "지도 크게 보기"}</button></div>
     <div ref={map} tabIndex={-1} className="scroll-mt-4 overflow-auto border-y border-sky-200 bg-white" style={{ maxHeight: zoomed ? 420 : undefined }}><div data-tourism-map-frame className="relative" style={{ minWidth: zoomed ? 680 : undefined, aspectRatio: "1024 / 700" }}>
       {/* Original proportions and source polygons stay in the same coordinate system. */}
@@ -108,7 +111,7 @@ export function TourismMap({ sample, detailHref, mapImage }: { sample: ProposalS
 }
 
 function ComicStory({ sample, onImage }: { sample: ProposalSample; onImage: (image: PublicArticleLightboxImage) => void }) {
-  return <div aria-label="산책 고수 3컷 만평" className="space-y-3 px-3">
+  return <div aria-label="산책 고수 3컷 만평" className={`${styles.summaryArt} space-y-3 px-3`}>
     {comicScenes.map((scene, i) => <figure key={scene.line} className="overflow-hidden rounded-2xl border border-[#dccbb4] bg-[#fffdf6]">
       <button data-sample-swipe-image className="relative block w-full overflow-hidden" style={{ aspectRatio: "2 / 1" }} aria-label={`${i + 1}컷 이미지 확대`} onClick={() => onImage({ src: sample.cover, alt: "같은 보호자와 코기의 가을 산책 3컷. 달리기, 깜빡한 봉투, 강아지가 봉투를 건네는 반전." })}>
         {/* One generated equal-panel artwork; CSS framing keeps its original bytes intact. */}
@@ -145,17 +148,17 @@ function SampleSummary({ sample, href, onImage, audio, mapImage }: { sample: Pro
   const imageAlt = sample.kind === "cartoon" ? "창작 3컷: 놀이터 입장에 신난 보호자와 강아지, 뒷정리를 깨닫는 장면, 두 강아지와 함께 웃는 다음 산책" : sample.headline;
   const facts = sampleSummaryFacts(sample.kind);
   return <section data-summary-kind={sample.kind} className="pb-5" style={{ backgroundColor: dark ? "#192e46" : sample.pale, color: dark ? "#fff8e8" : "#172e35" }}>
-    <div className="px-5 pb-5 pt-4">
+    <div className={`${styles.summaryIntro} px-5 pb-5 pt-4`}>
       <p className="text-[11px] font-black tracking-[.16em]" style={{ color: dark ? "#eec2a8" : sample.color }}>{sample.eyebrow}</p>
       <h1 data-public-text-scale-target="article-title" className="mt-3 whitespace-pre-line text-[2rem] font-black leading-[1.22] tracking-tight [overflow-wrap:anywhere] [word-break:keep-all]">{sample.headline}</h1>
       <SampleReadingTools sample={sample} generated={audio} />
       {sample.authorEdited ? <p data-public-text-scale-target="article-summary" className="mt-3 whitespace-pre-line text-base leading-7">{sample.summary}</p> : null}
       {sample.kind === "accessible" ? <p lang="en" className="mt-3 text-base leading-6 text-[#244dae]">A better day out, together.</p> : null}
     </div>
-    {sample.kind === "tourism" ? <TourismMap key={sample.article.id} sample={sample} detailHref={href} mapImage={mapImage} /> : artComic ? <ComicStory sample={sample} onImage={onImage} /> : <button data-sample-swipe-image className="block w-full bg-transparent text-left" aria-label="요약 이미지 확대" onClick={() => onImage({ src: sample.cover, alt: imageAlt })}>
+    {sample.kind === "tourism" ? <TourismMap key={sample.article.id} sample={sample} detailHref={href} mapImage={mapImage} /> : artComic ? <ComicStory sample={sample} onImage={onImage} /> : <button data-sample-swipe-image className={`${styles.summaryArt} block w-full bg-transparent text-left`} aria-label="요약 이미지 확대" onClick={() => onImage({ src: sample.cover, alt: imageAlt })}>
       <img src={sample.cover} alt={imageAlt} className="block h-auto w-full" />
     </button>}
-    <div className="px-5">
+    <div className={`${styles.summaryFacts} px-5`}>
       {sample.kind === "event" ? <p data-public-text-scale-target="article-summary" className="mt-4 text-sm leading-6">2026년 10월호 작업본의 행사 소개를 재구성한 시연입니다. 현재 신청·참여 안내가 아닙니다.</p> : null}
       {facts.length ? <ol className={`mt-5 ${sample.kind === "policy" ? "border-l-2 border-[#91b89c] pl-4" : ""}`} aria-label="핵심 정보">
         {facts.map(([title, body], i) => <li key={title} className={`py-3 ${i ? "border-t border-current/15" : ""}`}>
@@ -184,6 +187,12 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const { selectedId, detail, width, contents, qa, interest } = query
     ? readSampleLocation(query, samples.map(s => s.article.id))
     : { selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, contents: initialContents, qa: initialQa, interest: initialInterest };
+  const desktopSuggested = useSampleDesktopSuggestion();
+  const explicitDisplay = sampleDisplay(query);
+  const display = explicitDisplay ?? (desktopSuggested && !qa ? "ebook" : "mobile");
+  const [spread, setSpread] = useState(false);
+  const [zoom, setZoom] = useState(100);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const navigationStarted = useRef<number | null>(null);
   const swipe = useRef<SampleSwipe | null>(null);
@@ -222,8 +231,8 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const index = orderedSamples.findIndex(s => s.article.id === selectedId);
   const prev = orderedSamples[index - 1], next = orderedSamples[index + 1];
   const isCoverView = Boolean(cover && !selected && !contents);
-  const href = (id?: string, d = false, w = width) => sampleHref(slug, id, d, w, { qa, interest: currentInterest, sharedEntry: query?.get("entry") === "share" });
-  const contentsHref = sampleHref(slug, undefined, false, width, { contents: true, qa, interest: currentInterest });
+  const href = (id?: string, d = false, w = width) => withSampleDisplay(sampleHref(slug, id, d, w, { qa, interest: currentInterest, sharedEntry: query?.get("entry") === "share" }), explicitDisplay);
+  const contentsHref = withSampleDisplay(sampleHref(slug, undefined, false, width, { contents: true, qa, interest: currentInterest }), explicitDisplay);
   const hasSplitAudio = Boolean(audioIndex[selectedId ?? ""]?.detail);
   if (isCoverView && cover && !cover.coverImageSrc.startsWith("data:")) preload(cover.coverImageSrc, { as: "image", fetchPriority: "high" });
   const previousPage = selected ? prev ? { href: href(prev.article.id), label: "이전 기사로 이동" }
@@ -234,6 +243,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   function navigateLocal(target: string) {
     if (!canUseSampleHistory(target, window.location.href, slug)) return false;
     const url = new URL(target, window.location.href);
+    if (!url.searchParams.has("display") && explicitDisplay) url.searchParams.set("display", explicitDisplay);
     if (url.href === window.location.href) return true;
     // A test-only preview deliberately holds one clone, not the issue's seven-article dataset.
     // Leave that document when returning to the real cover/contents instead of showing a one-clone TOC.
@@ -255,7 +265,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       detailRef.current?.scrollIntoView({ block: "start", behavior });
     } else if (selectedId && previousLocation.current.id === selectedId && previousLocation.current.detail) {
       summaryRef.current?.scrollIntoView({ block: "start", behavior });
-    } else window.scrollTo({ top: 0, behavior: "instant" });
+    } else { scrollRef.current?.scrollTo({top:0,left:0,behavior:"instant"}); window.scrollTo({ top: 0, behavior: "instant" }); }
     previousLocation.current = { id: selectedId, detail };
     const frame = requestAnimationFrame(() => {
       if (mainRef.current && navigationStarted.current !== null) {
@@ -274,6 +284,24 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     const timer = window.setTimeout(() => setWarmImages(true), 750);
     return () => window.clearTimeout(timer);
   }, [isCoverView, selectedId]);
+  const bookPages: HtmlEbookPage[] = [
+    ...(cover ? [{id:"cover",title:"화성의 오늘을 더 가까이",href:href(),thumbnail:cover.coverImageSrc}] : []),
+    {id:"contents",title:"관심분야 · 기사 목차",href:contentsHref},
+    ...orderedSamples.map(s=>({id:s.article.id,title:s.headline.replaceAll("\n"," "),href:href(s.article.id),thumbnail:thumbnailIndex[s.article.id]||s.cover})),
+  ];
+  const bookCurrentId = selected?.article.id ?? (isCoverView ? "cover" : "contents");
+  const bookIndex = bookPages.findIndex(p=>p.id===bookCurrentId);
+  function navigateBook(target: string) { if(navigateLocal(target) && readPageTurnSoundPreference()) void playPageTurnSound(); }
+  function chooseDisplay(mode: SampleDisplay) { const url=new URL(window.location.href);url.searchParams.set("display",mode);navigateLocal(url.pathname+url.search+url.hash); }
+  useEffect(()=>{
+    if(display!=="ebook")return;
+    function key(event: KeyboardEvent){
+      const direction=ebookKeyboardDirection(event,isReaderInteractiveTarget(event.target)||!!image);
+      const target=direction==="next"?bookPages[bookIndex+1]:direction==="previous"?bookPages[bookIndex-1]:undefined;
+      if(target){event.preventDefault();navigateBook(target.href);}
+    }
+    window.addEventListener("keydown",key);return ()=>window.removeEventListener("keydown",key);
+  });
   function finishSwipe(start: SampleSwipe | null, point: ReaderPoint) {
     if (!start || image) return;
     updateSampleSwipe(start, point, window.innerWidth);
@@ -284,7 +312,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     if (direction) swallowClick.current = true;
     if (target) navigateLocal(target.href);
   }
-  return <main ref={mainRef} data-sample-location={locationKey} data-sample-initial-fetch={qa ? JSON.stringify(serverTimings) : undefined} onPointerDownCapture={event => {
+  return <main ref={mainRef} data-sample-display={display} data-sample-spread={spread?"double":"single"} data-sample-qa={qa?"true":undefined} style={{"--sample-qa-width":`${width}px`,"--sample-zoom":zoom/100} as CSSProperties} data-sample-location={locationKey} data-sample-initial-fetch={qa ? JSON.stringify(serverTimings) : undefined} onPointerDownCapture={event => {
       swallowClick.current = false;
       const blocked = isSampleSwipeBlocked(event.target);
       const visual = event.target instanceof Element && (event.target.closest("img") || event.target.closest("button, a")?.querySelector("img"));
@@ -329,11 +357,15 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       if (touch) finishSwipe(start, { x: touch.clientX, y: touch.clientY });
     }} className={`${styles.screen} public-newsletter-screen min-h-screen bg-[#e8edef] py-3 sm:px-2 text-[#172e35] sm:py-8`}>
     {warmImages ? <div hidden aria-hidden="true" data-sample-image-warmup>{warmSources.map(src => <img key={src} src={src} alt="" width={1} height={1} decoding="async" fetchPriority="low" />)}</div> : null}
-    {!image ? <SamplePageControls key={`${locationKey}:${controlsActivity}`} previous={previousPage} next={nextPage} onNavigate={navigateLocal} width={width} /> : null}
-    <div className="mx-auto mb-3 flex w-full flex-wrap items-center justify-between gap-2 text-xs text-slate-600" style={{ maxWidth: width }}>
-      <span>{qa ? "STAGING QA · " : ""}비공개 제안 시안 · 정식 발행물 아님</span>{qa ? <div className="flex gap-2">{([390, 520] as const).map(w => <Link key={w} href={sampleHref(slug, selectedId, detail, w, { contents: !isCoverView && !selected, qa, interest: currentInterest })} className="rounded border bg-white px-2 py-2" aria-current={width === w ? "page" : undefined}>{w}px</Link>)}</div> : null}
+    {!image ? <SamplePageControls key={`${locationKey}:${controlsActivity}`} previous={previousPage} next={nextPage} onNavigate={navigateLocal} width={qa ? width : undefined} /> : null}
+    <SampleDisplayToolbar mode={display} onMode={chooseDisplay} spread={spread} onSpread={double=>{setSpread(double);if(double&&selected&&!detail)navigateLocal(href(selected.article.id,true));}} zoom={zoom} onZoom={setZoom} article={!!selected} previous={bookPages[bookIndex-1]} next={bookPages[bookIndex+1]} contentsHref={contentsHref} onNavigate={navigateBook}/>
+    <div className={styles.workspace}>
+    <SampleEbookThumbnails pages={bookPages} currentId={bookCurrentId} visible={display==="ebook"} onNavigate={navigateBook}/>
+    <div ref={scrollRef} className={`${styles.readingViewport} public-desktop-ebook-scroll-container`} data-sample-scroll>
+    <div className={`${styles.readerNotice} mx-auto mb-3 flex w-full flex-wrap items-center justify-between gap-2 text-xs text-slate-600`}>
+      <span>{qa ? "STAGING QA · " : ""}비공개 제안 시안 · 정식 발행물 아님</span>{qa ? <div className="flex gap-2">{([390, 520] as const).map(w => <Link key={w} href={withSampleDisplay(sampleHref(slug, selectedId, detail, w, { contents: !isCoverView && !selected, qa, interest: currentInterest }), explicitDisplay)} className="rounded border bg-white px-2 py-2" aria-current={width === w ? "page" : undefined}>{w}px</Link>)}</div> : null}
     </div>
-    <div data-sample-width={width} className="mx-auto w-full overflow-hidden sm:rounded-[24px] bg-white shadow-xl" style={{ maxWidth: width }}>
+    <div data-sample-width={qa?width:"responsive"} className={`${styles.surface} ${display==="ebook"?"public-desktop-ebook-page public-desktop-ebook-spread":""} mx-auto w-full overflow-hidden sm:rounded-[24px] bg-white shadow-xl`}>
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
         <span className="text-sm font-black tracking-tight">화성, 가까이</span>
         <nav aria-label="소식지 공통 이동" className="flex gap-2">
@@ -344,7 +376,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       </header>
       {!isCoverView && !selected ? <nav aria-label="관심분야 선택" data-swipe-navigation-ignore className={`${styles.interestTools} mx-4 mt-4 rounded-2xl border border-[#d5e3e7] bg-[#f0f6f7] p-3`}>
         <div className="mb-2 flex items-center justify-between gap-2"><p className="text-xs font-bold text-[#174c60]">관심분야 · 검색</p><span className="text-[10px] text-slate-500">전체 {samples.length}건에서 검색</span></div>
-        <div className={styles.interestGrid}>{sampleInterests.map(option => <Link key={option.value} href={sampleHref(slug, undefined, false, width, { contents: !isCoverView, qa, interest: option.value })} aria-current={currentInterest === option.value ? "true" : undefined} className={`inline-flex min-h-11 min-w-0 items-center justify-center rounded-xl border px-2.5 py-2 text-center text-xs font-bold [overflow-wrap:anywhere] ${currentInterest === option.value ? "border-[#234e43] bg-[#234e43] text-white" : "border-[#cfdee2] bg-white text-slate-600"}`}>{option.label}</Link>)}</div>
+        <div className={styles.interestGrid}>{sampleInterests.map(option => <Link key={option.value} href={withSampleDisplay(sampleHref(slug, undefined, false, width, { contents: !isCoverView, qa, interest: option.value }), explicitDisplay)} aria-current={currentInterest === option.value ? "true" : undefined} className={`inline-flex min-h-11 min-w-0 items-center justify-center rounded-xl border px-2.5 py-2 text-center text-xs font-bold [overflow-wrap:anywhere] ${currentInterest === option.value ? "border-[#234e43] bg-[#234e43] text-white" : "border-[#cfdee2] bg-white text-slate-600"}`}>{option.label}</Link>)}</div>
         <div className="mt-2 flex gap-2">
           <label htmlFor="sample-article-search" className="sr-only">기사 검색</label>
           <div className="relative min-w-0 flex-1"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#527280]"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg><input ref={searchInput} id="sample-article-search" type="search" value={searchQuery} maxLength={100} autoComplete="off" placeholder="반려견, 관광, 재활용, dog"
@@ -382,6 +414,6 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       </section>}
       {qa&&!selected?.editorTest ? <SampleTtsQa slug={slug} /> : null}
       <footer className="border-t border-slate-200 px-5 py-5 text-xs leading-5 text-slate-500">화성시 담당자 대상 비공개 제안 · 정식 발행물 아님 · 외부 공개·재배포 금지{qa ? <><br />기존 Production 기사·발행 상태는 변경하지 않았습니다.</> : null}</footer>
-    </div><PublicArticleImageLightbox image={image} onClose={() => setImage(null)} />
+    </div></div></div><PublicArticleImageLightbox image={image} onClose={() => setImage(null)} />
   </main>;
 }

@@ -27,7 +27,7 @@ test('map/media controls, interactive elements and horizontal scrollers keep the
 });
 const samples=ids.map((id,i)=>({article:{id,blocks:[],body:'원문',sortOrder:i},kind:'policy',headline:`표지 ${i}`,summary:'요약',cover:'/retained.webp',eyebrow:`0${i+1}`,pale:'#ffffff',color:'#123456'}));
 function harness(initial,supplied=samples){let query=new URLSearchParams(initial),cursor=0;const states=[],events=[],history=[],assignments=[];
- const UI=loader({react:{...React,useState(v){const i=cursor++;if(!(i in states))states[i]=v;return[states[i],v=>states[i]=v];},useMemo:f=>f(),useRef:v=>({current:v}),useEffect:()=>{},useLayoutEffect:()=>{}},'next/navigation':{useSearchParams:()=>query},'@/components/public-mobile-article-reader':{ArticleCard:()=>React.createElement('p',null,'원文'),PublicNewsletterCoverView:()=>null},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null}})('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader;
+ const UI=loader({react:{...React,useSyncExternalStore:(_subscribe,_snapshot,server)=>server(),useState(v){const i=cursor++;if(!(i in states))states[i]=v;return[states[i],v=>states[i]=v];},useMemo:f=>f(),useRef:v=>({current:v}),useEffect:()=>{},useLayoutEffect:()=>{}},'next/navigation':{useSearchParams:()=>query},'@/components/public-mobile-article-reader':{ArticleCard:()=>React.createElement('p',null,'원文'),PublicNewsletterCoverView:()=>null},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null}})('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader;
  const oldWindow=global.window,oldElement=global.Element;
  class Anchor{constructor(href,target=''){this.href=href;this.target=target;}closest(){return this;}getAttribute(k){return k==='href'?this.href:null;}hasAttribute(){return false;}}
  global.Element=Anchor;global.window={innerWidth:390,location:{href:`https://staging.invalid/projects/${slug}/samples?${initial}`,assign:u=>assignments.push(String(u))},dispatchEvent:e=>events.push(e.type),history:{pushState:(_s,_t,u)=>{history.push(String(u));global.window.location.href=String(u);query=new URL(u).searchParams;}},getSelection:()=>null};
@@ -112,4 +112,12 @@ test('mouse image drag navigates once and suppresses its zoom/link click; short 
   next.props.onTouchStart({target:image,touches:[{clientX:250,clientY:100},{clientX:150,clientY:100}]});next.props.onTouchEnd({changedTouches:[{clientX:100,clientY:100}]});assert.equal(h.history.length,1);
   next.props.onTouchStart({target:image,touches:[{clientX:250,clientY:100}]});next.props.onTouchMove({touches:[{clientX:235,clientY:140}]});next.props.onTouchEnd({changedTouches:[{clientX:170,clientY:190}]});assert.equal(h.history.length,1);
  }finally{global.Element=oldElement;global.getComputedStyle=oldStyle;h.restore();}
+});
+
+test('same-article mobile/book switches keep identity, interest and detail without stopping audio',()=>{
+ const h=harness(`articleId=${ids[3]}&view=detail&interest=pets&width=390`);try{
+  assert(h.click(h.render(),`/projects/${slug}/samples?articleId=${ids[3]}&view=detail&interest=pets&width=390&display=ebook`));
+  assert(!h.events.includes('datadiction:stop-article-audio'));const tree=h.render();assert.equal(tree.props['data-sample-display'],'ebook');
+  assert(h.click(tree,`/projects/${slug}/samples?articleId=${ids[4]}&interest=pets&width=390`));assert.equal(new URL(h.history.at(-1)).searchParams.get('display'),'ebook');assert(h.events.includes('datadiction:stop-article-audio'));
+ }finally{h.restore();}
 });

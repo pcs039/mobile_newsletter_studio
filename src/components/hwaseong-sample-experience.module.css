@@ -177,3 +177,83 @@
 :global([data-public-text-scale="xlarge"]) .detail [data-public-text-scale-target="article-body"] { font-size: 2rem !important; line-height: 1.75 !important; }
 :global([data-public-text-scale="large"]) .detail [data-public-text-scale-target="article-summary"] { font-size: 1.3125rem !important; line-height: 1.65 !important; }
 :global([data-public-text-scale="xlarge"]) .detail [data-public-text-scale-target="article-summary"] { font-size: 1.625rem !important; line-height: 1.6 !important; }
+
+/* One persistent HTML tree: resize/display changes never replace forms or players. */
+.surface, .readerNotice, .displayToolbar { max-width: 740px; }
+.readingViewport { min-width: 0; }
+.workspace { min-width: 0; }
+.displayToolbar { margin: 0 auto .75rem; padding: 0 .5rem; color: #234e43; }
+.displayModes { display: flex; flex-wrap: wrap; gap: .4rem; }
+.displayModes button, .bookToolbar button { min-height: 44px; padding: .55rem .85rem; border: 1px solid #cad9db; border-radius: .7rem; background: white; font-size: .75rem; font-weight: 700; }
+.displayModes button[aria-pressed="true"] { background: #234e43; color: white; border-color: #234e43; }
+.bookToolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.bookToolbar[hidden] { display: none; }
+.bookToolbar button:disabled { opacity: .4; cursor: default; }
+.bookToolbar button[aria-pressed="true"] { background: #c7e8e0; color: #123f4b; }
+.bookToolbar output { font-size: .75rem; min-width: 3rem; text-align: center; }
+.toolDivider { height: 1.5rem; border-left: 1px solid #ffffff40; margin: 0 .3rem; }
+.bookHint { margin-top: .5rem; font-size: .68rem; line-height: 1.5; }
+.bookThumbnails { display: none; }
+.summaryIntro, .summaryArt, .summaryFacts { min-width: 0; }
+.screen[data-sample-qa="true"] .surface,
+.screen[data-sample-qa="true"] .readerNotice,
+.screen[data-sample-qa="true"] .displayToolbar { max-width: min(100%, var(--sample-qa-width)); }
+.screen[data-sample-display="mobile"] { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); padding-bottom: max(.75rem,env(safe-area-inset-bottom)); }
+.screen[data-sample-display="mobile"] [data-sample-detail-body] { max-width: 68ch; margin-inline: auto; }
+
+/* Landscape uses real width, not a 390px QA canvas. Natural page scroll remains. */
+@media (orientation: landscape) and (min-width: 640px) and (max-height: 600px) {
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) { padding-top: .4rem; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .surface,
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .readerNotice,
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .displayToolbar { max-width: 1100px; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .surface > header { position: sticky; top: 0; z-index: 20; background: #fffffff2; padding-block: .35rem; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .summary > section,
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .editorialSummary { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .summaryIntro { grid-column: 2; grid-row: 1; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .summaryArt { grid-column: 1; grid-row: 1 / span 2; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .summaryFacts { grid-column: 2; grid-row: 2; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .editorialSummary > div:first-child:not(.summaryArt):not(.summaryFacts) { grid-column: 1 / -1; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) :global([data-sample-cover-persisted]) > section > div:nth-child(2) { display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) :global([data-sample-cover-persisted]) img { height: auto; max-height: 65svh; object-fit: contain; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .arrows button { left: max(8px,env(safe-area-inset-left)) !important; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .arrows button:last-child { left: auto !important; right: max(8px,env(safe-area-inset-right)) !important; }
+}
+
+/* Existing desktop e-book colours, page frame/entry and scrollbar classes;
+   HTML content scrolls instead of being rasterized or arbitrarily paginated. */
+.screen[data-sample-display="ebook"] { height: 100dvh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0; background: #071f46; }
+.screen[data-sample-display="ebook"] .displayToolbar { max-width: none; width: 100%; flex-shrink: 0; margin: 0; padding: max(.6rem,env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) .6rem max(1rem,env(safe-area-inset-left)); background: #092046; border-bottom: 1px solid #ffffff26; color: #e4efff; }
+.screen[data-sample-display="ebook"] .displayModes { margin-bottom: .5rem; }
+.screen[data-sample-display="ebook"] .workspace { display: flex; flex: 1; min-height: 0; }
+.screen[data-sample-display="ebook"] .readingViewport { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 1rem 1.25rem max(1rem,env(safe-area-inset-bottom)); scrollbar-gutter: stable; }
+.screen[data-sample-display="ebook"] .readerNotice { color: #d6e7fa; }
+.screen[data-sample-display="ebook"] .surface { max-width: 720px; zoom: var(--sample-zoom); border-radius: .65rem; box-shadow: 0 18px 60px #0006; }
+.screen[data-sample-display="ebook"] .arrows { display: none; }
+.screen[data-sample-display="ebook"] .bookThumbnails { display: block; width: 208px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid #ffffff26; background: #082041; padding: .9rem; color: #eef6ff; }
+.bookThumbnails > p { font-weight: 800; margin-bottom: 1rem; }
+.bookThumbnails > p span { display: block; font-size: .65rem; opacity: .7; margin-top: .3rem; }
+.bookThumbnails ol { display: grid; gap: .6rem; }
+.bookThumbnails a { display: grid; grid-template-columns: 50px minmax(0,1fr); gap: .6rem; align-items: center; min-height: 66px; border: 1px solid #ffffff24; border-radius: .65rem; padding: .5rem; font-size: .75rem; line-height: 1.6; overflow-wrap: anywhere; }
+.bookThumbnails a[aria-current="page"] { background: #fff; color: #092046; border-color: #b8d7ff; }
+.bookThumbnails img { width: 50px; height: 60px; object-fit: cover; border-radius: .25rem; }
+.bookThumbnails small { display: block; font-size: .55rem; opacity: .65; }
+.bookIndexIcon { display: grid; place-items: center; height: 60px; background: #c7e8e0; color: #234e43; border-radius: .25rem; font-size: 1.5rem; }
+@media (min-width: 1100px) and (min-height: 600px) {
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] .surface { max-width: 1160px; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > nav { grid-column: 1 / -1; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] .summary,
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > section { min-width: 0; height: max(320px,calc(100dvh - 320px)); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > section { border-top: 0; border-left: 1px solid #d1d7d8; }
+}
+@media (max-width: 1099px), (max-height: 599px) {
+  .screen[data-sample-display="ebook"] .bookThumbnails { display: none; }
+  .screen[data-sample-display="ebook"] .readingViewport { padding: .65rem; }
+}
+@media (orientation: landscape) and (min-width: 640px) and (max-height: 600px) {
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .editorialSummary[data-editorial-compare="true"] > div:first-child { grid-row: 1; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .editorialSummary[data-editorial-compare="true"] .summaryIntro { grid-row: 2; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .editorialSummary[data-editorial-compare="true"] .summaryArt { grid-row: 2 / span 2; }
+  .screen[data-sample-display="mobile"]:not([data-sample-qa="true"]) .editorialSummary[data-editorial-compare="true"] .summaryFacts { grid-row: 3; }
+}
