@@ -4,7 +4,7 @@ const slug='hwaseong-2026-10-samples',project='4cd5297e-a0fd-434c-84d4-fa4d3baf9
 const contract=loader()('src/lib/hwaseong-sample-text-edit.ts');
 test('only bounded text, existing block IDs and ordered editorial sections are accepted',()=>{
  assert.deepEqual(contract.validateSampleTextPatch(patch),patch);
- for(const p of [{...patch,title:''},{...patch,title:'가'.repeat(201)},{...patch,metadata:{}},{...patch,sections:[{title:'a',text:'b',sourceUrl:'bad'}]},{...patch,blocks:[{...patch.blocks[0],assetId:id}]},{...patch,blocks:[{...patch.blocks[0],id:'foreign'}]},{...patch,summary:'\u0000'}])assert.throws(()=>contract.validateSampleTextPatch(p));
+ for(const p of [{...patch,title:''},{...patch,title:'가'.repeat(201)},{...patch,metadata:{}},{...patch,sections:[{title:'a',text:'b',sourceUrl:'bad'}]},{...patch,blocks:[{...patch.blocks[0],assetId:id}]},{...patch,blocks:[{...patch.blocks[0],id:'foreign'}]},{...patch,blocks:[{...patch.blocks[0],title:'가'.repeat(121)}]},{...patch,blocks:[{...patch.blocks[0],body:'가'.repeat(4000)},{...patch.blocks[0],body:'나'.repeat(4000)}]},{...patch,summary:'\u0000'}])assert.throws(()=>contract.validateSampleTextPatch(p));
 });
 function server(staging=true){return loader({'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>staging},'@/lib/supabase-config':{getSupabaseRestEndpoint:p=>'https://fixture.invalid'+p}})('src/lib/hwaseong-sample-text-edit-server.ts');}
 async function withFetch(fn){const old=global.fetch;try{await fn();}finally{global.fetch=old;}}
