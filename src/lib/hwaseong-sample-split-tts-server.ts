@@ -1,4 +1,5 @@
 import "server-only";
+import { qualityAudioIndex, qualityRows } from "@/lib/hwaseong-sample-quality-tts-server";
 import { createHash } from "node:crypto";
 import { chunkArticleTtsText, normalizeKoreanTtsText, requestOpenAiSpeech, type ArticleTtsVoice } from "@/lib/article-tts-audio";
 import { inspectArticleMp3, readTtsBytes } from "@/lib/article-tts-media";
@@ -32,7 +33,7 @@ export async function splitTtsRows(){const out:Row[]=[];for(let offset=0;offset<
 function ready(row:Row|undefined,p:Plan){return !!row&&row.project_id===projectId&&row.article_id===null&&row.script_status==='approved'&&!!row.ai_tts_generated_at&&row.ai_tts_model===splitTtsModel&&row.ai_tts_voice===p.voice&&row.ai_tts_text_hash===p.hash&&row.script_text===p.text&&JSON.stringify(row.ai_tts_audio_paths)===JSON.stringify(p.paths)&&row.file_path===p.paths[0];}
 function audio(p:Plan):SampleAudio{return {id:p.id,voice:p.voice,transcriptText:p.text,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts?version=2&audio=${p.id}`};}
 export async function splitAudioIndex(provided?:ProposalSample[]):Promise<Record<string,SampleAudio>>{
- if(!stagingEnvironmentConfigured())return {};const [plans,rows]=await Promise.all([splitTtsPlans(provided),splitTtsRows()]);let stories=plans.filter(p=>!p.job.startsWith('probe-'));
+ if(!stagingEnvironmentConfigured())return {};const quality=await qualityAudioIndex(provided);if(Object.keys(quality).length)return quality;const [plans,rows]=await Promise.all([splitTtsPlans(provided),splitTtsRows()]);let stories=plans.filter(p=>!p.job.startsWith('probe-'));
  // Keep each verified pair until BOTH replacement parts are ready. Other articles are untouched.
  for(const id of Object.keys(previousVoices)){
   const pair=stories.filter(p=>p.job.startsWith(id+':'));
@@ -54,6 +55,7 @@ export async function generateSplitTts(job:string){
  const apiKey=stagingEnvironmentConfigured()?process.env.STAGING_OPENAI_API_KEY?.trim():'';if(!apiKey)return {ok:false,state:'rejected',calls:0,message:'Staging 전용 키가 없습니다.'};
  const [plans,rows]=await Promise.all([splitTtsPlans(),splitTtsRows()]),p=plans.find(x=>x.job===job);if(!p)return {ok:false,state:'rejected',calls:0,message:'허용된 요청이 아닙니다.'};
  const current=rows.find(r=>r.id===p.id);if(current)return {ok:ready(current,p),state:ready(current,p)?'ready':'unknown',id:p.id,calls:0,message:'기존 요청을 조회했습니다. 재호출하지 않습니다.'};
+ if((await qualityRows()).some(r=>r.title?.startsWith('[시연 TTS v3] ')))return {ok:false,state:'rejected',calls:0,message:'품질 개선 작업이 시작되어 구버전 생성은 중단됐습니다.'};
  if(rows.some(r=>plans.some(x=>x.id===r.id&&!ready(r,x))))return {ok:false,state:'unknown',id:p.id,calls:0,message:'확인되지 않은 요청이 있어 새 생성을 중단합니다.'};
  if(!job.startsWith('probe-')&&!plans.filter(x=>x.job.startsWith('probe-')).every(x=>ready(rows.find(r=>r.id===x.id),x)))return {ok:false,state:'rejected',calls:0,message:'네 음성 미리듣기를 먼저 생성·검수하세요.'};
  const h=headers();let claim:Response;try{claim=await fetch(table(),{method:'POST',headers:{...h,'Content-Type':'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000),body:JSON.stringify({id:p.id,project_id:projectId,article_id:null,title:titlePrefix+p.title,file_path:p.paths[0],script_text:p.text,script_status:'pending',source_type:'ai_tts',transcript_type:'custom_script',ai_tts_voice:p.voice,ai_tts_model:splitTtsModel,ai_tts_text_hash:p.hash,ai_tts_audio_paths:p.paths})});}catch{return {ok:false,state:'unknown',id:p.id,calls:0,message:'예약 결과 불명. 동일 ID 조회만 하세요.'};}
