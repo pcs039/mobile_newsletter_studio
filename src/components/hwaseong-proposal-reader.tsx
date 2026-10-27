@@ -235,6 +235,9 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     if (!canUseSampleHistory(target, window.location.href, slug)) return false;
     const url = new URL(target, window.location.href);
     if (url.href === window.location.href) return true;
+    // A test-only preview deliberately holds one clone, not the issue's seven-article dataset.
+    // Leave that document when returning to the real cover/contents instead of showing a one-clone TOC.
+    if(selected?.editorTest&&url.searchParams.get("articleId")!==selected.article.id){window.location.assign(url.href);return true;}
     if (isCoverView || (!url.searchParams.has("articleId") && url.searchParams.get("view") !== "contents")) setCoverVisited(true);
     // eslint-disable-next-line react-hooks/purity -- Event handler only; never invoked during render.
     navigationStarted.current = performance.now();

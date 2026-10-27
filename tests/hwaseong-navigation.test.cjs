@@ -26,13 +26,20 @@ test('map/media controls, interactive elements and horizontal scrollers keep the
  try{assert(isReaderInteractiveTarget(new E(true)));assert(isReaderInteractiveTarget(new E(false,new E(false,null,200,100))));assert(!isReaderInteractiveTarget(new E()));assert(!isReaderInteractiveTarget(null));}finally{global.Element=oldElement;global.getComputedStyle=oldStyle;}
 });
 const samples=ids.map((id,i)=>({article:{id,blocks:[],body:'원문',sortOrder:i},kind:'policy',headline:`표지 ${i}`,summary:'요약',cover:'/retained.webp',eyebrow:`0${i+1}`,pale:'#ffffff',color:'#123456'}));
-function harness(initial){let query=new URLSearchParams(initial),cursor=0;const states=[],events=[],history=[];
+function harness(initial,supplied=samples){let query=new URLSearchParams(initial),cursor=0;const states=[],events=[],history=[],assignments=[];
  const UI=loader({react:{...React,useState(v){const i=cursor++;if(!(i in states))states[i]=v;return[states[i],v=>states[i]=v];},useMemo:f=>f(),useRef:v=>({current:v}),useEffect:()=>{},useLayoutEffect:()=>{}},'next/navigation':{useSearchParams:()=>query},'@/components/public-mobile-article-reader':{ArticleCard:()=>React.createElement('p',null,'원文'),PublicNewsletterCoverView:()=>null},'@/components/public-text-size-toggle':{PublicTextSizeToggle:()=>null}})('src/components/hwaseong-proposal-reader.tsx').HwaseongProposalReader;
  const oldWindow=global.window,oldElement=global.Element;
  class Anchor{constructor(href,target=''){this.href=href;this.target=target;}closest(){return this;}getAttribute(k){return k==='href'?this.href:null;}hasAttribute(){return false;}}
- global.Element=Anchor;global.window={innerWidth:390,location:{href:`https://staging.invalid/projects/${slug}/samples?${initial}`},dispatchEvent:e=>events.push(e.type),history:{pushState:(_s,_t,u)=>{history.push(String(u));global.window.location.href=String(u);query=new URL(u).searchParams;}},getSelection:()=>null};
- return{render(){cursor=0;return UI({slug,samples,fonts:[],backgrounds:{},textDesigns:{},detail:false,width:390,cover:{coverImageSrc:'/cover.webp'}});},click(tree,href,extra={}){let prevented=false;tree.props.onClickCapture({target:new Anchor(href,extra.target),button:0,preventDefault:()=>prevented=true,...extra});return prevented;},history,events,restore(){global.window=oldWindow;global.Element=oldElement;}};
+ global.Element=Anchor;global.window={innerWidth:390,location:{href:`https://staging.invalid/projects/${slug}/samples?${initial}`,assign:u=>assignments.push(String(u))},dispatchEvent:e=>events.push(e.type),history:{pushState:(_s,_t,u)=>{history.push(String(u));global.window.location.href=String(u);query=new URL(u).searchParams;}},getSelection:()=>null};
+ return{render(){cursor=0;return UI({slug,samples:supplied,fonts:[],backgrounds:{},textDesigns:{},detail:false,width:390,cover:{coverImageSrc:'/cover.webp'}});},click(tree,href,extra={}){let prevented=false;tree.props.onClickCapture({target:new Anchor(href,extra.target),button:0,preventDefault:()=>prevented=true,...extra});return prevented;},history,events,assignments,restore(){global.window=oldWindow;global.Element=oldElement;}};
 }
+test('isolated author test preview returns to the actual issue dataset; same-clone expand stays inline',()=>{
+ const clone={...samples[0],editorTest:true,article:{...samples[0].article,id:'11111111-1111-4111-8111-111111111111'}};
+ const h=harness(`articleId=${clone.article.id}&width=390`,[clone]);try{
+  assert(h.click(h.render(),`/projects/${slug}/samples?articleId=${clone.article.id}&view=detail&width=390`));assert.equal(h.history.length,1);assert.equal(h.assignments.length,0);
+  assert(h.click(h.render(),`/projects/${slug}/samples?view=contents&width=390`));assert.equal(h.assignments.length,1);assert.equal(h.history.length,1);
+ }finally{h.restore();}
+});
 test('client navigation updates canonical URL without a server router; new-tab and external links retain native behavior',()=>{
  const h=harness('width=390&view=contents&interest=civic');try{
   const tree=h.render();assert(h.click(tree,`/projects/${slug}/samples?articleId=${ids[4]}&width=390&interest=civic`));
