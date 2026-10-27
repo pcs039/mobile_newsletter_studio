@@ -1,0 +1,36 @@
+.scope[data-font-roles~="title"] :is([data-public-text-scale-target="article-title"], [data-font-role="title"]) {
+  font-family: var(--article-title-family) !important;
+  font-weight: var(--article-title-weight) !important;
+  font-style: var(--article-title-style) !important;
+  font-synthesis: none;
+}
+.scope[data-font-roles~="summary"] [data-public-text-scale-target="article-summary"]:not(h2):not(h3) {
+  font-family: var(--article-summary-family) !important;
+  font-weight: var(--article-summary-weight) !important;
+  font-style: var(--article-summary-style) !important;
+  font-synthesis: none;
+}
+.scope[data-font-roles~="body"] [data-public-text-scale-target="article-body"] {
+  font-family: var(--article-body-family) !important;
+  font-weight: var(--article-body-weight) !important;
+  font-style: var(--article-body-style) !important;
+  font-synthesis: none;
+}
+.scope[data-font-roles~="subheading"] :is([data-sample-detail-body] h2, [data-sample-detail-body] h3, [data-font-role="subheading"]) {
+  font-family: var(--article-subheading-family) !important;
+  font-weight: var(--article-subheading-weight) !important;
+  font-style: var(--article-subheading-style) !important;
+  font-synthesis: none;
+}
+.scope[data-font-roles~="caption"] :is(figcaption, [data-font-role="caption"]) {
+  font-family: var(--article-caption-family) !important;
+  font-weight: var(--article-caption-weight) !important;
+  font-style: var(--article-caption-style) !important;
+  font-synthesis: none;
+}
+.scope[data-font-roles~="button"] :is([data-sample-expand], [data-font-role="button"], [data-article-action="button"], [data-action-type="phone"]) {
+  font-family: var(--article-button-family) !important;
+  font-weight: var(--article-button-weight) !important;
+  font-style: var(--article-button-style) !important;
+  font-synthesis: none;
+}

@@ -1,3 +1,6 @@
+import { ArticleFontDesignSettings } from "@/components/article-font-design-settings";
+import { validateArticleFontDesign } from "@/lib/article-font-design";
+import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { mapFullLayouts } from "@/lib/article-full-layout-server";
 import { getSampleTextEditAccess } from "@/lib/hwaseong-sample-text-edit-server";
 import { mapAiImageArticles } from "@/lib/ai-image-article-server";
@@ -141,7 +144,7 @@ export default async function ReadingEditorPage({
               showReviewActions={false}
             />
           }
-          fontSettings={selectedArticle&&!isSampleArticle ? <ArticleFontSettings
+          fontSettings={selectedArticle && stagingEnvironmentConfigured() ? <ArticleFontDesignSettings key={selectedArticle.id} articleId={selectedArticle.id} projectSlug={projectId} fonts={fontData.fonts} composition={compositionData?.data ?? null} initialValues={validateArticleFontDesign(compositionData?.data?.settings.fontDesign) ?? {}} /> : selectedArticle&&!isSampleArticle ? <ArticleFontSettings
             key={selectedArticle.id} articleId={selectedArticle.id} fonts={fontData.fonts}
             projectTitleFontAssetId={project?.titleFontAssetId} projectBodyFontAssetId={project?.bodyFontAssetId}
             initialValues={{ title: selectedArticle.titleFontAssetId ?? "", body: selectedArticle.bodyFontAssetId ?? "", caption: selectedArticle.captionFontAssetId ?? "", button: selectedArticle.buttonFontAssetId ?? "" }}
@@ -149,6 +152,7 @@ export default async function ReadingEditorPage({
           composition={
             selectedArticle && compositionData ? (
               <ArticleCompositionEditor
+                key={compositionData.data?.id ?? selectedArticle.id}
                 article={{
                   body: selectedArticle.body,
                   articleType: selectedArticle.articleType,

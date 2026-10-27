@@ -1,4 +1,6 @@
 "use client";
+import { articleFontDesignRoles, articleFontDesignStyle } from "@/lib/article-font-design";
+import fontDesignStyles from "@/components/article-font-design.module.css";
 
 import { readArticleBodyDesign } from "@/lib/article-body-design";
 import { ArticleBodyDesignElement, ArticleDesignedCaption } from "@/components/article-body-design-elements";
@@ -1077,6 +1079,7 @@ function renderContentBlock(
       <section key={block.id}>
         {block.title ? (
           <h3
+            data-font-role="subheading"
             data-text-alignment={block.textAlignment || article.bodyAlignment || article.textAlignment}
             className="text-base font-black leading-7 text-[#092046]"
           >
@@ -1655,16 +1658,17 @@ export function ArticleCard({
     <article
       ref={articleRef}
       onClickCapture={handleTrackedActionClick}
-      className={`public-card public-article-card ${articleMotionPresetClassNames[motionPreset]} ${articleMotionSpeedClassNames[motionSpeed]} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${
+      className={`${fontDesignStyles.scope} public-card public-article-card ${articleMotionPresetClassNames[motionPreset]} ${articleMotionSpeedClassNames[motionSpeed]} rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${
         isImageOnly ? "overflow-hidden" : ""
       } ${className}`}
       data-article-text-alignment={article.textAlignment || "left"}
       data-reader-article-id={article.id}
+      data-font-roles={articleFontDesignRoles(textDesign?.fontDesign, fontAssets)}
       data-motion-preset={motionPreset}
       data-motion-speed={motionSpeed}
       data-article-title-color={heroBackground?.settings.titleColor}
       data-article-body-color={heroBackground?.settings.bodyColor}
-      style={{ ...fontStyle, ...articleTextColorStyle(heroBackground?.settings) }}
+      style={{ ...fontStyle, ...articleFontDesignStyle(textDesign?.fontDesign, fontAssets), ...articleTextColorStyle(heroBackground?.settings) }}
     >
       {generatedHero && !fullLayout ? <div className="mb-5">{renderContentBlock(article,generatedHero,motionSettings,onOpenArticleImage,presentation,false)}</div> : null}
       {fullLayout && failedFullLayout !== fullLayout.id ? <ArticleFullLayout article={article} block={fullLayout} onFailure={()=>setFailedFullLayout(fullLayout.id)} onOpenImage={onOpenArticleImage} /> : <ArticleHeroBackgroundLayer
@@ -1722,6 +1726,7 @@ export function ArticleCard({
         data-motion-speed={motionSettings.title.speed}
       >
         <h2
+          data-font-role="title"
           aria-label={articleTitle}
           data-audio-segment-id={makeArticleTitleSegmentId(article.id)}
           data-text-alignment={article.titleAlignment || "left"}

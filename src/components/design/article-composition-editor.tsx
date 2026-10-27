@@ -16,6 +16,7 @@ import { articleTextColorDefaults } from "@/lib/article-text-colors";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CompositionAssetPicker } from "@/components/design/composition-asset-picker";
+import { validateArticleFontDesign } from "@/lib/article-font-design";
 import { CompositionMobilePreview } from "@/components/design/composition-mobile-preview";
 import {
   articleCompositionSlotAssetTypes,
@@ -996,6 +997,7 @@ function ArticleCompositionEditorSession({
             context={previewContext}
             assets={assets}
             composition={composition}
+            fontDesign={validateArticleFontDesign(initialComposition?.settings.fontDesign) ?? undefined}
             selectedPlacementId={activeSelectedPlacementId}
           />
           {selectableAssets.length === 0 ? (

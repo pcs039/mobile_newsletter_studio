@@ -1,3 +1,4 @@
+import { validateArticleFontDesign } from "@/lib/article-font-design";
 import { readArticleTextDesign, type ArticleTextDesign } from "@/lib/article-text-design";
 import "server-only";
 
@@ -564,12 +565,13 @@ async function patchProjectArticleComposition(
   articleId: string,
   status: "draft" | "ready" | undefined,
   settings?: ArticleCompositionSettings,
+  expectedUpdatedAt?: string,
 ): Promise<ArticleCompositionRepositoryResult<ProjectArticleComposition | null>> {
   const headers = getServiceRoleHeaders();
   const endpoint = getSupabaseRestEndpoint(
     `/rest/v1/newsletter_article_compositions?project_id=eq.${encodeURIComponent(projectId)}&article_id=eq.${encodeURIComponent(
       articleId,
-    )}`,
+    )}${expectedUpdatedAt ? `&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}` : ""}`,
   );
 
   if (!headers || !endpoint) {
@@ -593,7 +595,7 @@ async function patchProjectArticleComposition(
     }
 
     const rows = body ? (JSON.parse(body) as ArticleCompositionRow[]) : [];
-    if (!rows[0]) return { data: null, message: "변경할 기사 화면 구성을 찾지 못했습니다.", status: "not_found" };
+    if (!rows[0]) return { data: null, message: "다른 작업에서 디자인이 변경되었습니다. 새로고침 후 다시 선택해 주세요.", status: expectedUpdatedAt ? "conflict" : "not_found" };
 
     return getProjectArticleComposition(projectId, articleId);
   } catch (error) {
@@ -606,8 +608,8 @@ export function updateProjectArticleCompositionStatus(projectId: string, article
   return patchProjectArticleComposition(projectId, articleId, status);
 }
 
-export function updateProjectArticleCompositionSettings(projectId: string, articleId: string, settings: ArticleCompositionSettings) {
-  return patchProjectArticleComposition(projectId, articleId, undefined, settings);
+export function updateProjectArticleCompositionSettings(projectId: string, articleId: string, settings: ArticleCompositionSettings, expectedUpdatedAt?: string) {
+  return patchProjectArticleComposition(projectId, articleId, undefined, settings, expectedUpdatedAt);
 }
 
 export type SaveProjectArticleCompositionPlacementInput = {
@@ -726,15 +728,15 @@ export async function getArticleTextDesigns(projectId: string, articleIds: strin
     const ids = [...new Set(articleIds)];
     for (let start = 0; start < ids.length; start += 100) {
       const filter = `in.(${ids.slice(start, start + 100).join(",")})`;
-      const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_article_compositions?${new URLSearchParams({ select: "article_id,settings", project_id: `eq.${projectId}`, article_id: filter, status: "eq.ready", limit: "100" })}`);
+      const endpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_article_compositions?${new URLSearchParams({ select: "article_id,status,settings", project_id: `eq.${projectId}`, article_id: filter, ...(!includeDraftArticles ? { status: "eq.ready" } : {}), limit: "100" })}`);
       const articleEndpoint = getSupabaseRestEndpoint(`/rest/v1/newsletter_articles?${new URLSearchParams({ select: "id,status,publication_kind,valid_from,valid_until", project_id: `eq.${projectId}`, id: filter, limit: "100" })}`);
       if (!endpoint || !articleEndpoint) return {};
       const [response, articleResponse] = await Promise.all([fetch(endpoint, { headers, cache: "no-store" }), fetch(articleEndpoint, { headers, cache: "no-store" })]);
       if (!response.ok || !articleResponse.ok) return {};
       const articles = await articleResponse.json() as Array<{ id: string; status: string; publication_kind: string; valid_from: string | null; valid_until: string | null }>;
       const allowed = new Set(articles.filter((a) => includeDraftArticles || isArticlePubliclyVisible({ id: a.id, status: a.status, publicationKind: normalizeArticlePublicationKind(a.publication_kind), validFrom: a.valid_from, validUntil: a.valid_until })).map((a) => a.id));
-      for (const row of await response.json() as Array<{ article_id: string; settings: Record<string, unknown> }>) {
-        if (allowed.has(row.article_id)) result[row.article_id] = readArticleTextDesign(row.settings?.textDesign);
+      for (const row of await response.json() as Array<{ article_id: string; status: string; settings: Record<string, unknown> }>) {
+        if (allowed.has(row.article_id)) result[row.article_id] = { ...(row.status === "ready" ? readArticleTextDesign(row.settings?.textDesign) : {}), fontDesign: validateArticleFontDesign(row.settings?.fontDesign) ?? undefined };
       }
     }
     return result;

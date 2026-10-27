@@ -2,12 +2,13 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import type { FontAsset } from "@/lib/newsletter-repository";
-import { getFontAssetById, getFontFaceCss, getFontFamilyValue } from "@/lib/font-css";
+import { getFontAssetById, getFontFaceCss, getFontFamilyValue, getFontFaceFamilyValue } from "@/lib/font-css";
 import { getFontPickerFaces, getFontPickerFamilies, searchFontPickerFamilies } from "@/lib/font-picker";
 
-export function SearchableFontSelect({ defaultValue, fonts, help, inheritLabel, inheritedId, preferredIds = [], label, name, form, compact = false, onValueChange }: {
+export function SearchableFontSelect({ defaultValue, fonts, help, inheritLabel, inheritedId, preferredIds = [], label, name, form, compact = false, selectFace = false, onValueChange }: {
   form?: string;
   compact?: boolean;
+  selectFace?: boolean;
   onValueChange?: (value: string) => void;
   defaultValue?: string | null;
   fonts: FontAsset[];
@@ -39,11 +40,11 @@ export function SearchableFontSelect({ defaultValue, fonts, help, inheritLabel, 
     if (!face || !expanded) return;
     let cancelled = false;
     const timer = setTimeout(() => { if (!cancelled) setLoad({ id: face.id, status: "failed" }); }, 10000);
-    document.fonts.load(`400 20px ${getFontFamilyValue(face)?.split(", var(")[0]}`, "우리 지역의 새로운 소식")
+    document.fonts.load(`${selectFace ? `${face.style || "normal"} ${face.weight || "400"}` : "400"} 20px ${(selectFace ? getFontFaceFamilyValue(face) : getFontFamilyValue(face))?.split(", var(")[0]}`, "우리 지역의 새로운 소식")
       .then(loaded => { clearTimeout(timer); if (!cancelled) setLoad({ id: face.id, status: loaded.length ? "loaded" : "failed" }); })
       .catch(() => { clearTimeout(timer); if (!cancelled) setLoad({ id: face.id, status: "failed" }); });
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [face, expanded]);
+  }, [face, expanded, selectFace]);
 
   function choose(next: string) { setValue(next); onValueChange?.(next); }
 
@@ -60,12 +61,13 @@ export function SearchableFontSelect({ defaultValue, fonts, help, inheritLabel, 
         <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="dd-btn dd-btn-secondary dd-btn-sm">이전 패밀리</button>
         <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} className="dd-btn dd-btn-secondary dd-btn-sm">다음 패밀리</button>
       </nav> : null}
-      {selected ? <p className="break-words text-xs leading-5 text-slate-600">이 패밀리에 등록된 굵기 / 스타일: {getFontPickerFaces(selected).join(" · ")}<br />등록 정보이며 기사 굵기·기울임 선택 기능은 아닙니다. 실제 표시는 기존 제목·본문 CSS를 따릅니다.</p> : null}
+      {selectFace && selected ? <label className="block text-xs font-bold">등록 굵기 · 스타일<select aria-label={`${label} 굵기 · 스타일`} value={face?.id ?? ""} onChange={event => choose(event.target.value)} className="mt-1 h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-2">{[...selected.fonts].sort((a,b) => Number(a.weight) - Number(b.weight) || a.fileFormat.localeCompare(b.fileFormat)).map(font => <option key={font.id} value={font.id}>{font.weight} / {font.style} · {font.name} · {font.fileFormat.toUpperCase()}</option>)}</select></label> : null}
+      {selected ? <p className="break-words text-xs leading-5 text-slate-600">이 패밀리에 등록된 굵기 / 스타일: {getFontPickerFaces(selected).join(" · ")}<br />{selectFace ? "실제 등록된 파일의 굵기·스타일만 선택합니다. 인위적인 굵기는 합성하지 않습니다." : "등록 정보이며 기사 굵기·기울임 선택 기능은 아닙니다. 실제 표시는 기존 제목·본문 CSS를 따릅니다."}</p> : null}
       {face ? <>
-        <p className="text-xs text-slate-600">저장 참조 파일: {face.weight || "400"} / {face.style || "normal"} · {face.fileFormat.toUpperCase()} — 이 값이 기사 CSS 굵기를 변경하지는 않습니다.</p>
+        <p className="text-xs text-slate-600">저장 참조 파일: {face.weight || "400"} / {face.style || "normal"} · {face.fileFormat.toUpperCase()} {selectFace ? "— 선택한 굵기를 HTML에 적용합니다." : "— 이 값이 기사 CSS 굵기를 변경하지는 않습니다."}</p>
         <style>{getFontFaceCss(selected?.fonts ?? [face])}</style>
-        <p className="text-xs text-slate-500">패밀리 미리보기 · 400 / normal · 기사 표시 굵기와 다를 수 있습니다.</p>
-        <p className="break-words rounded-lg bg-slate-50 p-3 text-xl [overflow-wrap:anywhere]" style={{ fontFamily: getFontFamilyValue(face), fontWeight: 400 }}>우리 지역의 새로운 소식</p>
+        <p className="text-xs text-slate-500">{selectFace ? `미리보기 · ${face.weight} / ${face.style}` : "패밀리 미리보기 · 400 / normal · 기사 표시 굵기와 다를 수 있습니다."}</p>
+        <p className="break-words rounded-lg bg-slate-50 p-3 text-xl [overflow-wrap:anywhere]" style={{ fontFamily: selectFace ? getFontFaceFamilyValue(face) : getFontFamilyValue(face), fontWeight: selectFace ? Number(face.weight) : 400, fontStyle: selectFace ? face.style : undefined, fontSynthesis: selectFace ? "none" : undefined }}>우리 지역의 새로운 소식</p>
         <p role="status" className="text-xs text-slate-500">{load.id !== face.id ? "글꼴 불러오는 중…" : load.status === "failed" ? "글꼴을 불러오지 못했습니다. 기본 글꼴로 보일 수 있습니다." : "선택 글꼴을 불러왔습니다. 지원하지 않는 문자는 기본 글꼴로 보일 수 있습니다."}</p>
       </> : null}
       {unavailable ? <p className="text-xs text-amber-800">비활성 또는 사용이 허용되지 않은 글꼴입니다. 공개 화면에서는 기본 글꼴로 표시될 수 있습니다.</p> : null}

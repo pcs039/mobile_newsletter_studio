@@ -15,6 +15,16 @@ export function getFontFamilyValue(font: FontAsset | null | undefined) {
   return font ? `"${escapeCssString(font.cssFamily)}", var(--font-app-sans, system-ui, sans-serif)` : undefined;
 }
 
+function fontFaceAlias(font: FontAsset) {
+  return `RegisteredFace_${font.id.replace(/[^a-zA-Z0-9]/g, "")}`;
+}
+
+// Explicit face selection must not depend on competing @font-face declarations
+// with the same family/weight (some legacy files all declare weight 400).
+export function getFontFaceFamilyValue(font: FontAsset | null | undefined) {
+  return font ? `"${fontFaceAlias(font)}", var(--font-app-sans, system-ui, sans-serif)` : undefined;
+}
+
 export function getFontAssetById(fonts: FontAsset[], id: string | null | undefined) {
   if (!id) {
     return null;
@@ -64,6 +74,7 @@ export function getSelectableFontAssets(fonts: FontAsset[]) {
 
 export function getFontFaceCss(fonts: FontAsset[]) {
   const uniqueFaces = new Set<string>();
+  const uniqueAliases = new Set<string>();
 
   return fonts
     .filter((font) => {
@@ -75,21 +86,18 @@ export function getFontFaceCss(fonts: FontAsset[]) {
       const format = fontFormatMap[font.fileFormat] ?? font.fileFormat;
       const faceKey = [font.cssFamily, font.fileUrl, font.weight || "400", font.style || "normal"].join("|");
 
-      if (uniqueFaces.has(faceKey)) {
-        return "";
-      }
-
-      uniqueFaces.add(faceKey);
-
-      return [
+      const families: string[] = [];
+      if (!uniqueFaces.has(faceKey)) { families.push(font.cssFamily); uniqueFaces.add(faceKey); }
+      if (!uniqueAliases.has(font.id)) { families.push(fontFaceAlias(font)); uniqueAliases.add(font.id); }
+      return families.map(family => [
         "@font-face {",
-        `  font-family: "${escapeCssString(font.cssFamily)}";`,
+        `  font-family: "${escapeCssString(family)}";`,
         `  src: url("${escapeCssString(font.fileUrl)}") format("${escapeCssString(format)}");`,
         `  font-weight: ${font.weight || "400"};`,
         `  font-style: ${font.style || "normal"};`,
         "  font-display: swap;",
         "}",
-      ].join("\n");
+      ].join("\n")).join("\n");
     })
     .join("\n\n");
 }

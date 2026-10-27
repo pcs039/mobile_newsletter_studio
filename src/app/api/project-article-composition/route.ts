@@ -1,3 +1,7 @@
+import { validateArticleFontDesign } from "@/lib/article-font-design";
+import { getFontAssetById } from "@/lib/font-css";
+import { requireImageSameOrigin } from "@/lib/article-image-api-origin";
+import { stagingRequestAllowed } from "@/lib/staging-environment";
 import { applyArticleProductionPattern, isArticleProductionPattern } from "@/lib/article-production-pattern";
 import { validateArticleTextDesign } from "@/lib/article-text-design";
 import { NextResponse } from "next/server";
@@ -21,6 +25,7 @@ import {
   type ArticleCompositionRepositoryResult,
 } from "@/lib/article-composition-repository";
 import {
+  getFontAssets,
   getProjectContent,
   getProjectDesignAssets,
   type ProjectContentArticle,
@@ -294,6 +299,18 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, message: "현재 기사의 화면 구성을 확인해 주세요." }, { status: 400 });
   }
 
+  if (action === "update_font_design") {
+    if (!stagingRequestAllowed(request)) return NextResponse.json({ ok: false }, { status: 404 });
+    try { requireImageSameOrigin(request); } catch { return NextResponse.json({ ok: false }, { status: 403 }); }
+    if (payload?.expectedUpdatedAt !== context.composition.updatedAt) return NextResponse.json({ ok: false, message: "다른 작업에서 디자인이 변경되었습니다. 새로고침 후 다시 선택해 주세요." }, { status: 409 });
+    const design = validateArticleFontDesign(payload?.fontDesign);
+    if (!design) return NextResponse.json({ ok: false, message: "글꼴 설정을 확인해 주세요." }, { status: 400 });
+    const library = await getFontAssets();
+    if (library.source !== "supabase") return NextResponse.json({ ok: false, message: "폰트 라이브러리를 확인하지 못했습니다." }, { status: 503 });
+    if (Object.values(design).some(id => !getFontAssetById(library.fonts, id))) return NextResponse.json({ ok: false, message: "등록된 활성 웹폰트만 선택할 수 있습니다." }, { status: 400 });
+    return repositoryResponse(await updateProjectArticleCompositionSettings(context.projectId, articleId,
+      { ...context.composition.settings, fontDesign: { ...design } }, context.composition.updatedAt));
+  }
   if (action === "apply_production_pattern") {
     if (!isArticleProductionPattern(payload?.productionPattern)) {
       return NextResponse.json({ ok: false, message: "제작 패턴을 확인해 주세요." }, { status: 400 });
@@ -304,13 +321,13 @@ export async function PATCH(request: Request) {
       ...context.composition.settings,
       productionPattern: payload.productionPattern,
       textDesign: { ...applyArticleProductionPattern(payload.productionPattern, validation.settings) },
-    }));
+    }, context.composition.updatedAt));
   }
   if (action === "update_text_design") {
     const validation = validateArticleTextDesign(payload?.textDesign);
     if (!validation.ok) return NextResponse.json({ ok: false, message: validation.message }, { status: 400 });
     return repositoryResponse(await updateProjectArticleCompositionSettings(context.projectId, articleId,
-      { ...context.composition.settings, textDesign: { ...validation.settings } }));
+      { ...context.composition.settings, textDesign: { ...validation.settings } }, context.composition.updatedAt));
   }
   if (action === "update_status") {
     if (!isArticleCompositionStatus(payload?.status)) {
