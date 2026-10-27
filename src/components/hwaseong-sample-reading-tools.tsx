@@ -1,5 +1,9 @@
 "use client";
 
+import { articleFontDesignRoles, articleFontDesignStyle, type ArticleFontDesign } from "@/lib/article-font-design";
+import type { FontAsset } from "@/lib/newsletter-repository";
+import fontStyles from "@/components/article-font-design.module.css";
+
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { PublicTextSizeToggle } from "@/components/public-text-size-toggle";
 import { PublicArticleAudioPlayer } from "@/components/public-article-audio-player";
@@ -16,9 +20,9 @@ function SplitNarrationPlayer({ audio, detail }: { audio: SampleAudio; detail?: 
 }
 
 const SampleAudioControlsContext = createContext<{ target: HTMLDivElement | null; setTarget: (target: HTMLDivElement | null) => void } | null>(null);
-export function SampleReadingToolsScope({ children }: { children: ReactNode }) {
+export function SampleReadingToolsScope({ children, fontDesign, fonts = [] }: { children: ReactNode; fontDesign?: ArticleFontDesign; fonts?: FontAsset[] }) {
   const [target, setTarget] = useState<HTMLDivElement | null>(null);
-  return <SampleAudioControlsContext.Provider value={{ target, setTarget }}><div className="min-w-0" data-sample-audio-scope onPlayCapture={event => { event.currentTarget.querySelectorAll('audio').forEach(audio => { if (audio !== event.target) audio.pause(); }); }}>{children}</div></SampleAudioControlsContext.Provider>;
+  return <SampleAudioControlsContext.Provider value={{ target, setTarget }}><div className={`min-w-0 ${fontStyles.scope}`} data-font-roles={articleFontDesignRoles(fontDesign, fonts)} style={articleFontDesignStyle(fontDesign, fonts)} data-sample-audio-scope onPlayCapture={event => { event.currentTarget.querySelectorAll('audio').forEach(audio => { if (audio !== event.target) audio.pause(); }); }}>{children}</div></SampleAudioControlsContext.Provider>;
 }
 export function SampleDetailReadingTools({ sample, generated }: { sample: ProposalSample; generated?: SampleAudio }) {
   const scope = useContext(SampleAudioControlsContext);

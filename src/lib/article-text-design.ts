@@ -1,4 +1,6 @@
+import type { ArticleFontDesign } from "@/lib/article-font-design";
 export type ArticleTextDesign = {
+  fontDesign?: ArticleFontDesign; // Read-only projection of Composition settings.fontDesign.
   captionStyled?: boolean;
   bodyEmphasis?: "none" | "info" | "quote";
   subtitleEnabled?: boolean;
