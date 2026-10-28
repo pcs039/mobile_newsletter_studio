@@ -33,7 +33,7 @@ export function CartoonActingQa({slug}:{slug:string}){
     {status?<>
       <p className="my-2 break-keep text-xs leading-6">전용 키 {status.configured?"설정됨":"미설정"} · 생성 speed 1.0 · 2차 최대 A-2 1회 / B-2 6회 · 일반 독자 미적용</p>
       <details className="my-3"><summary className="min-h-10 cursor-pointer text-sm font-bold">2차 공통 시험 대본 확인</summary><p className="whitespace-pre-wrap break-keep text-sm leading-7">{status.script}</p></details>
-      <div className="grid gap-3 md:grid-cols-2">{status.plans.map(plan=>{
+      <div className="grid grid-cols-1 gap-3">{status.plans.map(plan=>{
         const rawReady=plan.parts.every(p=>p.state==="complete"),unknown=plan.parts.some(p=>p.state==="unknown"),priorReady=plan.variant!=="B-2"||!!status.plans.find(p=>p.variant==="A-2")?.parts.every(p=>p.state==="complete");
         return <article key={plan.id} data-acting-variant={plan.variant} className="min-w-0 rounded-md border border-slate-300 bg-white p-3">
           <h4 className="break-keep text-sm font-bold">{plan.label}</h4><p className="my-2 break-keep text-xs leading-6">제작 v{plan.version} · {plan.voiceLabel}</p><p className="mb-2 break-keep text-xs leading-6">{plan.actingNote}</p>
