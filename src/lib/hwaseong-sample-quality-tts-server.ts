@@ -8,6 +8,8 @@ import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { qualityInstructions, qualityPlan, scopedQualityPlan, qualityPrefix, qualityProjectId, qualityTitlePrefix, type QualityPlan } from "@/lib/hwaseong-sample-quality-narration";
 import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
+import { selectedCartoonAudio } from "@/lib/hwaseong-cartoon-acting-server";
+import { actingArticleId } from "@/lib/hwaseong-cartoon-acting";
 
 type Row = { id: string; project_id: string; article_id: string | null; title: string; file_path: string; script_text: string; script_status: string; ai_tts_voice: string; ai_tts_model: string; ai_tts_text_hash: string; ai_tts_audio_paths: string[]; ai_tts_generated_at: string | null; created_at?: string; pronunciation_note?: string | null };
 function headers() {
@@ -53,17 +55,18 @@ function audio(p: QualityPlan, review = false): SampleAudio {
 }
 export async function qualityAudioIndex(provided?: ProposalSample[]): Promise<Record<string, SampleAudio>> {
   if (!stagingEnvironmentConfigured()) return {};
-  const [plans, rows] = await Promise.all([qualityPlans(provided), qualityRows()]);
+  const [plans, rows, selected] = await Promise.all([qualityPlans(provided), qualityRows(), selectedCartoonAudio().catch(()=>null)]);
+  const activePlans=selected?plans.filter(p=>p.articleId!==actingArticleId):plans;
   // A complete verified set is required before the reader switches away from v2.
   const authored = provided ?? (await getProjectContent(hwaseongSampleSlug)).articles.map(a => proposalSample(a,qualityProjectId)).filter((s): s is ProposalSample => !!s && !s.editorTest);
-  if (plans.some(p => !ready(rows.find(r => r.id === p.id), p) && !authored.find(s => s.article.id === p.articleId)?.authorEdited)) return {};
-  return Object.fromEntries(plans.filter(p => p.part === "summary" && ready(rows.find(r=>r.id===p.id),p) && ready(rows.find(r=>r.id===plans.find(d=>d.articleId===p.articleId&&d.part==="detail")!.id),plans.find(d=>d.articleId===p.articleId&&d.part==="detail")!)).map(p => [p.articleId, { ...audio(p), detail: audio(plans.find(d => d.articleId === p.articleId && d.part === "detail")!) }]));
+  if (activePlans.some(p => !ready(rows.find(r => r.id === p.id), p) && !authored.find(s => s.article.id === p.articleId)?.authorEdited)) return {};
+  return {...Object.fromEntries(activePlans.filter(p => p.part === "summary" && ready(rows.find(r=>r.id===p.id),p) && ready(rows.find(r=>r.id===activePlans.find(d=>d.articleId===p.articleId&&d.part==="detail")!.id),activePlans.find(d=>d.articleId===p.articleId&&d.part==="detail")!)).map(p => [p.articleId, { ...audio(p), detail: audio(activePlans.find(d => d.articleId === p.articleId && d.part === "detail")!) }])),...(selected?{[actingArticleId]:selected}:{})};
 }
 export async function qualityStatus() {
-  const [plans, rows] = await Promise.all([qualityPlans(), qualityRows()]);
+  const [plans, rows, selected] = await Promise.all([qualityPlans(), qualityRows(),selectedCartoonAudio().catch(()=>null)]);
   return { version: 3, configured: !!process.env.STAGING_OPENAI_API_KEY?.trim(), model: plans[0].model, totalCalls: plans.reduce((n,p) => n+p.calls,0),
-    plans: plans.map(p => { const row = rows.find(r => r.id === p.id); return { job: p.job, id: p.id, title: `${p.title} · ${p.part === "summary" ? "요약" : "상세"}`, voice: p.voice, text: p.text, scriptHash: p.scriptHash, characters: p.text.length, calls: p.calls, ...(p.resume ? { resumeKey: p.resume.requestKey, preservesUnknownId: p.resume.parentId } : {}), state: ready(row,p) ? "ready" : matches(row,p) && row?.ai_tts_generated_at ? "editing" : row ? "unknown" : "not_started" }; }),
-    audio: Object.fromEntries(plans.filter(p => { const row=rows.find(r=>r.id===p.id); return matches(row,p) && !!row?.ai_tts_generated_at; }).map(p => [p.job, audio(p, true)])) };
+    plans: plans.map(p => { const row = rows.find(r => r.id === p.id),replaced=!!selected&&p.articleId===actingArticleId; return { job: p.job, id: p.id, title: `${p.title} · ${p.part === "summary" ? "요약" : "상세"}`, voice: p.voice, text: p.text, scriptHash: p.scriptHash, characters: p.text.length, calls: replaced?0:p.calls, ...(p.resume ? { resumeKey: p.resume.requestKey, preservesUnknownId: p.resume.parentId } : {}), state: replaced?"replaced-by-B-v1":ready(row,p) ? "ready" : matches(row,p) && row?.ai_tts_generated_at ? "editing" : row ? "unknown" : "not_started" }; }),
+    audio: Object.fromEntries(plans.filter(p => { const row=rows.find(r=>r.id===p.id); return !(selected&&p.articleId===actingArticleId)&&matches(row,p) && !!row?.ai_tts_generated_at; }).map(p => [p.job, audio(p, true)])) };
 }
 
 // Same sample-tts workflow and existing audio table. Each immutable reservation is
@@ -75,6 +78,7 @@ export async function generateQualityTts(job: string, resumeKey?: string) {
   const [plans, rows] = await Promise.all([qualityPlans(), qualityRows()]);
   const p = plans.find(p => p.job === job);
   if (!p) return { ok: false, state: "rejected", calls: 0 };
+  if(p.articleId===actingArticleId&&await selectedCartoonAudio().catch(()=>null))return {ok:false,state:"retired",calls:0,message:"B안 채택 완료. 이전 04번 음성을 재생성하지 않습니다."};
   const current = rows.find(r => r.id === p.id);
   if (current) return { ok: ready(current,p), state: ready(current,p) ? "ready" : "unknown", id:p.id, calls:0, message:"기존 예약입니다. 다시 호출하지 않습니다." };
   const resumptions = plans.filter(plan => plan.resume).map(resumed => {
@@ -140,6 +144,7 @@ export async function generateQualityTts(job: string, resumeKey?: string) {
 }
 export async function qualityDelivery(id:string,segment:string|null,request:Request,review=false){
   const [plans,rows]=await Promise.all([qualityPlans(),qualityRows()]),p=plans.find(p=>p.id===id),row=rows.find(r=>r.id===id);
+  if(p?.articleId===actingArticleId&&await selectedCartoonAudio().catch(()=>null))return new Response(null,{status:410});
   if(!p||!(ready(row,p)||(review&&matches(row,p)&&row?.script_status==="pending"&&row.ai_tts_generated_at)))return new Response(null,{status:404});
   const privateHeaders={"Cache-Control":"private, no-store"};
   if(segment===null)return Response.json({hasAudio:true,source:"ai_tts",stale:false,voice:p.voice,segments:[{index:0,url:`/api/projects/${hwaseongSampleSlug}/sample-tts?version=3&audio=${p.id}&segment=0${review?"&review=1":""}`}]},{headers:privateHeaders});

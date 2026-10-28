@@ -6,6 +6,12 @@ export const actingArticleId = "723d4dff-9d15-4515-af0a-0d725eb94b5e";
 export const actingTitlePrefix = "[만평 성우 시험 v1] ";
 export const actingPrefix = `projects/${actingProjectId}/cartoon-acting-pilot-v1/`;
 export const actingModel = "gpt-4o-mini-tts";
+export const actingAdoptionProof = {
+  approval: "user-2026-10-28-select-B-v1-summary-detail",
+  articleId: actingArticleId,
+  parts: ["summary", "detail"],
+  fileHash: "3ad2621f47c68a4c146de7543a1d9117bf595b059bd2b82fb91a9ecd79534138",
+};
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
 const uuid = (value: string) => `${value.slice(0,8)}-${value.slice(8,12)}-5${value.slice(13,16)}-a${value.slice(17,20)}-${value.slice(20,32)}`;
 const baseInstructions = "한국어 지자체 모바일 소식지의 짧은 만평을 성인 여성형 성우의 자연스러운 연기로 읽습니다. 어린이용 만화처럼 과장하거나 고음으로 변조하지 마세요. 제공된 발화만 정확히 읽고 역할명, 지시문, 해설을 추가하지 마세요. 속도는 처음부터 끝까지 안정적으로 유지하고 마지막 문장을 급하게 끝내지 마세요. 배경음악과 효과음은 없습니다.";

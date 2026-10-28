@@ -6,7 +6,8 @@ import { getProjectContent } from "@/lib/newsletter-repository";
 import { hwaseongSampleSlug, proposalSample } from "@/lib/hwaseong-proposal-sample";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
-import { actingArticleId, actingModel, actingPrefix, actingRevisionPrefix, actingRevisionTitlePrefix, actingProjectId, actingTitlePrefix, allCartoonActingPlans, type AnyCartoonActingPlan } from "@/lib/hwaseong-cartoon-acting";
+import { actingAdoptionProof, actingArticleId, actingModel, actingPrefix, actingRevisionPrefix, actingRevisionTitlePrefix, actingProjectId, actingTitlePrefix, allCartoonActingPlans, type AnyCartoonActingPlan } from "@/lib/hwaseong-cartoon-acting";
+import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 
 type Row = { id:string; project_id:string; article_id:string|null; title:string; file_path:string; script_text:string; script_status:string; ai_tts_voice:string; ai_tts_model:string; ai_tts_text_hash:string; ai_tts_audio_paths:string[]; ai_tts_generated_at:string|null; duration_seconds:number|null; pronunciation_note?:string|null };
 function headers() {
@@ -26,20 +27,34 @@ async function rows() {
   for(let offset=0;offset<1000;offset+=100){const q=new URLSearchParams({select:"*",project_id:`eq.${actingProjectId}`,or:`(title.like.${actingTitlePrefix}*,title.like.${actingRevisionTitlePrefix}*)`,order:"id.asc",limit:"100",offset:String(offset)});const r=await fetch(table("?"+q),{headers:headers(),cache:"no-store",signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error("Pilot status unavailable");const page:Row[]=await r.json();if(!Array.isArray(page))throw Error("Pilot status invalid");result.push(...page);if(page.length<100)return result;}
   throw Error("Unconfirmed pagination");
 }
-type Expected = { id:string;path:string;hash:string;text:string;voice:string };
-function finalExpected(p:AnyCartoonActingPlan):Expected {return {id:p.id,path:p.path,hash:p.hash,text:p.script,voice:p.finalVoice};}
-function matches(row:Row|undefined,p:Expected) {return !!row&&row.project_id===actingProjectId&&row.article_id===null&&row.script_status==="pending"&&row.file_path===p.path&&row.script_text===p.text&&row.ai_tts_voice===p.voice&&row.ai_tts_model===actingModel&&row.ai_tts_text_hash===p.hash&&JSON.stringify(row.ai_tts_audio_paths)===JSON.stringify([p.path]);}
+type Expected = { id:string;path:string;hash:string;text:string;voice:string;allowApproved?:boolean };
+function finalExpected(p:AnyCartoonActingPlan):Expected {return {id:p.id,path:p.path,hash:p.hash,text:p.script,voice:p.finalVoice,allowApproved:p.variant==="B"&&p.version===1};}
+function matches(row:Row|undefined,p:Expected) {return !!row&&row.project_id===actingProjectId&&row.article_id===null&&(row.script_status==="pending"||(p.allowApproved&&row.script_status==="approved"))&&row.file_path===p.path&&row.script_text===p.text&&row.ai_tts_voice===p.voice&&row.ai_tts_model===actingModel&&row.ai_tts_text_hash===p.hash&&JSON.stringify(row.ai_tts_audio_paths)===JSON.stringify([p.path]);}
 function complete(row:Row|undefined,p:Expected) {return matches(row,p)&&!!row?.ai_tts_generated_at;}
 function finalReady(row:Row|undefined,p:AnyCartoonActingPlan){return complete(row,finalExpected(p))&&Number.isFinite(row?.duration_seconds)&&(row?.duration_seconds??0)>0;}
+function adopted(plans:AnyCartoonActingPlan[],stored:Row[]) {
+  const plan=plans.find(p=>p.variant==="B"&&p.version===1),row=stored.find(r=>r.id===plan?.id);
+  if(!plan||row?.script_status!=="approved"||!finalReady(row,plan)||plan.parts.some(p=>!complete(stored.find(r=>r.id===p.id),p)))return null;
+  try {if(JSON.stringify(JSON.parse(row.pronunciation_note??"{}").adoption)!==JSON.stringify(actingAdoptionProof))return null;}catch{return null;}
+  return plan;
+}
+export async function selectedCartoonAudio():Promise<SampleAudio|null> {
+  if(!stagingEnvironmentConfigured())return null;
+  const [plans,stored]=await Promise.all([actingPlans(),rows()]),plan=adopted(plans,stored);
+  if(!plan)return null;
+  const audio:SampleAudio={id:plan.id,voice:"coral",voiceLabel:"Coral · Marin",narrationLabel:"채택된 22초 만평 성우 음성 · 요약·상세 동일 음성",transcriptText:plan.script,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts/acting?audio=${plan.id}`};
+  return {...audio,detail:{...audio}};
+}
 export async function actingStatus() {
-  const [plans,stored]=await Promise.all([actingPlans(),rows()]);
-  return {configured:!!process.env.STAGING_OPENAI_API_KEY?.trim(),maximumCalls:7,script:plans[2].script,scriptHash:plans[2].scriptHash,
-    plans:plans.map(p=>({variant:p.variant,version:p.version,actingNote:p.actingNote,script:p.script,id:p.id,hash:p.hash,label:p.label,voiceLabel:p.voiceLabel,maximumCalls:p.version===2?p.parts.length:0,ready:finalReady(stored.find(r=>r.id===p.id),p),duration:stored.find(r=>r.id===p.id)?.duration_seconds??null,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts/acting?audio=${p.id}`,parts:p.parts.map(part=>{const row=stored.find(r=>r.id===part.id);return {index:part.index,state:complete(row,part)?"complete":row?"unknown":"not_started"};})}))};
+  const [plans,stored]=await Promise.all([actingPlans(),rows()]),selection=adopted(plans,stored),visible=selection?[selection]:plans;
+  return {adopted:!!selection,configured:!!process.env.STAGING_OPENAI_API_KEY?.trim(),maximumCalls:selection?0:7,script:selection?.script??plans[2].script,scriptHash:selection?.scriptHash??plans[2].scriptHash,
+    plans:visible.map(p=>({variant:p.variant,version:p.version,actingNote:selection?"사용자 채택 · 04번 요약·상세 연결 · 추가 생성 중단":p.actingNote,script:p.script,id:p.id,hash:p.hash,label:p.label,voiceLabel:p.voiceLabel,maximumCalls:!selection&&p.version===2?p.parts.length:0,ready:finalReady(stored.find(r=>r.id===p.id),p),duration:stored.find(r=>r.id===p.id)?.duration_seconds??null,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts/acting?audio=${p.id}`,parts:p.parts.map(part=>{const row=stored.find(r=>r.id===part.id);return {index:part.index,state:complete(row,part)?"complete":row?"unknown":"not_started"};})}))};
 }
 export async function generateActingPart(variant:string,index:number,expectedHash:string) {
   const apiKey=stagingEnvironmentConfigured()?process.env.STAGING_OPENAI_API_KEY?.trim():"";
   if(!apiKey)return {ok:false,state:"rejected",calls:0,message:"Staging 전용 키가 없습니다."};
   const [plans,stored]=await Promise.all([actingPlans(),rows()]),plan=plans.find(p=>p.variant===variant);
+  if(adopted(plans,stored))return {ok:false,state:"retired",calls:0,message:"B안 채택 완료. 미선택 시안을 다시 생성하지 않습니다."};
   if(!plan||plan.version!==2||plan.hash!==expectedHash||!Number.isInteger(index)||index<0||!plan.parts[index])return {ok:false,state:"rejected",calls:0};
   const part=plan.parts[index],existing=stored.find(r=>r.id===part.id);
   if(existing)return {ok:false,state:complete(existing,part)?"complete":"unknown",id:part.id,calls:0,message:"기존 시도입니다. 다시 생성하지 않습니다."};
