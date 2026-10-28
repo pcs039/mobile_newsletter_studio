@@ -2,7 +2,8 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),loader=require('./canva-test-loader.cjs');
 const pure=loader(),n=pure('src/lib/hwaseong-cartoon-acting.ts');
 const sample={kind:'cartoon',headline:'오늘의 산책 고수는?',article:{id:n.actingArticleId,title:'원문',displayTitle:'',summary:'원문',body:'보존',blocks:[]},authorEdited:false,editorTest:false};
-const plans=n.cartoonActingPlans(sample);
+const legacyPlans=n.cartoonActingPlans(sample);
+const plans=n.allCartoonActingPlans(sample).filter(p=>p.version===2);
 function fixture(){const before=global.fetch,env={...process.env},stored=[],objects=new Map(),calls=[],writes=[];let failure='';
 process.env.STAGING_OPENAI_API_KEY='scoped';process.env.SUPABASE_SERVICE_ROLE_KEY='fixture';
 const mp3=fs.readFileSync(__dirname+'/fixtures/marin-recovery-tone.mp3');
@@ -25,19 +26,28 @@ global.fetch=async(url,init={})=>{const u=new URL(url),method=init.method||'GET'
 return {...api,stored,objects,calls,writes,set:x=>failure=x,restore(){global.fetch=before;for(const k of ['STAGING_OPENAI_API_KEY','SUPABASE_SERVICE_ROLE_KEY'])if(env[k]===undefined)delete process.env[k];else process.env[k]=env[k];}};
 }
 test('A and B use identical spoken content, 1+6 calls, fixed female-target voices and separate immutable paths',()=>{
- const [a,b]=plans;assert.equal(a.script,b.script);assert.equal(a.script,b.parts.map(p=>p.text).join('\n\n'));assert.equal(a.script,a.parts[0].text);assert.equal(a.parts.length+b.parts.length,7);
- assert.deepEqual(b.parts.map(p=>p.voice),['coral','marin','coral','marin','coral','coral']);assert(!a.script.match(/\d컷|보호자:|강아지의 속마음:/));assert(a.script.includes('달리기는 내가, 뒷정리는 보호자가!'));
- assert.notEqual(a.id,b.id);assert([...a.parts,...b.parts].every(p=>p.path.startsWith(n.actingPrefix)));assert(!n.actingPrefix.includes('sample-tts-quality-v3'));
- assert.equal(n.cartoonActingPlans({...sample,article:{...sample.article,audioFile:{id:'other'}}})[0].id,a.id);
+ const [a,b]=plans;assert.equal(a.script,b.script);assert.equal(a.script,b.parts.map(p=>p.text).join('\n'));assert.equal(a.script,a.parts[0].text);assert.equal(a.parts.length+b.parts.length,7);
+ assert.deepEqual(b.parts.map(p=>p.voice),['shimmer','nova','shimmer','nova','shimmer','shimmer']);assert(!a.script.match(/\d컷|보호자:|강아지의 속마음:/));assert(a.script.includes('달리기는 내가, 뒷정리는 보호자가!'));
+ assert.notEqual(a.id,b.id);assert([...a.parts,...b.parts].every(p=>p.path.startsWith(n.actingRevisionPrefix)));assert(!n.actingPrefix.includes('sample-tts-quality-v3'));
+ assert.equal(n.allCartoonActingPlans({...sample,article:{...sample.article,audioFile:{id:'other'}}})[2].id,a.id);
 });
 test('edited or non-cartoon articles fail closed',()=>{for(const patch of [{authorEdited:true},{editorTest:true},{kind:'video'},{headline:'changed'}])assert.throws(()=>n.cartoonActingPlans({...sample,...patch}));});
-test('normal flow makes exactly seven paid calls and never activates or relinks an article',async()=>{const f=fixture();try{for(const plan of plans)for(const part of plan.parts){const r=await f.generateActingPart(plan.variant,part.index,plan.hash);assert.equal(r.state,'complete');assert.equal(r.calls,1);}assert.equal(f.calls.length,7);assert(f.stored.every(r=>r.article_id===null&&r.script_status==='pending'));const state=await f.actingStatus();assert(state.plans.every(p=>!p.ready&&p.parts.every(x=>x.state==='complete')));assert.equal((await f.generateActingPart('A',0,plans[0].hash)).calls,0);}finally{f.restore();}});
-test('B cannot run ahead of A or skip a role turn',async()=>{const f=fixture();try{assert.equal((await f.generateActingPart('B',0,plans[1].hash)).calls,0);await f.generateActingPart('A',0,plans[0].hash);assert.equal((await f.generateActingPart('B',1,plans[1].hash)).calls,0);assert.equal(f.calls.length,1);}finally{f.restore();}});
-test('concurrent duplicate reservation dispatches only one provider call',async()=>{const f=fixture();try{const r=await Promise.all([f.generateActingPart('A',0,plans[0].hash),f.generateActingPart('A',0,plans[0].hash)]);assert.equal(f.calls.length,1);assert.equal(r.filter(x=>x.ok).length,1);}finally{f.restore();}});
-for(const failure of ['claim','provider'])test(failure+' ambiguity keeps the reservation and blocks all subsequent generation',async()=>{const f=fixture();try{f.set(failure);const r=await f.generateActingPart('A',0,plans[0].hash);assert.equal(r.state,'unknown');assert.equal(f.stored.length,1);const calls=f.calls.length;f.set('');assert.equal((await f.generateActingPart('A',0,plans[0].hash)).calls,0);assert.equal((await f.generateActingPart('B',0,plans[1].hash)).calls,0);assert.equal(f.calls.length,calls);}finally{f.restore();}});
-test('ambiguous Storage upload is verified by GET without replaying provider',async()=>{const f=fixture();try{f.set('upload');assert.equal((await f.generateActingPart('A',0,plans[0].hash)).state,'complete');assert.equal(f.calls.length,1);}finally{f.restore();}});
-test('missing scoped key, stale script hash and invalid indexes make zero paid calls',async()=>{const f=fixture();try{for(const [variant,index,hash]of[['A',0,'stale'],['B',99,plans[1].hash],['C',0,plans[0].hash]])assert.equal((await f.generateActingPart(variant,index,hash)).calls,0);delete process.env.STAGING_OPENAI_API_KEY;assert.equal((await f.generateActingPart('A',0,plans[0].hash)).calls,0);assert.equal(f.calls.length,0);assert.equal(f.writes.length,0);}finally{f.restore();}});
+test('normal flow makes exactly seven paid calls and never activates or relinks an article',async()=>{const f=fixture();try{for(const plan of plans)for(const part of plan.parts){const r=await f.generateActingPart(plan.variant,part.index,plan.hash);assert.equal(r.state,'complete');assert.equal(r.calls,1);}assert.equal(f.calls.length,7);assert(f.stored.every(r=>r.article_id===null&&r.script_status==='pending'));const state=await f.actingStatus();assert(state.plans.filter(p=>p.version===2).every(p=>!p.ready&&p.parts.every(x=>x.state==='complete')));assert.equal((await f.generateActingPart('A-2',0,plans[0].hash)).calls,0);}finally{f.restore();}});
+test('B cannot run ahead of A or skip a role turn',async()=>{const f=fixture();try{assert.equal((await f.generateActingPart('B-2',0,plans[1].hash)).calls,0);await f.generateActingPart('A-2',0,plans[0].hash);assert.equal((await f.generateActingPart('B-2',1,plans[1].hash)).calls,0);assert.equal(f.calls.length,1);}finally{f.restore();}});
+test('concurrent duplicate reservation dispatches only one provider call',async()=>{const f=fixture();try{const r=await Promise.all([f.generateActingPart('A-2',0,plans[0].hash),f.generateActingPart('A-2',0,plans[0].hash)]);assert.equal(f.calls.length,1);assert.equal(r.filter(x=>x.ok).length,1);}finally{f.restore();}});
+for(const failure of ['claim','provider'])test(failure+' ambiguity keeps the reservation and blocks all subsequent generation',async()=>{const f=fixture();try{f.set(failure);const r=await f.generateActingPart('A-2',0,plans[0].hash);assert.equal(r.state,'unknown');assert.equal(f.stored.length,1);const calls=f.calls.length;f.set('');assert.equal((await f.generateActingPart('A-2',0,plans[0].hash)).calls,0);assert.equal((await f.generateActingPart('B-2',0,plans[1].hash)).calls,0);assert.equal(f.calls.length,calls);}finally{f.restore();}});
+test('ambiguous Storage upload is verified by GET without replaying provider',async()=>{const f=fixture();try{f.set('upload');assert.equal((await f.generateActingPart('A-2',0,plans[0].hash)).state,'complete');assert.equal(f.calls.length,1);}finally{f.restore();}});
+test('missing scoped key, stale script hash and invalid indexes make zero paid calls',async()=>{const f=fixture();try{for(const [variant,index,hash]of[['A-2',0,'stale'],['B-2',99,plans[1].hash],['C',0,plans[0].hash]])assert.equal((await f.generateActingPart(variant,index,hash)).calls,0);delete process.env.STAGING_OPENAI_API_KEY;assert.equal((await f.generateActingPart('A-2',0,plans[0].hash)).calls,0);assert.equal(f.calls.length,0);assert.equal(f.writes.length,0);}finally{f.restore();}});
 test('ordinary v3 generator and reader indexes do not import the acting pilot',()=>{for(const file of ['src/lib/hwaseong-sample-quality-tts-server.ts','src/lib/hwaseong-sample-split-tts-server.ts','src/app/projects/[projectId]/samples/page.tsx'])assert(!fs.readFileSync(file,'utf8').includes('cartoon-acting'));});
+test('legacy A/B IDs, hashes, paths, scripts and parts remain exact; revised text changes punctuation only',()=>{
+ const all=n.allCartoonActingPlans(sample);assert.equal(all.length,4);
+ for(let i=0;i<2;i++)for(const key of Object.keys(legacyPlans[i]))assert.deepEqual(all[i][key],legacyPlans[i][key]);
+ const spoken=s=>s.replace(/[\s\p{P}\p{S}]/gu,'');assert.equal(spoken(plans[0].script),spoken(legacyPlans[0].script));
+ for(const p of plans){assert(p.parts.every(x=>x.instructions.startsWith('한국어를 모국어처럼')));assert(!legacyPlans.some(x=>x.id===p.id));}
+});
+test('legacy variants are read-only and an ambiguous revised call blocks the other revised variant',async()=>{
+ const f=fixture();try{for(const p of legacyPlans)assert.equal((await f.generateActingPart(p.variant,0,p.hash)).calls,0);assert.equal(f.calls.length,0);f.set('provider');assert.equal((await f.generateActingPart('A-2',0,plans[0].hash)).state,'unknown');f.set('');assert.equal((await f.generateActingPart('B-2',0,plans[1].hash)).calls,0);assert.equal(f.calls.length,1);}finally{f.restore();}
+});
 test('pilot route rejects non-Staging, unauthenticated, non-admin and cross-origin calls before execution',async()=>{
  let enabled=true,role='admin',authenticated=true,sameOrigin=true,executed=0;
  const route=loader({
@@ -46,7 +56,7 @@ test('pilot route rejects non-Staging, unauthenticated, non-admin and cross-orig
   '@/lib/canva-request-origin':{requireCanvaSameOrigin:()=>{if(!sameOrigin)throw Error('origin');}},
   '@/lib/hwaseong-cartoon-acting-server':{actingStatus:async()=>{executed++;return {};},actingDelivery:async()=>{executed++;return new Response();},generateActingPart:async()=>{executed++;return {ok:true};}},
  })('src/app/api/projects/[projectId]/sample-tts/acting/route.ts');
- const ctx={params:Promise.resolve({projectId:'hwaseong-2026-10-samples'})},request=()=>new Request('https://canva-staging.datadiction.co.kr/api/projects/hwaseong-2026-10-samples/sample-tts/acting',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({variant:'A',part:0,hash:plans[0].hash})});
+ const ctx={params:Promise.resolve({projectId:'hwaseong-2026-10-samples'})},request=()=>new Request('https://canva-staging.datadiction.co.kr/api/projects/hwaseong-2026-10-samples/sample-tts/acting',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({variant:'A-2',part:0,hash:plans[0].hash})});
  enabled=false;assert.equal((await route.POST(request(),ctx)).status,404);enabled=true;
  authenticated=false;assert.equal((await route.POST(request(),ctx)).status,401);authenticated=true;
  role='editor';assert.equal((await route.POST(request(),ctx)).status,403);role='admin';

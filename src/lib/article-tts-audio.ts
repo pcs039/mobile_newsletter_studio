@@ -477,7 +477,7 @@ function isInputLengthError(status: number, body: string) {
 
 export async function requestOpenAiSpeech(
   input: string,
-  voice: ArticleTtsVoice,
+  voice: ArticleTtsVoice | "shimmer" | "nova",
   model: string,
   credentials?: { apiKey: string | null; captureReceipt?: boolean; signal?: AbortSignal; maxBytes?: number; bodyIdleTimeoutMs?: number; diagnostics?: TtsDiagnostics; narration?: { speed: 1; instructions: string } },
 ): Promise<
