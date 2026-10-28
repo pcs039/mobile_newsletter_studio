@@ -31,6 +31,10 @@ export type TtsDiagnosticEvent = {
   durationMs: number;
   httpStatus: number | null;
   providerRequestId: string | null;
+  inputCharacters?: number;
+  receivedBytes?: number;
+  receivedChunks?: number;
+  lastByteElapsedMs?: number | null;
   failure?: TtsFailure;
 };
 
@@ -41,9 +45,11 @@ export function createTtsDiagnostics(
 ) {
   const clientRequestId = randomUUID(),
     startedAt = now(),
-    starts = new Map<TtsPhase, number>();
+    starts = new Map<TtsPhase, number>(),
+    durations = new Map<TtsPhase, number>();
   let httpStatus: number | null = null,
     providerRequestId: string | null = null;
+  let transfer: { inputCharacters: number; receivedBytes: number; receivedChunks: number; lastByteElapsedMs: number | null } | undefined;
   const emit = (
     phase: TtsPhase,
     state: TtsDiagnosticEvent["state"],
@@ -59,6 +65,7 @@ export function createTtsDiagnostics(
       durationMs: Math.max(0, Math.round(at - (starts.get(phase) ?? at))),
       httpStatus,
       providerRequestId,
+      ...transfer,
       ...(failure ? { failure } : {}),
     };
     try {
@@ -69,14 +76,28 @@ export function createTtsDiagnostics(
   };
   return {
     clientRequestId,
+    trackInput(characters: number) {
+      if (Number.isSafeInteger(characters) && characters >= 0) {
+        transfer = { inputCharacters: characters, receivedBytes: 0, receivedChunks: 0, lastByteElapsedMs: null };
+      }
+    },
+    received(bytes: number) {
+      if (transfer && Number.isSafeInteger(bytes) && bytes > 0) {
+        transfer.receivedBytes += bytes;
+        transfer.receivedChunks++;
+        transfer.lastByteElapsedMs = Math.max(0, Math.round(now() - startedAt));
+      }
+    },
     start(phase: TtsPhase) {
       starts.set(phase, now());
       emit(phase, "started");
     },
     complete(phase: TtsPhase) {
+      durations.set(phase, Math.max(0, Math.round(now() - (starts.get(phase) ?? now()))));
       emit(phase, "completed");
     },
     fail(phase: TtsPhase, failure: TtsFailure) {
+      durations.set(phase, Math.max(0, Math.round(now() - (starts.get(phase) ?? now()))));
       emit(phase, "failed", failure);
     },
     setReceipt(status: number, id: string | null) {
@@ -88,7 +109,12 @@ export function createTtsDiagnostics(
         id && /^req_[A-Za-z0-9_-]{1,196}$/.test(id) ? id : null;
     },
     receipt() {
-      return { clientRequestId, httpStatus, providerRequestId };
+      return { clientRequestId, httpStatus, providerRequestId,
+        elapsedMs: Math.max(0, Math.round(now() - startedAt)),
+        headersDurationMs: durations.get("headers") ?? null,
+        bodyDurationMs: durations.get("body") ?? null,
+        ...transfer,
+      };
     },
   };
 }

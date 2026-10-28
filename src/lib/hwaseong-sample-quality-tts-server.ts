@@ -77,13 +77,15 @@ export async function generateQualityTts(job: string, resumeKey?: string) {
   if (!p) return { ok: false, state: "rejected", calls: 0 };
   const current = rows.find(r => r.id === p.id);
   if (current) return { ok: ready(current,p), state: ready(current,p) ? "ready" : "unknown", id:p.id, calls:0, message:"기존 예약입니다. 다시 호출하지 않습니다." };
-  const resumed = plans.find(plan => plan.resume);
-  const parent = resumed?.resume && rows.find(r => r.id === resumed.resume!.parentId);
-  const parentMatches = !!(resumed?.resume && parent && matches(parent, { ...resumed, resume: undefined, id: resumed.resume.parentId, path: resumed.resume.parentFinalPath }) && parent.script_status === "pending" && !parent.ai_tts_generated_at && parent.created_at && Date.now() - Date.parse(parent.created_at) > 300_000);
-  const replacement = resumed && rows.find(r => r.id === resumed.id);
-  const parentResolved = !!(parentMatches && replacement && resumed && matches(replacement,resumed) && replacement.ai_tts_generated_at);
-  if (p.resume && (resumeKey !== p.resume.requestKey || !parentMatches)) return {ok:false,state:"rejected",calls:0,message:"승인된 중단 요청과 명시적 재개 키를 확인하세요."};
-  if (rows.some(r => !r.ai_tts_generated_at && !(r.id === resumed?.resume?.parentId && (parentResolved || (p.resume && parentMatches))))) return { ok: false, state: "unknown", calls: 0, message: "결과 불명 요청이 있어 중단합니다." };
+  const resumptions = plans.filter(plan => plan.resume).map(resumed => {
+    const parent = rows.find(r => r.id === resumed.resume!.parentId);
+    const parentMatches = !!(parent && matches(parent, { ...resumed, resume: undefined, id: resumed.resume!.parentId, path: resumed.resume!.parentFinalPath }) && parent.script_status === "pending" && !parent.ai_tts_generated_at && parent.created_at && Date.now() - Date.parse(parent.created_at) > 300_000);
+    const replacement = rows.find(r => r.id === resumed.id);
+    return { resumed, parentMatches, resolved: !!(parentMatches && replacement && matches(replacement,resumed) && replacement.ai_tts_generated_at) };
+  });
+  const currentResume = resumptions.find(r => r.resumed.id === p.id);
+  if (p.resume && (resumeKey !== p.resume.requestKey || !currentResume?.parentMatches)) return {ok:false,state:"rejected",calls:0,message:"승인된 중단 요청과 명시적 재개 키를 확인하세요."};
+  if (rows.some(r => !r.ai_tts_generated_at && !resumptions.some(s => r.id === s.resumed.resume!.parentId && (s.resolved || (s.resumed.id === p.id && s.parentMatches))))) return { ok: false, state: "unknown", calls: 0, message: "결과 불명 요청이 있어 중단합니다." };
   const summary = plans.find(s => s.articleId === p.articleId && s.part === "summary")!;
   if (p.part === "detail" && (!matches(rows.find(r=>r.id===summary.id),summary) || !rows.find(r=>r.id===summary.id)?.ai_tts_generated_at)) return {ok:false,state:"rejected",calls:0,message:"검증된 제목 원본을 먼저 준비하세요."};
   const h = headers();
@@ -114,14 +116,14 @@ export async function generateQualityTts(job: string, resumeKey?: string) {
     if(p.part==="detail") inspectArticleMp3(await readTtsBytes(await fetch(object(summary.titlePath),{headers:h,cache:"no-store",signal:AbortSignal.timeout(15000)})));
     const tasks=[...(p.part==="summary"?[{text:p.title,path:p.titlePath,index:-1}]:[]),...p.chunks.map((text,i)=>({text,path:p.bodyPaths[i],index:i}))];
     for(const task of tasks){
-      if (p.resume && task.index === 0) {
+      if (p.resume && task.index === (p.resume.reusedIndex ?? 0)) {
         const proof = inspectArticleMp3(await readTtsBytes(await fetch(object(task.path),{headers:h,cache:"no-store",signal:AbortSignal.timeout(15000)})));
         if (proof.hash !== p.resume.reusedHash || proof.size !== p.resume.reusedSize) throw Error("Reuse integrity changed");
         proofs.push({path:task.path,...proof}); continue;
       }
       const diagnostics=createTtsDiagnostics(event=>console.info("sample_tts_quality",JSON.stringify({id:p.id,segment:calls,...event})));
       let speech;
-      try { if (recoveredLast) speech={ok:true as const,data:recoveredLast.buffer.slice(recoveredLast.byteOffset,recoveredLast.byteOffset+recoveredLast.byteLength) as ArrayBuffer}; else { calls++; speech=await requestOpenAiSpeech(task.text,p.voice,p.model,{apiKey,captureReceipt:true,diagnostics,signal:AbortSignal.timeout(90000),maxBytes:8*1024*1024,narration:{speed:1,instructions:qualityInstructions}}); } }
+      try { if (recoveredLast) speech={ok:true as const,data:recoveredLast.buffer.slice(recoveredLast.byteOffset,recoveredLast.byteOffset+recoveredLast.byteLength) as ArrayBuffer}; else { calls++; speech=await requestOpenAiSpeech(task.text,p.voice,p.model,{apiKey,captureReceipt:true,diagnostics,signal:AbortSignal.timeout(90000),bodyIdleTimeoutMs:30000,maxBytes:8*1024*1024,narration:{speed:1,instructions:qualityInstructions}}); } }
       finally { if (!recoveredLast) receipts.push(diagnostics.receipt()); }
       if(!speech.ok)return {ok:false,state:"unknown",id:p.id,calls,receipts,providerStatus:speech.httpStatus,message:"제공자 실패. 재호출하지 않습니다."};
       const bytes=new Uint8Array(speech.data),proof=inspectArticleMp3(bytes);
