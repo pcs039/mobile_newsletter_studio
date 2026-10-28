@@ -479,7 +479,7 @@ export async function requestOpenAiSpeech(
   input: string,
   voice: ArticleTtsVoice,
   model: string,
-  credentials?: { apiKey: string | null; captureReceipt?: boolean; signal?: AbortSignal; maxBytes?: number; diagnostics?: TtsDiagnostics; narration?: { speed: 1; instructions: string } },
+  credentials?: { apiKey: string | null; captureReceipt?: boolean; signal?: AbortSignal; maxBytes?: number; bodyIdleTimeoutMs?: number; diagnostics?: TtsDiagnostics; narration?: { speed: 1; instructions: string } },
 ): Promise<
   | { ok: false; error: string; message: string; httpStatus: number; detail?: string; isInputTooLong?: boolean; providerRequestId?: string | null }
   | { ok: true; data: ArrayBuffer; httpStatus?: number; providerRequestId?: string | null }
@@ -498,6 +498,7 @@ export async function requestOpenAiSpeech(
   }
 
   const diagnostics = credentials?.diagnostics;
+  diagnostics?.trackInput(input.length);
   let phase: "headers" | "body" = "headers";
   diagnostics?.start("request");
   diagnostics?.start("headers");
@@ -558,10 +559,25 @@ export async function requestOpenAiSpeech(
         throw Error("Speech response limit");
       }
       const reader=response.body.getReader(), chunks: Uint8Array[]=[]; let size=0;
+      const idleMs = credentials.bodyIdleTimeoutMs;
+      if (idleMs !== undefined && (!Number.isInteger(idleMs) || idleMs < 1 || idleMs > 90000)) {
+        await reader.cancel().catch(() => {});
+        reader.releaseLock();
+        throw Error("Invalid body idle limit");
+      }
       try {
         while (true) {
-          const {done,value}=await reader.read(); if (done) break;
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          let next: ReadableStreamReadResult<Uint8Array>;
+          try {
+            next = idleMs === undefined ? await reader.read() : await Promise.race([
+              reader.read(),
+              new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new DOMException("Speech body idle limit", "TimeoutError")), idleMs); }),
+            ]);
+          } finally { if (timer) clearTimeout(timer); }
+          const {done,value}=next; if (done) break;
           size+=value.byteLength;
+          diagnostics?.received(value.byteLength);
           if (size>limit) {
             if (diagnostics) throw new SpeechRequestError("size_limit", phase, diagnostics);
             throw Error("Speech response too large");

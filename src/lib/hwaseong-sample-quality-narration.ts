@@ -54,4 +54,35 @@ export function qualityPlan(sample: ProposalSample, part: NarrationPart) {
   return { job: `${sample.article.id}:${part}`, articleId: sample.article.id, part, title, body, text, voice, model: splitTtsModel, id, hash: digest, scriptHash: hash(text), chunks,
     path: `${qualityPrefix}${id}/final.mp3`, titlePath: `${qualityPrefix}${id}/title.mp3`, bodyPaths: chunks.map((_, i) => `${qualityPrefix}${id}/body-${i}.mp3`), calls: chunks.length + (part === "summary" ? 1 : 0) };
 }
-export type QualityPlan = ReturnType<typeof qualityPlan>;
+export type QualityResume = {
+  parentId: string; parentFinalPath: string; missingPath: string; requestKey: string;
+  reusedPath: string; reusedHash: string; reusedSize: number;
+  priorClientRequestId: string; priorProviderRequestId: string; priorHttpStatus: number;
+  priorPhase: "body"; priorFailure: "timeout"; approval: string;
+  reusedIndex?: number;
+};
+export type QualityPlan = ReturnType<typeof qualityPlan> & { resume?: QualityResume };
+
+// Only the two explicitly reviewed, expired requests. Other pending rows still block.
+// Its original row/paths/receipt remain immutable; the replacement has its own ID.
+export function scopedQualityPlan(plan: QualityPlan): QualityPlan {
+  if (plan.id === "7610ae2d-5229-5311-a4ea-b1262033a209") {
+    const requestKey = "hwaseong-v3-06-summary-body0-20261028";
+    const digest = hash(`${plan.id}:${requestKey}`);
+    const id = `${digest.slice(0,8)}-${digest.slice(8,12)}-5${digest.slice(13,16)}-a${digest.slice(17,20)}-${digest.slice(20,32)}`;
+    return { ...plan, id, path: `${qualityPrefix}${id}/final.mp3`,
+      bodyPaths: [`${qualityPrefix}${id}/body-0.mp3`], calls: 1,
+      resume: { parentId: plan.id, parentFinalPath: plan.path, missingPath: plan.bodyPaths[0], requestKey,
+        reusedPath: plan.titlePath, reusedHash: "f37c35aa232ff2f6ab9bf1600c9d098b18b63fdd64fdcce5b8d86709e657105b", reusedSize: 64896, reusedIndex: -1,
+        priorClientRequestId: "145c1c46-5d24-429f-a045-b0e946351b2b", priorProviderRequestId: "req_9d91c07a99234d46bfd6b4b0dc6a1fe7", priorHttpStatus: 200, priorPhase: "body", priorFailure: "timeout", approval: "user-2026-10-28-v3-timeout-diagnosis-completion" } };
+  }
+  if (plan.id !== "ecd92636-c585-5d7c-a7b2-0570eea67b96") return plan;
+  const requestKey = "hwaseong-v3-04-detail-body1-20261028";
+  const digest = hash(`${plan.id}:${requestKey}`);
+  const id = `${digest.slice(0,8)}-${digest.slice(8,12)}-5${digest.slice(13,16)}-a${digest.slice(17,20)}-${digest.slice(20,32)}`;
+  return { ...plan, id, path: `${qualityPrefix}${id}/final.mp3`,
+    bodyPaths: [plan.bodyPaths[0], `${qualityPrefix}${id}/body-1.mp3`], calls: 1,
+    resume: { parentId: plan.id, parentFinalPath: plan.path, missingPath: plan.bodyPaths[1], requestKey,
+      reusedPath: plan.bodyPaths[0], reusedHash: "16e5f94f160ec676a7f243711e1b5708e73259251217c5e80e005c5a6159b563", reusedSize: 866688,
+      priorClientRequestId: "8b4f0dd1-64ed-4fc1-b906-8f0fbe2ce2d2", priorProviderRequestId: "req_2077026194c648a4a26f3361951639dc", priorHttpStatus: 200, priorPhase: "body", priorFailure: "timeout", approval: "user-2026-10-28-v3-completion" } };
+}

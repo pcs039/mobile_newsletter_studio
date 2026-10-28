@@ -34,7 +34,7 @@ function noSecrets(events) {
   for (const excluded of [secret, script, 'Authorization', 'Bearer', 'Cookie', 'private-byte-payload']) {
     assert(!encoded.includes(excluded));
   }
-  const allowed = ['version','clientRequestId','phase','state','elapsedMs','durationMs','httpStatus','providerRequestId','failure'];
+  const allowed = ['version','clientRequestId','phase','state','elapsedMs','durationMs','httpStatus','providerRequestId','failure','inputCharacters','receivedBytes','receivedChunks','lastByteElapsedMs'];
   for (const e of events) {
     assert(Object.keys(e).every(key => allowed.includes(key)));
     assert(uuid.test(e.clientRequestId));
@@ -166,4 +166,18 @@ test('tracked DB/Storage failures record stage and duration without serializing 
   await assert.rejects(traceTtsStep(t.diagnostics,'db_complete','database',()=>{throw Error(secret); }));
   assert.equal(t.events.at(-1).phase,'db_complete');assert.equal(t.events.at(-1).failure,'database');
   assert(t.events.at(-1).durationMs>0);noSecrets(t.events);
+});
+
+test('body inactivity stops once, retaining byte counts and the last receive time without partial audio', async()=>{
+  const t=trace();let calls=0,cancelled=false;
+  await mocked(async()=>{calls++;return new Response(new ReadableStream({
+    start(controller){controller.enqueue(new Uint8Array([1,2,3]));},
+    cancel(){cancelled=true;},
+  }),{headers:{'x-request-id':'req_idle'}});},async()=>{
+    await assert.rejects(requestOpenAiSpeech(script,'coral','gpt-4o-mini-tts',options(t.diagnostics,{bodyIdleTimeoutMs:10})),e=>e.failure==='timeout'&&e.phase==='body'&&e.httpStatus===200);
+  });
+  assert.equal(calls,1);assert(cancelled);
+  const event=t.events.at(-1);
+  assert.equal(event.inputCharacters,script.length);assert.equal(event.receivedBytes,3);
+  assert.equal(event.receivedChunks,1);assert(event.lastByteElapsedMs>0);noSecrets(t.events);
 });
