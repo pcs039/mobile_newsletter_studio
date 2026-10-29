@@ -12,9 +12,10 @@ export type PublicArticleLightboxImage = {
 type PublicArticleImageLightboxProps = {
   image: PublicArticleLightboxImage | null;
   onClose: () => void;
+  allowBrowserPinch?: boolean;
 };
 
-export function PublicArticleImageLightbox({ image, onClose }: PublicArticleImageLightboxProps) {
+export function PublicArticleImageLightbox({ image, onClose, allowBrowserPinch = false }: PublicArticleImageLightboxProps) {
   useEffect(() => {
     if (!image) {
       return;
@@ -46,10 +47,12 @@ export function PublicArticleImageLightbox({ image, onClose }: PublicArticleImag
       role="dialog"
       aria-label="기사 이미지 확대 보기"
       aria-modal="true"
+      data-sample-pinch-lightbox={allowBrowserPinch ? "" : undefined}
       className="fixed inset-0 z-[9999] flex min-h-[100dvh] bg-black text-white"
       style={{
         paddingBottom: "env(safe-area-inset-bottom)",
         paddingTop: "env(safe-area-inset-top)",
+        ...(allowBrowserPinch ? { touchAction: "pan-x pan-y pinch-zoom" } : {}),
       }}
     >
       <button
@@ -73,6 +76,7 @@ export function PublicArticleImageLightbox({ image, onClose }: PublicArticleImag
             src={image.src}
             alt={image.alt}
             className="pointer-events-auto max-h-[82dvh] max-w-[96vw] rounded-lg object-contain shadow-2xl shadow-black/50"
+            style={allowBrowserPinch ? { touchAction: "pan-x pan-y pinch-zoom" } : undefined}
             onClick={(event) => event.stopPropagation()}
           />
         </div>

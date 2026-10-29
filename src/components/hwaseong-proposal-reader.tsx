@@ -24,7 +24,7 @@ import { SampleShareAction } from "@/components/hwaseong-sample-share";
 import { sampleShareTarget } from "@/lib/hwaseong-sample-share";
 import { SampleTtsQa } from "@/components/hwaseong-sample-tts-qa";
 import { sampleSummaryFacts, type SampleAudio } from "@/lib/hwaseong-sample-narration";
-import { canUseSampleHistory, readSampleLocation, sampleSwipeDirection, isSampleSwipeBlocked, updateSampleSwipe, type SampleSwipe } from "@/lib/hwaseong-sample-navigation";
+import { canUseSampleHistory, readSampleLocation, sampleSwipeDirection, sampleNativeZoomed, isSampleSwipeBlocked, updateSampleSwipe, type SampleSwipe } from "@/lib/hwaseong-sample-navigation";
 import { isReaderInteractiveTarget, type ReaderPoint } from "@/lib/mobile-reader-navigation";
 import { sampleDemoHref, canUseSampleDemoHistory } from "@/lib/hwaseong-demo-navigation";
 
@@ -311,8 +311,9 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     }
     window.addEventListener("keydown",key);return ()=>window.removeEventListener("keydown",key);
   });
+  function nativeZoomed() { return sampleNativeZoomed(window.visualViewport?.scale); }
   function finishSwipe(start: SampleSwipe | null, point: ReaderPoint) {
-    if (!start || image) return;
+    if (!start || image || nativeZoomed()) return;
     updateSampleSwipe(start, point, window.innerWidth);
     if (start.horizontal) swallowClick.current = true;
     if (start.vertical || window.getSelection()?.toString()) return;
@@ -323,7 +324,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   }
   return <main ref={mainRef} data-sample-display={display} data-sample-spread={spread?"double":"single"} data-sample-fit={fit?"auto":"manual"} data-sample-article={selected?"true":undefined} data-sample-qa={qa?"true":undefined} style={{"--sample-qa-width":`${width}px`,"--sample-zoom":zoom/100} as CSSProperties} data-sample-location={locationKey} data-sample-initial-fetch={qa ? JSON.stringify(serverTimings) : undefined} onPointerDownCapture={event => {
       swallowClick.current = false;
-      const blocked = isSampleSwipeBlocked(event.target);
+      const blocked = nativeZoomed() || isSampleSwipeBlocked(event.target);
       const visual = event.target instanceof Element && (event.target.closest("img") || event.target.closest("button, a")?.querySelector("img"));
       pointer.current = { x: event.clientX, y: event.clientY, protectedImage: blocked && Boolean(visual) };
       mouseSwipe.current = event.pointerType === "touch" || event.button !== 0 || image || blocked
@@ -342,7 +343,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       if (drag?.pointerId === event.pointerId) finishSwipe(drag, { x: event.clientX, y: event.clientY });
       const start = pointer.current; pointer.current = null;
       if (start?.protectedImage && sampleSwipeDirection(start, { x: event.clientX, y: event.clientY }, window.innerWidth)) swallowClick.current = true;
-      if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 10 && !isReaderInteractiveTarget(event.target)) setControlsActivity(value => value + 1);
+      if (start && !nativeZoomed() && Math.hypot(event.clientX - start.x, event.clientY - start.y) < 10 && !isReaderInteractiveTarget(event.target)) setControlsActivity(value => value + 1);
     }} onDragStartCapture={event => {
       if (!isSampleSwipeBlocked(event.target)) event.preventDefault();
     }}
@@ -355,12 +356,12 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       if (target && !anchor?.hasAttribute("download") && (!anchor?.target || anchor.target === "_self") && navigateLocal(target)) event.preventDefault();
     }}
     onTouchStart={event => {
-      if (event.touches.length !== 1) swallowClick.current = true;
-      swipe.current = image || event.touches.length !== 1 || isSampleSwipeBlocked(event.target)
+      if (event.touches.length !== 1 || nativeZoomed()) { swallowClick.current = true; mouseSwipe.current = null; pointer.current = null; }
+      swipe.current = image || nativeZoomed() || event.touches.length !== 1 || isSampleSwipeBlocked(event.target)
         ? null : { x: event.touches[0].clientX, y: event.touches[0].clientY };
     }} onTouchMove={event => {
       const start = swipe.current, touch = event.touches[0];
-      if (event.touches.length !== 1) { swipe.current = null; swallowClick.current = true; return; }
+      if (event.touches.length !== 1 || nativeZoomed()) { swipe.current = null; swallowClick.current = true; return; }
       if (start && touch) updateSampleSwipe(start, { x: touch.clientX, y: touch.clientY }, window.innerWidth);
     }} onTouchCancel={() => { swipe.current = null; }} onTouchEnd={event => {
       const start = swipe.current, touch = event.changedTouches[0]; swipe.current = null;
@@ -424,6 +425,6 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       </section>}
       {qa&&!selected?.editorTest ? <SampleTtsQa slug={slug} /> : null}
       <footer className="border-t border-slate-200 px-5 py-5 text-xs leading-5 text-slate-500">화성시 담당자 대상 비공개 제안 · 정식 발행물 아님 · 외부 공개·재배포 금지{qa ? <><br />기존 Production 기사·발행 상태는 변경하지 않았습니다.</> : null}</footer>
-    </div></div></div><PublicArticleImageLightbox image={image} onClose={() => setImage(null)} />
+    </div></div></div><PublicArticleImageLightbox image={image} onClose={() => setImage(null)} allowBrowserPinch />
   </main>;
 }
