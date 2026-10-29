@@ -25,6 +25,15 @@ export function SampleDisplayToolbar({ mode, onMode, spread, onSpread, zoom, onZ
     document.addEventListener("fullscreenchange", restore);
     return () => { document.removeEventListener("fullscreenchange", restore); cancelAnimationFrame(frame); };
   }, []);
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && document.fullscreenElement === toggleRef.current?.closest("main")) {
+        void document.exitFullscreen().catch(() => setMessage("전체화면 종료 버튼을 이용해 주세요."));
+      }
+    };
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+  }, []);
   async function toggleFullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
