@@ -1,3 +1,6 @@
+import { headers } from "next/headers";
+import { DemoShareFailure } from "@/components/demo-share-failure";
+import { createDemoTrace, demoFailure } from "@/lib/demo-share-diagnostics";
 import { PublicMobileArticleReader } from "@/components/public-mobile-article-reader";
 import {DemoShareEntry} from "@/components/demo-share-entry";
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
@@ -11,14 +14,18 @@ export default async function DemoPage({searchParams}:{searchParams:Promise<{pro
  const {project:slug}=await searchParams;
  if(!slug)return <DemoShareEntry/>;
  if(isHwaseongDemo(slug)){
-  const result=await getHwaseongDemoData(slug).catch(()=>null);
-  if(!result)return <main className="p-8 text-center">시연 링크가 만료·회수되었거나 자료가 변경되었습니다. 새 링크를 요청하세요.</main>;
+  const trace=createDemoTrace("render",await headers());
+  let result;
+  try { result=await getHwaseongDemoData(slug,true,trace); }
+  catch(error) { const failure=demoFailure(error,trace,trace.stage==="media_prepare"?"MEDIA_PREPARATION_FAILED":trace.stage==="render"?"RENDER_FAILED":"SOURCE_UNAVAILABLE");return <DemoShareFailure {...failure}/>; }
   return <DemoShareSession slug={slug} shareId={result.access.share.id} expiresAt={result.access.share.expires_at}>
    <PublicFontFaceStyle fonts={result.props.fonts}/><HwaseongProposalReader {...result.props} detail={false} width={390}/>
   </DemoShareSession>;
  }
- const result=await getDemoRenderData(slug).catch(()=>null);
- if(!result)return <main className="p-8 text-center">시연 링크가 만료·회수되었거나 자료가 변경되었습니다. 새 링크를 요청하세요.</main>;
+ const trace=createDemoTrace("render",await headers());
+ let result;
+ try {result=await getDemoRenderData(slug);}
+ catch(error){const failure=demoFailure(error,trace);return <DemoShareFailure {...failure}/>;}
  const {access,data}=result;
  return <main className="mx-auto min-w-0 max-w-[520px] bg-white">
   <aside className="sticky top-0 z-[70] bg-amber-100 px-4 py-3 text-sm font-bold text-amber-950">시연용 · 정식 발행 전<br/><span className="text-xs font-normal">자료 확인을 위한 열람 전용 화면입니다. 기관 승인·정식 발행이 아닙니다.</span></aside>

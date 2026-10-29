@@ -5,13 +5,15 @@ import { hashClientReviewToken, isClientReviewToken } from "@/lib/client-review"
 import { getProjectContent, getProjectWorkspace, type ProjectContentArticle } from "@/lib/newsletter-repository";
 import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { isArticlePubliclyVisible } from "@/lib/article-publication";
+import { demoStep, type DemoTrace } from "@/lib/demo-share-diagnostics";
+import type { DemoFailureCode } from "@/lib/demo-share-status";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 
 export function demoDurations(slug: string) { return slug === "hwaseong-2026-10-samples" && stagingEnvironmentConfigured() ? [0] : [1,3,7]; }
 
 export const demoHeaders = { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow, noarchive", "X-Content-Type-Options": "nosniff" };
 export const demoUuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-export class DemoError extends Error { constructor(public status: number, message: string) { super(message); } }
+export class DemoError extends Error { constructor(public status: number, message: string, public code?: DemoFailureCode) { super(message); } }
 export type DemoShare = { id: string; project_id: string; article_ids: string[]; source_snapshot: string; created_at: string; expires_at: string | null; revoked_at: string | null };
 export function demoShareIsLive(share: DemoShare) {
   if (share.revoked_at) return false;
@@ -40,14 +42,14 @@ export async function demoRows(query: URLSearchParams, method = "GET", body?: un
 }
 export async function demoSource(slug: string) {
   const [workspace,content] = await Promise.all([getProjectWorkspace(slug),getProjectContent(slug)]);
-  if (!workspace.ok || content.source!=="supabase") throw new DemoError(404,"시연할 프로젝트를 찾지 못했습니다.");
-  if (workspace.project.statusCode==="archived") throw new DemoError(409,"보관된 프로젝트는 시연할 수 없습니다.");
+  if (!workspace.ok || content.source!=="supabase") throw new DemoError(503,"시연 자료 서버를 확인하지 못했습니다.","SOURCE_UNAVAILABLE");
+  if (workspace.project.statusCode==="archived") throw new DemoError(409,"보관된 프로젝트는 시연할 수 없습니다.","PROJECT_MISMATCH");
   return {project:workspace.project,articles:content.articles.filter(a=>a.title.trim()&&isArticlePubliclyVisible(a))};
 }
 export function selectDemoArticles(articles: ProjectContentArticle[], ids: unknown): ProjectContentArticle[] {
   if (!Array.isArray(ids)||!ids.length||ids.length>100||ids.some(id=>typeof id!=="string"||!demoUuid.test(id))||new Set(ids).size!==ids.length) throw new DemoError(400,"공유할 기사를 중복 없이 선택하세요.");
   const chosen = articles.filter(a=>ids.includes(a.id));
-  if (chosen.length!==ids.length) throw new DemoError(409,"현재 프로젝트의 시연 가능한 기사만 선택하세요.");
+  if (chosen.length!==ids.length) throw new DemoError(409,"현재 프로젝트의 시연 가능한 기사만 선택하세요.","SOURCE_CHANGED");
   return chosen;
 }
 export async function issueDemoShare(slug:string, projectId:string, userId:string, ids:unknown, snapshot:unknown, days:unknown, confirmed:unknown, requestKey:unknown) {
@@ -82,25 +84,37 @@ export async function issueDemoShare(slug:string, projectId:string, userId:strin
   }
 }
 
-export async function getDemoAccess(token: string, slug?:string) {
-  if(!isClientReviewToken(token)) throw new DemoError(404,"유효한 시연 링크가 필요합니다.");
+export async function getDemoAccess(token: string, slug?:string, trace?: DemoTrace) {
+  demoStep(trace,"token_validation","START");
+  if(!isClientReviewToken(token)) throw new DemoError(404,"유효한 시연 링크가 필요합니다.","INVALID_LINK");
+  demoStep(trace,"token_validation","VALIDATED");
+  demoStep(trace,"share_lookup","START");
   const [share]=await demoRows(new URLSearchParams({select:columns,token_hash:`eq.${hashClientReviewToken(token)}`,limit:"1"}));
-  if(!share||!demoShareIsLive(share)) throw new DemoError(410,"시연 링크가 만료되었거나 회수되었습니다.");
+  if(!share) throw new DemoError(404,"유효한 시연 링크가 필요합니다.","INVALID_LINK");
+  if(share.revoked_at) throw new DemoError(410,"회수된 시연 링크입니다.","REVOKED");
+  if(!demoShareIsLive(share)) throw new DemoError(410,"만료된 시연 링크입니다.","EXPIRED");
+  demoStep(trace,"share_lookup","VALIDATED");
+  demoStep(trace,"project_lookup","START");
   const key=process.env.SUPABASE_SERVICE_ROLE_KEY!;
   const url=getSupabaseRestEndpoint(`/rest/v1/newsletter_projects?${new URLSearchParams({select:"slug",id:`eq.${share.project_id}`,deleted_at:"is.null",limit:"1"})}`);
   if(!url) throw new DemoError(503,"서버 설정을 확인하세요.");
   const r=await fetch(url,{headers:{apikey:key,Authorization:`Bearer ${key}`},cache:"no-store"});
   if(!r.ok) throw new DemoError(503,"시연 상태를 확인하지 못했습니다.");
   const projectSlug=(await r.json())[0]?.slug as string|undefined;
-  if(!projectSlug||(slug&&projectSlug!==slug)) throw new DemoError(404,"시연 링크를 확인하세요.");
+  if(!projectSlug||(slug&&projectSlug!==slug)) throw new DemoError(404,"시연 링크를 확인하세요.","PROJECT_MISMATCH");
+  demoStep(trace,"project_lookup","VALIDATED");
+  demoStep(trace,"source_snapshot","START");
   const source=await demoSource(projectSlug);
   const articles=selectDemoArticles(source.articles,share.article_ids);
-  if(source.project.id!==share.project_id||demoSnapshot(articles)!==share.source_snapshot) throw new DemoError(409,"자료가 변경되어 시연 링크를 다시 발급해야 합니다.");
+  if(source.project.id!==share.project_id||demoSnapshot(articles)!==share.source_snapshot) throw new DemoError(409,"자료가 변경되어 시연 링크를 다시 발급해야 합니다.","SOURCE_CHANGED");
+  demoStep(trace,"source_snapshot","MATCHED");
   return {share,project:source.project,articles};
 }
-export async function getDemoSession(slug:string) {
+export async function getDemoSession(slug:string, trace?: DemoTrace) {
   const token=(await cookies()).get(demoCookieName(slug))?.value??"";
-  return getDemoAccess(token,slug);
+  demoStep(trace,"cookie_read",token?"PRESENT":"SESSION_MISSING");
+  if(!token) throw new DemoError(401,"시연 쿠키를 확인하지 못했습니다.","SESSION_MISSING");
+  return getDemoAccess(token,slug,trace);
 }
 export async function listDemoShares(projectId:string) {
   // Keep every live link revocable, even when recent history exceeds 20 rows.
