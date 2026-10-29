@@ -184,14 +184,18 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   mapImage?: string;
 }) {
   const query = useSearchParams();
-  const { selectedId, detail, width, contents, qa, interest } = query
+  const location = query
     ? readSampleLocation(query, samples.map(s => s.article.id))
     : { selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, contents: initialContents, qa: initialQa, interest: initialInterest };
+  const { selectedId, width, contents, qa, interest } = location;
   const desktopSuggested = useSampleDesktopSuggestion();
   const explicitDisplay = sampleDisplay(query);
   const display = explicitDisplay ?? (desktopSuggested && !qa ? "ebook" : "mobile");
   const [spread, setSpread] = useState(false);
   const [zoom, setZoom] = useState(100);
+  const [fit, setFit] = useState(true);
+  // A spread always contains real detail, including after TOC/keyboard/article navigation.
+  const detail = location.detail || (display === "ebook" && spread && desktopSuggested && Boolean(selectedId));
   const scrollRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const navigationStarted = useRef<number | null>(null);
@@ -244,6 +248,8 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     if (!canUseSampleHistory(target, window.location.href, slug)) return false;
     const url = new URL(target, window.location.href);
     if (!url.searchParams.has("display") && explicitDisplay) url.searchParams.set("display", explicitDisplay);
+    // Folding the current detail returns to a single summary; article turns keep the spread.
+    if (spread && url.searchParams.get("articleId") === selectedId && url.searchParams.get("view") !== "detail") setSpread(false);
     if (url.href === window.location.href) return true;
     // A test-only preview deliberately holds one clone, not the issue's seven-article dataset.
     // Leave that document when returning to the real cover/contents instead of showing a one-clone TOC.
@@ -313,7 +319,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     if (direction) swallowClick.current = true;
     if (target) navigateLocal(target.href);
   }
-  return <main ref={mainRef} data-sample-display={display} data-sample-spread={spread?"double":"single"} data-sample-qa={qa?"true":undefined} style={{"--sample-qa-width":`${width}px`,"--sample-zoom":zoom/100} as CSSProperties} data-sample-location={locationKey} data-sample-initial-fetch={qa ? JSON.stringify(serverTimings) : undefined} onPointerDownCapture={event => {
+  return <main ref={mainRef} data-sample-display={display} data-sample-spread={spread?"double":"single"} data-sample-fit={fit?"auto":"manual"} data-sample-article={selected?"true":undefined} data-sample-qa={qa?"true":undefined} style={{"--sample-qa-width":`${width}px`,"--sample-zoom":zoom/100} as CSSProperties} data-sample-location={locationKey} data-sample-initial-fetch={qa ? JSON.stringify(serverTimings) : undefined} onPointerDownCapture={event => {
       swallowClick.current = false;
       const blocked = isSampleSwipeBlocked(event.target);
       const visual = event.target instanceof Element && (event.target.closest("img") || event.target.closest("button, a")?.querySelector("img"));
@@ -359,7 +365,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     }} className={`${styles.screen} public-newsletter-screen min-h-screen bg-[#e8edef] py-3 sm:px-2 text-[#172e35] sm:py-8`}>
     {warmImages ? <div hidden aria-hidden="true" data-sample-image-warmup>{warmSources.map(src => <img key={src} src={src} alt="" width={1} height={1} decoding="async" fetchPriority="low" />)}</div> : null}
     {!image ? <SamplePageControls key={`${locationKey}:${controlsActivity}`} previous={previousPage} next={nextPage} onNavigate={navigateLocal} width={qa ? width : undefined} /> : null}
-    <SampleDisplayToolbar mode={display} onMode={chooseDisplay} spread={spread} onSpread={double=>{setSpread(double);if(double&&selected&&!detail)navigateLocal(href(selected.article.id,true));if(double)requestAnimationFrame(()=>scrollRef.current?.scrollTo({top:0,left:0,behavior:"instant"}));}} zoom={zoom} onZoom={setZoom} article={!!selected} previous={bookPages[bookIndex-1]} next={bookPages[bookIndex+1]} contentsHref={contentsHref} onNavigate={navigateBook}/>
+    <SampleDisplayToolbar mode={display} onMode={chooseDisplay} spread={spread} onSpread={setSpread} zoom={zoom} fit={fit} onFit={()=>{setFit(true);setZoom(100);}} onZoom={value=>{setFit(false);setZoom(value);}} article={!!selected} previous={bookPages[bookIndex-1]} next={bookPages[bookIndex+1]} contentsHref={contentsHref} onNavigate={navigateBook}/>
     <div className={styles.workspace}>
     <SampleEbookThumbnails pages={bookPages} currentId={bookCurrentId} visible={display==="ebook"} onNavigate={navigateBook}/>
     <div ref={scrollRef} className={`${styles.readingViewport} public-desktop-ebook-scroll-container`} data-sample-scroll>

@@ -9,16 +9,32 @@ const desktopQuery = "(min-width: 1100px) and (min-height: 600px) and (pointer: 
 function subscribe(onChange: () => void) { const m = window.matchMedia(desktopQuery); m.addEventListener("change", onChange); return () => m.removeEventListener("change", onChange); }
 export function useSampleDesktopSuggestion() { return useSyncExternalStore(subscribe, () => window.matchMedia(desktopQuery).matches, () => false); }
 export type HtmlEbookPage = { id: string; title: string; href: string; thumbnail?: string };
-export function SampleDisplayToolbar({ mode, onMode, spread, onSpread, zoom, onZoom, article, previous, next, contentsHref, onNavigate }: {
+export function SampleDisplayToolbar({ mode, onMode, spread, onSpread, zoom, onZoom, fit, onFit, article, previous, next, contentsHref, onNavigate }: {
   mode: SampleDisplay; onMode: (mode: SampleDisplay) => void; spread: boolean; onSpread: (double: boolean) => void;
-  zoom: number; onZoom: (zoom: number) => void; article: boolean; previous?: HtmlEbookPage; next?: HtmlEbookPage; contentsHref: string; onNavigate: (href: string) => void;
+  zoom: number; onZoom: (zoom: number) => void; fit: boolean; onFit: () => void; article: boolean; previous?: HtmlEbookPage; next?: HtmlEbookPage; contentsHref: string; onNavigate: (href: string) => void;
 }) {
   const [fullscreen, setFullscreen] = useState(false), [message, setMessage] = useState("");
   const sound = useSyncExternalStore(subscribeToPageTurnSoundPreference, readPageTurnSoundPreference, () => true);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const savedScroll = useRef<{ element: HTMLElement; top: number; left: number }[]>([]);
   useEffect(() => { const changed = () => setFullscreen(Boolean(document.fullscreenElement)); document.addEventListener("fullscreenchange", changed); return () => document.removeEventListener("fullscreenchange", changed); }, []);
+  useEffect(() => {
+    // Restore the same mounted pages/forms, including when ESC exits fullscreen.
+    let frame = 0;
+    const restore = () => { frame = requestAnimationFrame(() => savedScroll.current.forEach(({ element, top, left }) => element.scrollTo({ top, left, behavior: "instant" }))); };
+    document.addEventListener("fullscreenchange", restore);
+    return () => { document.removeEventListener("fullscreenchange", restore); cancelAnimationFrame(frame); };
+  }, []);
   async function toggleFullscreen() {
-    try { if (document.fullscreenElement) await document.exitFullscreen(); else await toggleRef.current?.closest("main")?.requestFullscreen(); setMessage(""); }
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else {
+        const main = toggleRef.current?.closest("main");
+        savedScroll.current = Array.from(main?.querySelectorAll<HTMLElement>("[data-sample-scroll], [data-sample-summary], [data-sample-inline-detail], [data-sample-audio-scope], aside") ?? []).map(element => ({ element, top: element.scrollTop, left: element.scrollLeft }));
+        await main?.requestFullscreen();
+      }
+      setMessage("");
+    }
     catch { setMessage("이 브라우저에서는 전체화면을 사용할 수 없습니다."); }
   }
   return <div className={styles.displayToolbar} data-swipe-navigation-ignore>
@@ -33,9 +49,9 @@ export function SampleDisplayToolbar({ mode, onMode, spread, onSpread, zoom, onZ
       <button type="button" aria-pressed={!spread} onClick={()=>onSpread(false)}>1쪽</button>
       <button type="button" aria-pressed={spread} disabled={!article} onClick={()=>onSpread(true)}>2쪽 · 요약/상세</button>
       <button type="button" disabled={zoom<=75} onClick={()=>onZoom(Math.max(75,zoom-25))} aria-label="e-book 축소">−</button>
-      <output aria-label="e-book 확대율">{zoom}%</output>
+      <output aria-label="e-book 확대율">{fit ? "자동 맞춤" : `${zoom}%`}</output>
       <button type="button" disabled={zoom>=175} onClick={()=>onZoom(Math.min(175,zoom+25))} aria-label="e-book 확대">＋</button>
-      <button type="button" onClick={()=>onZoom(100)}>화면 맞춤</button>
+      <button type="button" aria-pressed={fit} onClick={onFit}>화면 맞춤</button>
       <button ref={toggleRef} type="button" onClick={()=>void toggleFullscreen()}>{fullscreen?"전체화면 종료":"전체화면"}</button>
       <button type="button" aria-pressed={sound} onClick={()=>{if(sound)savePageTurnSoundPreference(false);else void enablePageTurnSoundWithPreview();}}>효과음 {sound?"켜짐":"꺼짐"}</button>
     </div>
