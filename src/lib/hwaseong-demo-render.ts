@@ -2,7 +2,7 @@ import "server-only";
 import type { ComponentProps } from "react";
 import type { HwaseongProposalReader } from "@/components/hwaseong-proposal-reader";
 import { demoStep, type DemoTrace } from "@/lib/demo-share-diagnostics";
-import { DemoError, getDemoSession } from "@/lib/demo-share";
+import { DemoError, getDemoAccess, getDemoSession } from "@/lib/demo-share";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { getFontAssets, makePublicStoragePreviewHref } from "@/lib/newsletter-repository";
@@ -33,7 +33,16 @@ export function sampleDemoAudioHref(slug: string, article: string, part: string,
   return `/api/demo-share/sample-audio?${new URLSearchParams({ project: slug, article, part, ...(segment === undefined ? {} : { segment: String(segment) }) })}`;
 }
 export async function getHwaseongDemoData(slug: string, prepareMedia = true, trace?: DemoTrace) {
-  const access = await getHwaseongDemoAccess(slug,trace), { project, samples } = access;
+  return buildHwaseongDemoData(await getHwaseongDemoAccess(slug,trace),prepareMedia,trace);
+}
+// The URL bearer is authoritative here, even if another valid cookie exists.
+export async function getHwaseongDemoEntryData(token: string, trace?: DemoTrace) {
+  if(!isHwaseongDemo(hwaseongSampleSlug))throw new DemoError(404,"시연 자료를 찾지 못했습니다.","PROJECT_MISMATCH");
+  const access=validateHwaseongDemoAccess(await getDemoAccess(token,hwaseongSampleSlug,trace),trace);
+  return buildHwaseongDemoData(access,true,trace);
+}
+async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseongDemoAccess>>, prepareMedia: boolean, trace?: DemoTrace) {
+  const {project,samples}=access,slug=project.slug;
   const ids = samples.map(s => s.article.id);
   const sourceCover = project.coverImagePath ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) : project.coverImageUrl;
   demoStep(trace,"media_prepare","START");

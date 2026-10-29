@@ -7,7 +7,7 @@ import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { DemoShareSession } from "@/components/demo-share-session";
 import { getDemoRenderData } from "@/lib/demo-share-render";
 import { getHwaseongDemoData, isHwaseongDemo } from "@/lib/hwaseong-demo-render";
-import { HwaseongProposalReader } from "@/components/hwaseong-proposal-reader";
+import { HwaseongDemoView } from "@/components/hwaseong-demo-view";
 export const dynamic="force-dynamic";
 export const metadata={title:"소식지 시연용 보기",referrer:"no-referrer" as const,robots:{index:false,follow:false}};
 export default async function DemoPage({searchParams}:{searchParams:Promise<{project?:string}>}){
@@ -18,9 +18,7 @@ export default async function DemoPage({searchParams}:{searchParams:Promise<{pro
   let result;
   try { result=await getHwaseongDemoData(slug,true,trace); }
   catch(error) { const failure=demoFailure(error,trace,trace.stage==="media_prepare"?"MEDIA_PREPARATION_FAILED":trace.stage==="render"?"RENDER_FAILED":"SOURCE_UNAVAILABLE");return <DemoShareFailure {...failure}/>; }
-  return <DemoShareSession slug={slug} shareId={result.access.share.id} expiresAt={result.access.share.expires_at}>
-   <PublicFontFaceStyle fonts={result.props.fonts}/><HwaseongProposalReader {...result.props} detail={false} width={390}/>
-  </DemoShareSession>;
+  return <HwaseongDemoView result={result}/>;
  }
  const trace=createDemoTrace("render",await headers());
  let result;
