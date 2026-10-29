@@ -1,13 +1,14 @@
 "use client";
 import { useCallback,useEffect,useRef,useState } from "react";
 
-type Share={id:string;article_ids:string[];expires_at:string;revoked_at:string|null};
+type Share={id:string;article_ids:string[];expires_at:string|null;revoked_at:string|null};
 type Candidate={id:string;title:string;status:string;snapshot:string};
 export function ProjectDemoShareControls({projectSlug}:{projectSlug:string}){
  const endpoint=`/api/projects/${encodeURIComponent(projectSlug)}/demo-share`;
  const [articles,setArticles]=useState<Candidate[]>([]),[shares,setShares]=useState<Share[]>([]);
  const [selected,setSelected]=useState<string[]>([]),[days,setDays]=useState(1),[confirmed,setConfirmed]=useState(false);
  const [allowedDays,setAllowedDays]=useState([1,3,7]);
+ const effectiveDays=allowedDays.length===1&&allowedDays[0]===0?0:days;
  const [busy,setBusy]=useState(false),[loaded,setLoaded]=useState(false),[message,setMessage]=useState("");
  const [hasLink,setHasLink]=useState(false),[now,setNow]=useState(0);
  const loadVersion=useRef(0),requestKey=useRef<string|null>(null);
@@ -29,7 +30,7 @@ export function ProjectDemoShareControls({projectSlug}:{projectSlug:string}){
     const prepared=await post({action:"prepare",articleIds:selected,snapshots:Object.fromEntries(articles.filter(a=>selected.includes(a.id)).map(a=>[a.id,a.snapshot]))});
     if(!alive.current)return;
     requestKey.current??=crypto.randomUUID();
-    const d=await post({action,articleIds:selected,snapshot:prepared.snapshot,days,confirmed,requestKey:requestKey.current});
+    const d=await post({action,articleIds:selected,snapshot:prepared.snapshot,days:effectiveDays,confirmed,requestKey:requestKey.current});
     if(!alive.current)return;
     link.current=d.url;setHasLink(true);clearTimer.current=setTimeout(clearLink,300000);
     setMessage(d.duplicate?"이전 발급 결과를 재사용했습니다. 새 링크는 만들지 않았습니다.":"시연 링크를 발급했습니다. 정식 발행 상태는 변경하지 않았습니다.");
@@ -53,7 +54,7 @@ export function ProjectDemoShareControls({projectSlug}:{projectSlug:string}){
     {articles.map(a=><label key={a.id} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={selected.includes(a.id)} onChange={e=>{setSelected(ids=>e.target.checked?[...ids,a.id]:ids.filter(id=>id!==a.id));setConfirmed(false);requestKey.current=null;clearLink();}} className="mt-1 shrink-0"/><span>{a.title}<span className="ml-2 text-xs text-slate-500">{({draft:"작성 중",review:"검수 요청",in_review:"검수 중",approved:"검수 완료",published:"발행됨"} as Record<string,string>)[a.status]??"상태 확인 필요"}</span></span></label>)}
     {loaded&&!articles.length?<p>시연할 기사가 없습니다.</p>:null}
    </div>
-   <label className="mt-3 block text-sm font-bold">링크 유효기간 <select aria-label="시연 링크 유효기간" value={days} onChange={e=>{setDays(Number(e.target.value));setConfirmed(false);requestKey.current=null;clearLink();}} className="rounded border p-2">{allowedDays.map(day=><option key={day} value={day}>{day}일</option>)}</select></label>
+   <label className="mt-3 block text-sm font-bold">링크 유효기간 <select aria-label="시연 링크 유효기간" value={effectiveDays} onChange={e=>{setDays(Number(e.target.value));setConfirmed(false);requestKey.current=null;clearLink();}} className="rounded border p-2">{allowedDays.map(day=><option key={day} value={day}>{day===0?"만료 없음 · 직접 회수":`${day}일`}</option>)}</select></label>
    <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} className="mt-1 shrink-0"/><span>선택한 기사와 이미지를 확인했으며 외부 담당자에게 시연용으로 공유해도 됩니다.</span></label>
   </fieldset>
   <div className="mt-3 flex flex-wrap gap-2">
@@ -61,8 +62,8 @@ export function ProjectDemoShareControls({projectSlug}:{projectSlug:string}){
    <button type="button" disabled={busy} onClick={()=>void load().catch(e=>setMessage(e.message))} className="dd-btn dd-btn-secondary">목록 새로고침</button>
    {hasLink?<><button type="button" onClick={()=>void share(true)} className="dd-btn dd-btn-secondary">링크 복사</button><button type="button" onClick={()=>void share(false)} className="dd-btn dd-btn-secondary">모바일 공유</button></>:null}
   </div>
-  {hasLink?<p className="mt-2 text-xs">보안을 위해 현재 화면에서 5분 동안만 링크를 복사할 수 있습니다. 새로고침 후에는 복원할 수 없으며 새 발급이 필요합니다.</p>:null}
+  {hasLink?<p className="mt-2 text-xs">복사 버튼은 보안상 5분 동안 표시되며 링크 유효기간과는 별개입니다. {effectiveDays===0?"링크는 직접 회수하기 전까지 만료되지 않습니다.":"새로고침 후 링크를 다시 복사할 수 없습니다."}</p>:null}
   <p role="status" aria-live="polite" className="mt-3 text-sm font-bold">{message}</p>
-  {shares.length?<details className="mt-3"><summary className="cursor-pointer text-sm font-bold">발급한 시연 링크 · 만료/회수 관리</summary><ul className="mt-2 space-y-2">{shares.map(s=><li key={s.id} className="flex flex-wrap items-center gap-2 rounded bg-white p-3 text-sm"><span>기사 {s.article_ids.length}개 · {s.revoked_at?"회수됨":Date.parse(s.expires_at)<=now?"만료됨":"유효기간 내"} · {new Date(s.expires_at).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})} 만료</span>{!s.revoked_at&&Date.parse(s.expires_at)>now?<button type="button" disabled={busy} onClick={()=>void run("revoke",s.id)} className="dd-btn dd-btn-secondary">링크 회수</button>:null}</li>)}</ul></details>:null}
+  {shares.length?<details className="mt-3"><summary className="cursor-pointer text-sm font-bold">발급한 시연 링크 · 만료/회수 관리</summary><ul className="mt-2 space-y-2">{shares.map(s=><li key={s.id} className="flex flex-wrap items-center gap-2 rounded bg-white p-3 text-sm"><span>기사 {s.article_ids.length}개 · {s.revoked_at?"회수됨":s.expires_at===null?"만료 없음 · 직접 회수":Date.parse(s.expires_at)<=now?"만료됨":"유효기간 내"}{s.expires_at?` · ${new Date(s.expires_at).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})} 만료`:null}</span>{!s.revoked_at&&(s.expires_at===null||Date.parse(s.expires_at)>now)?<button type="button" disabled={busy} onClick={()=>void run("revoke",s.id)} className="dd-btn dd-btn-secondary">링크 회수</button>:null}</li>)}</ul></details>:null}
  </section>;
 }

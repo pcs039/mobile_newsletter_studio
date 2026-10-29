@@ -60,6 +60,18 @@ test('recipient endpoint cannot request provider status, QA review, generation o
  for(const extra of ['&audio=pending','&review=1','&provider=check','&version=3','&part=detail'])assert.equal((await route.GET(new Request(`https://stage.invalid/api/demo-share/sample-audio?project=${slug}&article=a&part=summary${extra}`))).status,404);
  assert.equal(calls,0);assert.equal(route.POST,undefined);
 });
-test('14-day validity is available only for this Staging sample; generic/Production demo policy is unchanged',()=>{
- for(const enabled of [false,true]){const m=loader({'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>enabled}})('src/lib/demo-share.ts');assert.deepEqual(m.demoDurations(slug),enabled?[1,3,7,14]:[1,3,7]);assert.deepEqual(m.demoDurations('other'),[1,3,7]);}
+test('no-expiry option is available only for this Staging sample; generic/Production demo policy is unchanged',()=>{
+ for(const enabled of [false,true]){const m=loader({'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>enabled}})('src/lib/demo-share.ts');assert.deepEqual(m.demoDurations(slug),enabled?[0]:[1,3,7]);assert.deepEqual(m.demoDurations('other'),[1,3,7]);}
+});
+test('no-expiry links remain valid with passing time but revoke immediately; foreign/Production null expiry fails closed',()=>{
+ const share={project_id:p,expires_at:null,revoked_at:null};
+ const stage=loader({'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>true}})('src/lib/demo-share.ts');
+ assert(stage.demoShareIsLive(share));assert(!stage.demoShareIsLive({...share,revoked_at:new Date().toISOString()}));assert(!stage.demoShareIsLive({...share,project_id:'foreign'}));
+ assert(!stage.demoShareIsLive({...share,expires_at:'2000-01-01'}));assert(!stage.demoShareIsLive({...share,expires_at:'invalid'}));
+ const prod=loader({'@/lib/staging-environment':{stagingEnvironmentConfigured:()=>false}})('src/lib/demo-share.ts');assert(!prod.demoShareIsLive(share));
+ const now=Date.now;try{Date.now=()=>now()+365*86400000;assert(stage.demoShareIsLive(share));}finally{Date.now=now;}
+});
+test('no-expiry session cookie has no artificial Expires date and remains HttpOnly',async()=>{
+ const mod=loader({'@/lib/article-image-api-origin':{requireImageSameOrigin:()=>{}},'@/lib/demo-share':{getDemoAccess:async()=>({project:{slug},share:{expires_at:null}}),demoHeaders:{},demoCookieName:()=> 'datadiction_demo_fixture'}})('src/app/api/demo-share/session/route.ts');
+ const r=await mod.POST(new Request('https://fixture.invalid/api/demo-share/session',{method:'POST',body:JSON.stringify({token:'A'.repeat(43)})}));assert.equal(r.status,200);assert.match(r.headers.get('set-cookie'),/HttpOnly/);assert.doesNotMatch(r.headers.get('set-cookie'),/Expires=|Max-Age=/i);
 });

@@ -11,7 +11,7 @@ export async function GET(_request:Request,ctx:Context){
  try{const source=await demoSource(access.project.slug);
   if(source.project.id!==access.project.id)throw new DemoError(403,"프로젝트를 확인하세요.");
   const days=demoDurations(access.project.slug);
-  const articles=days.includes(14)?source.articles.filter(a=>a.blocks.some(b=>b.metadata.proposal_sample)&&!a.blocks.some(b=>b.metadata.proposal_editor_test)):source.articles;
+  const articles=days.includes(0)?source.articles.filter(a=>a.blocks.some(b=>b.metadata.proposal_sample)&&!a.blocks.some(b=>b.metadata.proposal_editor_test)):source.articles;
   return NextResponse.json({ok:true,articles:articles.map(a=>({id:a.id,title:a.title,status:a.status,snapshot:demoSnapshot([a])})),allowedDays:days,shares:await listDemoShares(access.project.id)},{headers:demoHeaders});
  }catch(e){return failure(e);}
 }

@@ -11,6 +11,6 @@ export async function POST(request:Request){
  try{requireImageSameOrigin(request);}catch{return NextResponse.json({ok:false},{status:403,headers:demoHeaders});}
  try{const input=await request.json();const access=await getDemoAccess(typeof input?.token==="string"?input.token:"");
   const response=NextResponse.json({ok:true,project:access.project.slug},{headers:demoHeaders});
-  response.cookies.set(demoCookieName(access.project.slug),input.token,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"strict",path:"/",expires:new Date(access.share.expires_at)});return response;
+  response.cookies.set(demoCookieName(access.project.slug),input.token,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"strict",path:"/",...(access.share.expires_at?{expires:new Date(access.share.expires_at)}:{})});return response;
  }catch{return NextResponse.json({ok:false},{status:410,headers:demoHeaders});}
 }

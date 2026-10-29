@@ -7,12 +7,17 @@ import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { isArticlePubliclyVisible } from "@/lib/article-publication";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 
-export function demoDurations(slug: string) { return slug === "hwaseong-2026-10-samples" && stagingEnvironmentConfigured() ? [1,3,7,14] : [1,3,7]; }
+export function demoDurations(slug: string) { return slug === "hwaseong-2026-10-samples" && stagingEnvironmentConfigured() ? [0] : [1,3,7]; }
 
 export const demoHeaders = { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow, noarchive", "X-Content-Type-Options": "nosniff" };
 export const demoUuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export class DemoError extends Error { constructor(public status: number, message: string) { super(message); } }
-export type DemoShare = { id: string; project_id: string; article_ids: string[]; source_snapshot: string; created_at: string; expires_at: string; revoked_at: string | null };
+export type DemoShare = { id: string; project_id: string; article_ids: string[]; source_snapshot: string; created_at: string; expires_at: string | null; revoked_at: string | null };
+export function demoShareIsLive(share: DemoShare) {
+  if (share.revoked_at) return false;
+  if (share.expires_at === null) return stagingEnvironmentConfigured() && share.project_id === "4cd5297e-a0fd-434c-84d4-fa4d3baf9389";
+  return Number.isFinite(Date.parse(share.expires_at)) && Date.parse(share.expires_at) > Date.now();
+}
 const columns = "id,project_id,article_ids,source_snapshot,created_at,expires_at,revoked_at";
 export function demoCookieName(slug: string) { return `datadiction_demo_${createHash("sha256").update(slug).digest("hex").slice(0,20)}`; }
 export function demoSnapshot(articles: ProjectContentArticle[]) {
@@ -57,15 +62,16 @@ export async function issueDemoShare(slug:string, projectId:string, userId:strin
   const token=createHmac("sha256",secret).update(`demo-v1:${projectId}:${userId}:${requestKey}`).digest("base64url");
   const lookup=()=>demoRows(new URLSearchParams({select:columns,id:`eq.${requestKey}`,project_id:`eq.${projectId}`,token_hash:`eq.${hashClientReviewToken(token)}`,limit:"1"}));
   const reuse=(share:DemoShare)=>{
-    if(share.source_snapshot!==snapshot||JSON.stringify(share.article_ids)!==JSON.stringify(selected.map(a=>a.id))||Math.round((Date.parse(share.expires_at)-Date.parse(share.created_at))/86400000)!==days)throw new DemoError(409,"요청 내용이 달라졌습니다. 다시 선택해 새 요청을 준비하세요.");
-    if(share.revoked_at||Date.parse(share.expires_at)<=Date.now())throw new DemoError(410,"이 요청은 종료되었습니다. 새 요청을 준비하세요.");
+    const sameDuration=days===0?share.expires_at===null:share.expires_at!==null&&Math.round((Date.parse(share.expires_at)-Date.parse(share.created_at))/86400000)===days;
+    if(share.source_snapshot!==snapshot||JSON.stringify(share.article_ids)!==JSON.stringify(selected.map(a=>a.id))||!sameDuration)throw new DemoError(409,"요청 내용이 달라졌습니다. 다시 선택해 새 요청을 준비하세요.");
+    if(!demoShareIsLive(share))throw new DemoError(410,"이 요청은 종료되었습니다. 새 요청을 준비하세요.");
     return {share,token,duplicate:true};
   };
   const [existing]=await lookup();if(existing)return reuse(existing);
   try{
     const [share]=await demoRows(new URLSearchParams({select:columns}),"POST",{
       id:requestKey,project_id:projectId,article_ids:selected.map(a=>a.id),source_snapshot:snapshot,created_by:userId,
-      token_hash:hashClientReviewToken(token),expires_at:new Date(Date.now()+Number(days)*86400000).toISOString(),
+      token_hash:hashClientReviewToken(token),expires_at:days===0?null:new Date(Date.now()+Number(days)*86400000).toISOString(),
     });
     if(!share?.id)throw new DemoError(502,"발급 응답을 확인하지 못했습니다. 같은 요청으로 다시 확인하세요.");
     return {share,token,duplicate:false};
@@ -79,7 +85,7 @@ export async function issueDemoShare(slug:string, projectId:string, userId:strin
 export async function getDemoAccess(token: string, slug?:string) {
   if(!isClientReviewToken(token)) throw new DemoError(404,"유효한 시연 링크가 필요합니다.");
   const [share]=await demoRows(new URLSearchParams({select:columns,token_hash:`eq.${hashClientReviewToken(token)}`,limit:"1"}));
-  if(!share||share.revoked_at||Date.parse(share.expires_at)<=Date.now()) throw new DemoError(410,"시연 링크가 만료되었거나 회수되었습니다.");
+  if(!share||!demoShareIsLive(share)) throw new DemoError(410,"시연 링크가 만료되었거나 회수되었습니다.");
   const key=process.env.SUPABASE_SERVICE_ROLE_KEY!;
   const url=getSupabaseRestEndpoint(`/rest/v1/newsletter_projects?${new URLSearchParams({select:"slug",id:`eq.${share.project_id}`,deleted_at:"is.null",limit:"1"})}`);
   if(!url) throw new DemoError(503,"서버 설정을 확인하세요.");
@@ -100,7 +106,7 @@ export async function listDemoShares(projectId:string) {
   // Keep every live link revocable, even when recent history exceeds 20 rows.
   const active: DemoShare[] = [];
   for (let offset=0;;offset+=100) {
-    const page=await demoRows(new URLSearchParams({select:columns,project_id:`eq.${projectId}`,revoked_at:"is.null",expires_at:`gt.${new Date().toISOString()}`,order:"created_at.desc,id.desc",limit:"100",offset:String(offset)}));
+    const page=await demoRows(new URLSearchParams({select:columns,project_id:`eq.${projectId}`,revoked_at:"is.null",or:`(expires_at.is.null,expires_at.gt.${new Date().toISOString()})`,order:"created_at.desc,id.desc",limit:"100",offset:String(offset)}));
     active.push(...page);if(page.length<100)break;
   }
   const recent=await demoRows(new URLSearchParams({select:columns,project_id:`eq.${projectId}`,order:"created_at.desc,id.desc",limit:"20"}));
