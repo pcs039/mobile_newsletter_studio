@@ -25,7 +25,9 @@ export async function POST(request:Request,ctx:Context){
   if(input.action!=="create")throw new DemoError(400,"시연 요청을 확인하세요.");
   const result=await issueDemoShare(access.project.slug,access.project.id,access.user.id,input.articleIds,input.snapshot,input.days,input.confirmed,input.requestKey);
   // Use the authenticated same origin, never a Preview->Production token link.
-  const url=new URL("/demo",request.url);url.hash=result.token;
+  const mobileEntry=demoDurations(access.project.slug).includes(0);
+  const url=new URL(mobileEntry?`/demo/open/${encodeURIComponent(result.token)}`:"/demo",request.url);
+  if(!mobileEntry)url.hash=result.token;
   return NextResponse.json({ok:true,share:result.share,duplicate:result.duplicate,url:url.href},{status:201,headers:demoHeaders});
  }catch(e){return failure(e);}
 }
