@@ -248,8 +248,6 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     if (!canUseSampleHistory(target, window.location.href, slug)) return false;
     const url = new URL(target, window.location.href);
     if (!url.searchParams.has("display") && explicitDisplay) url.searchParams.set("display", explicitDisplay);
-    // Folding the current detail returns to a single summary; article turns keep the spread.
-    if (spread && url.searchParams.get("articleId") === selectedId && url.searchParams.get("view") !== "detail") setSpread(false);
     if (url.href === window.location.href) return true;
     // A test-only preview deliberately holds one clone, not the issue's seven-article dataset.
     // Leave that document when returning to the real cover/contents instead of showing a one-clone TOC.
@@ -349,6 +347,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const anchor = event.target instanceof Element ? event.target.closest("a") : null;
       const target = anchor?.getAttribute("href");
+      if (anchor?.hasAttribute("data-sample-collapse")) setSpread(false);
       if (target && !anchor?.hasAttribute("download") && (!anchor?.target || anchor.target === "_self") && navigateLocal(target)) event.preventDefault();
     }}
     onTouchStart={event => {
@@ -404,14 +403,14 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
         {/* Stable section/form identity: toggling detail only inserts/removes its body. */}
         <section ref={detailRef} tabIndex={-1} aria-label={detail ? "펼친 상세기사" : "요약 기사 참여"} data-sample-inline-detail={detail ? "" : undefined} data-detail-kind={detail ? selected.kind : undefined} className={`${detail ? styles.detail : ""} scroll-mt-4 border-t border-slate-200 p-5`}>
           {detail ? <div key="detail-body">
-          <div className={styles.detailHeading}><div><p>{({ policy: "LIVING GUIDE · 생활과 행정", tourism: "TRAVEL NOTES · 화성 여행", event: "CULTURE JOURNAL · 문화 기록", cartoon: "BEHIND THE SCENES · 만평의 바탕", accessible: "EASY READ · 한국어 원문", interview: "PEOPLE & CULTURE · 인물 탐방", video: "VIDEO JOURNAL · 영상 이야기" })[selected.kind]}</p><h2>상세기사</h2></div><Link href={href(selected.article.id)} className={action}>기사 접기 <SampleDisclosureIcon expanded /></Link></div>
+          <div className={styles.detailHeading}><div><p>{({ policy: "LIVING GUIDE · 생활과 행정", tourism: "TRAVEL NOTES · 화성 여행", event: "CULTURE JOURNAL · 문화 기록", cartoon: "BEHIND THE SCENES · 만평의 바탕", accessible: "EASY READ · 한국어 원문", interview: "PEOPLE & CULTURE · 인물 탐방", video: "VIDEO JOURNAL · 영상 이야기" })[selected.kind]}</p><h2>상세기사</h2></div><Link data-sample-collapse href={href(selected.article.id)} className={action}>기사 접기 <SampleDisclosureIcon expanded /></Link></div>
           <SampleDetailReadingTools sample={selected} generated={audioIndex[selected.article.id]} />
           <div data-sample-detail-body>{selected.kind === "cartoon" ? <section aria-label="만평 장면과 대사" className="mb-7 space-y-5">{comicScenes.map((scene,i)=><section key={scene.line} className="rounded-xl border border-[#dac4a7] bg-[#fff4df] p-4"><h3 className="mb-2 text-sm font-bold">{i+1}컷</h3><p data-public-text-scale-target="article-body" className="text-sm leading-7">{scene.alt}</p><blockquote data-public-text-scale-target="article-body" className="my-3 font-bold leading-8">{scene.speaker}: {scene.line}</blockquote><p data-public-text-scale-target="article-body" className="text-sm leading-7">{scene.aside}</p></section>)}</section> : null}{["interview", "video"].includes(selected.kind) ? <HwaseongEditorialSample key={selected.article.id} sample={selected} href={href(selected.article.id, true)} detail /> : selected.kind === "tourism" && tourismFeature(selected) ? <TourismDetail sample={selected} /> : <ArticleCard className={styles.originalBody} article={{ ...samplePresentationArticle(selected), showPublicTitle: false, summary: "", audioFile: null, audioSource: "none", blocks: samplePresentationArticle(selected).blocks.filter(b => !b.metadata.proposal_sample) }} index={index} slug={slug} fontAssets={fonts} onOpenArticleImage={setImage} analyticsDisabled showAdminPreviewControls={false} heroBackground={backgrounds[selected.article.id]} textDesign={{ captionStyled: textDesigns[selected.article.id]?.captionStyled, bodyEmphasis: textDesigns[selected.article.id]?.bodyEmphasis }} />}</div>
           {selected.authorEdited&&selected.kind!=="tourism" ? <details className="mt-5 rounded-xl border border-slate-200 p-4"><summary className="min-h-11 cursor-pointer content-center text-sm font-bold">편집 전 원문 · 보존 자료</summary><p data-public-text-scale-target="article-body" className="mt-3 whitespace-pre-wrap leading-8">{sampleOriginalBody(selected)}</p></details> : null}
           </div> : null}
           {!detail ? <Link key="expand" href={href(selected.article.id, true)} data-sample-expand className={`${action} w-full border-transparent bg-[#125e7c] text-white`}>상세기사 보기 <SampleDisclosureIcon /></Link> : null}
           {selected.editorTest ? <p className="text-sm leading-7 text-slate-600">저장 검수용 복제본입니다. 시민 참여·음성 생성은 실행하지 않습니다.</p> : <HwaseongArticleParticipation key="participation" slug={slug} articleId={selected.article.id} articleTitle={selected.headline.replaceAll("\n", " ")} />}
-          {detail ? <Link href={href(selected.article.id)} className={`${action} mt-5 w-full text-slate-700`}>기사 접기 · 요약으로 <SampleDisclosureIcon expanded /></Link> : null}
+          {detail ? <Link data-sample-collapse href={href(selected.article.id)} className={`${action} mt-5 w-full text-slate-700`}>기사 접기 · 요약으로 <SampleDisclosureIcon expanded /></Link> : null}
         </section>
         <nav aria-label="기사 이동" className="grid grid-cols-2 gap-3 border-t border-slate-200 p-5">{prev ? <Link className={action} href={href(prev.article.id)}>← 이전 기사</Link> : <Link className={action} href={contentsHref}>← 목록</Link>}{next ? <Link className={action} href={href(next.article.id)}>다음 기사 →</Link> : <span className="content-center text-center text-xs text-slate-500">마지막 기사입니다</span>}</nav>
       </SampleReadingToolsScope> : <section aria-label="기사 목록" className="px-4 py-4">
