@@ -1,25 +1,44 @@
-/* eslint-disable @typescript-eslint/no-require-imports -- Isolated read-only share entry fixtures. */
-const test=require('node:test'),assert=require('node:assert/strict'),loader=require('./canva-test-loader.cjs');
-const token='A'.repeat(43),slug='hwaseong-2026-10-samples',projectId='4cd5297e-a0fd-434c-84d4-fa4d3baf9389';
-function harness({allowed=true,failed=false,foreign=false,expires=null}={}){
- const calls=[];
- const load=loader({'@/lib/staging-environment':{stagingRequestAllowed:()=>allowed},'@/lib/demo-share':{
-  demoHeaders:{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow'},demoCookieName:()=> 'demo-only',
-  getDemoAccess:async(t,s)=>{calls.push([t,s]);if(failed)throw Error('revoked/expired/stale/invalid');return{project:{slug,id:foreign?'other':projectId},share:{expires_at:expires}};},
- }});
- return{get:load('src/app/demo/open/[token]/route.ts').GET,calls};
+/* eslint-disable @typescript-eslint/no-require-imports -- Isolated user-gesture/session tests, no external requests. */
+const test=require('node:test'),assert=require('node:assert/strict'),React=require('react'),{renderToStaticMarkup}=require('react-dom/server'),loader=require('./canva-test-loader.cjs');
+const token='A'.repeat(43),slug='hwaseong-2026-10-samples',shareId='44444444-4444-4444-8444-444444444444';
+const settle=()=>new Promise(r=>setTimeout(r,10));
+function nodes(tree,p){if(!tree||typeof tree!=='object')return[];if(Array.isArray(tree))return tree.flatMap(t=>nodes(t,p));return [...(p(tree)?[tree]:[]),...nodes(tree.props?.children,p)];}
+function entryHarness({initial=true,cookie=true,network=false,exchangeCode=null,wrongShare=false}={}){
+ const states=[],effects=[],calls=[],navigations=[];let cursor=0;const oldWindow=global.window,oldFetch=global.fetch;
+ global.window={location:{hash:initial?'':'#'+token,replace:u=>navigations.push(u)},history:{replaceState:()=>{global.window.location.hash=''}}};
+ global.fetch=async(url,opt)=>{calls.push({url,opt});if(network)throw Error('network secret not for display');return opt.method==='POST'?Response.json(exchangeCode?{ok:false,code:exchangeCode,requestId:'safe-id'}:{ok:true,project:slug,shareId},{status:exchangeCode?409:200}):Response.json(cookie?{ok:true,shareId:wrongShare?'other':shareId}:{ok:false,code:'SESSION_MISSING',requestId:'safe-id'},{status:cookie?200:401});};
+ const hooks={...React,useState(v){const i=cursor++;if(!(i in states))states[i]=v;return[states[i],v=>states[i]=v];},useRef(v){const i=cursor++;if(!(i in states))states[i]={current:v};return states[i];},useEffect:f=>effects.push(f)};
+ const Comp=loader({react:hooks})('src/components/demo-share-entry.tsx').DemoShareEntry;
+ return{calls,navigations,render(){cursor=0;return Comp(initial?{initialToken:token,project:slug}:{});},mount(){return effects[0]();},button(t){return nodes(t,n=>n.type==='button')[0];},close(){global.window=oldWindow;global.fetch=oldFetch;}};
 }
-const request=()=>new Request('https://canva-staging.datadiction.co.kr/demo/open/'+token);
-const ctx={params:Promise.resolve({token})};
-test('fragment-free mobile entry validates the original grant and redirects to token-free cover; no share is issued',async()=>{
- const h=harness(),r=await h.get(request(),ctx);
- assert.deepEqual(h.calls,[[token,slug]]);assert.equal(r.status,303);
- assert.equal(r.headers.get('location'),'https://canva-staging.datadiction.co.kr/demo?project='+slug);
- const cookie=r.headers.get('set-cookie');for(const flag of ['HttpOnly','Secure','SameSite=lax','Path=/'])assert(cookie.includes(flag));
- assert(!/Expires=|Max-Age=/i.test(cookie));assert(!r.headers.get('location').includes(token));
- assert.equal(r.headers.get('cache-control'),'private, no-store');assert.equal(r.headers.get('referrer-policy'),'no-referrer');assert.match(r.headers.get('x-robots-tag'),/noindex/);
+test('GET entry/preview never creates a session; only click exchanges then checks cookie before token-free navigation',async()=>{
+ const h=entryHarness();try{h.render();const clean=h.mount();assert.equal(h.calls.length,0);const tree=h.render();h.button(tree).props.onClick();h.button(tree).props.onClick();await settle();
+ assert.equal(h.calls.length,2);assert.equal(h.calls[0].url,'/api/demo-share/session');assert.equal(h.calls[0].opt.method,'POST');assert.equal(JSON.parse(h.calls[0].opt.body).token,token);assert.equal(h.calls[1].opt.method,undefined);assert(h.calls.every(c=>c.opt.credentials==='same-origin'&&c.opt.cache==='no-store'&&!c.url.includes(token)));assert.equal(h.calls[0].opt.headers['X-Demo-Request-Id'],h.calls[1].opt.headers['X-Demo-Request-Id']);assert.deepEqual(h.navigations,['/demo?project='+slug]);clean();
+ }finally{h.close();}
 });
-test('existing expiry is retained rather than extended',async()=>{const expires='2030-01-01T00:00:00.000Z',h=harness({expires}),r=await h.get(request(),ctx);assert(r.headers.get('set-cookie').includes('Expires=Tue, 01 Jan 2030'));});
-test('Production and ordinary Preview cannot use the mobile entry and perform no lookup',async()=>{const h=harness({allowed:false}),r=await h.get(request(),ctx);assert.equal(r.status,404);assert.equal(h.calls.length,0);assert.equal(r.headers.get('set-cookie'),null);});
-test('revoked/expired/stale/invalid grants never set a cookie or echo the bearer in an error',async()=>{const h=harness({failed:true}),r=await h.get(request(),ctx);assert.equal(r.status,410);assert.equal(r.headers.get('set-cookie'),null);assert(!(await r.text()).includes(token));});
-test('other projects cannot use the Staging mobile handoff',async()=>{const h=harness({foreign:true}),r=await h.get(request(),ctx);assert.equal(r.status,404);assert.equal(r.headers.get('set-cookie'),null);});
+test('cookie-disabled browser stops at explicit cookie help without navigation or automatic retry',async()=>{const h=entryHarness({cookie:false});try{h.render();h.mount();h.button(h.render()).props.onClick();await settle();assert.equal(h.calls.length,2);assert.equal(h.navigations.length,0);const text=renderToStaticMarkup(h.render());assert.match(text,/SESSION_MISSING/);assert.match(text,/외부 브라우저/);assert(!text.includes(token));}finally{h.close();}});
+test('different existing cookie cannot pass exchange/check identity verification',async()=>{const h=entryHarness({wrongShare:true});try{h.render();h.mount();h.button(h.render()).props.onClick();await settle();assert.equal(h.navigations.length,0);assert.match(renderToStaticMarkup(h.render()),/SESSION_MISMATCH/);}finally{h.close();}});
+for(const code of ['EXPIRED','REVOKED','SOURCE_CHANGED','MEDIA_PREPARATION_FAILED'])test('exchange displays distinct '+code+' without cookie redirect',async()=>{const h=entryHarness({exchangeCode:code});try{h.render();h.mount();h.button(h.render()).props.onClick();await settle();assert.equal(h.calls.length,1);assert.equal(h.navigations.length,0);assert.match(renderToStaticMarkup(h.render()),new RegExp(code));}finally{h.close();}});
+test('network failure is not labelled expired and never retries itself',async()=>{const h=entryHarness({network:true});try{h.render();h.mount();h.button(h.render()).props.onClick();await settle();assert.equal(h.calls.length,1);assert.match(renderToStaticMarkup(h.render()),/NETWORK_ERROR/);assert(!renderToStaticMarkup(h.render()).includes('network secret'));}finally{h.close();}});
+test('legacy fragments survive mount replay and exchange only after the user clicks',async()=>{const h=entryHarness({initial:false});try{h.render();h.mount()();h.mount();assert.equal(h.calls.length,0);h.button(h.render()).props.onClick();await settle();assert.equal(h.calls.length,2);assert.equal(global.window.location.hash,'');assert.equal(h.navigations.length,1);}finally{h.close();}});
+test('Staging GET page renders private button without grant lookup, cookie issuance or redirect',async()=>{
+ let requests=0;const oldFetch=global.fetch;global.fetch=async()=>{requests++;throw Error('must not request');};
+ try{const load=loader({'next/headers':{headers:async()=>new Headers()},'next/navigation':{notFound:()=>{throw Error('not-found');}},'@/lib/staging-environment':{stagingOrigin:'https://stage.invalid',stagingRequestAllowed:()=>true},'@/lib/demo-share-diagnostics':{createDemoTrace:()=>({}),demoStep:()=>{}}});
+ const mod=load('src/app/demo/open/[token]/page.tsx'),tree=await mod.default({params:Promise.resolve({token})});const html=renderToStaticMarkup(tree);assert.match(html,/소식지 열기/);assert(!html.includes(token));assert.equal(requests,0);assert.equal(mod.metadata.robots.index,false);
+ }finally{global.fetch=oldFetch;}
+});
+test('Production and ordinary Preview are rejected before rendering the entry',async()=>{const load=loader({'next/headers':{headers:async()=>new Headers()},'next/navigation':{notFound:()=>{throw Error('not-found');}},'@/lib/staging-environment':{stagingOrigin:'https://stage.invalid',stagingRequestAllowed:()=>false}});await assert.rejects(load('src/app/demo/open/[token]/page.tsx').default({params:Promise.resolve({token})}),/not-found/);});
+test('diagnostic logger allowlists ID/stage/code and never serializes an Error or arbitrary header',()=>{const old=console.info,logs=[];console.info=o=>logs.push(o);try{const d=loader()('src/lib/demo-share-diagnostics.ts'),trace=d.createDemoTrace('cookie_read',new Headers({'x-demo-request-id':token}));assert.notEqual(trace.requestId,token);const result=d.demoFailure(Object.assign(new Error('sensitive original body cookie token'),{code:'SESSION_MISSING',token}),trace);assert.equal(result.status,401);assert.equal(logs.length,1);assert.deepEqual(Object.keys(logs[0]),['requestId','stage','code']);assert(!JSON.stringify(logs).includes(token));assert(!JSON.stringify(logs).includes('sensitive'));}finally{console.info=old;}});
+test('session API exposes safe distinct failure code and stage, including missing cookie rather than expiry',async()=>{
+ const old=console.info;console.info=()=>{};
+ try{for(const [code,status] of [['SESSION_MISSING',401],['EXPIRED',410],['REVOKED',410],['SOURCE_CHANGED',409],['SOURCE_UNAVAILABLE',503]]){
+  const mod=loader({'@/lib/demo-share':{getDemoSession:async(_slug,trace)=>{trace.stage=code==='SESSION_MISSING'?'cookie_read':'source_snapshot';throw Object.assign(Error('private source'),{code});},demoHeaders:{'Cache-Control':'private, no-store'}},'@/lib/hwaseong-demo-render':{isHwaseongDemo:()=>false}})('src/app/api/demo-share/session/route.ts');
+  const r=await mod.GET(new Request('https://fixture.invalid?project='+slug)),d=await r.json();assert.equal(r.status,status);assert.equal(d.code,code);assert.match(d.requestId,/^[a-f0-9-]{36}$/);assert.equal(d.stage,code==='SESSION_MISSING'?'cookie_read':'source_snapshot');assert(!JSON.stringify(d).includes('private source'));
+ }}finally{console.info=old;}
+});
+test('SSR media exception is displayed separately and does not masquerade as an expired link',async()=>{
+ const old=console.info;console.info=()=>{};
+ try{const load=loader({'next/headers':{headers:async()=>new Headers()},'@/lib/hwaseong-demo-render':{isHwaseongDemo:()=>true,getHwaseongDemoData:async(_s,_m,trace)=>{trace.stage='media_prepare';throw Error('private media');}}});
+ const html=renderToStaticMarkup(await load('src/app/demo/page.tsx').default({searchParams:Promise.resolve({project:slug})}));assert.match(html,/MEDIA_PREPARATION_FAILED/);assert(!html.includes('만료·회수'));assert(!html.includes('private media'));
+ }finally{console.info=old;}
+});
