@@ -89,7 +89,7 @@ export function editorialFeature(sample: ProposalSample, projectId?: string): Ed
       const u = new URL(String(v.canvaCover), "https://sample.invalid");
       const cover = new URL(sample.cover, "https://sample.invalid");
       const prefix = projectId ? `projects/${projectId}/` : cover.searchParams.get("path")?.match(/^projects\/[^/]+\//)?.[0];
-      if (prefix && u.origin === cover.origin && u.pathname === "/api/project-files/preview" && u.searchParams.get("bucket") === "design-production-assets" && u.searchParams.get("path")?.startsWith(prefix)) canvaCover = String(v.canvaCover);
+      if (prefix && u.origin === cover.origin && ["/api/project-files/preview", "/api/demo-share/sample-files"].includes(u.pathname) && u.searchParams.get("bucket") === "design-production-assets" && u.searchParams.get("path")?.startsWith(prefix)) canvaCover = String(v.canvaCover);
     } catch { /* A malformed optional design is never rendered. */ }
   }
   return { sourceUrl: String(v.sourceUrl), publishedDate: String(v.publishedDate), credit: String(v.credit), person: String(v.person), role: String(v.role), quote: String(v.quote), note: String(v.note), videoId: String(v.videoId), sections: v.sections.map(s => ({ title: s.title, text: s.text })), canvaCover };

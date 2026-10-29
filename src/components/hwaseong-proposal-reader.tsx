@@ -26,6 +26,7 @@ import { SampleTtsQa } from "@/components/hwaseong-sample-tts-qa";
 import { sampleSummaryFacts, type SampleAudio } from "@/lib/hwaseong-sample-narration";
 import { canUseSampleHistory, readSampleLocation, sampleSwipeDirection, isSampleSwipeBlocked, updateSampleSwipe, type SampleSwipe } from "@/lib/hwaseong-sample-navigation";
 import { isReaderInteractiveTarget, type ReaderPoint } from "@/lib/mobile-reader-navigation";
+import { sampleDemoHref, canUseSampleDemoHistory } from "@/lib/hwaseong-demo-navigation";
 
 const action = "inline-flex min-h-11 items-center justify-center rounded-xl border border-current px-4 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
 
@@ -173,11 +174,12 @@ function SampleSummary({ sample, href, onImage, audio, mapImage }: { sample: Pro
   </section>;
 }
 
-export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, textDesigns, selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, cover, serverTimings, audioIndex = {}, thumbnailIndex = {}, mapImage, contents: initialContents = false, qa: initialQa = false, interest: initialInterest = "all" }: {
+export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, textDesigns, selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, cover, serverTimings, audioIndex = {}, thumbnailIndex = {}, mapImage, contents: initialContents = false, qa: initialQa = false, interest: initialInterest = "all", demo = false }: {
   slug: string; samples: ProposalSample[]; fonts: FontAsset[]; backgrounds: Record<string, ArticleHeroBackground>; textDesigns: Record<string, ArticleTextDesign>;
   selectedId?: string; detail: boolean; width: 390 | 520;
   cover?: Pick<ComponentProps<typeof PublicNewsletterCoverView>, "coverImageSrc" | "coverFit" | "coverLayout" | "coverTitle" | "coverSubtitle" | "coverIssueText" | "masthead">;
   contents?: boolean; qa?: boolean; interest?: SampleInterest;
+  demo?: boolean;
   serverTimings?: Record<string, number>;
   audioIndex?: Record<string, SampleAudio>;
   thumbnailIndex?: Record<string, string>;
@@ -187,7 +189,8 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const location = query
     ? readSampleLocation(query, samples.map(s => s.article.id))
     : { selectedId: initialSelectedId, detail: initialDetail, width: initialWidth, contents: initialContents, qa: initialQa, interest: initialInterest };
-  const { selectedId, width, contents, qa, interest } = location;
+  const { selectedId, width, contents, interest } = location;
+  const qa = !demo && location.qa;
   const desktopSuggested = useSampleDesktopSuggestion();
   const explicitDisplay = sampleDisplay(query);
   const display = explicitDisplay ?? (desktopSuggested && !qa ? "ebook" : "mobile");
@@ -235,8 +238,9 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
   const index = orderedSamples.findIndex(s => s.article.id === selectedId);
   const prev = orderedSamples[index - 1], next = orderedSamples[index + 1];
   const isCoverView = Boolean(cover && !selected && !contents);
-  const href = (id?: string, d = false, w = width) => withSampleDisplay(sampleHref(slug, id, d, w, { qa, interest: currentInterest, sharedEntry: query?.get("entry") === "share" }), explicitDisplay);
-  const contentsHref = withSampleDisplay(sampleHref(slug, undefined, false, width, { contents: true, qa, interest: currentInterest }), explicitDisplay);
+  const entryHref = (value: string) => demo ? sampleDemoHref(slug, value) : value;
+  const href = (id?: string, d = false, w = width) => entryHref(withSampleDisplay(sampleHref(slug, id, d, w, { qa, interest: currentInterest, sharedEntry: query?.get("entry") === "share" }), explicitDisplay));
+  const contentsHref = entryHref(withSampleDisplay(sampleHref(slug, undefined, false, width, { contents: true, qa, interest: currentInterest }), explicitDisplay));
   const hasSplitAudio = Boolean(audioIndex[selectedId ?? ""]?.detail);
   if (isCoverView && cover && !cover.coverImageSrc.startsWith("data:")) preload(cover.coverImageSrc, { as: "image", fetchPriority: "high" });
   const previousPage = selected ? prev ? { href: href(prev.article.id), label: "이전 기사로 이동" }
@@ -245,7 +249,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     : selected && next ? { href: href(next.article.id), label: "다음 기사로 이동" } : undefined;
   const locationKey = `${currentInterest}:${selectedId ?? (isCoverView ? "cover" : "contents")}:${detail}:${width}`;
   function navigateLocal(target: string) {
-    if (!canUseSampleHistory(target, window.location.href, slug)) return false;
+    if (!(demo ? canUseSampleDemoHistory(target, window.location.href, slug) : canUseSampleHistory(target, window.location.href, slug))) return false;
     const url = new URL(target, window.location.href);
     if (!url.searchParams.has("display") && explicitDisplay) url.searchParams.set("display", explicitDisplay);
     if (url.href === window.location.href) return true;
@@ -369,7 +373,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
     <SampleEbookThumbnails pages={bookPages} currentId={bookCurrentId} visible={display==="ebook"} onNavigate={navigateBook}/>
     <div ref={scrollRef} className={`${styles.readingViewport} public-desktop-ebook-scroll-container`} data-sample-scroll>
     <div className={`${styles.readerNotice} mx-auto mb-3 flex w-full flex-wrap items-center justify-between gap-2 text-xs text-slate-600`}>
-      <span>{qa ? "STAGING QA · " : ""}비공개 제안 시안 · 정식 발행물 아님</span>{qa ? <div className="flex gap-2">{([390, 520] as const).map(w => <Link key={w} href={withSampleDisplay(sampleHref(slug, selectedId, detail, w, { contents: !isCoverView && !selected, qa, interest: currentInterest }), explicitDisplay)} className="rounded border bg-white px-2 py-2" aria-current={width === w ? "page" : undefined}>{w}px</Link>)}</div> : null}
+      <span>{demo ? "영업용 읽기 전용 시연 · 정식 발행물 아님" : <>{qa ? "STAGING QA · " : ""}비공개 제안 시안 · 정식 발행물 아님</>}</span>{qa ? <div className="flex gap-2">{([390, 520] as const).map(w => <Link key={w} href={withSampleDisplay(sampleHref(slug, selectedId, detail, w, { contents: !isCoverView && !selected, qa, interest: currentInterest }), explicitDisplay)} className="rounded border bg-white px-2 py-2" aria-current={width === w ? "page" : undefined}>{w}px</Link>)}</div> : null}
     </div>
     <div data-sample-width={qa?width:"responsive"} className={`${styles.surface} ${display==="ebook"?"public-desktop-ebook-page public-desktop-ebook-spread":""} mx-auto w-full overflow-hidden sm:rounded-[24px] bg-white shadow-xl`}>
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
@@ -382,7 +386,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       </header>
       {!isCoverView && !selected ? <nav aria-label="관심분야 선택" data-swipe-navigation-ignore className={`${styles.interestTools} mx-4 mt-4 rounded-2xl border border-[#d5e3e7] bg-[#f0f6f7] p-3`}>
         <div className="mb-2 flex items-center justify-between gap-2"><p className="text-xs font-bold text-[#174c60]">관심분야 · 검색</p><span className="text-[10px] text-slate-500">전체 {samples.length}건에서 검색</span></div>
-        <div className={styles.interestGrid}>{sampleInterests.map(option => <Link key={option.value} href={withSampleDisplay(sampleHref(slug, undefined, false, width, { contents: !isCoverView, qa, interest: option.value }), explicitDisplay)} aria-current={currentInterest === option.value ? "true" : undefined} className={`inline-flex min-h-11 min-w-0 items-center justify-center rounded-xl border px-2.5 py-2 text-center text-xs font-bold [overflow-wrap:anywhere] ${currentInterest === option.value ? "border-[#234e43] bg-[#234e43] text-white" : "border-[#cfdee2] bg-white text-slate-600"}`}>{option.label}</Link>)}</div>
+        <div className={styles.interestGrid}>{sampleInterests.map(option => <Link key={option.value} href={entryHref(withSampleDisplay(sampleHref(slug, undefined, false, width, { contents: !isCoverView, qa, interest: option.value }), explicitDisplay))} aria-current={currentInterest === option.value ? "true" : undefined} className={`inline-flex min-h-11 min-w-0 items-center justify-center rounded-xl border px-2.5 py-2 text-center text-xs font-bold [overflow-wrap:anywhere] ${currentInterest === option.value ? "border-[#234e43] bg-[#234e43] text-white" : "border-[#cfdee2] bg-white text-slate-600"}`}>{option.label}</Link>)}</div>
         <div className="mt-2 flex gap-2">
           <label htmlFor="sample-article-search" className="sr-only">기사 검색</label>
           <div className="relative min-w-0 flex-1"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#527280]"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg><input ref={searchInput} id="sample-article-search" type="search" value={searchQuery} maxLength={100} autoComplete="off" placeholder="반려견, 관광, 재활용, dog"
@@ -409,7 +413,7 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
           {selected.authorEdited&&selected.kind!=="tourism" ? <details className="mt-5 rounded-xl border border-slate-200 p-4"><summary className="min-h-11 cursor-pointer content-center text-sm font-bold">편집 전 원문 · 보존 자료</summary><p data-public-text-scale-target="article-body" className="mt-3 whitespace-pre-wrap leading-8">{sampleOriginalBody(selected)}</p></details> : null}
           </div> : null}
           {!detail ? <Link key="expand" href={href(selected.article.id, true)} data-sample-expand className={`${action} w-full border-transparent bg-[#125e7c] text-white`}>상세기사 보기 <SampleDisclosureIcon /></Link> : null}
-          {selected.editorTest ? <p className="text-sm leading-7 text-slate-600">저장 검수용 복제본입니다. 시민 참여·음성 생성은 실행하지 않습니다.</p> : <HwaseongArticleParticipation key="participation" slug={slug} articleId={selected.article.id} articleTitle={selected.headline.replaceAll("\n", " ")} />}
+          {demo ? <p className="mt-5 rounded-xl border border-slate-200 p-4 text-sm leading-7 text-slate-600">영업용 읽기 전용 시연입니다. 의견·설문 제출과 외부 재공유는 제공하지 않습니다.</p> : selected.editorTest ? <p className="text-sm leading-7 text-slate-600">저장 검수용 복제본입니다. 시민 참여·음성 생성은 실행하지 않습니다.</p> : <HwaseongArticleParticipation key="participation" slug={slug} articleId={selected.article.id} articleTitle={selected.headline.replaceAll("\n", " ")} />}
           {detail ? <Link data-sample-collapse href={href(selected.article.id)} className={`${action} mt-5 w-full text-slate-700`}>기사 접기 · 요약으로 <SampleDisclosureIcon expanded /></Link> : null}
         </section>
         <nav aria-label="기사 이동" className="grid grid-cols-2 gap-3 border-t border-slate-200 p-5">{prev ? <Link className={action} href={href(prev.article.id)}>← 이전 기사</Link> : <Link className={action} href={contentsHref}>← 목록</Link>}{next ? <Link className={action} href={href(next.article.id)}>다음 기사 →</Link> : <span className="content-center text-center text-xs text-slate-500">마지막 기사입니다</span>}</nav>

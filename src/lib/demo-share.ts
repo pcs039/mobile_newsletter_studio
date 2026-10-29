@@ -5,6 +5,9 @@ import { hashClientReviewToken, isClientReviewToken } from "@/lib/client-review"
 import { getProjectContent, getProjectWorkspace, type ProjectContentArticle } from "@/lib/newsletter-repository";
 import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { isArticlePubliclyVisible } from "@/lib/article-publication";
+import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
+
+export function demoDurations(slug: string) { return slug === "hwaseong-2026-10-samples" && stagingEnvironmentConfigured() ? [1,3,7,14] : [1,3,7]; }
 
 export const demoHeaders = { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow, noarchive", "X-Content-Type-Options": "nosniff" };
 export const demoUuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -44,7 +47,7 @@ export function selectDemoArticles(articles: ProjectContentArticle[], ids: unkno
 }
 export async function issueDemoShare(slug:string, projectId:string, userId:string, ids:unknown, snapshot:unknown, days:unknown, confirmed:unknown, requestKey:unknown) {
   if(typeof requestKey!=="string"||!demoUuid.test(requestKey))throw new DemoError(400,"시연 요청 식별자를 확인하세요.");
-  if (![1,3,7].includes(days as number)||confirmed!==true) throw new DemoError(400,"공유할 자료 확인과 유효기간 선택이 필요합니다.");
+  if (!demoDurations(slug).includes(days as number)||confirmed!==true) throw new DemoError(400,"공유할 자료 확인과 유효기간 선택이 필요합니다.");
   const source=await demoSource(slug);
   if(source.project.id!==projectId) throw new DemoError(403,"프로젝트를 확인하세요.");
   const selected=selectDemoArticles(source.articles,ids);

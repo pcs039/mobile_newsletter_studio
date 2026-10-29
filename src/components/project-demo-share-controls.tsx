@@ -7,6 +7,7 @@ export function ProjectDemoShareControls({projectSlug}:{projectSlug:string}){
  const endpoint=`/api/projects/${encodeURIComponent(projectSlug)}/demo-share`;
  const [articles,setArticles]=useState<Candidate[]>([]),[shares,setShares]=useState<Share[]>([]);
  const [selected,setSelected]=useState<string[]>([]),[days,setDays]=useState(1),[confirmed,setConfirmed]=useState(false);
+ const [allowedDays,setAllowedDays]=useState([1,3,7]);
  const [busy,setBusy]=useState(false),[loaded,setLoaded]=useState(false),[message,setMessage]=useState("");
  const [hasLink,setHasLink]=useState(false),[now,setNow]=useState(0);
  const loadVersion=useRef(0),requestKey=useRef<string|null>(null);
@@ -16,7 +17,7 @@ export function ProjectDemoShareControls({projectSlug}:{projectSlug:string}){
   const version=++loadVersion.current;
   const r=await fetch(endpoint,{cache:"no-store",signal:AbortSignal.timeout(15000)});const d=await r.json();
   if(!r.ok||!d.ok)throw Error(d.message||"시연 설정을 불러오지 못했습니다.");
-  if(alive.current&&version===loadVersion.current){setNow(Date.now());setArticles(d.articles);setShares(d.shares);setLoaded(true);setSelected(ids=>ids.filter(id=>d.articles.some((a:Candidate)=>a.id===id)));}
+  if(alive.current&&version===loadVersion.current){setNow(Date.now());setArticles(d.articles);setShares(d.shares);setAllowedDays(d.allowedDays??[1,3,7]);setLoaded(true);setSelected(ids=>ids.filter(id=>d.articles.some((a:Candidate)=>a.id===id)));}
  },[endpoint]);
  useEffect(()=>{alive.current=true;void load().catch(e=>{if(alive.current)setMessage(e.message);});return()=>{alive.current=false;link.current="";if(clearTimer.current)clearTimeout(clearTimer.current);};},[load]);
  async function post(input:unknown){const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.message||"시연 요청 결과를 확인하지 못했습니다.");return d;}
@@ -52,7 +53,7 @@ export function ProjectDemoShareControls({projectSlug}:{projectSlug:string}){
     {articles.map(a=><label key={a.id} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={selected.includes(a.id)} onChange={e=>{setSelected(ids=>e.target.checked?[...ids,a.id]:ids.filter(id=>id!==a.id));setConfirmed(false);requestKey.current=null;clearLink();}} className="mt-1 shrink-0"/><span>{a.title}<span className="ml-2 text-xs text-slate-500">{({draft:"작성 중",review:"검수 요청",in_review:"검수 중",approved:"검수 완료",published:"발행됨"} as Record<string,string>)[a.status]??"상태 확인 필요"}</span></span></label>)}
     {loaded&&!articles.length?<p>시연할 기사가 없습니다.</p>:null}
    </div>
-   <label className="mt-3 block text-sm font-bold">링크 유효기간 <select aria-label="시연 링크 유효기간" value={days} onChange={e=>{setDays(Number(e.target.value));setConfirmed(false);requestKey.current=null;clearLink();}} className="rounded border p-2"><option value={1}>1일</option><option value={3}>3일</option><option value={7}>7일</option></select></label>
+   <label className="mt-3 block text-sm font-bold">링크 유효기간 <select aria-label="시연 링크 유효기간" value={days} onChange={e=>{setDays(Number(e.target.value));setConfirmed(false);requestKey.current=null;clearLink();}} className="rounded border p-2">{allowedDays.map(day=><option key={day} value={day}>{day}일</option>)}</select></label>
    <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} className="mt-1 shrink-0"/><span>선택한 기사와 이미지를 확인했으며 외부 담당자에게 시연용으로 공유해도 됩니다.</span></label>
   </fieldset>
   <div className="mt-3 flex flex-wrap gap-2">

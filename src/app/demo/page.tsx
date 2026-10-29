@@ -3,11 +3,20 @@ import {DemoShareEntry} from "@/components/demo-share-entry";
 import { PublicFontFaceStyle } from "@/components/public-font-face-style";
 import { DemoShareSession } from "@/components/demo-share-session";
 import { getDemoRenderData } from "@/lib/demo-share-render";
+import { getHwaseongDemoData, isHwaseongDemo } from "@/lib/hwaseong-demo-render";
+import { HwaseongProposalReader } from "@/components/hwaseong-proposal-reader";
 export const dynamic="force-dynamic";
 export const metadata={title:"소식지 시연용 보기",referrer:"no-referrer" as const,robots:{index:false,follow:false}};
 export default async function DemoPage({searchParams}:{searchParams:Promise<{project?:string}>}){
  const {project:slug}=await searchParams;
  if(!slug)return <DemoShareEntry/>;
+ if(isHwaseongDemo(slug)){
+  const result=await getHwaseongDemoData(slug).catch(()=>null);
+  if(!result)return <main className="p-8 text-center">시연 링크가 만료·회수되었거나 자료가 변경되었습니다. 새 링크를 요청하세요.</main>;
+  return <DemoShareSession slug={slug} shareId={result.access.share.id} expiresAt={result.access.share.expires_at}>
+   <PublicFontFaceStyle fonts={result.props.fonts}/><HwaseongProposalReader {...result.props} detail={false} width={390}/>
+  </DemoShareSession>;
+ }
  const result=await getDemoRenderData(slug).catch(()=>null);
  if(!result)return <main className="p-8 text-center">시연 링크가 만료·회수되었거나 자료가 변경되었습니다. 새 링크를 요청하세요.</main>;
  const {access,data}=result;
