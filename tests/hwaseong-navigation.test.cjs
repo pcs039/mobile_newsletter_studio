@@ -150,3 +150,14 @@ test('scale change during a single-touch pan suppresses the pending article turn
   global.window.visualViewport.scale=1;tree.props.onTouchEnd({changedTouches:[{clientX:140,clientY:162}]});assert.equal(h.history.length,0);
  }finally{h.restore();}
 });
+
+test('short taps on controls remain usable while native zoomed',()=>{
+ const h=harness(`articleId=${ids[0]}&width=390`);try{
+  global.window.visualViewport={scale:2};const tree=h.render();let prevented=false;
+  tree.props.onPointerDownCapture({target:null,button:0,pointerType:'touch',clientX:200,clientY:100});
+  tree.props.onTouchStart({target:null,touches:[{clientX:200,clientY:100}]});
+  tree.props.onTouchEnd({changedTouches:[{clientX:200,clientY:100}]});
+  tree.props.onClickCapture({target:null,detail:1,button:0,preventDefault:()=>prevented=true,stopPropagation:()=>{}});
+  assert.equal(prevented,false);assert.equal(h.history.length,0);
+ }finally{h.restore();}
+});

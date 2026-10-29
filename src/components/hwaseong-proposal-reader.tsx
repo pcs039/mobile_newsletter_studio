@@ -356,7 +356,8 @@ export function HwaseongProposalReader({ slug, samples, fonts, backgrounds, text
       if (target && !anchor?.hasAttribute("download") && (!anchor?.target || anchor.target === "_self") && navigateLocal(target)) event.preventDefault();
     }}
     onTouchStart={event => {
-      if (event.touches.length !== 1 || nativeZoomed()) { swallowClick.current = true; mouseSwipe.current = null; pointer.current = null; }
+      if (event.touches.length !== 1) swallowClick.current = true;
+      if (event.touches.length !== 1 || nativeZoomed()) { mouseSwipe.current = null; pointer.current = null; }
       swipe.current = image || nativeZoomed() || event.touches.length !== 1 || isSampleSwipeBlocked(event.target)
         ? null : { x: event.touches[0].clientX, y: event.touches[0].clientY };
     }} onTouchMove={event => {
