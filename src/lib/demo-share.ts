@@ -85,14 +85,16 @@ export async function issueDemoShare(slug:string, projectId:string, userId:strin
 }
 
 export async function getDemoAccess(token: string, slug?:string, trace?: DemoTrace) {
-  demoStep(trace,"token_validation");
+  demoStep(trace,"token_validation","START");
   if(!isClientReviewToken(token)) throw new DemoError(404,"유효한 시연 링크가 필요합니다.","INVALID_LINK");
-  demoStep(trace,"share_lookup");
+  demoStep(trace,"token_validation","VALIDATED");
+  demoStep(trace,"share_lookup","START");
   const [share]=await demoRows(new URLSearchParams({select:columns,token_hash:`eq.${hashClientReviewToken(token)}`,limit:"1"}));
   if(!share) throw new DemoError(404,"유효한 시연 링크가 필요합니다.","INVALID_LINK");
   if(share.revoked_at) throw new DemoError(410,"회수된 시연 링크입니다.","REVOKED");
   if(!demoShareIsLive(share)) throw new DemoError(410,"만료된 시연 링크입니다.","EXPIRED");
-  demoStep(trace,"project_lookup");
+  demoStep(trace,"share_lookup","VALIDATED");
+  demoStep(trace,"project_lookup","START");
   const key=process.env.SUPABASE_SERVICE_ROLE_KEY!;
   const url=getSupabaseRestEndpoint(`/rest/v1/newsletter_projects?${new URLSearchParams({select:"slug",id:`eq.${share.project_id}`,deleted_at:"is.null",limit:"1"})}`);
   if(!url) throw new DemoError(503,"서버 설정을 확인하세요.");
@@ -100,10 +102,12 @@ export async function getDemoAccess(token: string, slug?:string, trace?: DemoTra
   if(!r.ok) throw new DemoError(503,"시연 상태를 확인하지 못했습니다.");
   const projectSlug=(await r.json())[0]?.slug as string|undefined;
   if(!projectSlug||(slug&&projectSlug!==slug)) throw new DemoError(404,"시연 링크를 확인하세요.","PROJECT_MISMATCH");
-  demoStep(trace,"source_snapshot");
+  demoStep(trace,"project_lookup","VALIDATED");
+  demoStep(trace,"source_snapshot","START");
   const source=await demoSource(projectSlug);
   const articles=selectDemoArticles(source.articles,share.article_ids);
   if(source.project.id!==share.project_id||demoSnapshot(articles)!==share.source_snapshot) throw new DemoError(409,"자료가 변경되어 시연 링크를 다시 발급해야 합니다.","SOURCE_CHANGED");
+  demoStep(trace,"source_snapshot","MATCHED");
   return {share,project:source.project,articles};
 }
 export async function getDemoSession(slug:string, trace?: DemoTrace) {

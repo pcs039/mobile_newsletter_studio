@@ -17,11 +17,12 @@ import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 const projectId = "4cd5297e-a0fd-434c-84d4-fa4d3baf9389";
 export function isHwaseongDemo(slug: string) { return slug === hwaseongSampleSlug && stagingEnvironmentConfigured(); }
 export function validateHwaseongDemoAccess(access: Awaited<ReturnType<typeof getDemoSession>>, trace?: DemoTrace) {
-  demoStep(trace,"approved_articles");
+  demoStep(trace,"approved_articles","START");
   const slug=access.project.slug;
   if (!isHwaseongDemo(slug)) throw new DemoError(404, "시연 자료를 찾지 못했습니다.", "PROJECT_MISMATCH");
   const samples = access.articles.map(a => proposalSample(a, projectId)).filter((s): s is ProposalSample => !!s && !s.editorTest);
   if (access.project.id !== projectId || access.articles.length !== 7 || samples.length !== 7 || new Set(samples.map(s => s.kind)).size !== 7) throw new DemoError(404, "승인된 7개 기사 시연 링크가 필요합니다.", "PROJECT_MISMATCH");
+  demoStep(trace,"approved_articles","VALIDATED");
   return { ...access, samples };
 }
 export async function getHwaseongDemoAccess(slug: string, trace?: DemoTrace) {
@@ -35,13 +36,14 @@ export async function getHwaseongDemoData(slug: string, prepareMedia = true, tra
   const access = await getHwaseongDemoAccess(slug,trace), { project, samples } = access;
   const ids = samples.map(s => s.article.id);
   const sourceCover = project.coverImagePath ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) : project.coverImageUrl;
-  demoStep(trace,"media_prepare");
+  demoStep(trace,"media_prepare","START");
   const [fontData, textDesigns, references, currentAudio, inlineCover, thumbnailIndex, mapImage] = await Promise.all([
     getFontAssets({ activeOnly: true }), getArticleTextDesigns(projectId, ids, true), getArticleHeroBackgroundReferences(projectId, ids, true),
     prepareMedia ? splitAudioIndex(samples) : {} as Record<string,SampleAudio>, prepareMedia && sourceCover ? prepareSampleCover(projectId, slug, sourceCover) : null,
     prepareMedia ? prepareSampleToc(projectId, slug, samples) : {}, prepareMedia ? prepareSampleMap(projectId, slug, samples) : undefined,
   ]).catch(()=>{throw new DemoError(503,"미디어 준비 실패","MEDIA_PREPARATION_FAILED");});
-  demoStep(trace,"render");
+  demoStep(trace,"media_prepare","READY");
+  demoStep(trace,"render","START");
   const usedFontIds = JSON.stringify([textDesigns, samples, project.bodyFontAssetId, project.titleFontAssetId]);
   const fonts = fontData.fonts.filter(f => usedFontIds.includes(f.id));
   const fontPaths = new Set(fonts.map(f => f.filePath));
@@ -76,6 +78,7 @@ export async function getHwaseongDemoData(slug: string, prepareMedia = true, tra
   const backgrounds = Object.fromEntries(Object.entries(references).map(([id,r]) => [id,{ url: register("design-production-assets",r.path), settings:r.settings, visible:true }]));
   const cover = project.coverEnabled && sourceCover ? { coverImageSrc: inlineCover || rewrite(sourceCover), coverFit: project.coverFit, coverLayout: project.coverLayout, coverTitle: project.coverTitle || project.title, coverSubtitle: project.coverSubtitle, coverIssueText: project.coverIssueText || project.issue, masthead: project.title } : undefined;
   const props: Omit<ComponentProps<typeof HwaseongProposalReader>,"detail"|"width"> = { slug, samples: renderedSamples, fonts: fonts.map(f => ({...f,uploadedBy:"",sourceFileName:"",fileUrl:register("fonts",f.filePath)})), backgrounds, textDesigns, cover, audioIndex, thumbnailIndex, mapImage, demo:true };
+  demoStep(trace,"render","READY");
   return { access, props, files, fontPaths };
 }
 
