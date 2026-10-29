@@ -59,7 +59,7 @@ export async function getHwaseongDemoData(slug: string, prepareMedia = true) {
     return value;
   }
   const renderedSamples = samples.map(s => map({ ...s, article: { ...s.article, audioFile: null, audioSource: "none" as const,
-    blocks: s.article.blocks.filter(b => b.isVisible).map(b => ({ ...b, metadata: Object.fromEntries(Object.entries(b.metadata).filter(([k]) => ["proposal_sample", "proposal_editorial", "proposal_tourism_feature", "source", "proposal_original_text"].includes(k) || k === "proposal_original_article").map(([k,v]) => [k,k === "proposal_original_article" && v && typeof v === "object" ? { body: (v as Record<string,unknown>).body } : v])) })),
+    blocks: s.article.blocks.filter(b => b.isVisible || b.metadata.proposal_sample).map(b => ({ ...b, metadata: Object.fromEntries(Object.entries(b.metadata).filter(([k]) => ["proposal_sample", "proposal_editorial", "proposal_tourism_feature", "source", "proposal_original_text"].includes(k) || k === "proposal_original_article").map(([k,v]) => [k,k === "proposal_original_article" && v && typeof v === "object" ? { body: (v as Record<string,unknown>).body } : v])) })),
   } }));
   const audioIndex: Record<string,SampleAudio> = Object.fromEntries(samples.flatMap(s => {
     const audio = currentAudio[s.article.id]; if (!audio?.detail) return [];
