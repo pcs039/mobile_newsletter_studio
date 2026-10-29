@@ -240,12 +240,40 @@
 .bookThumbnails small { display: block; font-size: .55rem; opacity: .65; }
 .bookIndexIcon { display: grid; place-items: center; height: 60px; background: #c7e8e0; color: #234e43; border-radius: .25rem; font-size: 1.5rem; }
 @media (min-width: 1100px) and (min-height: 600px) {
-  .screen[data-sample-display="ebook"][data-sample-spread="double"] .surface { max-width: 1160px; }
-  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
-  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > nav { grid-column: 1 / -1; }
+  /* Intrinsic toolbar/notice/header rows leave the real remaining height to HTML.
+     No paper ratio, viewport subtraction, remount or fullscreen-specific tree. */
+  .screen[data-sample-display="ebook"] { animation: none; }
+  .screen[data-sample-display="ebook"] .displayToolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .8rem; padding-block: .45rem; }
+  .screen[data-sample-display="ebook"] .displayModes { margin: 0; flex-shrink: 0; }
+  .screen[data-sample-display="ebook"] .displayModes button,
+  .screen[data-sample-display="ebook"] .bookToolbar button { padding: .4rem .6rem; min-height: 40px; }
+  .screen[data-sample-display="ebook"] .bookHint { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .screen[data-sample-display="ebook"] .workspace { overflow: hidden; }
+  .screen[data-sample-display="ebook"] .bookThumbnails { width: clamp(180px,14vw,210px); min-height: 0; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .screen[data-sample-display="ebook"] .readingViewport { display: flex; flex-direction: column; gap: .4rem; overflow: hidden; padding: 12px clamp(12px,1vw,20px); scrollbar-gutter: auto; }
+  .screen[data-sample-display="ebook"] .readerNotice { max-width: none; margin: 0; flex-shrink: 0; }
+  .screen[data-sample-display="ebook"] .surface { max-width: none; width: 100%; flex: 1; min-height: 0; overflow: auto; zoom: 1; animation: none; }
+  .screen[data-sample-display="ebook"] .surface:hover { transform: none; }
+  .screen[data-sample-display="ebook"] .surface > section,
+  .screen[data-sample-display="ebook"] :global([data-sample-cover-persisted]),
+  .screen[data-sample-display="ebook"] .interestTools { zoom: var(--sample-zoom); }
+  .screen[data-sample-display="ebook"][data-sample-article="true"] .surface { display: flex; flex-direction: column; overflow: hidden; }
+  .screen[data-sample-display="ebook"] .surface > header { flex-shrink: 0; padding-block: .4rem; }
+  .screen[data-sample-display="ebook"] .surface > header :is(a,button) { min-height: 36px; padding-block: .35rem; }
+  .screen[data-sample-display="ebook"] .surface > footer { flex-shrink: 0; padding-block: .4rem; font-size: .65rem; }
+  .screen[data-sample-display="ebook"] :global([data-sample-audio-scope]) { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; zoom: var(--sample-zoom); }
+  .screen[data-sample-display="ebook"] :global([data-sample-detail-body]) { max-width: 68ch; margin-inline: auto; }
+  .screen[data-sample-display="ebook"] :global([data-sample-summary]) > section { max-width: 900px; margin-inline: auto; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); grid-template-rows: auto minmax(0,1fr) auto; overflow: hidden; scrollbar-gutter: auto; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > nav { grid-column: 1 / -1; padding-block: .4rem; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > nav:first-child { padding-block: .15rem; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > nav:first-child > span { padding-block: 0; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > nav:last-child { grid-row: 3; }
   .screen[data-sample-display="ebook"][data-sample-spread="double"] .summary,
-  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > section { min-width: 0; height: max(320px,calc(100dvh - 320px)); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
-  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > section { border-top: 0; border-left: 1px solid #d1d7d8; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > section { min-width: 0; min-height: 0; height: 100%; grid-row: 2; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] .summary { grid-column: 1; }
+  .screen[data-sample-display="ebook"][data-sample-spread="double"] :global([data-sample-audio-scope]) > section { grid-column: 2; border-top: 0; border-left: 1px solid #d1d7d8; }
+  .screen[data-sample-display="ebook"] .surface > details { max-height: 20vh; overflow: auto; flex-shrink: 0; }
 }
 @media (max-width: 1099px), (max-height: 599px) {
   .screen[data-sample-display="ebook"] .bookThumbnails { display: none; }
