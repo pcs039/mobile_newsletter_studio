@@ -121,3 +121,43 @@ test('same-article mobile/book switches keep identity, interest and detail witho
   assert(h.click(tree,`/projects/${slug}/samples?articleId=${ids[4]}&interest=pets&width=390`));assert.equal(new URL(h.history.at(-1)).searchParams.get('display'),'ebook');assert(h.events.includes('datadiction:stop-article-audio'));
  }finally{h.restore();}
 });
+
+test('one-finger pan while native zoomed never turns an article or cancels the browser gesture',()=>{
+ const h=harness(`articleId=${ids[0]}&width=390`);try{
+  global.window.visualViewport={scale:2};const tree=h.render();let prevented=false;
+  tree.props.onTouchStart({target:null,touches:[{clientX:260,clientY:160}],preventDefault:()=>prevented=true});
+  tree.props.onTouchMove({touches:[{clientX:100,clientY:162}],preventDefault:()=>prevented=true});
+  tree.props.onTouchEnd({changedTouches:[{clientX:90,clientY:162}],preventDefault:()=>prevented=true});
+  assert.equal(h.history.length,0);assert.equal(h.events.length,0);assert.equal(prevented,false);
+ }finally{h.restore();}
+});
+test('a pinch cancels the in-flight swipe even when scale returns to one before fingers release',()=>{
+ const h=harness(`articleId=${ids[0]}&width=390`);try{
+  global.window.visualViewport={scale:1};const tree=h.render();
+  tree.props.onTouchStart({target:null,touches:[{clientX:260,clientY:160}]});
+  tree.props.onTouchStart({target:null,touches:[{clientX:260,clientY:160},{clientX:120,clientY:160}]});
+  global.window.visualViewport.scale=2;tree.props.onTouchMove({touches:[{clientX:280,clientY:160},{clientX:80,clientY:160}]});
+  global.window.visualViewport.scale=1;tree.props.onTouchMove({touches:[{clientX:100,clientY:160}]});
+  tree.props.onTouchEnd({changedTouches:[{clientX:80,clientY:160}]});assert.equal(h.history.length,0);
+  tree.props.onTouchStart({target:null,touches:[{clientX:260,clientY:160}]});tree.props.onTouchEnd({changedTouches:[{clientX:180,clientY:162}]});assert.equal(h.history.length,1);
+ }finally{h.restore();}
+});
+test('scale change during a single-touch pan suppresses the pending article turn',()=>{
+ const h=harness(`articleId=${ids[0]}&width=390`);try{
+  global.window.visualViewport={scale:1};const tree=h.render();
+  tree.props.onTouchStart({target:null,touches:[{clientX:260,clientY:160}]});
+  global.window.visualViewport.scale=1.5;tree.props.onTouchMove({touches:[{clientX:160,clientY:162}]});
+  global.window.visualViewport.scale=1;tree.props.onTouchEnd({changedTouches:[{clientX:140,clientY:162}]});assert.equal(h.history.length,0);
+ }finally{h.restore();}
+});
+
+test('short taps on controls remain usable while native zoomed',()=>{
+ const h=harness(`articleId=${ids[0]}&width=390`);try{
+  global.window.visualViewport={scale:2};const tree=h.render();let prevented=false;
+  tree.props.onPointerDownCapture({target:null,button:0,pointerType:'touch',clientX:200,clientY:100});
+  tree.props.onTouchStart({target:null,touches:[{clientX:200,clientY:100}]});
+  tree.props.onTouchEnd({changedTouches:[{clientX:200,clientY:100}]});
+  tree.props.onClickCapture({target:null,detail:1,button:0,preventDefault:()=>prevented=true,stopPropagation:()=>{}});
+  assert.equal(prevented,false);assert.equal(h.history.length,0);
+ }finally{h.restore();}
+});

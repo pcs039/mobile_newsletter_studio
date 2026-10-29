@@ -180,7 +180,12 @@
 
 /* One persistent HTML tree: resize/display changes never replace forms or players. */
 .surface, .readerNotice, .displayToolbar { max-width: 740px; }
-.readingViewport { min-width: 0; }
+.screen .readingViewport {
+  min-width: 0;
+  /* Override the reused e-book scroller's pan-only rule for this reader and Demo.
+     Descendant images cannot re-enable pinch if this ancestor forbids it. */
+  touch-action: pan-x pan-y pinch-zoom;
+}
 .workspace { min-width: 0; }
 .displayToolbar { margin: 0 auto .75rem; padding: 0 .5rem; color: #234e43; }
 .displayModes { display: flex; flex-wrap: wrap; gap: .4rem; }

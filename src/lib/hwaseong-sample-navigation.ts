@@ -27,6 +27,11 @@ export function sampleSwipeDirection(start: { x: number; y: number }, end: { x: 
   return Math.abs(dx) < threshold || Math.abs(dx) < Math.abs(dy) * 1.5 ? null : dx < 0 ? "next" : "previous";
 }
 
+// One finger moves the native visual viewport while zoomed, not the article.
+export function sampleNativeZoomed(scale: number | undefined) {
+  return typeof scale === "number" && Number.isFinite(scale) && scale > 1.01;
+}
+
 // Photos may live inside zoom buttons or URL-tagged links. Their short clicks remain native.
 export function isSampleSwipeBlocked(target: EventTarget | null) {
   if (typeof Element === "undefined" || !(target instanceof Element)) return false;
