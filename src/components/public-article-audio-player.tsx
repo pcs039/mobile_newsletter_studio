@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { canPrepareDemoAudio, demoAudioPreparationHref } from "@/lib/demo-audio-preparation";
 
 type PublicArticleAudioPlayerProps = {
   ariaLabel: string;
@@ -10,6 +11,7 @@ type PublicArticleAudioPlayerProps = {
   isAiGenerated?: boolean;
   manifestUrl?: string;
   initialSegments?: ArticleAudioManifest["segments"];
+  prepareFirstSegment?: boolean;
   onPlaybackStart?: () => void;
   src?: string;
 };
@@ -73,7 +75,7 @@ function preparedSegments(value: PublicArticleAudioPlayerProps["initialSegments"
 export function PublicArticleAudioPlayer(props: PublicArticleAudioPlayerProps) {
   // A new source gets fresh state synchronously, never one render of the prior
   // article's ready button/segments while an effect catches up.
-  const key = JSON.stringify([props.isAiGenerated,props.manifestUrl,props.src,props.initialSegments]);
+  const key = JSON.stringify([props.isAiGenerated,props.manifestUrl,props.src,props.initialSegments,props.prepareFirstSegment]);
   return <ArticleAudioPlayer key={key} {...props} />;
 }
 
@@ -84,12 +86,14 @@ function ArticleAudioPlayer({
   isAiGenerated = false,
   manifestUrl,
   initialSegments,
+  prepareFirstSegment = false,
   onPlaybackStart,
   src = "",
 }: PublicArticleAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playbackRate, setPlaybackRate] = useState(readStoredPlaybackRate);
   const readySegments = preparedSegments(initialSegments);
+  const preparedFirstUrl = readySegments[0]?.url;
   const [segments, setSegments] = useState<ArticleAudioManifest["segments"]>(() => isAiGenerated ? readySegments : src ? [{index:0,url:src}] : []);
   const [segmentIndex, setSegmentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -100,6 +104,7 @@ function ArticleAudioPlayer({
   );
   const shouldContinueSegmentRef = useRef(false);
   const hasNotifiedPlaybackStartRef = useRef(false);
+  const preparingRef = useRef(false);
   const playerSourceKey = `${isAiGenerated ? "ai" : "uploaded"}:${manifestUrl || src}`;
 
   useEffect(() => {
@@ -128,15 +133,11 @@ function ArticleAudioPlayer({
     if (audio) {
       audio.pause();
 
-      try {
-        audio.currentTime = 0;
-      } catch {
-        // Some mobile browsers can reject currentTime before metadata is ready.
-      }
-
       if (options.clearSource) {
         audio.removeAttribute("src");
         audio.load();
+      } else if(audio.currentTime!==0) {
+        try { audio.currentTime = 0; } catch { /* Metadata might not be ready. */ }
       }
     }
 
@@ -213,6 +214,25 @@ function ArticleAudioPlayer({
     };
   }, [isAiGenerated, manifestUrl, readySegments.length, playerSourceKey, src, stopAudio]);
 
+  useEffect(() => {
+    const href=preparedFirstUrl&&demoAudioPreparationHref(preparedFirstUrl),audio=audioRef.current;
+    const connection=(navigator as Navigator & {connection?:{saveData?:boolean;effectiveType?:string}}).connection;
+    if(!prepareFirstSegment||!isAiGenerated||!href||!audio||!canPrepareDemoAudio(navigator.userAgent,connection))return;
+    let started=false;
+    function start() {
+      if(started||!audio||document.visibilityState!=="visible"||audio.closest("[inert]")||!audio.paused||audio.currentTime!==0)return;
+      started=true;preparingRef.current=true;
+      // The same native element retains its bounded first bytes for a real click.
+      // No Blob URL, second audio element, play(), manifest request or public cache.
+      audio.src=href!;audio.preload="metadata";audio.load();
+    }
+    const blocked=audio.closest("[inert]");
+    const observer=blocked?new MutationObserver(start):null;
+    observer?.observe(blocked!,{attributes:true,attributeFilter:["inert"]});
+    document.addEventListener("visibilitychange",start);start();
+    return()=>{observer?.disconnect();document.removeEventListener("visibilitychange",start);audio.preload="none";};
+  },[prepareFirstSegment,isAiGenerated,preparedFirstUrl]);
+
   async function toggleAudio() {
     const audio = audioRef.current;
 
@@ -255,6 +275,7 @@ function ArticleAudioPlayer({
   }
 
   function handleLoadedMetadata() {
+    if(preparingRef.current && audioRef.current) audioRef.current.preload="none";
     applyPlaybackRate();
     const audio = audioRef.current;
 
@@ -349,6 +370,14 @@ function ArticleAudioPlayer({
         aria-label={ariaLabel}
         onCanPlay={applyPlaybackRate}
         onEnded={handleEnded}
+        onError={() => {
+          if(preparingRef.current&&audioRef.current){
+            preparingRef.current=false;
+            audioRef.current.preload="none";
+            audioRef.current.src=currentSrc;
+            audioRef.current.load();
+          }
+        }}
         onLoadedMetadata={handleLoadedMetadata}
         onPause={() => setIsPlaying(false)}
         onPlay={() => {
