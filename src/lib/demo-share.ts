@@ -2,7 +2,7 @@ import "server-only";
 import { createHash, createHmac } from "crypto";
 import { cookies } from "next/headers";
 import { hashClientReviewToken, isClientReviewToken } from "@/lib/client-review";
-import { getProjectContent, getProjectWorkspace, type ProjectContentArticle } from "@/lib/newsletter-repository";
+import { getProjectContent, getProjectWorkspace, getProjectWorkspaceById, type ProjectWorkspaceResult, type ProjectContentArticle } from "@/lib/newsletter-repository";
 import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { isArticlePubliclyVisible } from "@/lib/article-publication";
 import { demoStep, demoTimed, type DemoTrace } from "@/lib/demo-share-diagnostics";
@@ -40,8 +40,9 @@ export async function demoRows(query: URLSearchParams, method = "GET", body?: un
   if (!response.ok) throw new DemoError(response.status===404?503:response.status===409?409:502,response.status===404?"시연용 발행 기능을 준비 중입니다. 관리자에게 문의하세요.":"시연 링크 상태를 확인하지 못했습니다. 자동 재시도하지 말고 목록을 확인하세요.");
   return response.json();
 }
-export async function demoSource(slug: string) {
-  const workspace = await getProjectWorkspace(slug);
+export async function demoSource(slug: string, resolvedWorkspace?: ProjectWorkspaceResult) {
+  const workspace = resolvedWorkspace?.ok&&resolvedWorkspace.project.slug===slug
+    ? resolvedWorkspace : await getProjectWorkspace(slug);
   const content = await getProjectContent(slug,workspace);
   if (!workspace.ok || content.source!=="supabase") throw new DemoError(503,"시연 자료 서버를 확인하지 못했습니다.","SOURCE_UNAVAILABLE");
   if (workspace.project.statusCode==="archived") throw new DemoError(409,"보관된 프로젝트는 시연할 수 없습니다.","PROJECT_MISMATCH");
@@ -96,16 +97,15 @@ export async function getDemoAccess(token: string, slug?:string, trace?: DemoTra
   if(!demoShareIsLive(share)) throw new DemoError(410,"만료된 시연 링크입니다.","EXPIRED");
   demoStep(trace,"share_lookup","VALIDATED");
   demoStep(trace,"project_lookup","START");
-  const key=process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const url=getSupabaseRestEndpoint(`/rest/v1/newsletter_projects?${new URLSearchParams({select:"slug",id:`eq.${share.project_id}`,deleted_at:"is.null",limit:"1"})}`);
-  if(!url) throw new DemoError(503,"서버 설정을 확인하세요.");
-  const r=await demoTimed(trace,"project",()=>fetch(url,{headers:{apikey:key,Authorization:`Bearer ${key}`},cache:"no-store"}));
-  if(!r.ok) throw new DemoError(503,"시연 상태를 확인하지 못했습니다.");
-  const projectSlug=(await r.json())[0]?.slug as string|undefined;
-  if(!projectSlug||(slug&&projectSlug!==slug)) throw new DemoError(404,"시연 링크를 확인하세요.","PROJECT_MISMATCH");
+  // Resolve the full project once, by the grant's project ID; reuse it only
+  // within this request for the source snapshot and content query.
+  const workspace=await demoTimed(trace,"project",()=>getProjectWorkspaceById(share.project_id));
+  if(!workspace.ok)throw new DemoError(workspace.source==="not_found"?404:503,"시연 프로젝트를 확인하지 못했습니다.",workspace.source==="not_found"?"PROJECT_MISMATCH":"SOURCE_UNAVAILABLE");
+  const projectSlug=workspace.project.slug;
+  if(workspace.project.id!==share.project_id||!projectSlug||(slug&&projectSlug!==slug))throw new DemoError(404,"시연 링크를 확인하세요.","PROJECT_MISMATCH");
   demoStep(trace,"project_lookup","VALIDATED");
   demoStep(trace,"source_snapshot","START");
-  const source=await demoTimed(trace,"source",()=>demoSource(projectSlug));
+  const source=await demoTimed(trace,"source",()=>demoSource(projectSlug,workspace));
   const articles=selectDemoArticles(source.articles,share.article_ids);
   if(source.project.id!==share.project_id||demoSnapshot(articles)!==share.source_snapshot) throw new DemoError(409,"자료가 변경되어 시연 링크를 다시 발급해야 합니다.","SOURCE_CHANGED");
   demoStep(trace,"source_snapshot","MATCHED");
