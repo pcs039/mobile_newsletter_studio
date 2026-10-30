@@ -1,0 +1,122 @@
+-- R1-A RESULTS / REVIEW NOTES -- 2026-10-30, base PR290 b76322e.
+-- All statements/DDL/tests ran ONLY in a fresh local PostgreSQL 17.11 cluster,
+-- /private/tmp/prepared-r1a-pg, private Unix socket, no TCP listener.
+-- NO public/Supabase migrations, remote SQL, app changes, deployment changes,
+-- Storage operations, TTS, Production or Staging data operations were performed.
+-- This file contains comments only; projection.sql is NOT a deployable migration.
+--
+-- Verdict: DO NOT automatically start R1-B. Consistency is feasible in one SQL
+-- snapshot, but per-reader whole-source hashing has a measured DB CPU cost and
+-- has not established an end-to-end performance advantage. Prepared tables /
+-- four RPCs were not implemented. Keep PR290's design as the review baseline.
+--
+-- 1. Dependency projection (bounded, versioned contract)
+-- - project: explicit presentation allowlist; publication/assignee/password/
+--   revoked/expiry are LIVE AUTHORIZATION, not this content fingerprint.
+-- - articles: project-wide IDs for regular; exact selected IDs for Demo. All
+--   display/type/font/motion/order/urgency inputs plus eligible(now) are hashed.
+--   Rolling start/end are inclusive, and now itself is not hashed.
+-- - blocks/links/compositions/placements: include child identity, text, metadata,
+--   visibility/order/settings without relying on parent updated_at. Links reached
+--   from an overlay or block are included even with article_id NULL.
+-- - page/home/hotspot/overlay/link_area/kit: current scoped rows, not a cached
+--   reader permission. Home tables do not all have an id; link_area is page-bound.
+-- - assets/design: referenced IDs and decoded controlled path references, plus
+--   project logo candidates. Unrelated illustrations are not aggregated.
+-- - fonts: project/article face IDs, Composition roles, metadata references,
+--   aliases, and SAME FAMILY candidates (including disabled faces). New references
+--   and new matching faces invalidate. Unrelated library rows are not aggregated.
+-- - audio: connected IDs/article candidates plus sample v2/v3/acting title
+--   namespaces, approval/completion/script/path/adoption proof. Candidate insertion
+--   is detected; a current manifest's IDs alone are insufficient.
+-- - renderer/projection versions: required. Unknown renderer => cacheable=false.
+--   Ambiguous block/link/legacy-audio order => cacheable=false, retain dynamic.
+-- - Storage bytes/ETag/version are NOT proved by a row hash: media_reuse is always
+--   dynamic_only. No original is copied, locked, replaced or deleted here.
+--
+-- Remaining coverage risks: fixture tables are typed synthetic subsets of the
+-- repository schema, not a remote-schema compatibility audit. The explicit article
+-- allowlist is based on articleContentColumns; code-defined editorial content still
+-- requires renderer-version discipline. Unsupported future metadata renderers,
+-- remote URL changes, storage-only overwrites, and non-atomic multi-transaction
+-- writer workflows are not magically fixed by a single snapshot.
+--
+-- 2. PostgreSQL evidence (5 repetitions, warm buffers; milliseconds, medians)
+--                       7 articles     700 articles
+-- projection only           1.689          103.140
+-- dynamic SQL analogue      1.750           46.082
+-- Demo gate + projection    2.581          145.848
+-- SQL statement counts: respectively 1, 12, 3 (not HTTP request measurements).
+-- The gate analogue retains existing share + full source reads; no substitution
+-- of the legacy JavaScript demoSnapshot by the new SHA-256 is permitted.
+--
+-- Backend CPU (actual macOS ps cumulative user+system, centisecond resolution):
+--                       7 articles     700 articles
+-- projection only          ~2.33 ms        ~97.50 ms
+-- dynamic SQL analogue     ~2.67 ms        ~67.50 ms
+-- Demo gate + projection   ~3.33 ms       ~163.75 ms
+-- CPU batches: 30 / 8 repetitions, parallel query disabled. These coarse batch
+-- averages are NOT precise single-call CPU profiles and exclude client CPU.
+--
+-- Shared buffer hit blocks (not unique pages; no disk cold-cache claim):
+-- projection               208             1855
+-- dynamic analogue         504             9385
+-- gate + projection        519             9228
+-- Median shared reads = 0 in this warmed experiment. Full actual node plans,
+-- planning/execution samples, temp buffers and return bytes are in the JSON files.
+--
+-- Returned psql text bytes, NOT HTTP/PostgREST/HTML sizes:
+-- projection               173              181
+-- dynamic analogue      299886          9582260
+-- gate + projection     114792          9080392
+-- The compact digest is small, but Demo must still read current source for the
+-- existing authorization/hash contract. Prepared payload/head lookup, HTTP/SSR,
+-- legacy JS hashing, media gate and physical-device timings are NOT measured.
+-- This experiment returns only digest/diagnostics to model a reader-side check.
+-- A future builder/claim must capture source AND digest in that same statement;
+-- fetching source in a later statement would lose the capture consistency proof.
+-- Fewer network trips/bytes could help high-latency workloads; no improvement
+-- percentage or real-reader speedup is established by this isolated experiment.
+--
+-- 3. Plans / indexes
+-- Small article selection uses an index; large selection uses sequential/hash
+-- plans for parts of source closure. JSON projection/aggregation/serialization/
+-- SHA-256 dominate growing-source CPU; reference discovery avoids walking prose.
+-- The implementation serializes final JSON once, not twice for diagnostic bytes.
+-- Font/design output is scoped, BUT residual library/child sequential scans remain.
+-- Output filtering must not be advertised as zero scanning of unrelated rows.
+--
+-- Adding 5000 unrelated fonts + families + designs leaves the digest unchanged.
+-- Small projection median: 3.378 ms before candidate indexes, 3.386 ms after.
+-- Tested candidates: design(project_id,storage_path), family(family_name), local
+-- fixture only. The existing family css_family_name UNIQUE is already represented.
+-- No repeatable gain establishes a required production index. Do not apply these
+-- indexes remotely. Investigate set-based PK/family/path joins and actual installed
+-- indexes/row distributions before proposing DDL. Indexes do not remove hash CPU.
+--
+-- 4. Correctness
+-- 48 fixture assertions pass, including all original 11 categories, insert/delete/
+-- order, metadata/Composition without parent timestamp, font family candidates,
+-- unused-library/project isolation, UTC/key-order determinism, rolling boundary,
+-- overlay link with NULL article_id, source/grant namespace separation and a
+-- real two-connection commit during an advisory-lock-blocked read statement.
+-- The STABLE source wrapper uses the outer statement snapshot and fixed UTC.
+-- A separate-statement control sees the committed edit, illustrating why combined
+-- REST reads are not equivalent to the snapshot. No RLS/authentication RPC was
+-- implemented or tested: access_contract=NOT_AUTHORIZATION is intentional.
+-- PostgreSQL basis: https://www.postgresql.org/docs/17/xfunc-volatility.html
+-- Plan accounting: https://www.postgresql.org/docs/17/using-explain.html
+--
+-- 5. R1-B gate
+-- HOLD. Before building 2 prepared tables/4 RPCs: choose an acceptable source-size
+-- budget or reduce the validated projection cost without losing coverage; prove
+-- gate+digest+head/payload reuse end-to-end on an approved isolated/server fixture;
+-- benchmark misses as well as hits. A universal dirty counter changes all writer
+-- contracts and is NOT implicitly approved as a workaround. Keep uncertain media
+-- dynamic_only and the current PR289 reader unchanged.
+--
+-- Reproduction: start a NEW PG17 cluster at the exact DATA/socket paths used by
+-- run_isolated.py (listen_addresses=''), then run that file. It refuses any other
+-- data_directory/TCP connection. --reset-synthetic drops only its local r1a schema
+-- after this guard. No .env / Supabase settings are read. Every run records numeric
+-- measurements and synthetic EXPLAIN JSON; the query SHA-256 is included.
