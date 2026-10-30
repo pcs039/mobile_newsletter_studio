@@ -8,8 +8,6 @@ import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/h
 import { getFontAssets, makePublicStoragePreviewHref } from "@/lib/newsletter-repository";
 import { getArticleHeroBackgroundReferences, getArticleTextDesigns } from "@/lib/article-composition-repository";
 import { prepareSampleCover } from "@/lib/hwaseong-sample-cover-server";
-import { prepareSampleMap, prepareSampleToc } from "@/lib/hwaseong-sample-toc-server";
-import { splitAudioIndex } from "@/lib/hwaseong-sample-split-tts-server";
 import type { SampleAudioDeliveries } from "@/lib/sample-audio-delivery";
 import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 
@@ -57,7 +55,7 @@ export async function prepareHwaseongDemoEntry(token: string, trace: DemoTrace) 
 }
 async function demoAudioIndex(samples: ProposalSample[], slug: string) {
   const deliveries: SampleAudioDeliveries=new Map();
-  const index=await splitAudioIndex(samples,deliveries);
+  const index=await (await import("@/lib/hwaseong-sample-split-tts-server")).splitAudioIndex(samples,deliveries);
   const request=new Request("https://demo.invalid");
   for(const [article,source] of Object.entries(index))for(const part of ["summary","detail"] as const){
     const audio=part==="summary"?source:source.detail;
@@ -83,8 +81,8 @@ async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseo
     demoTimed(trace,"backgrounds",()=>getArticleHeroBackgroundReferences(projectId, ids, true)),
     prepareMedia ? demoTimed(trace,"audio_index",()=>demoAudioIndex(samples,slug)) : {} as Record<string,SampleAudio>,
     prepareMedia && sourceCover ? preparedCover??demoTimed(trace,"cover",()=>prepareSampleCover(projectId, slug, sourceCover)) : null,
-    prepareMedia ? demoTimed(trace,"thumbnails",()=>prepareSampleToc(projectId, slug, samples)) : {},
-    prepareMedia ? demoTimed(trace,"map",()=>prepareSampleMap(projectId, slug, samples)) : undefined,
+    prepareMedia ? demoTimed(trace,"thumbnails",async()=>(await import("@/lib/hwaseong-sample-toc-server")).prepareSampleToc(projectId, slug, samples)) : {},
+    prepareMedia ? demoTimed(trace,"map",async()=>(await import("@/lib/hwaseong-sample-toc-server")).prepareSampleMap(projectId, slug, samples)) : undefined,
   ])).catch(()=>{throw new DemoError(503,"미디어 준비 실패","MEDIA_PREPARATION_FAILED");});
   demoStep(trace,"media_prepare","READY");
   demoStep(trace,"render","START");
@@ -132,7 +130,7 @@ export async function deliverHwaseongDemoAudio(slug: string, article: string, pa
   const access = await getHwaseongDemoAccess(slug,trace);
   if (!access.samples.some(s => s.article.id === article) || !["summary","detail"].includes(part)) return new Response(null,{status:404});
   const deliveries: SampleAudioDeliveries = new Map();
-  const index = await demoTimed(trace,"audio_index",()=>splitAudioIndex(access.samples,deliveries)), source = index[article];
+  const index = await demoTimed(trace,"audio_index",async()=>(await import("@/lib/hwaseong-sample-split-tts-server")).splitAudioIndex(access.samples,deliveries)), source = index[article];
   const audio = part === "detail" ? source?.detail : source;
   if (!audio) return new Response(null,{status:404});
   // The index registered a delivery only after matching the current script,

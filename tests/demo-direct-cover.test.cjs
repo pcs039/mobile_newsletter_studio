@@ -32,7 +32,7 @@ for(const code of ['SESSION_MISSING','REVOKED','EXPIRED','SOURCE_CHANGED'])test(
  const h=sessionHarness({ok:false,code});let clean;try{h.render();clean=h.mount();await settle();assert.equal(h.history.length,0);const html=renderToStaticMarkup(h.render());assert.match(html,new RegExp(code));assert(!html.includes('검증된 표지'));assert(!html.includes(token));h.handlers.get('focus')();await settle();assert.equal(h.requests.length,1);
  }finally{clean?.();h.close();}
 });
-test('cover loading shell contains no private assets, entry button or time-based return to instructions',()=>{const html=renderToStaticMarkup(loader()('src/app/demo/open/[token]/loading.tsx').default());assert.match(html,/role="status"/);assert(!html.includes('<button'));assert(!html.includes('<img'));assert(!html.includes('소식지 열기'));});
+test('no generic loading route or visible preparation message precedes the real cover',()=>{assert.equal(require('fs').existsSync('src/app/demo/open/[token]/loading.tsx'),false);const source=require('fs').readFileSync('src/components/hwaseong-demo-cover-pending.tsx','utf8');assert(!source.includes('준비하고'));assert(!source.includes('role="status"'));});
 
 test('focus events do not duplicate an in-flight initial cookie verification',async()=>{
  let complete;const pending=new Promise(r=>complete=r),h=sessionHarness(()=>pending);let clean;

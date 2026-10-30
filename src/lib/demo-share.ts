@@ -2,7 +2,7 @@ import "server-only";
 import { createHash, createHmac } from "crypto";
 import { cookies } from "next/headers";
 import { hashClientReviewToken, isClientReviewToken } from "@/lib/client-review";
-import { getProjectContent, getProjectWorkspace, getProjectWorkspaceById, type ProjectWorkspaceResult, type ProjectContentArticle } from "@/lib/newsletter-repository";
+import { getProjectContent, getProjectWorkspace, getProjectWorkspaceById, getProjectContentSnapshotById, type ProjectWorkspaceResult, type ProjectContentResult, type ProjectContentArticle } from "@/lib/newsletter-repository";
 import { getSupabaseRestEndpoint } from "@/lib/supabase-config";
 import { isArticlePubliclyVisible } from "@/lib/article-publication";
 import { demoStep, demoTimed, type DemoTrace } from "@/lib/demo-share-diagnostics";
@@ -44,6 +44,9 @@ export async function demoSource(slug: string, resolvedWorkspace?: ProjectWorksp
   const workspace = resolvedWorkspace?.ok&&resolvedWorkspace.project.slug===slug
     ? resolvedWorkspace : await getProjectWorkspace(slug);
   const content = await getProjectContent(slug,workspace);
+  return checkedDemoSource(workspace,content);
+}
+function checkedDemoSource(workspace:ProjectWorkspaceResult,content:ProjectContentResult) {
   if (!workspace.ok || content.source!=="supabase") throw new DemoError(503,"시연 자료 서버를 확인하지 못했습니다.","SOURCE_UNAVAILABLE");
   if (workspace.project.statusCode==="archived") throw new DemoError(409,"보관된 프로젝트는 시연할 수 없습니다.","PROJECT_MISMATCH");
   return {project:workspace.project,articles:content.articles.filter(a=>a.title.trim()&&isArticlePubliclyVisible(a))};
@@ -99,13 +102,15 @@ export async function getDemoAccess(token: string, slug?:string, trace?: DemoTra
   demoStep(trace,"project_lookup","START");
   // Resolve the full project once, by the grant's project ID; reuse it only
   // within this request for the source snapshot and content query.
-  const workspace=await demoTimed(trace,"project",()=>getProjectWorkspaceById(share.project_id));
+  const bundled=stagingEnvironmentConfigured()&&share.project_id==="4cd5297e-a0fd-434c-84d4-fa4d3baf9389";
+  const snapshot=bundled?await demoTimed(trace,"project",()=>getProjectContentSnapshotById(share.project_id)):null;
+  const workspace=snapshot?.workspace??await demoTimed(trace,"project",()=>getProjectWorkspaceById(share.project_id));
   if(!workspace.ok)throw new DemoError(workspace.source==="not_found"?404:503,"시연 프로젝트를 확인하지 못했습니다.",workspace.source==="not_found"?"PROJECT_MISMATCH":"SOURCE_UNAVAILABLE");
   const projectSlug=workspace.project.slug;
   if(workspace.project.id!==share.project_id||!projectSlug||(slug&&projectSlug!==slug))throw new DemoError(404,"시연 링크를 확인하세요.","PROJECT_MISMATCH");
   demoStep(trace,"project_lookup","VALIDATED");
   demoStep(trace,"source_snapshot","START");
-  const source=await demoTimed(trace,"source",()=>demoSource(projectSlug,workspace));
+  const source=await demoTimed(trace,"source",async()=>snapshot?checkedDemoSource(workspace,snapshot.content):demoSource(projectSlug,workspace));
   const articles=selectDemoArticles(source.articles,share.article_ids);
   if(source.project.id!==share.project_id||demoSnapshot(articles)!==share.source_snapshot) throw new DemoError(409,"자료가 변경되어 시연 링크를 다시 발급해야 합니다.","SOURCE_CHANGED");
   demoStep(trace,"source_snapshot","MATCHED");
