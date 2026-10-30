@@ -4,6 +4,7 @@
 - 기준: 고정 Staging / PR #289 `51537b51176b9427368c6705a2cf4549872fe5eb`. PR #287~#289의 동작을 유지한다.
 - 상태: 설계안. 이 문서는 코드·SQL·환경설정·DB·Storage·발행 상태를 변경하지 않는다. 원격 스키마의 설치 여부를 새로 실사한 결과가 아니다.
 - 관련 문서: [검증 계획](publication-prepared-content-test-plan-v1.md), [적용 계획](publication-prepared-content-rollout-v1.md).
+- R0.5 갱신: 2026-10-30. 저장 경로 대조·GET/HEAD 계측·로컬 계약 모의 검증은 11절을 따른다. 실제 SQL/RPC 구현·원격 쓰기는 하지 않았다.
 
 ## 1. 결정 요약
 
@@ -203,3 +204,80 @@ v1 Demo의 `getDemoAccess`·`demoSnapshot` 알고리즘을 새 digest로 대체�
 - 새 준비 테이블은 독립 기사 공개 이력/미디어 보존 ledger가 아니다. 별도 독립 발행 기능이 나중에 활성화돼도 그 상태·revision·파일 gate를 그대로 사용하며 v1 준비본의 입력으로 일반 live draft를 대입하지 않는다.
 
 세부 합격 조건은 [테스트 계획](publication-prepared-content-test-plan-v1.md), 승인·복귀 순서는 [rollout](publication-prepared-content-rollout-v1.md)을 따른다.
+
+## 11. R0.5 구현 타당성 검토
+
+### 11.1 원본 변경 경로와 digest 대응표
+
+아래는 현재 코드/기존 SQL 정의를 읽은 결과다. 현재 원격 DB의 모든 trigger·권한·외부 관리 도구를 실사한 결과는 아니다. 새 source projection은 아직 구현하지 않았으므로, ‘검출 가능’은 **해당 실제 값/집합을 투영할 경우**의 판단이다. 기사 timestamp의 전파를 전제로 하지 않는다.
+
+| 저장 경로·근거 | 실제 변경 범위 | 준비본이 읽어야 할 값/집합과 검출 조건 |
+|---|---|---|
+| [`updateNewsletterProject`](../src/lib/newsletter-repository.ts) / `api/projects` | 프로젝트 제목·표지·폰트·색·기사 기본값·slug; 비밀번호·담당자 등도 같은 저장 경로 | 표현 필드만 source, 소유권/비공개/비밀번호 등은 live gate. project.updated_at 하나로 대체하지 않음 |
+| 일반 기사 `upsertProjectArticle` / [v1.38 저장·순서](../supabase/schema_v1_38_article_order_atomic.sql) | 기사 생성/수정·폰트·분류·유효기간, 기존 블록/링크 삭제 후 새 행 삽입, 순서 변경 | 프로젝트의 현재 기사 ID 집합과 정렬 입력, 기사·블록·링크 전체 렌더링 입력. 이전 manifest의 ID만 읽으면 신규 기사/새 블록을 놓침 |
+| 화성 [안전 텍스트 저장](../src/lib/hwaseong-sample-text-edit-server.ts), [v1.45](../supabase/schema_v1_45_sample_text_edit.sql) | 제목·요약·블록 텍스트와 proposal_sample/proposal_editorial metadata; 기존 원본 보존 | 실제 표시되는 metadata 및 일반 텍스트 둘 다. 보존용 원문은 표시/대본 의존성이 아닐 때 제외하고 임의 공개하지 않음 |
+| [블록 삭제 API](../src/app/api/project-content/blocks/route.ts), [v1.21](../supabase/schema_v1_21_article_transactions.sql) | 블록 및 미참조 link_action 삭제. 이 함수는 부모 article UPDATE를 수행하지 않음 | block/link 집합의 삭제 자체로 검출. article.updated_at만 비교하면 누락 |
+| [Composition 상태·settings·placement 저장/삭제](../src/lib/article-composition-repository.ts), [v1.25](../supabase/schema_v1_25_article_compositions.sql) | Composition 또는 placement만 PATCH/POST/DELETE; 자체 updated_at trigger | status/layout/settings(textDesign/fontDesign 포함), placement ID/slot/order/visibility/settings/asset_id. 부모 article timestamp 전파 없음 |
+| [Composition 일괄 복사](../supabase/schema_v1_28_article_composition_batch_copy.sql) | 대상 Composition/placement 교체 | 대상의 전체 현재 집합으로 검출. 원본 기사만 검사하는 방식 불가 |
+| [AI 이미지 적용](../src/lib/ai-image-article-server.ts), [Canva 전체 디자인 적용](../src/lib/article-full-layout-server.ts) | 별도 atomic RPC로 대표 이미지·블록·연결/표현 상태 변경 | 대표 자산 ID, 실제 블록/metadata·Composition·디자인 자산을 포함. 일반 편집기 경로만 추적하지 않음 |
+| [Design Kit 저장](../src/lib/newsletter-repository.ts) | `newsletter_project_design_kits`의 색·폰트·표현 기본값 | 현재 렌더러가 상속하는 필드와 신규/삭제 kit. 읽지 않는 내부 관리 정보는 제외 |
+| [디자인 자산 등록·분류·승인·활성·삭제](../src/app/api/project-design-kit/assets/route.ts) | `newsletter_project_design_assets` 및 파일; 기사 UPDATE 없음 | 소속/bucket/path/type/approval/active/metadata/표현 관련 필드. 파일 바이트는 별도 proof 필요 |
+| [폰트 단건](../src/app/api/font-assets/route.ts), [패밀리](../src/app/api/font-packages/route.ts), [batch](../src/lib/font-batch-server.ts) | font_assets/font_families 생성·활성·허가/기본/굵기 정보. 기사 UPDATE 없음 | 사용 face/family 및 현재 fallback/선택에 영향을 주는 후보 집합. 사용 ID만 고정하면 신규 기본 face나 family 상태 변경을 놓칠 수 있음 |
+| [일반 파일 등록·완료·삭제/음성 연결](../src/lib/newsletter-file-storage.ts), [`updateProjectAudioArticleLink`](../src/lib/newsletter-repository.ts) | assets/pages/audio 행, PDF/기사 음성 연결; 여러 요청으로 연결을 바꾸는 구간 존재 | 현재 파일 행·연결·노출 정책·경로. 다중 트랜잭션의 중간 저장본을 하나의 완료된 편집이라고 보장할 수 없음 |
+| [일반 TTS 완료](../src/lib/article-tts-server.ts), [v1.43](../supabase/schema_v1_43_article_tts_safety.sql) | 신규 audio metadata + ai_audio_id 원자 연결, 이후 미사용 구음성 정리 | source/ai_audio_id/audio_id/voice·대본·현재 audio 행/파일. 처리중/실패 상태만으로 이전 정상 음성을 임의 교체하지 않음 |
+| [v3 음성 선택](../src/lib/hwaseong-sample-quality-tts-server.ts), [채택 만평](../src/lib/hwaseong-cartoon-acting-server.ts), [v2 fallback](../src/lib/hwaseong-sample-split-tts-server.ts) | article_id=null인 QA/채택 audio 행의 승인·완료·adoption proof로 독자 음성이 바뀜 | 현재 선택 행뿐 아니라 **선택 후보**의 ID/상태/대본 hash/path/완료/proof. article.updated_at·article.audio_id만 보면 누락. 코드 선택 규칙은 renderer version |
+| 홈·페이지 핫스팟·오버레이·링크 영역 | `newsletter_article_home_metadata`, project_home_settings, page_hotspot_links, image_overlays, link_areas | 해당 렌더러가 참조하는 행과 연결 집합. 현재 화성 fixture가 0행인 영역은 변경 검출 통합 검증이 아직 없음 |
+| publish/private/archive/delete 및 Demo grant 변경 | 현재 프로젝트 상태·삭제/공유 행·만료 시각 | source hash로 권한을 고정하지 않음. live gate/binding/시간 경계로 별도 판단 |
+
+**검출 한계:** 같은 Storage path의 바이트만 바꾸고 관련 DB 입력이 같으면 DB source digest는 같게 남는다. 외부 URL의 원격 콘텐츠 변경도 DB로 검출할 수 없다. 코드에 고정된 표현은 renderer 버전 갱신 누락 시 검출되지 않는다. DB를 직접 변경하는 미조사 writer·새 테이블·새 fallback 규칙은 투영 allowlist 보강 전 미검증이다. row 전체를 단순 hash하면 저장 전후 변경은 잡지만 비표시·민감 필드/불필요한 전역 폰트 변경까지 invalidation하므로 최종 계약으로 채택하지 않는다.
+
+### 11.2 Storage 동일성의 현재 증거와 HIT 제한
+
+| 경로 | 코드상 덮어쓰기 계약 | R0.5 판단 |
+|---|---|---|
+| 일반 파일 업로드/서명 업로드 | `makeStoragePath`는 시간+UUID를 사용하지만 upload/sign은 upsert=true 또는 x-upsert=true | 보통 새 경로를 만들지만 write-once 강제 계약이 아님. 권한/다른 writer 확인 없이 불변으로 분류 불가 |
+| 일반 디자인 등록 | [공통 writer](../src/lib/project-design-asset-write.ts)는 x-upsert=false, 새 자산 경로 사용 | 앱의 해당 요청은 덮어쓰지 않음. Dashboard/service-role 등 모든 writer의 덮어쓰기 불가능을 증명한 것은 아님 |
+| 직접 업로드 B2 | [transport](../src/lib/design-asset-direct-upload-storage.ts)·[기존 v1.41](../supabase/schema_v1_41_design_asset_direct_upload.sql): session/generation 경로, upsert=false, 실제 bytes SHA-256 검증, directUpload.sha256 provenance | 보존 시점의 강한 proof 후보. 현재 객체와의 신선한 연결 및 외부 쓰기 경계 확인 전 HIT 자동 허용하지 않음 |
+| 폰트 등록/batch | UUID/패밀리/내용 hash 경로, upsert=false. batch는 충돌 시 실제 bytes hash 비교 | 이름·hash형 경로만으로 현재 bytes를 신뢰하지 않음. 사용중 face/허가 검사와 현재 객체 증거 별도 |
+| 일반/샘플 TTS | 시도/내용 ID 경로와 upsert=false, 생성 시 bytes 검증 | 대본 hash는 MP3 bytes hash가 아님. 일반 TTS 완료 RPC는 segment hash를 검증 입력으로 받지만 audio 행에 그 hash를 영속하는 계약은 없음. 생성 당시 검증과 현재 파일 동일성 구분 |
+
+Staging의 표지·관광지도·현재 음성·활성 폰트 **대표 객체 각 1건**을 GET info/HEAD로 조사했다. 모두 HTTP 200, ETag/Last-Modified와 info.version은 존재했고 `is_versioned=false`, `x-amz-version-id`는 없었다. metadata 객체는 비어 있었고 전용 SHA-256 checksum 증거는 확인하지 못했다. 폰트 HEAD에는 Content-Length가 없어 info.size와 구분했다. 전체 Storage 자산의 동일성 보증은 아니다.
+
+- info.version은 현재 내부 revision 식별 후보다. 과거 바이트를 다시 받는 S3 VersionId나 SHA-256이라는 의미는 아니다. [Supabase S3 문서](https://supabase.com/docs/guides/storage/s3/compatibility)는 S3 versioning 미지원이라고 명시한다.
+- ETag는 HTTP 객체 validator로 관측했다. 생성 시 저장한 SHA-256을 대체하지 않으며 현재 경로의 overwrite 후 변경/삭제 반영·조건부 읽기·CDN 일관성은 쓰기 실험 없이 입증하지 못했다. [AWS ETag 정의](https://docs.aws.amazon.com/AmazonS3/latest/API/API_Object.html)도 항상 MD5인 것으로 보지 않는다.
+- [Supabase upload](https://supabase.com/docs/guides/storage/uploads/standard-uploads)의 upsert=true는 같은 경로 덮어쓰기를 허용한다. [Smart CDN](https://supabase.com/docs/guides/storage/cdn/smart-cdn)은 변경/삭제의 전파 지연을 설명하므로 `fetch no-store`만으로 upstream의 즉시 최신성까지 증명하지 않는다.
+- 따라서 R0.5에서 기존 객체를 **검증된 immutable HIT 대상**으로 새로 승인한 건수는 0이다. 미확인 자산은 기존 동적 미디어로 유지한다. 본문 표현 준비본을 사용해도 media manifest에 `dynamic_only`를 구분하며 검증된 파생 바이트처럼 표시하지 않는다. 원본 정책을 바꾸거나 파일을 복제해 문제를 감추지 않는다.
+
+### 11.3 성능 측정 결과와 구현 전 결론
+
+2026-10-30, #289 코드의 실제 서버 helper를 Mac Node에서 읽기 전용 실행했다. Staging origin만 허용하고 모든 비 GET/HEAD·OpenAI/다른 origin 요청을 차단한 transport를 사용했다. 같은 현재 grant·7건 선택을 기존 코드로 검증했고, 최초 모듈/연결 warm-up 1회 후 5회를 측정했다. 폰트/Composition helper가 실행되도록 Staging 공개 설정 존재 조건도 충족시켰다. 브라우저/Next SSR·서울 Vercel·첫 방문/재접속·실제 청감 측정이 아니며 기존 #289 브라우저 수치와 직접 차감하지 않는다.
+
+| 비용 | 이번 관측/모의 결과 | 판단 범위 |
+|---|---|---|
+| 동적 `getHwaseongDemoEntryData` 전체 | 301.14 / 301.72 / 246.33 / 272.08 / 247.09ms, 중앙값 **272.08ms** | 현재 source+접근+폰트/디자인/음성/표지 helper. 실제 HTML TTFB/LCP 아님 |
+| 위 helper의 실제 I/O | 매회 **DB GET 12회 / Storage GET 1회**, DB body 463,423B, 표지 Storage body 212,724B | grant 1 + 중첩 source 1 + 기사 조건 2 + Composition 2 + placement 1 + 디자인/표지 2 + 음성 후보 2 + 폰트 1. 병렬 요청 합계가 전체 응답시간과 같지 않음 |
+| 주요 DB 요청 중앙값 | source 104.18ms / font 59.17ms / grant 22.95ms | 네트워크+DB+전송·수신 포함, DB scan/CPU 시간으로 분리한 수치가 아님. 폰트 응답 288,779B는 후단 필터 전 크기 |
+| 임시 broad 원본 투영 + canonical SHA-256 | 558,252B, 5회 중앙값 **5.18ms** | 프로젝트 1/기사 9/블록 35/링크 9/audio 40/Composition 9/placement 6/디자인 15, font 289/family 243 등을 메모리에서 hash. 별도 GET 묶음으로 단일 MVCC 아님. PostgreSQL hash/scan 예상치로 환산 금지 |
+| 관광 이미지 1건의 현재 썸네일 cache MISS | 5회 중앙값 **102.37ms**, I/O 외 잔여 48.60ms | 실제 기존 crop helper. 최초 434.18ms 표본 포함; 잔여는 Sharp+hash+JS 비용이며 순수 Sharp CPU 계측값 아님 |
+| 같은 helper의 warm cache HIT | 5회 중앙값 **53.40ms**, I/O 외 잔여 0.53ms | **매회 원본 516,304B 전체 GET + DB 1회가 계속 발생**. 내용 hash가 다운로드 뒤 만들어지므로 현재 캐시는 변환만 절약 |
+| 준비 payload 로컬 JSON parse | 5회 중앙값 **0.30ms**, 입력 351,179B | 이미 확보한 payload의 RAM 재사용 하한만 측정. 권한·현재 source·DB/Storage·SSR 제외. 준비본 HIT 응답시간 아님 |
+| 새 SQL digest/resolve·권한 비용 | **미측정** | 아직 함수/실행계획/인덱스가 없다. 왕복 감소와 내부 scan·JSON 집계 증가를 구분해야 함 |
+| 실제 준비본 HIT/MISS 응답시간 | **미측정** | 새 schema/API를 만들지 않았음. local parse나 기존 이미지 cache HIT를 새 시스템 성과로 보고하지 않음 |
+
+기존 문서의 DB 6회 기록은 이전 #288 계측 범위이며 이번의 구성된 #289 helper 12회와 동일한 기준이 아니다. 최초 문서 크기·LCP·음성 playing의 #289 기준선은 [테스트 계획 6절](publication-prepared-content-test-plan-v1.md)에 그대로 유지한다.
+
+**조건부 타당:** 기존 full-font 응답·반복 Composition/음성 선택·이미지 변환에는 절감 후보가 있다. 반면 v1 Demo는 기존 grant/source 2왕복을 유지하고 resolve에서 원본을 다시 scan하므로 중복 source 비용이 남는다. 모든 폰트·표를 매번 JSON 집계하거나 매 HIT 큰 payload를 다시 반환하면 이익이 없어질 수 있다. resolve는 현재 gate 검증 후 동일 prepared/hash의 검증된 서버 RAM 후보가 있으면 작은 증거만, 없으면 payload/manifest도 반환하는 계약을 검토한다. RAM 후보는 권한 캐시가 아니며 구 ID/head/binding이면 사용하지 않는다. 이 선택과 referenced-font closure를 실제 SQL/전송량으로 비교하기 전에는 성능 도입을 확정하지 않는다.
+
+### 11.4 네 RPC로 보완해야 할 계약
+
+새 표 2개·RPC 4개라는 예산은 **아래 조건을 기존 함수 입력/새 두 표 안에 명확히 정의하면 충분한 후보**다. R0.5만으로 실제 SQL 타당성이 입증된 것은 아니다.
+
+1. ready payload/source/manifest와 그 hash는 불변이다. publication_binding·activation 영수증은 봉인 내용과 분리한 **한 번만 설정 가능한 envelope**다. payload hash가 mutable binding까지 포함한다고 정의하지 않는다. 기존 발행 영수증/current state로 binding을 검증할 수 없는 legacy 공개본은 동적 경로에 남긴다.
+2. prepare_key와 activation_key는 별도 namespace의 유일키이며 actor/project/scope/입력 hash를 함께 검증한다. head 교체와 활성화 영수증 INSERT는 한 트랜잭션이다. 같은 key 응답 유실은 당시 영수증 + 현재 head를 반환하며 head를 다시 쓰지 않는다. 잘못된 key/hash·권한은 중복 성공으로 처리하지 않는다.
+3. head 해제는 generation을 증가시킨 tombstone(null pointer)을 남긴다. 일반 복귀에서 행을 삭제해 generation=0으로 재생성하지 않는다(ABA 방지). 프로젝트 hard-delete의 CASCADE와는 구분한다. 해당 prepared ID의 활성화는 1회, 다시 제공하려면 새 ID다.
+4. attempt_no는 lease 재선점마다 증가하는 fencing 값이다. finalize는 현재 actor/attempt/lease/status를 검사한다. 유효 작업자가 둘이어도 만료된 attempt가 ready를 봉인할 수 없어야 한다. partial 파일은 ready가 아니며 재개는 별도 attempt 경로다.
+5. grant/source 검증→resolve 사이 원고 변경은 fresh digest/현재 scope 재검증으로 적중을 거부한다. MISS 뒤 Demo 동적 경로도 fresh `getDemoAccess`를 거쳐 SOURCE_CHANGED를 보존한다. 만료·회수·자료 변경·쿠키 누락을 schema 장애와 혼합하지 않는다.
+6. schema/RPC 부재·응답 지연은 opt-in된 짧은 실패 예산 후 기존 동적 경로로 복귀하되, 현재 권한·원본 검증까지 장애면 fail closed다. mixed renderer는 정확한 버전 일치가 없으면 dynamic이다. 부정확한 prepared를 구 렌더러에 읽히지 않는다.
+7. 권한·source/resource 검증이 가능한 현재 live 데이터만 재사용한다. 새 준비본의 JSON 참조가 기존 음성 자동 정리에서 영구 보존 대상이라고 가정하지 않는다. 정상 음성 교체/삭제 뒤 stale manifest는 거부하고 현재 동적 선택으로 복귀한다. 불필요한 FK/보존 ledger/새 GC를 추가하지 않는다.
+
+로컬 모형에서 위 멱등성·CAS·권한 우선순위 12사례를 확인했고, 현재 데이터의 메모리 복제본에서는 11종 변경이 broad digest를 바꾸는 것을 확인했다. 둘 다 실제 PostgreSQL 동시성/RLS·최종 allowlist 투영의 검증은 아니다. R1은 격리 SQL/실행계획·무결성 증거를 검증하는 단계이며, 지금 원격 migration이나 준비본 serving을 진행할 근거는 아니다.

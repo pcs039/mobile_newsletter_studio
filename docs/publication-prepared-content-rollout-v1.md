@@ -23,6 +23,7 @@
 | 단계 | 작업·선행조건 | 승인/완료 조건 |
 |---|---|---|
 | R0 현재 | 3개 설계 문서·계약·링크·docs-only 검증 | 설계 리뷰. 코드/SQL/배포 없음 |
+| R0.5 후속 | 저장 경로/Storage 계약 대조, 현재 helper GET/HEAD 측정·로컬 hash/상태 모형, 기존 3문서 보강 | 이번 검토 범위. SQL/서비스 구현·원격 쓰기 없음. 결과는 8절 |
 | R1 격리 구현 | source 투영·canonical hash·payload validator, 신규 표/RPC SQL 초안 및 로컬 격리 PostgreSQL·Storage mock | **구현/SQL 작성 승인** 후 시작. source snapshot·CAS·권한·fault 테스트 통과 |
 | R2 Staging 사전 실사 | 실제 ref/현재 schema·권한·발행 구조, private bucket/객체 identity/기존 삭제 경로, 최소 복원 수단 확인 | 읽기 전용 실사 승인 범위 확인. 불일치/복원/객체 검증 차단 원인을 먼저 보고 |
 | R3 Staging DB만 | 신규 메타데이터/RPC/RLS 적용, gate OFF. 원본 DML·발행 이벤트 생성 없음 | **정확한 대상·DDL·권한·복귀 계획의 원격 migration 승인**. 설치 후 기존 발행/저장 동작 유지 |
@@ -90,3 +91,30 @@ R6/R7의 기능 gate 명칭은 구현 승인 때 확정한다. 최소한 builder
 저장소는 새 브랜치 push에도 자동 Preview가 연결될 수 있다. 따라서 문서 PR 제출 전 현재 CI/Vercel의 docs-only skip을 확인한다. skip이 보장되지 않으면 배포를 실행해 놓고 '문서만 바뀌었다'고 처리하지 않는다. 문서 작성·검증·로컬 commit을 먼저 완료하고, 원격 제출을 위해 필요한 **문서 브랜치 한정 배포 차단 또는 Preview 허용 범위**를 사용자에게 확인한다. 이를 위해 기존 Production/공통 배포 설정을 임의 변경하지 않는다.
 
 최종 검증 항목: docs-only diff, 상대 링크와 코드 근거, 버전/상태/이벤트 namespace 구분, 실패 시 동적 fallback과 거부 구분, 실측/목표/미검증 표기, 기존 main/Staging/PR/stash 불변. 신규 문서 PR은 OPEN·미병합으로 유지한다.
+
+## 8. R0.5 결정과 R1 진입 조건
+
+판정은 **논리 계약은 조건부 타당, 원격 도입의 성능·Storage 증거는 부족**이다. 기본 설계 2표/4RPC는 유지한다. 이번에는 R1 구현·SQL 작성·migration·활성화·고정 Staging 배포를 진행하지 않는다. 결과는 기존 PR #290의 문서 3개에 반영하며 기존 다른 PR을 병합/갱신하지 않는다.
+
+### 8.1 구현 전 명확히 할 최소 계약
+
+- ready 내용/hash와 한 번 설정하는 발행 binding/활성화 영수증을 분리한다. 현재 발행 회차를 확인할 수 없는 legacy 프로젝트는 동적 경로다.
+- activation key는 입력/actor/scope를 고정하고 영수증과 head CAS를 원자 처리한다. duplicate는 과거 결과와 현재 head를 함께 반환하며 재활성화하지 않는다.
+- head 해제는 generation tombstone을 유지한다. lease takeover는 attempt fencing으로 구 worker finalize를 막는다. 모두 신규 두 표/기존 4RPC 안에서 처리하는 안이며 제5 RPC/별도 감사표를 추가하지 않는다.
+- 현재 Storage identity를 증명하지 못한 자산은 dynamic_only다. 같은 경로 overwrite를 금지하는 광범위 운영 변경을 이 설계에 끼워 넣지 않는다.
+- 기존 음성 교체/자동 정리와 충돌하지 않도록 현재 선택·원본 참조가 달라지면 준비 manifest를 거부한다. 과거 음성의 영구 보존을 신규 FK로 강제하지 않는다.
+- resolve는 fresh 권한/원본 검증을 생략하지 않고, 검증된 RAM 후보가 있으면 작은 결과를 반환하는 방식과 항상 payload를 반환하는 방식을 비교한다. 서버 간 메모리 공유나 warm cache를 가정하지 않는다.
+
+### 8.2 R1의 우선순위
+
+1. **최종 source projection부터:** 저장 경로 대응표와 필요한 폰트 후보/음성 선택 closure를 확정하고, 실제 원본 및 추가/삭제 fixture로 canonical 동일성을 검증한다. 전역 289 font/243 family 전체를 매번 hash하는 broad 모형을 그대로 SQL로 옮기지 않는다.
+2. **격리 DB 비용 검증:** 신규 테이블 도입보다 먼저 투영의 단일 snapshot·DB scan/buffer/집계/hash 및 반환 bytes를 검증한다. 이 단계도 SQL 작성/격리 구현 승인을 받은 뒤 수행한다.
+3. **상태/권한 계약 구현:** 2표/4RPC의 CAS/unique/lease·ready 불변·현재 gate와 schema 장애 fallback을 격리 테스트한다. 논리 모형 12사례를 실제 2연결 테스트로 대체한다.
+4. **Storage proof 시범:** 현재 운영 객체가 아닌 disposable 파일로만 overwrite·삭제·ETag/version/CDN을 검증한다. 미확인 자산을 제외했을 때 남는 성능 이익도 측정한다.
+5. **독자 비용 비교:** #289와 준비본 HIT/MISS를 동일 조건·최초/재접속 각 5회 비교한다. helper 272.08ms나 RAM parse 0.30ms를 HTML/LCP 개선으로 표시하지 않는다. 개선이 없거나 회귀하면 R3 원격 migration으로 진행하지 않는다.
+
+이 순서는 기존 R2~R8의 승인 조건을 생략하지 않는다. 새 구현이 성능 이익을 내지 못해도 지금의 직접 표지·initialSegments·지연 이미지·선택 음성 준비는 계속 사용할 수 있다.
+
+### 8.3 이번 PR 제출과 보존
+
+앞선 R0에서 사용자에게 승인받은 문서 PR의 자동 브랜치 Preview 범위는 유지한다. 문서 갱신으로 자동 Preview가 생성될 수 있으나 고정 staging 브랜치·도메인·Production에는 코드를 반영하지 않는다. 서비스 코드/SQL/config/환경변수 변경 없이 PR #290을 OPEN·미병합으로 유지한다. 현재 source DB·Storage는 GET/HEAD만 사용하며 기존 기사·음성·공유 상태와 stash 2개를 보존한다.

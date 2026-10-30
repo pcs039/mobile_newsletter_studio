@@ -1,7 +1,7 @@
 # 발행 버전별 콘텐츠 사전 준비 — 테스트 계획 v1.0
 
 - 기준: 2026-10-30, PR #289 / Staging `51537b51176b9427368c6705a2cf4549872fe5eb`.
-- 이 문서는 **향후 구현의 검증 계획**이다. 아래 기능/장애/성능 테스트를 이번 문서 작업에서 실행하거나 통과시켰다는 뜻이 아니다.
+- 1~8절은 **향후 구현의 검증 계획**이다. 문서 작성만으로 테스트를 통과시켰다는 뜻이 아니다. 후속 R0.5에서 실제 수행한 읽기 전용/로컬 검증은 9절에 별도로 기록한다.
 - 계약: [아키텍처](publication-prepared-content-architecture-v1.md), 단계·승인: [rollout](publication-prepared-content-rollout-v1.md).
 
 ## 1. 환경과 불변 기준값
@@ -150,4 +150,39 @@ PR #288 단계의 별도 서버 함수 계측에는 DB GET 6회/Storage GET 1회
 - 독립 기사: [기존 A 테스트 계약](article-independent-publication-stage-a-tests-v1.md)의 별도 상태·revision·이벤트·철회/과거 공개본 의미를 변경하지 않음. 미구현 계약을 통과했다고 보고하지 않음.
 - 증거 묶음: 정확한 코드/원본/renderer/schema 버전, 권한·fault matrix, 준비본 hit/miss, 요청별 비용, 비교 표본, 환경, 실기기/자동화 구분, 데이터 불변 결과. 운영 토큰·원본 파일을 PR/공개 로그에 첨부하지 않는다.
 
-이번 문서 PR의 검증은 링크/용어/계약·명시적 미검증·docs-only diff 확인이다. 서비스 빌드나 원격 테스트를 설계 검증인 것처럼 실행하지 않는다.
+초기 R0 검증은 링크/용어/계약·명시적 미검증·docs-only diff 확인이었다. 서비스 빌드나 원격 쓰기 테스트를 설계 검증인 것처럼 실행하지 않는다.
+
+## 9. R0.5 수행 결과 및 남은 합격 조건
+
+### 9.1 실제 수행한 범위
+
+- 기준 SHA #289 `51537b5`, 설계 PR #290 `7d6d4ef`에서 읽은 코드. 서비스 소스 변경 없이 기존 TypeScript helper를 로컬 Node에 로드했다. Next 서버/브라우저를 실행한 테스트가 아니다.
+- transport는 정확한 Staging origin의 `/rest/v1/`, `/storage/v1/` GET/HEAD만 허용하고 비 GET/HEAD·다른 origin/OpenAI를 거부했다. Production 접속·DB/Storage 쓰기·TTS 호출 0회. 키·share bearer·응답 원문은 출력/저장소에 보관하지 않았다.
+- 기존 권한/source 검증과 helper를 구성된 Staging 설정으로 1회 warm-up 후 5회 계측했다. 원본 표 조회는 별도 GET이므로 **DB 단일 snapshot 검증이 아니다**. broad hash 입력은 메모리에서만 사용했다. private 결과 파일에는 요청별 숫자·표 이름·성공 여부만 남겼다.
+- 초기 helper는 매회 DB 12 GET/Storage 1 GET, 총 246.33~301.72ms, 중앙값 272.08ms였다. 병렬 쿼리 시간을 합쳐 전체 시간을 계산하지 않았다. font/Composition이 설정 누락으로 생략된 실행은 최종 성능 표본으로 사용하지 않았다.
+- 관광 썸네일의 변환 캐시 MISS/HIT를 각각 5회 비교했다. 매 MISS 전에 해당 모듈의 Map만 새로 만들고 바로 재호출해 HIT를 측정했다. 브라우저/CDN/DB cold cache 시험이 아니다. 실제 지도/파일은 변경하지 않았다. 양쪽 모두 원본 전체 516,304B를 읽었다.
+- 대표 표지·지도·음성·폰트 각 1건의 HEAD/info를 읽었다. 네 객체 모두 version 필드는 있었으나 is_versioned=false였다. ETag/수정시각은 존재하나 영속 SHA-256/current-overwrite 강한 증거는 미확인이다. overwrite/삭제/조건부 응답 실험은 하지 않았다.
+
+정확한 표본·비용별 해석은 [아키텍처 11절](publication-prepared-content-architecture-v1.md)에 기록했다. PR #289의 HTML/LCP/playing 기준선은 6절과 혼합하지 않는다.
+
+### 9.2 로컬 모의 검증
+
+| 모형 | 수행 결과 | 입증하지 못한 것 |
+|---|---|---|
+| 현재 데이터 복제본의 broad canonical SHA-256 | 11/11 변경 검출: 기사 제목, 부모 timestamp 유지한 블록 metadata/Composition, 신규 기사·링크·placement·음성 후보, 폰트 활성/패밀리, 디자인 활성, 음성 선택 proof | 최종 allowlist 완전성, SQL canonical 동등성, RLS, 단일 MVCC. 전역 폰트 전체 hash는 최종안 아님 |
+| DB 행은 같고 Storage 바이트만 변경됐다고 놓은 모형 | row digest가 같아 검출 불가임을 확인 | 실제 운영 파일 overwrite나 ETag/version 변경 감지 시험 아님 |
+| 작은 준비/활성화 상태 모형 | 12/12 계약 사례 통과: 동일 prepare key/입력 충돌, 구 attempt 거부, 파일 proof 실패, source stale finalize, ready 불변/일회 binding, CAS 경합, 응답 유실 영수증/current head, activation key 충돌, ABA, 현재 권한 거부, Demo SOURCE_CHANGED, mixed renderer/schema/source/proof fallback | 실제 DB 동시 연결·행 잠금·유일 인덱스·SQL rollback/권한 검증 아님. 단일 프로세스의 논리 모형 |
+| 준비 payload JSON 재사용 모형 | RAM parse 5회 중앙값 0.30ms | fresh 권한/source·신규 RPC·Storage·SSR 제외 하한. 실제 prepared HIT 속도 아님 |
+
+### 9.3 R1 격리 구현에 추가할 게이트
+
+1. **변경 검출:** 저장 경로별 fixture를 최종 투영의 동일 SQL 문으로 capture/resolve한다. 부모 timestamp 불변·신규 행·삭제·동점 순서·폰트 후보·선택 음성 변경을 포함한다. 현재 0행인 홈/오버레이 등은 별도 synthetic fixture가 필요하다.
+2. **Storage:** disposable 객체에서만 같은 크기 overwrite·삭제·info/ETag·GET/Range/조건부 응답·CDN 경계를 검증한다. 현재 계측 파일에는 쓰지 않는다. 증거를 확보하지 못한 자산은 dynamic_only가 합격이며 영속 파생 HIT를 켜지 않는다.
+3. **DB 내부 비용:** 격리 PostgreSQL에서 대표/확대 fixture의 기존 조회와 새 projection/resolve를 실행계획·actual time·buffers·행 수·JSON/hash 비용으로 비교한다. DB 왕복 수와 별도 열에 기록한다. JS 5.18ms를 SQL scan 결과로 대입하지 않는다.
+4. **전체 비용:** 기존 grant/source + 새 resolver의 source 이중 읽기, payload 매번 반환/서버 RAM 후보 적중/프로세스 miss를 비교한다. RAM 후보와 head/hash/binding/renderer 불일치면 fresh 반환만 사용한다. 실제 준비본 HIT/MISS 시간은 그때 최초 측정한다.
+5. **멱등성/경합:** 두 DB 연결로 head 생성/교체/해제 tombstone·ABA, activation unique key·CAS·영수증 원자성, lease takeover 뒤 stale finalize를 검증한다. 권한 검사는 중복 영수증 반환보다 앞선다.
+6. **복귀:** schema/RPC 부재와 timeout을 주입하되 권한/source DB 자체 오류와 구분한다. fallback 시간 예산과 기존 오류 코드를 비교한다. 원고 변경된 Demo를 캐시 장애로 새로 제공하면 실패다.
+
+### 9.4 타당성 판정
+
+**조건부 진행 가능: R1 격리 검증까지. 원격 migration/serving 승인 근거로는 부족하다.** 2표/내부 RPC 4개로 논리 계약은 표현 가능하다. 최종 의존성 투영·SQL 비용·Storage 현재 동일성 검증이 남아 있다. 추가 테이블/RPC를 먼저 늘리지 않고 기존 4개 함수와 두 표의 제약/입력을 구체화한다. 성능 이득이 확인되지 않으면 동적 경로를 유지하며 관측되지 않은 개선률을 제시하지 않는다.
