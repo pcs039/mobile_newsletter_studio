@@ -1,0 +1,362 @@
+{
+  "postgres": "PostgreSQL 17.11 (Homebrew) on aarch64-apple-darwin25.6.0, compiled by Apple clang version 21.0.0 (clang-2100.3.34.2), 64-bit",
+  "source_base": "b76322e",
+  "remote_connections": 0,
+  "fixture": "synthetic 7/700 articles with 5 blocks each + 1500 unrelated; 289 faces/243 families; separate +5000 noise experiment",
+  "tests": [
+    {
+      "name": "article_title",
+      "passed": true
+    },
+    {
+      "name": "block_metadata_parent_timestamp_unchanged",
+      "passed": true
+    },
+    {
+      "name": "new_article",
+      "passed": true
+    },
+    {
+      "name": "delete_article",
+      "passed": true
+    },
+    {
+      "name": "new_link",
+      "passed": true
+    },
+    {
+      "name": "composition_without_parent_timestamp",
+      "passed": true
+    },
+    {
+      "name": "new_placement",
+      "passed": true
+    },
+    {
+      "name": "font_disabled",
+      "passed": true
+    },
+    {
+      "name": "family_changed",
+      "passed": true
+    },
+    {
+      "name": "design_disabled",
+      "passed": true
+    },
+    {
+      "name": "audio_selection",
+      "passed": true
+    },
+    {
+      "name": "new_audio_candidate",
+      "passed": true
+    },
+    {
+      "name": "article_order",
+      "passed": true
+    },
+    {
+      "name": "project_title",
+      "passed": true
+    },
+    {
+      "name": "article_body",
+      "passed": true
+    },
+    {
+      "name": "block_deleted",
+      "passed": true
+    },
+    {
+      "name": "link_deleted",
+      "passed": true
+    },
+    {
+      "name": "composition_status",
+      "passed": true
+    },
+    {
+      "name": "asset_reference",
+      "passed": true
+    },
+    {
+      "name": "design_kit",
+      "passed": true
+    },
+    {
+      "name": "project_home",
+      "passed": true
+    },
+    {
+      "name": "article_home",
+      "passed": true
+    },
+    {
+      "name": "page",
+      "passed": true
+    },
+    {
+      "name": "hotspot",
+      "passed": true
+    },
+    {
+      "name": "link_area",
+      "passed": true
+    },
+    {
+      "name": "overlay_link_without_article_id",
+      "passed": true
+    },
+    {
+      "name": "other_project_isolation",
+      "passed": true
+    },
+    {
+      "name": "unused_font_excluded",
+      "passed": true
+    },
+    {
+      "name": "same_family_new_face",
+      "passed": true
+    },
+    {
+      "name": "new_font_reference",
+      "passed": true
+    },
+    {
+      "name": "JSONB_key_order_deterministic",
+      "passed": true
+    },
+    {
+      "name": "parent_updated_at_actually_unchanged",
+      "passed": true
+    },
+    {
+      "name": "unknown_renderer_not_usable",
+      "passed": true
+    },
+    {
+      "name": "unused_design_excluded",
+      "passed": true
+    },
+    {
+      "name": "new_logo_candidate",
+      "passed": true
+    },
+    {
+      "name": "url_encoded_design_reference",
+      "passed": true
+    },
+    {
+      "name": "Demo_unselected_article_excluded",
+      "passed": true
+    },
+    {
+      "name": "cross_project_Demo_selection_rejected",
+      "passed": true
+    },
+    {
+      "name": "deterministic_across_timezone",
+      "passed": true
+    },
+    {
+      "name": "deterministic_identical_source",
+      "passed": true
+    },
+    {
+      "name": "regular_private_not_content_authority",
+      "passed": true
+    },
+    {
+      "name": "Demo_revoke_not_content_authority",
+      "passed": true
+    },
+    {
+      "name": "legacy_Demo_snapshot_not_new_digest",
+      "passed": true
+    },
+    {
+      "name": "rolling_inclusive_end_boundary",
+      "passed": true
+    },
+    {
+      "name": "ambiguous_block_order_disables_HIT",
+      "passed": true
+    },
+    {
+      "name": "single_statement_MVCC_during_atomic_edit",
+      "passed": true
+    },
+    {
+      "name": "separate_statement_control_sees_new_edit",
+      "passed": true
+    },
+    {
+      "name": "5000_unrelated_fonts_families_designs_excluded",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "Warm local DB buffers; no forced disk cold cache",
+    "SQL baseline analogue, not exact PostgREST JSON or HTTP",
+    "Backend CPU from macOS ps cumulative centiseconds; no parallel workers",
+    "No prepared tables/head lookup, Storage identity or end-to-end browser measured",
+    "Projection is not authorization; legacy Demo hash remains external"
+  ],
+  "projection_sha256": "ee644399fbdd6f8ec53cecd75b4ca78612813f1c972508f684fd5d6f2205a3d9",
+  "benchmarks": [
+    {
+      "articles": 7,
+      "workload": "projection",
+      "sql_statements": 1,
+      "execution_ms_samples": [
+        1.771,
+        1.591,
+        1.689,
+        1.746,
+        1.643
+      ],
+      "execution_ms_median": 1.689,
+      "planning_ms_median": 0.788,
+      "shared_hit_blocks_median": 208,
+      "shared_read_blocks_median": 0,
+      "returned_psql_text_bytes": 173,
+      "backend_cpu_batch_seconds": 0.06999999999999995,
+      "cpu_batch_repetitions": 30,
+      "backend_cpu_ms_per_iteration": 2.3333333333333317,
+      "batch_wall_seconds": 0.07054279200000002
+    },
+    {
+      "articles": 7,
+      "workload": "dynamic_sql_analogue",
+      "sql_statements": 12,
+      "execution_ms_samples": [
+        1.751,
+        1.75,
+        1.772,
+        1.699,
+        1.698
+      ],
+      "execution_ms_median": 1.75,
+      "planning_ms_median": 0.277,
+      "shared_hit_blocks_median": 504,
+      "shared_read_blocks_median": 0,
+      "returned_psql_text_bytes": 299886,
+      "backend_cpu_batch_seconds": 0.08000000000000007,
+      "cpu_batch_repetitions": 30,
+      "backend_cpu_ms_per_iteration": 2.666666666666669,
+      "batch_wall_seconds": 0.09858708399999994
+    },
+    {
+      "articles": 7,
+      "workload": "Demo_gate_plus_projection",
+      "sql_statements": 3,
+      "execution_ms_samples": [
+        2.5300000000000002,
+        2.604,
+        2.581,
+        2.713,
+        2.526
+      ],
+      "execution_ms_median": 2.581,
+      "planning_ms_median": 0.913,
+      "shared_hit_blocks_median": 519,
+      "shared_read_blocks_median": 0,
+      "returned_psql_text_bytes": 114792,
+      "backend_cpu_batch_seconds": 0.09999999999999998,
+      "cpu_batch_repetitions": 30,
+      "backend_cpu_ms_per_iteration": 3.3333333333333326,
+      "batch_wall_seconds": 0.10618241700000008
+    },
+    {
+      "articles": 700,
+      "workload": "projection",
+      "sql_statements": 1,
+      "execution_ms_samples": [
+        103.14,
+        104.505,
+        103.465,
+        100.084,
+        101.53
+      ],
+      "execution_ms_median": 103.14,
+      "planning_ms_median": 0.87,
+      "shared_hit_blocks_median": 1855,
+      "shared_read_blocks_median": 0,
+      "returned_psql_text_bytes": 181,
+      "backend_cpu_batch_seconds": 0.7800000000000002,
+      "cpu_batch_repetitions": 8,
+      "backend_cpu_ms_per_iteration": 97.50000000000003,
+      "batch_wall_seconds": 0.793487458
+    },
+    {
+      "articles": 700,
+      "workload": "dynamic_sql_analogue",
+      "sql_statements": 12,
+      "execution_ms_samples": [
+        46.173,
+        46.371,
+        45.68000000000001,
+        45.817,
+        46.082
+      ],
+      "execution_ms_median": 46.082,
+      "planning_ms_median": 0.3500000000000001,
+      "shared_hit_blocks_median": 9385,
+      "shared_read_blocks_median": 0,
+      "returned_psql_text_bytes": 9582260,
+      "backend_cpu_batch_seconds": 0.54,
+      "cpu_batch_repetitions": 8,
+      "backend_cpu_ms_per_iteration": 67.5,
+      "batch_wall_seconds": 0.6632721250000002
+    },
+    {
+      "articles": 700,
+      "workload": "Demo_gate_plus_projection",
+      "sql_statements": 3,
+      "execution_ms_samples": [
+        144.596,
+        145.975,
+        145.598,
+        145.848,
+        147.291
+      ],
+      "execution_ms_median": 145.848,
+      "planning_ms_median": 0.9319999999999999,
+      "shared_hit_blocks_median": 9228,
+      "shared_read_blocks_median": 0,
+      "returned_psql_text_bytes": 9080392,
+      "backend_cpu_batch_seconds": 1.3100000000000005,
+      "cpu_batch_repetitions": 8,
+      "backend_cpu_ms_per_iteration": 163.75000000000006,
+      "batch_wall_seconds": 1.439710667
+    }
+  ],
+  "unrelated_growth": [
+    {
+      "candidate_indexes": false,
+      "execution_ms_samples": [
+        3.378,
+        3.411,
+        3.402,
+        3.306,
+        3.374
+      ],
+      "median_ms": 3.378,
+      "shared_hit_blocks_median": 433
+    },
+    {
+      "candidate_indexes": true,
+      "execution_ms_samples": [
+        3.569,
+        3.399,
+        3.366,
+        3.369,
+        3.386
+      ],
+      "median_ms": 3.386,
+      "shared_hit_blocks_median": 433
+    }
+  ]
+}
