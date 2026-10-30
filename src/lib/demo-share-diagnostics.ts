@@ -7,7 +7,7 @@ export function createDemoTrace(stage: DemoStage, headers?: Headers): DemoTrace 
   const candidate = headers?.get("x-demo-request-id");
   return { requestId: candidate && uuid.test(candidate) ? candidate : randomUUID(), stage };
 }
-export function demoStep(trace: DemoTrace | undefined, stage: DemoStage, code: DemoFailureCode | "OK" | "PRESENT" | "ISSUED" | "READY" | "START" | "VALIDATED" | "MATCHED" = "OK") {
+export function demoStep(trace: DemoTrace | undefined, stage: DemoStage, code: DemoFailureCode | "OK" | "PRESENT" | "ISSUED" | "READY" | "START" | "VALIDATED" | "MATCHED" | "CANDIDATE" = "OK") {
   if (!trace) return;
   trace.stage = stage;
   // Deliberate allowlist: never log URL, token, Cookie, headers, source or Error.

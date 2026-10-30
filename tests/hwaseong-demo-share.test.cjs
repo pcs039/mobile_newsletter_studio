@@ -14,7 +14,7 @@ function fixture(){
  const state={enabled:true,revoked:false,project:{id:p,slug,coverEnabled:true,coverImageUrl:`/api/project-files/preview?bucket=design-production-assets&path=${prefix}cover.webp`},articles,delivery:[],indexCalls:0};
  const access=async()=>{if(state.revoked)throw Error('revoked');return {project:state.project,share:{id:'share',article_ids:articles.map(a=>a.id)},articles:state.articles};};
  const mod=loader({
-  '@/lib/demo-share':{DemoError:class extends Error{},getDemoSession:access},
+  '@/lib/demo-share':{DemoError:class extends Error{},getDemoSession:access,getDemoAccess:async(token,project)=>{state.entryCalls=(state.entryCalls??0)+1;state.entryToken=token;if(project!==slug||token==='revoked')throw Object.assign(Error('revoked'),{code:'REVOKED'});return access();}},
   '@/lib/staging-environment':{stagingEnvironmentConfigured:()=>state.enabled},
   '@/lib/hwaseong-proposal-sample':{hwaseongSampleSlug:slug,proposalSample:a=>({article:a,cover:a.blocks[0].body,kind:a.blocks[0].metadata.proposal_sample.kind,headline:a.title,editorTest:a.test})},
   '@/lib/newsletter-repository':{getFontAssets:async()=>({fonts:[]}),makePublicStoragePreviewHref:()=>''},
@@ -74,4 +74,9 @@ test('no-expiry links remain valid with passing time but revoke immediately; for
 test('no-expiry session cookie has no artificial Expires date and remains HttpOnly',async()=>{
  const mod=loader({'@/lib/article-image-api-origin':{requireImageSameOrigin:()=>{}},'@/lib/demo-share':{getDemoAccess:async()=>({project:{slug},share:{expires_at:null}}),demoHeaders:{},demoCookieName:()=> 'datadiction_demo_fixture'}})('src/app/api/demo-share/session/route.ts');
  const r=await mod.POST(new Request('https://fixture.invalid/api/demo-share/session',{method:'POST',body:JSON.stringify({token:'A'.repeat(43)})}));assert.equal(r.status,200);assert.match(r.headers.get('set-cookie'),/HttpOnly/);assert.doesNotMatch(r.headers.get('set-cookie'),/Expires=|Max-Age=/i);
+});
+
+test('direct entry validates the URL bearer independently of any previous valid cookie, reuses the same seven sources',async()=>{
+ const h=fixture(),before=structuredClone(h.state.articles);const d=await h.mod.getHwaseongDemoEntryData('valid-link');assert.equal(h.state.entryCalls,1);assert.equal(h.state.entryToken,'valid-link');assert.deepEqual(d.props.samples.map(s=>s.article.id),before.map(a=>a.id));assert.deepEqual(h.state.articles,before);await assert.rejects(h.mod.getHwaseongDemoEntryData('revoked'),e=>e.code==='REVOKED');
+ const foreign=fixture();foreign.state.project.id='other';await assert.rejects(foreign.mod.getHwaseongDemoEntryData('valid-link'));
 });
