@@ -25,3 +25,12 @@ test('early cover reuses cover design and image, disables existing CTAs until re
  const html=render(React.createElement(Pending,{cover:{coverImageSrc:'data:image/webp;base64,existing',coverLayout:'image_info',coverFit:'contain',masthead:'특별한 화성소식',coverTitle:'화성의 오늘을 더 가까이',coverSubtitle:'기존 부제',coverIssueText:'2026.10'}}));
  assert.match(html,/data-demo-early-cover/);assert.match(html,/화성의 오늘을 더 가까이/);assert.match(html,/loading="eager"/);assert.match(html,/fetchPriority="high"/);assert.equal((html.match(/disabled=""/g)||[]).length,2);assert(!html.includes('소식지 열기'));assert(!html.includes('/projects/'));
 });
+test('server-prepared audio starts ready without a manifest request or autoplay; ordinary players still fetch their manifest',async()=>{
+ const React=require('react'),oldWindow=global.window,oldFetch=global.fetch;
+ try{for(const prepared of [true,false]){const effects=[],states=[];let cursor=0,calls=0,plays=0,refs=0;
+ global.window={localStorage:{getItem:()=>null},setTimeout:f=>{f();return 1;},clearTimeout:()=>{}};
+ global.fetch=async()=>{calls++;return Response.json({hasAudio:true,segments:[{index:0,url:'/protected.mp3'}]});};
+ const Player=load({react:{...React,useRef:v=>({current:refs++===0?{pause(){},play:async()=>plays++,currentTime:0}:v}),useState:v=>{const i=cursor++;states[i]=typeof v==='function'?v():v;return [states[i],n=>states[i]=n];},useEffect:f=>effects.push(f),useCallback:f=>f}})('src/components/public-article-audio-player.tsx').PublicArticleAudioPlayer;
+ Player({ariaLabel:'AI 음성',isAiGenerated:true,manifestUrl:'/manifest',...(prepared?{initialSegments:[{index:0,url:'/protected.mp3'}]}:{})});const clean=effects[2]();await new Promise(r=>setTimeout(r,5));assert.equal(calls,prepared?0:1);assert.equal(states[6],'ready');assert.equal(states[1][0].url,'/protected.mp3');assert.equal(plays,0);clean();
+ }}finally{global.window=oldWindow;global.fetch=oldFetch;}
+});

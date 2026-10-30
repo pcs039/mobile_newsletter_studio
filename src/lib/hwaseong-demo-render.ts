@@ -55,6 +55,23 @@ export async function prepareHwaseongDemoEntry(token: string, trace: DemoTrace) 
   const cover=image?{coverImageSrc:image,coverFit:project.coverFit,coverLayout:project.coverLayout,coverTitle:project.coverTitle||project.title,coverSubtitle:project.coverSubtitle,coverIssueText:project.coverIssueText||project.issue,masthead:project.title}:undefined;
   return {cover,ready};
 }
+async function demoAudioIndex(samples: ProposalSample[], slug: string) {
+  const deliveries: SampleAudioDeliveries=new Map();
+  const index=await splitAudioIndex(samples,deliveries);
+  const request=new Request("https://demo.invalid");
+  for(const [article,source] of Object.entries(index))for(const part of ["summary","detail"] as const){
+    const audio=part==="summary"?source:source.detail;
+    const deliver=audio&&deliveries.get(audio.id);
+    if(!audio||!deliver)continue;
+    // Pure manifest construction from this request's verified selection. No
+    // second DB/source lookup, media fetch or client-side manifest round trip.
+    const response=await deliver(null,request);
+    if(!response.ok)continue;
+    const manifest=await response.json();
+    audio.initialSegments=manifest.segments.map((s:{index:number})=>({index:s.index,url:sampleDemoAudioHref(slug,article,part,s.index)}));
+  }
+  return index;
+}
 async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseongDemoAccess>>, prepareMedia: boolean, trace?: DemoTrace, preparedCover?: Promise<string|null>) {
   const {project,samples}=access,slug=project.slug;
   const ids = samples.map(s => s.article.id);
@@ -64,7 +81,7 @@ async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseo
     demoTimed(trace,"fonts",()=>getFontAssets({ activeOnly: true })),
     demoTimed(trace,"text_design",()=>getArticleTextDesigns(projectId, ids, true)),
     demoTimed(trace,"backgrounds",()=>getArticleHeroBackgroundReferences(projectId, ids, true)),
-    prepareMedia ? demoTimed(trace,"audio_index",()=>splitAudioIndex(samples)) : {} as Record<string,SampleAudio>,
+    prepareMedia ? demoTimed(trace,"audio_index",()=>demoAudioIndex(samples,slug)) : {} as Record<string,SampleAudio>,
     prepareMedia && sourceCover ? preparedCover??demoTimed(trace,"cover",()=>prepareSampleCover(projectId, slug, sourceCover)) : null,
     prepareMedia ? demoTimed(trace,"thumbnails",()=>prepareSampleToc(projectId, slug, samples)) : {},
     prepareMedia ? demoTimed(trace,"map",()=>prepareSampleMap(projectId, slug, samples)) : undefined,
