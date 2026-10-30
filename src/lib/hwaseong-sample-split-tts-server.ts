@@ -9,6 +9,7 @@ import { getProjectContent } from "@/lib/newsletter-repository";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { splitArticleVoice, splitNarration, splitProbeText, splitTtsModel, splitTtsShutdown } from "@/lib/hwaseong-sample-split-narration";
+import type { SampleAudioDeliveries } from "@/lib/sample-audio-delivery";
 import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 
 const projectId="4cd5297e-a0fd-434c-84d4-fa4d3baf9389",prefix=`projects/${projectId}/sample-tts-v2/`,titlePrefix="[시연 TTS v2] ";
@@ -32,8 +33,8 @@ function previousPlans(plans:Plan[]){return plans.flatMap(p=>{const voice=previo
 export async function splitTtsRows(){const out:Row[]=[];for(let offset=0;offset<1000;offset+=100){const q=new URLSearchParams({select:columns,project_id:`eq.${projectId}`,title:`like.${titlePrefix}*`,order:'id.asc',limit:'100',offset:String(offset)});const r=await fetch(table('?'+q),{headers:headers(),cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error("Audio status unavailable");const page:Row[]=await r.json();if(!Array.isArray(page))throw Error("Invalid status");out.push(...page);if(page.length<100)return out;}throw Error("Unconfirmed pagination");}
 function ready(row:Row|undefined,p:Plan){return !!row&&row.project_id===projectId&&row.article_id===null&&row.script_status==='approved'&&!!row.ai_tts_generated_at&&row.ai_tts_model===splitTtsModel&&row.ai_tts_voice===p.voice&&row.ai_tts_text_hash===p.hash&&row.script_text===p.text&&JSON.stringify(row.ai_tts_audio_paths)===JSON.stringify(p.paths)&&row.file_path===p.paths[0];}
 function audio(p:Plan):SampleAudio{return {id:p.id,voice:p.voice,transcriptText:p.text,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts?version=2&audio=${p.id}`};}
-export async function splitAudioIndex(provided?:ProposalSample[]):Promise<Record<string,SampleAudio>>{
- if(!stagingEnvironmentConfigured())return {};const quality=await qualityAudioIndex(provided);if(Object.keys(quality).length)return quality;const [plans,rows]=await Promise.all([splitTtsPlans(provided),splitTtsRows()]);let stories=plans.filter(p=>!p.job.startsWith('probe-'));
+export async function splitAudioIndex(provided?:ProposalSample[],deliveries?:SampleAudioDeliveries):Promise<Record<string,SampleAudio>>{
+ if(!stagingEnvironmentConfigured())return {};const quality=await qualityAudioIndex(provided,deliveries);if(Object.keys(quality).length)return quality;const [plans,rows]=await Promise.all([splitTtsPlans(provided),splitTtsRows()]);let stories=plans.filter(p=>!p.job.startsWith('probe-'));
  // Keep each verified pair until BOTH replacement parts are ready. Other articles are untouched.
  for(const id of Object.keys(previousVoices)){
   const pair=stories.filter(p=>p.job.startsWith(id+':'));
@@ -48,6 +49,7 @@ export async function splitAudioIndex(provided?:ProposalSample[]):Promise<Record
  // Initial generation and unrelated incomplete jobs retain the existing full-set gate.
  const authored=provided??(await getProjectContent(hwaseongSampleSlug)).articles.map(a=>proposalSample(a,projectId)).filter((s):s is ProposalSample=>!!s&&!s.editorTest);
  if(stories.some(p=>!ready(rows.find(r=>r.id===p.id),p)&&!authored.find(s=>s.article.id===p.job.split(':')[0])?.authorEdited))return {};
+ for(const p of stories)if(ready(rows.find(r=>r.id===p.id),p))deliveries?.set(p.id,(segment,request)=>deliverSplitPlan(p,segment,request));
  const result:Record<string,SampleAudio>={};for(const p of stories.filter(p=>p.job.endsWith(':summary'))){const id=p.job.split(':')[0],detail=stories.find(d=>d.job===`${id}:detail`)!;if(ready(rows.find(r=>r.id===p.id),p)&&ready(rows.find(r=>r.id===detail.id),detail))result[id]={...audio(p),detail:audio(detail)};}return result;
 }
 export async function splitTtsStatus(){const [plans,rows]=await Promise.all([splitTtsPlans(),splitTtsRows()]);return {version:2,configured:!!process.env.STAGING_OPENAI_API_KEY?.trim(),model:splitTtsModel,shutdown:splitTtsShutdown,totalCalls:plans.reduce((n,p)=>n+p.chunks.length,0),plans:plans.map(p=>({job:p.job,id:p.id,title:p.title,voice:p.voice,text:p.text,scriptHash:p.scriptHash,characters:p.text.length,calls:p.chunks.length,state:ready(rows.find(r=>r.id===p.id),p)?'ready':rows.some(r=>r.id===p.id)?'unknown':'not_started'})),audio:Object.fromEntries(plans.filter(p=>ready(rows.find(r=>r.id===p.id),p)).map(p=>[p.job,audio(p)]))};}
@@ -73,7 +75,9 @@ export async function generateSplitTts(job:string){
  return {ok:true,state:'ready',id:p.id,calls,voice:p.voice,model:splitTtsModel,receipts,proofs,paths:p.paths};
  }catch(error){return {ok:false,state:'unknown',id:p.id,calls,phase,receipts,proofs,...(error instanceof SpeechRequestError?{failure:error.failure,providerStatus:error.httpStatus}:{}),message:'결과 확인 필요. POST 재실행 없이 GET으로만 확인하세요.'};}
 }
-export async function splitTtsDelivery(id:string,segment:string|null,request:Request){const [plans,rows]=await Promise.all([splitTtsPlans(),splitTtsRows()]);const p=[...plans,...previousPlans(plans)].find(p=>p.id===id);if(!p||!ready(rows.find(r=>r.id===id),p))return new Response(null,{status:404});const privateHeaders={'Cache-Control':'private, no-store'};
+export async function splitTtsDelivery(id:string,segment:string|null,request:Request){const [plans,rows]=await Promise.all([splitTtsPlans(),splitTtsRows()]);const p=[...plans,...previousPlans(plans)].find(p=>p.id===id);if(!p||!ready(rows.find(r=>r.id===id),p))return new Response(null,{status:404});return deliverSplitPlan(p,segment,request);
+}
+async function deliverSplitPlan(p:Plan,segment:string|null,request:Request){const id=p.id,privateHeaders={'Cache-Control':'private, no-store'};
  if(segment===null)return Response.json({hasAudio:true,source:'ai_tts',stale:false,voice:p.voice,segments:p.paths.map((_,index)=>({index,url:`/api/projects/${hwaseongSampleSlug}/sample-tts?version=2&audio=${id}&segment=${index}`}))},{headers:privateHeaders});
  if(!/^\d{1,2}$/.test(segment)||!p.paths[Number(segment)])return new Response(null,{status:404});const r=await fetch(object(p.paths[Number(segment)]),{headers:{...headers(),...(request.headers.has('range')?{Range:request.headers.get('range')!}:{})},cache:'no-store',signal:AbortSignal.timeout(15000)});const h=new Headers({...privateHeaders,'Content-Type':'audio/mpeg','X-Content-Type-Options':'nosniff'});for(const key of ['content-length','content-range','accept-ranges']){const v=r.headers.get(key);if(v)h.set(key,v);}return new Response(r.body,{status:r.status,headers:h});
 }

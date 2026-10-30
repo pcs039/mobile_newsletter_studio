@@ -5,7 +5,7 @@ const oldInfo=console.info;test.before(()=>console.info=()=>{});test.after(()=>c
 function proxyHarness(allowed=true){return loader({'@/lib/staging-environment':{stagingRequestAllowed:()=>allowed},'@/lib/demo-share':{demoCookieName:()=> 'demo-cookie',demoHeaders:{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow'}}})('src/proxy.ts');}
 test('entry transport issues only scoped secure opaque cookie, never redirects/queries DB/consumes grant, including preview GET',async()=>{
  const old=global.fetch;let calls=0;global.fetch=()=>{calls++;throw Error('must not fetch');};
- try{for(const ua of ['Android Chrome','SamsungBrowser','KAKAOTALK','kakaotalk-scrap']){
+ try{for(const ua of ['Android Chrome','SamsungBrowser','KAKAOTALK']){
  const mod=proxyHarness(),r=mod.proxy(new NextRequest('https://stage.invalid/demo/open/'+token,{headers:{'user-agent':ua}}));assert.equal(r.status,200);assert.equal(r.headers.get('location'),null);const c=r.headers.get('set-cookie');for(const flag of ['HttpOnly','Secure','SameSite=lax','Path=/'])assert(c.includes(flag));assert(!/Expires=|Max-Age=/i.test(c));assert.equal(r.headers.get('referrer-policy'),'no-referrer');assert.equal(r.headers.get('cache-control'),'private, no-store');assert.equal(calls,0);assert.equal(mod.config.matcher,'/demo/open/:token');
  }}finally{global.fetch=old;}
 });
@@ -32,9 +32,16 @@ for(const code of ['SESSION_MISSING','REVOKED','EXPIRED','SOURCE_CHANGED'])test(
  const h=sessionHarness({ok:false,code});let clean;try{h.render();clean=h.mount();await settle();assert.equal(h.history.length,0);const html=renderToStaticMarkup(h.render());assert.match(html,new RegExp(code));assert(!html.includes('검증된 표지'));assert(!html.includes(token));h.handlers.get('focus')();await settle();assert.equal(h.requests.length,1);
  }finally{clean?.();h.close();}
 });
-test('cover loading shell contains no private assets, entry button or time-based return to instructions',()=>{const html=renderToStaticMarkup(loader()('src/app/demo/open/[token]/loading.tsx').default());assert.match(html,/role="status"/);assert(!html.includes('<button'));assert(!html.includes('<img'));assert(!html.includes('소식지 열기'));});
+test('no generic loading route or visible preparation message precedes the real cover',()=>{assert.equal(require('fs').existsSync('src/app/demo/open/[token]/loading.tsx'),false);const source=require('fs').readFileSync('src/components/hwaseong-demo-cover-pending.tsx','utf8');assert(!source.includes('준비하고'));assert(!source.includes('role="status"'));});
 
 test('focus events do not duplicate an in-flight initial cookie verification',async()=>{
  let complete;const pending=new Promise(r=>complete=r),h=sessionHarness(()=>pending);let clean;
  try{h.render();clean=h.mount();h.handlers.get('focus')();h.handlers.get('focus')();assert.equal(h.requests.length,1);complete({ok:true,shareId});await settle();assert.equal(h.history.length,1);}finally{clean?.();h.close();}
+});
+
+test('preview GET and HEAD never issue a session cookie or mutate anything',()=>{
+ for(const [ua,method] of [['kakaotalk-scrap','GET'],['facebookexternalhit','GET'],['Android Chrome','HEAD']]){
+  const r=proxyHarness().proxy(new NextRequest('https://stage.invalid/demo/open/'+token,{method,headers:{'user-agent':ua}}));
+  assert.equal(r.headers.get('set-cookie'),null);assert.equal(r.headers.get('location'),null);assert.equal(r.headers.get('referrer-policy'),'no-referrer');
+ }
 });

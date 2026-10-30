@@ -36,3 +36,12 @@ test('approved cartoon replacement survives old 04 row deletion without changing
  }finally{f.restore();}
 });
 test('scoped speed/instructions are explicit while the ordinary speech defaults remain unchanged',async()=>{const prev=global.fetch;let body;try{global.fetch=async(_u,init)=>{body=JSON.parse(init.body);return new Response(new Uint8Array([1]));};const speech=pure('src/lib/article-tts-audio.ts').requestOpenAiSpeech;await speech('문장','marin','gpt-4o-mini-tts',{apiKey:'fake',narration:{speed:1,instructions:n.qualityInstructions}});assert.equal(body.speed,1);assert.equal(body.instructions,n.qualityInstructions);}finally{global.fetch=prev;}});
+
+test('provided approved source registers request-local deliveries without refetching source/status or making paid calls',async()=>{
+ const f=fixture();try{const plans=await f.qualityPlans(samples);for(const p of plans)f.rows.push({id:p.id,project_id:n.qualityProjectId,article_id:null,ai_tts_model:p.model,ai_tts_voice:p.voice,ai_tts_text_hash:p.hash,script_text:p.text,file_path:p.path,ai_tts_audio_paths:[p.path],script_status:'approved',ai_tts_generated_at:'2026-10-28',...(p.resume?{pronunciation_note:JSON.stringify(p.resume)}:{})});
+ const deliveries=new Map(),index=await f.qualityAudioIndex(samples,deliveries);assert.equal(deliveries.size,14);assert.equal(Object.keys(index).length,7);
+ const old=global.fetch;global.fetch=async()=>{throw Error('No second DB/source lookup allowed');};
+ try{const r=await deliveries.get(index[ids[0]].id)(null,new Request('https://stage.invalid'));assert.equal(r.status,200);assert.equal((await r.json()).segments.length,1);assert.equal((await deliveries.get(index[ids[0]].id)('1',new Request('https://stage.invalid'))).status,404);}finally{global.fetch=old;}
+ const empty=new Map();f.rows[0].script_status='pending';assert.deepEqual(await f.qualityAudioIndex(samples,empty),{});assert.equal(empty.size,0);assert.equal(f.calls.length,0);
+ }finally{f.restore();}
+});

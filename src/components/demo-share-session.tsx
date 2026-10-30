@@ -30,5 +30,5 @@ export function DemoShareSession({slug,shareId,expiresAt,children,confirmOnMount
  },[slug,shareId,expiresAt,confirmOnMount]);
  if(failure)return <div role="alert" className="p-6 text-center text-sm leading-7"><p>{demoMessages[failure.code]}</p><p className="text-xs">오류 코드: {failure.code}{failure.requestId?` · 확인 번호: ${failure.requestId}`:""}</p></div>;
  if(!confirmOnMount)return <>{children}</>;
- return <><div inert={checking||undefined} aria-busy={checking||undefined}>{children}</div>{checking?<p role="status" className="fixed bottom-4 left-1/2 z-[10000] -translate-x-1/2 rounded-full bg-[#234e43] px-4 py-2 text-sm text-white shadow-lg">소식지 준비 중…</p>:null}</>;
+ return <><div inert={checking||undefined} aria-busy={checking||undefined}>{children}</div>{checking?<span role="status" className="sr-only">열람 권한 확인 중</span>:null}</>;
 }

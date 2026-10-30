@@ -9,6 +9,7 @@ type PublicArticleAudioPlayerProps = {
   controlsPortalTarget?: HTMLElement | null;
   isAiGenerated?: boolean;
   manifestUrl?: string;
+  initialSegments?: ArticleAudioManifest["segments"];
   onPlaybackStart?: () => void;
   src?: string;
 };
@@ -70,6 +71,7 @@ export function PublicArticleAudioPlayer({
   controlsPortalTarget,
   isAiGenerated = false,
   manifestUrl,
+  initialSegments,
   onPlaybackStart,
   src = "",
 }: PublicArticleAudioPlayerProps) {
@@ -164,6 +166,14 @@ export function PublicArticleAudioPlayer({
         return;
       }
 
+      // An authenticated server render can supply the already verified manifest.
+      // The media URL still performs fresh access validation on every request.
+      if (initialSegments?.length) {
+        setSegments(initialSegments);
+        setLoadState("ready");
+        return;
+      }
+
       if (!manifestUrl) {
         setLoadState("error");
         return;
@@ -193,7 +203,7 @@ export function PublicArticleAudioPlayer({
       isMounted = false;
       window.clearTimeout(resetTimer);
     };
-  }, [isAiGenerated, manifestUrl, playerSourceKey, src, stopAudio]);
+  }, [isAiGenerated, manifestUrl, initialSegments, playerSourceKey, src, stopAudio]);
 
   async function toggleAudio() {
     const audio = audioRef.current;

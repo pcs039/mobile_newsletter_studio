@@ -1,8 +1,10 @@
+import { Suspense } from "react";
+import { HwaseongDemoCoverPending } from "@/components/hwaseong-demo-cover-pending";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { HwaseongDemoView } from "@/components/hwaseong-demo-view";
 import { DemoShareFailure } from "@/components/demo-share-failure";
-import { getHwaseongDemoEntryData } from "@/lib/hwaseong-demo-render";
+import { prepareHwaseongDemoEntry } from "@/lib/hwaseong-demo-render";
 import { stagingOrigin, stagingRequestAllowed } from "@/lib/staging-environment";
 import { createDemoTrace, demoFailure, demoStep } from "@/lib/demo-share-diagnostics";
 export const dynamic="force-dynamic";
@@ -15,10 +17,15 @@ export default async function DemoOpenPage({params}:{params:Promise<{token:strin
   demoStep(trace,"entry_get","START");
   let result;
   try {
-    result=await getHwaseongDemoEntryData(token,trace);
+    result=await prepareHwaseongDemoEntry(token,trace);
   } catch(error) {
     const fallback=trace.stage==="media_prepare"?"MEDIA_PREPARATION_FAILED":trace.stage==="render"?"RENDER_FAILED":"SOURCE_UNAVAILABLE";
     return <DemoShareFailure {...demoFailure(error,trace,fallback)}/>;
   }
-  return <HwaseongDemoView result={result} confirmCookie/>;
+  return <Suspense fallback={<HwaseongDemoCoverPending cover={result.cover}/>}><ReadyDemo ready={result.ready}/></Suspense>;
+}
+
+async function ReadyDemo({ready}:{ready:Awaited<ReturnType<typeof prepareHwaseongDemoEntry>>["ready"]}) {
+  const data=await ready;
+  return "failure" in data?<DemoShareFailure {...data.failure}/>:<HwaseongDemoView result={data.result} confirmCookie/>;
 }

@@ -7,6 +7,7 @@ import { getProjectContent } from "@/lib/newsletter-repository";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { qualityInstructions, qualityPlan, scopedQualityPlan, qualityPrefix, qualityProjectId, qualityTitlePrefix, type QualityPlan } from "@/lib/hwaseong-sample-quality-narration";
+import type { SampleAudioDeliveries } from "@/lib/sample-audio-delivery";
 import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 import { selectedCartoonAudio } from "@/lib/hwaseong-cartoon-acting-server";
 import { actingArticleId } from "@/lib/hwaseong-cartoon-acting";
@@ -53,13 +54,14 @@ function ready(row: Row | undefined, p: QualityPlan) { return matches(row, p) &&
 function audio(p: QualityPlan, review = false): SampleAudio {
   return { id: p.id, voice: p.voice, transcriptText: p.text, manifestHref: `/api/projects/${hwaseongSampleSlug}/sample-tts?version=3&audio=${p.id}${review ? "&review=1" : ""}` };
 }
-export async function qualityAudioIndex(provided?: ProposalSample[]): Promise<Record<string, SampleAudio>> {
+export async function qualityAudioIndex(provided?: ProposalSample[], deliveries?: SampleAudioDeliveries): Promise<Record<string, SampleAudio>> {
   if (!stagingEnvironmentConfigured()) return {};
-  const [plans, rows, selected] = await Promise.all([qualityPlans(provided), qualityRows(), selectedCartoonAudio().catch(()=>null)]);
+  const [plans, rows, selected] = await Promise.all([qualityPlans(provided), qualityRows(), selectedCartoonAudio(provided,deliveries).catch(()=>null)]);
   const activePlans=selected?plans.filter(p=>p.articleId!==actingArticleId):plans;
   // A complete verified set is required before the reader switches away from v2.
   const authored = provided ?? (await getProjectContent(hwaseongSampleSlug)).articles.map(a => proposalSample(a,qualityProjectId)).filter((s): s is ProposalSample => !!s && !s.editorTest);
   if (activePlans.some(p => !ready(rows.find(r => r.id === p.id), p) && !authored.find(s => s.article.id === p.articleId)?.authorEdited)) return {};
+  for(const p of activePlans)if(ready(rows.find(r=>r.id===p.id),p))deliveries?.set(p.id,(segment,request)=>deliverQualityPlan(p,segment,request));
   return {...Object.fromEntries(activePlans.filter(p => p.part === "summary" && ready(rows.find(r=>r.id===p.id),p) && ready(rows.find(r=>r.id===activePlans.find(d=>d.articleId===p.articleId&&d.part==="detail")!.id),activePlans.find(d=>d.articleId===p.articleId&&d.part==="detail")!)).map(p => [p.articleId, { ...audio(p), detail: audio(activePlans.find(d => d.articleId === p.articleId && d.part === "detail")!) }])),...(selected?{[actingArticleId]:selected}:{})};
 }
 export async function qualityStatus() {
@@ -146,6 +148,9 @@ export async function qualityDelivery(id:string,segment:string|null,request:Requ
   const [plans,rows]=await Promise.all([qualityPlans(),qualityRows()]),p=plans.find(p=>p.id===id),row=rows.find(r=>r.id===id);
   if(p?.articleId===actingArticleId&&await selectedCartoonAudio().catch(()=>null))return new Response(null,{status:410});
   if(!p||!(ready(row,p)||(review&&matches(row,p)&&row?.script_status==="pending"&&row.ai_tts_generated_at)))return new Response(null,{status:404});
+  return deliverQualityPlan(p,segment,request,review);
+}
+async function deliverQualityPlan(p:QualityPlan,segment:string|null,request:Request,review=false) {
   const privateHeaders={"Cache-Control":"private, no-store"};
   if(segment===null)return Response.json({hasAudio:true,source:"ai_tts",stale:false,voice:p.voice,segments:[{index:0,url:`/api/projects/${hwaseongSampleSlug}/sample-tts?version=3&audio=${p.id}&segment=0${review?"&review=1":""}`}]},{headers:privateHeaders});
   if(segment!=="0")return new Response(null,{status:404});

@@ -7,7 +7,7 @@ const article=(id=a)=>({id,title:'시연 기사',displayTitle:'시연 기사',su
 function setup(){
  const state={articles:[article(),article(b)],share:null,calls:[],project:{id:p,slug:'sample',statusCode:'draft',status:'제작 중'}};
  const load=loader({'next/headers':{cookies:async()=>({get:()=>({value:state.shareToken??token})})},'@/lib/newsletter-repository':{
-  getProjectContent:async()=>({source:'supabase',articles:state.articles}),getProjectWorkspace:async()=>({ok:true,project:state.project}),
+  getProjectContent:async()=>({source:'supabase',articles:state.articles}),getProjectWorkspace:async()=>({ok:true,project:state.project}),getProjectWorkspaceById:async()=>({ok:true,project:state.project}),
  },'@/lib/supabase-config':{getSupabaseRestEndpoint:path=>'https://fixture.invalid'+path}});
  const mod=load('src/lib/demo-share.ts');
  const old=global.fetch,key=process.env.SUPABASE_SERVICE_ROLE_KEY;process.env.SUPABASE_SERVICE_ROLE_KEY='fixture-key';

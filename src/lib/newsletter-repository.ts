@@ -6390,13 +6390,21 @@ export async function getProjectAudioFiles(projectSlug: string): Promise<Project
   }
 }
 
+const articleContentColumns = "id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,interest_tags,article_type,institution_priority,urgency,publication_kind,valid_from,valid_until,public_info,survey_id,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at";
+
+const articleBlockColumns = "id,project_id,article_id,block_type,title,body,text_alignment,asset_id,link_action_id,sort_order,metadata,is_visible,updated_at";
+
+const articleLinkColumns = "id,project_id,article_id,label,action_type,target_value,display_style,sort_order,is_visible,updated_at";
+
+const articleAudioColumns = "id,article_id,title,file_path,duration_seconds,script_text,script_status,transcript_type,pronunciation_note,source_type,ai_tts_audio_paths,ai_tts_text_hash,ai_tts_voice,ai_tts_model,ai_tts_generated_at,updated_at";
+
 async function fetchArticleBlocks(articleIds: string[], headers: Record<string, string>) {
   if (articleIds.length === 0) {
     return [];
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_content_blocks?select=id,project_id,article_id,block_type,title,body,text_alignment,asset_id,link_action_id,sort_order,metadata,is_visible,updated_at&article_id=${makeArticleIdFilter(
+    `/rest/v1/newsletter_content_blocks?select=${articleBlockColumns}&article_id=${makeArticleIdFilter(
       articleIds,
     )}&order=sort_order.asc`,
   );
@@ -6423,7 +6431,7 @@ async function fetchArticleLinks(articleIds: string[], headers: Record<string, s
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_link_actions?select=id,project_id,article_id,label,action_type,target_value,display_style,sort_order,is_visible,updated_at&article_id=${makeArticleIdFilter(
+    `/rest/v1/newsletter_link_actions?select=${articleLinkColumns}&article_id=${makeArticleIdFilter(
       articleIds,
     )}&order=sort_order.asc`,
   );
@@ -6446,7 +6454,7 @@ async function fetchArticleLinks(articleIds: string[], headers: Record<string, s
 
 async function fetchProjectAudioFilesForContent(projectId: string, headers: Record<string, string>) {
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_audio_files?select=id,article_id,title,file_path,duration_seconds,script_text,script_status,transcript_type,pronunciation_note,source_type,ai_tts_audio_paths,ai_tts_text_hash,ai_tts_voice,ai_tts_model,ai_tts_generated_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_audio_files?select=${articleAudioColumns}&project_id=eq.${encodeURIComponent(
       projectId,
     )}&order=updated_at.desc`,
   );
@@ -6490,8 +6498,37 @@ async function fetchProjectPageNumbers(projectId: string, headers: Record<string
   return new Map(rows.map((row) => [row.id, row.page_number]));
 }
 
-export async function getProjectContent(projectSlug: string): Promise<ProjectContentResult> {
-  const workspace = await getProjectWorkspace(projectSlug);
+// One fresh PostgREST statement for Demo snapshot validation. No cache, RPC or
+// schema change; normal authoring reads continue to use getProjectContent.
+export async function getProjectContentSnapshotById(projectId: string): Promise<{workspace:ProjectWorkspaceResult;content:ProjectContentResult}> {
+  const unavailable = (source:"error"|"not_found"|"unconfigured") => ({workspace:{ok:false as const,project:null,source,message:"시연 원고를 확인하지 못했습니다."},content:{articles:[],source,message:"시연 원고를 확인하지 못했습니다."}});
+  const headers=getRequestHeaders(true);
+  if(!headers||!/^[a-f0-9-]{36}$/i.test(projectId))return unavailable("unconfigured");
+  const select=[projectSelectColumns,
+    `articles:newsletter_articles(${articleContentColumns},blocks:newsletter_content_blocks(${articleBlockColumns}),links:newsletter_link_actions(${articleLinkColumns}))`,
+    `audios:newsletter_audio_files(${articleAudioColumns})`,"pages:newsletter_pages(id,page_number)"].join(",");
+  const query=new URLSearchParams({select,id:`eq.${projectId}`,deleted_at:"is.null",limit:"1",
+    "articles.order":articleBaseOrderQuery,"articles.blocks.order":"sort_order.asc","articles.links.order":"sort_order.asc","audios.order":"updated_at.desc","pages.order":"page_number.asc"});
+  const endpoint=getSupabaseRestEndpoint(`/rest/v1/newsletter_projects?${query}`);
+  if(!endpoint)return unavailable("unconfigured");
+  try {
+    const r=await fetch(endpoint,{headers,cache:"no-store"});if(!r.ok)return unavailable("error");
+    type Snapshot=NewsletterProjectRow&{articles:(NewsletterArticleRow&{blocks:NewsletterContentBlockRow[];links:NewsletterLinkActionRow[]})[];audios:NewsletterAudioFileRow[];pages:{id:string;page_number:number}[]};
+    const rows=await r.json() as Snapshot[],row=rows[0];if(!row)return unavailable("not_found");
+    if(row.id!==projectId||!Array.isArray(row.articles)||!Array.isArray(row.audios)||!Array.isArray(row.pages)
+      ||row.articles.some(a=>a.project_id!==projectId||!Array.isArray(a.blocks)||!Array.isArray(a.links)||a.blocks.some(b=>b.article_id!==a.id||b.project_id!==projectId)||a.links.some(l=>l.article_id!==a.id||l.project_id!==projectId)))return unavailable("error");
+    const audioByArticleId=new Map(row.audios.filter(a=>a.article_id).map(a=>[a.article_id!,a]));
+    const audioById=new Map(row.audios.map(a=>[a.id,a]));
+    const pages=new Map(row.pages.map(p=>[p.id,p.page_number]));
+    const articles=row.articles.map(a=>mapArticleRowToProjectContentArticle(a,a.blocks,a.links,pages,audioByArticleId,audioById)).sort(compareArticleBaseOrder);
+    return {workspace:{ok:true,project:mapProjectRowToWorkspaceInfo(row),source:"supabase",message:"시연 프로젝트 조회 완료"},content:{articles,source:"supabase",message:"시연 원고 조회 완료"}};
+  } catch {return unavailable("error");}
+}
+
+export async function getProjectContent(projectSlug: string, resolvedWorkspace?: ProjectWorkspaceResult): Promise<ProjectContentResult> {
+  // Request-local reuse by a caller that already resolved this exact slug.
+  const workspace = resolvedWorkspace?.ok && resolvedWorkspace.project.slug === projectSlug
+    ? resolvedWorkspace : await getProjectWorkspace(projectSlug);
 
   if (!workspace.ok) {
     return {
@@ -6502,7 +6539,7 @@ export async function getProjectContent(projectSlug: string): Promise<ProjectCon
   }
 
   const endpoint = getSupabaseRestEndpoint(
-    `/rest/v1/newsletter_articles?select=id,project_id,page_id,sort_order,title,display_title,summary,body,text_alignment,title_alignment,summary_alignment,body_alignment,interest_tags,article_type,institution_priority,urgency,publication_kind,valid_from,valid_until,public_info,survey_id,contact_name,contact_phone,motion_preset,motion_speed,title_motion_effect,title_motion_speed,text_box_motion_effect,text_box_motion_speed,image_motion_effect,image_motion_speed,link_motion_effect,link_motion_speed,title_font_asset_id,body_font_asset_id,caption_font_asset_id,button_font_asset_id,status,representative_asset_id,audio_id,audio_source,article_tts_voice,ai_audio_id,created_at,updated_at&project_id=eq.${encodeURIComponent(
+    `/rest/v1/newsletter_articles?select=${articleContentColumns}&project_id=eq.${encodeURIComponent(
       workspace.project.id,
     )}&order=${articleBaseOrderQuery}`,
   );

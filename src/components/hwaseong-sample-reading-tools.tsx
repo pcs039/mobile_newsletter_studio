@@ -13,7 +13,7 @@ import { samplePresentationArticle, type ProposalSample } from "@/lib/hwaseong-p
 function SplitNarrationPlayer({ audio, detail }: { audio: SampleAudio; detail?: boolean }) {
   return <section className="rounded-xl border border-slate-200 bg-white p-3 text-slate-800" data-split-narration={detail ? "detail" : "summary"}>
     <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-sm font-bold">{detail ? "상세기사 듣기" : "기사 요약 듣기"}</h3><span className="text-xs capitalize text-slate-500">{audio.voiceLabel??audio.voice}</span></div>
-    <PublicArticleAudioPlayer key={audio.id} ariaLabel={detail ? "상세기사 AI 음성" : "기사 요약 AI 음성"} isAiGenerated manifestUrl={audio.manifestHref} />
+    <PublicArticleAudioPlayer key={audio.id} ariaLabel={detail ? "상세기사 AI 음성" : "기사 요약 AI 음성"} isAiGenerated manifestUrl={audio.manifestHref} initialSegments={audio.initialSegments} />
     <p className="mt-2 text-xs text-slate-500">AI 생성 음성 · {audio.narrationLabel??(detail ? "상세 본문 낭독" : "요약 낭독 전용")}</p>
     <details className="mt-1 text-xs"><summary className="min-h-8 content-center">낭독 대본 확인</summary><p className="whitespace-pre-wrap leading-6">{audio.transcriptText}</p></details>
   </section>;
