@@ -18,3 +18,10 @@ test('request timing diagnostics contain only allowlisted names, numbers and cor
   assert.match(m.demoTimingHeader(t),/^access;dur=\d+(\.\d+)?, cover;dur=\d+(\.\d+)?$/);assert(!JSON.stringify(logs).includes('secret'));
  }finally{console.info=prev;}
 });
+
+test('early cover reuses cover design and image, disables existing CTAs until ready, contains no entry button',()=>{
+ const React=require('react'),render=require('react-dom/server').renderToStaticMarkup;
+ const Pending=load()('src/components/hwaseong-demo-cover-pending.tsx').HwaseongDemoCoverPending;
+ const html=render(React.createElement(Pending,{cover:{coverImageSrc:'data:image/webp;base64,existing',coverLayout:'image_info',coverFit:'contain',masthead:'특별한 화성소식',coverTitle:'화성의 오늘을 더 가까이',coverSubtitle:'기존 부제',coverIssueText:'2026.10'}}));
+ assert.match(html,/data-demo-early-cover/);assert.match(html,/화성의 오늘을 더 가까이/);assert.match(html,/loading="eager"/);assert.match(html,/fetchPriority="high"/);assert.equal((html.match(/disabled=""/g)||[]).length,2);assert(!html.includes('소식지 열기'));assert(!html.includes('/projects/'));
+});

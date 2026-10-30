@@ -1,7 +1,7 @@
 import "server-only";
 import type { ComponentProps } from "react";
 import type { HwaseongProposalReader } from "@/components/hwaseong-proposal-reader";
-import { demoStep, demoTimed, type DemoTrace } from "@/lib/demo-share-diagnostics";
+import { demoStep, demoTimed, demoFailure, type DemoTrace } from "@/lib/demo-share-diagnostics";
 import { DemoError, getDemoAccess, getDemoSession } from "@/lib/demo-share";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
@@ -40,7 +40,22 @@ export async function getHwaseongDemoEntryData(token: string, trace?: DemoTrace)
   const access=validateHwaseongDemoAccess(await demoTimed(trace,"access",()=>getDemoAccess(token,hwaseongSampleSlug,trace)),trace);
   return buildHwaseongDemoData(access,true,trace);
 }
-async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseongDemoAccess>>, prepareMedia: boolean, trace?: DemoTrace) {
+// Stream the authorized cover while the SAME request prepares article media.
+// No second access check, browser POST or additional data endpoint is needed.
+export async function prepareHwaseongDemoEntry(token: string, trace: DemoTrace) {
+  if(!isHwaseongDemo(hwaseongSampleSlug))throw new DemoError(404,"시연 자료를 찾지 못했습니다.","PROJECT_MISMATCH");
+  const access=validateHwaseongDemoAccess(await demoTimed(trace,"access",()=>getDemoAccess(token,hwaseongSampleSlug,trace)),trace);
+  const project=access.project;
+  const source=project.coverImagePath?makePublicStoragePreviewHref("mobile-assets",project.coverImagePath):project.coverImageUrl;
+  const coverReady=project.coverEnabled&&source?demoTimed(trace,"cover",()=>prepareSampleCover(projectId,project.slug,source)):Promise.resolve(null);
+  // Attach both outcomes immediately: a media failure cannot become an
+  // unhandled rejection while the early cover is still being prepared.
+  const ready=buildHwaseongDemoData(access,true,trace,coverReady).then(result=>({result}),error=>({failure:demoFailure(error,trace,"MEDIA_PREPARATION_FAILED")}));
+  const image=await coverReady;
+  const cover=image?{coverImageSrc:image,coverFit:project.coverFit,coverLayout:project.coverLayout,coverTitle:project.coverTitle||project.title,coverSubtitle:project.coverSubtitle,coverIssueText:project.coverIssueText||project.issue,masthead:project.title}:undefined;
+  return {cover,ready};
+}
+async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseongDemoAccess>>, prepareMedia: boolean, trace?: DemoTrace, preparedCover?: Promise<string|null>) {
   const {project,samples}=access,slug=project.slug;
   const ids = samples.map(s => s.article.id);
   const sourceCover = project.coverImagePath ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) : project.coverImageUrl;
@@ -50,7 +65,7 @@ async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseo
     demoTimed(trace,"text_design",()=>getArticleTextDesigns(projectId, ids, true)),
     demoTimed(trace,"backgrounds",()=>getArticleHeroBackgroundReferences(projectId, ids, true)),
     prepareMedia ? demoTimed(trace,"audio_index",()=>splitAudioIndex(samples)) : {} as Record<string,SampleAudio>,
-    prepareMedia && sourceCover ? demoTimed(trace,"cover",()=>prepareSampleCover(projectId, slug, sourceCover)) : null,
+    prepareMedia && sourceCover ? preparedCover??demoTimed(trace,"cover",()=>prepareSampleCover(projectId, slug, sourceCover)) : null,
     prepareMedia ? demoTimed(trace,"thumbnails",()=>prepareSampleToc(projectId, slug, samples)) : {},
     prepareMedia ? demoTimed(trace,"map",()=>prepareSampleMap(projectId, slug, samples)) : undefined,
   ])).catch(()=>{throw new DemoError(503,"미디어 준비 실패","MEDIA_PREPARATION_FAILED");});

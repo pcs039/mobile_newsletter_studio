@@ -19,8 +19,8 @@ function fixture(){
   '@/lib/hwaseong-proposal-sample':{hwaseongSampleSlug:slug,proposalSample:a=>({article:a,cover:a.blocks[0].body,kind:a.blocks[0].metadata.proposal_sample.kind,headline:a.title,editorTest:a.test})},
   '@/lib/newsletter-repository':{getFontAssets:async()=>({fonts:[]}),makePublicStoragePreviewHref:()=>''},
   '@/lib/article-composition-repository':{getArticleTextDesigns:async()=>({}),getArticleHeroBackgroundReferences:async()=>({})},
-  '@/lib/hwaseong-sample-cover-server':{prepareSampleCover:async()=>null},
-  '@/lib/hwaseong-sample-toc-server':{prepareSampleMap:async()=>undefined,prepareSampleToc:async()=>({})},
+  '@/lib/hwaseong-sample-cover-server':{prepareSampleCover:async()=>state.earlyImage??null},
+  '@/lib/hwaseong-sample-toc-server':{prepareSampleMap:async()=>undefined,prepareSampleToc:async()=>state.waitMedia?await state.waitMedia:{}},
   '@/lib/hwaseong-sample-split-tts-server':{splitAudioIndex:async(_samples,deliveries)=>{state.indexCalls++;if(deliveries)for(const id of ['approved','acting-approved'])deliveries.set(id,async(segment)=>{state.delivery.push([id,segment]);return Response.json({hasAudio:true,segments:[{index:0,url:'/api/projects/private'}]});});return Object.fromEntries(articles.map(a=>[a.id,{id:'approved',voice:'coral',manifestHref:'/api/projects/private/sample-tts?version=3&audio=approved',detail:{id:'acting-approved',voice:'coral',manifestHref:'/api/projects/private/sample-tts/acting?audio=acting-approved'}}]));},splitTtsDelivery:()=>{throw Error('unexpected v2');}},
   '@/lib/hwaseong-sample-quality-tts-server':{qualityDelivery:async(...args)=>{state.delivery.push(args);return Response.json({hasAudio:true,segments:[{index:0,url:'/api/projects/private'}]});}},
   '@/lib/hwaseong-cartoon-acting-server':{actingDelivery:async(...args)=>{state.delivery.push(args);return Response.json({hasAudio:true,segments:[{index:0,url:'/api/projects/private'}]});}},
@@ -79,4 +79,12 @@ test('no-expiry session cookie has no artificial Expires date and remains HttpOn
 test('direct entry validates the URL bearer independently of any previous valid cookie, reuses the same seven sources',async()=>{
  const h=fixture(),before=structuredClone(h.state.articles);const d=await h.mod.getHwaseongDemoEntryData('valid-link');assert.equal(h.state.entryCalls,1);assert.equal(h.state.entryToken,'valid-link');assert.deepEqual(d.props.samples.map(s=>s.article.id),before.map(a=>a.id));assert.deepEqual(h.state.articles,before);await assert.rejects(h.mod.getHwaseongDemoEntryData('revoked'),e=>e.code==='REVOKED');
  const foreign=fixture();foreign.state.project.id='other';await assert.rejects(foreign.mod.getHwaseongDemoEntryData('valid-link'));
+});
+
+test('authorized existing cover streams before slow article media using one access and one preparation',async()=>{
+ const h=fixture();h.state.earlyImage='data:image/webp;base64,existing';let release;h.state.waitMedia=new Promise(r=>release=r);
+ const trace={requestId:'44444444-4444-4444-8444-444444444444',stage:'entry_get'};const entry=await h.mod.prepareHwaseongDemoEntry('valid-link',trace);
+ assert.equal(entry.cover.coverImageSrc,h.state.earlyImage);assert.equal(h.state.entryCalls,1);let done=false;entry.ready.then(()=>done=true);await Promise.resolve();assert.equal(done,false);
+ release({});const completed=await entry.ready;assert.equal(completed.result.props.cover.coverImageSrc,h.state.earlyImage);assert.equal(completed.result.props.samples.length,7);assert.equal(h.state.entryCalls,1);assert.equal(h.state.indexCalls,1);
+ const invalid=fixture();invalid.state.revoked=true;await assert.rejects(invalid.mod.prepareHwaseongDemoEntry('valid-link',trace));assert.equal(invalid.state.indexCalls,0);
 });
