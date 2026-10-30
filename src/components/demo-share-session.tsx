@@ -5,9 +5,10 @@ import { useEffect,useState,type ReactNode } from "react";
 export function DemoShareSession({slug,shareId,expiresAt,children,confirmOnMount=false}:{slug:string;shareId:string;expiresAt:string|null;children:ReactNode;confirmOnMount?:boolean}){
  const [checking,setChecking]=useState(confirmOnMount);
  const [failure,setFailure]=useState<{code:DemoFailureCode;requestId:string}|null>(null);
- useEffect(()=>{let alive=true,failed=false;const controller=new AbortController();
+ useEffect(()=>{let alive=true,failed=false,inFlight=false;const controller=new AbortController();
   async function check(){
-    if(!alive||failed)return;
+    if(!alive||failed||inFlight)return;
+    inFlight=true;
     const requestId=demoClientRequestId();
     try{
       const r=await fetch(`/api/demo-share/session?${new URLSearchParams({project:slug})}`,{cache:"no-store",credentials:"same-origin",headers:{"X-Demo-Request-Id":requestId},signal:controller.signal});
@@ -20,7 +21,7 @@ export function DemoShareSession({slug,shareId,expiresAt,children,confirmOnMount
         window.history.replaceState(null,"",sampleDemoHref(slug,window.location.href));
       }
     }catch{if(alive&&!controller.signal.aborted){failed=true;setFailure({code:"NETWORK_ERROR",requestId});}}
-    finally{if(alive)setChecking(false);}
+    finally{inFlight=false;if(alive)setChecking(false);}
   }
   if(confirmOnMount)void check();
   const expiry=expiresAt===null?null:setTimeout(()=>setFailure({code:"EXPIRED",requestId:""}),Math.max(0,Math.min(2147483647,Date.parse(expiresAt)-Date.now())));

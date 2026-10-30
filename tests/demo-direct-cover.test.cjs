@@ -20,7 +20,7 @@ const settle=()=>new Promise(r=>setTimeout(r,15));
 function sessionHarness(response){
  const states=[],effects=[],handlers=new Map(),history=[],requests=[];let cursor=0;const oldWindow=global.window,oldFetch=global.fetch;
  global.window={location:{pathname:'/demo/open/'+token,href:'https://stage.invalid/demo/open/'+token+'?articleId=article&interest=pets'},history:{replaceState:(_s,_t,u)=>{history.push(u);global.window.location.pathname='/demo';}},addEventListener:(k,f)=>handlers.set(k,f),removeEventListener:k=>handlers.delete(k)};
- global.fetch=async(url,opt)=>{requests.push({url,opt});return Response.json(response,{status:response.ok?200:401});};
+ global.fetch=async(url,opt)=>{requests.push({url,opt});const data=typeof response==="function"?await response():response;return Response.json(data,{status:data.ok?200:401});};
  const Comp=loader({react:{...React,useState(v){const i=cursor++;if(!(i in states))states[i]=v;return[states[i],v=>states[i]=v];},useEffect:f=>effects.push(f)}})('src/components/demo-share-session.tsx').DemoShareSession;
  return{history,requests,handlers,render(){cursor=0;return Comp({slug,shareId,expiresAt:null,children:React.createElement('article',null,'검증된 표지'),confirmOnMount:true});},mount(){return effects[0]();},close(){global.window=oldWindow;global.fetch=oldFetch;}};
 }
@@ -33,3 +33,8 @@ for(const code of ['SESSION_MISSING','REVOKED','EXPIRED','SOURCE_CHANGED'])test(
  }finally{clean?.();h.close();}
 });
 test('cover loading shell contains no private assets, entry button or time-based return to instructions',()=>{const html=renderToStaticMarkup(loader()('src/app/demo/open/[token]/loading.tsx').default());assert.match(html,/role="status"/);assert(!html.includes('<button'));assert(!html.includes('<img'));assert(!html.includes('소식지 열기'));});
+
+test('focus events do not duplicate an in-flight initial cookie verification',async()=>{
+ let complete;const pending=new Promise(r=>complete=r),h=sessionHarness(()=>pending);let clean;
+ try{h.render();clean=h.mount();h.handlers.get('focus')();h.handlers.get('focus')();assert.equal(h.requests.length,1);complete({ok:true,shareId});await settle();assert.equal(h.history.length,1);}finally{clean?.();h.close();}
+});
