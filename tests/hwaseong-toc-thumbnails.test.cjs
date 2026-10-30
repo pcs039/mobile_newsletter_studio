@@ -48,7 +48,11 @@ test('TOC crops do not enter existing summary/detail rendering or replace summar
 });
 test('prepared TOC frames avoid double cropping and leave summary originals untouched', () => {
   const thumbnailIndex=Object.fromEntries(samples.map(s=>[s.article.id,'data:image/webp;base64,fixture']));
-  const h=render({thumbnailIndex});assert.equal((h.match(/src="data:image\/webp;base64,fixture"/g)||[]).length,7);
+  const h=render({thumbnailIndex});const frames=h.match(/data-sample-thumbnail="[^"]*"[\s\S]*?<\/div>/g)||[];assert.equal(frames.length,7);for(const frame of frames)assert(frame.includes('src="data:image/webp;base64,fixture"'));
   assert(!h.includes('height:306%'));assert(!h.includes('height:160%'));assert(!h.includes('transform:scale(1.05)'));
-  const summary=render({thumbnailIndex,contents:false,selectedId:'a1'});assert.match(summary,/src="\/original-policy.webp"/);assert(!summary.includes('src="data:image/webp;base64,fixture"'));
+  const summary=render({thumbnailIndex,contents:false,selectedId:'a1'});assert.match(summary,/src="\/original-policy.webp"/);assert(!summary.includes('data-sample-thumbnail='));
+});
+test('session-gated thumbnail URLs use the same preframed crop and fixed geometry as inline thumbnails',()=>{
+ const thumbnailIndex=Object.fromEntries(samples.map(s=>[s.article.id,`/api/demo-share/sample-files?project=fixture&bucket=design-production-assets&path=${s.article.id}.webp&variant=thumbnail`]));
+ const h=render({thumbnailIndex});assert.equal((h.match(/data-sample-thumbnail=/g)||[]).length,7);assert(!h.includes('height:306%'));assert(!h.includes('height:160%'));assert(!h.includes('transform:scale(1.05)'));assert.equal((h.match(/relative aspect-video overflow-hidden/g)||[]).length,7);
 });

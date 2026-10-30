@@ -75,14 +75,12 @@ async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseo
   const ids = samples.map(s => s.article.id);
   const sourceCover = project.coverImagePath ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) : project.coverImageUrl;
   demoStep(trace,"media_prepare","START");
-  const [fontData, textDesigns, references, currentAudio, inlineCover, thumbnailIndex, mapImage] = await demoTimed(trace,"media",()=>Promise.all([
+  const [fontData, textDesigns, references, currentAudio, inlineCover] = await demoTimed(trace,"media",()=>Promise.all([
     demoTimed(trace,"fonts",()=>getFontAssets({ activeOnly: true })),
     demoTimed(trace,"text_design",()=>getArticleTextDesigns(projectId, ids, true)),
     demoTimed(trace,"backgrounds",()=>getArticleHeroBackgroundReferences(projectId, ids, true)),
     prepareMedia ? demoTimed(trace,"audio_index",()=>demoAudioIndex(samples,slug)) : {} as Record<string,SampleAudio>,
     prepareMedia && sourceCover ? preparedCover??demoTimed(trace,"cover",()=>prepareSampleCover(projectId, slug, sourceCover)) : null,
-    prepareMedia ? demoTimed(trace,"thumbnails",async()=>(await import("@/lib/hwaseong-sample-toc-server")).prepareSampleToc(projectId, slug, samples)) : {},
-    prepareMedia ? demoTimed(trace,"map",async()=>(await import("@/lib/hwaseong-sample-toc-server")).prepareSampleMap(projectId, slug, samples)) : undefined,
   ])).catch(()=>{throw new DemoError(503,"미디어 준비 실패","MEDIA_PREPARATION_FAILED");});
   demoStep(trace,"media_prepare","READY");
   demoStep(trace,"render","START");
@@ -113,6 +111,18 @@ async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseo
   const renderedSamples = samples.map(s => map({ ...s, article: { ...s.article, audioFile: null, audioSource: "none" as const,
     blocks: s.article.blocks.filter(b => b.isVisible || b.metadata.proposal_sample).map(b => ({ ...b, metadata: Object.fromEntries(Object.entries(b.metadata).filter(([k]) => ["proposal_sample", "proposal_editorial", "proposal_tourism_feature", "source", "proposal_original_text"].includes(k) || k === "proposal_original_article").map(([k,v]) => [k,k === "proposal_original_article" && v && typeof v === "object" ? { body: (v as Record<string,unknown>).body } : v])) })),
   } }));
+  // Small session-gated references, not base64 images in the initial RSC/HTML.
+  // The existing crop/map preparation runs only when a visible image is requested.
+  const imageVariant = (sample: ProposalSample, variant: "thumbnail" | "map") => {
+    const source = rewrite(sample.cover);
+    return source.startsWith("/api/demo-share/sample-files?") && source.includes("bucket=design-production-assets") ? `${source}&variant=${variant}` : "";
+  };
+  const thumbnailIndex = prepareMedia ? Object.fromEntries(samples.flatMap(s => {
+    const url = imageVariant(s, "thumbnail");
+    return url ? [[s.article.id, url]] : [];
+  })) : {};
+  const tourism = samples.find(s => s.kind === "tourism");
+  const mapImage = prepareMedia && tourism ? imageVariant(tourism, "map") || undefined : undefined;
   const audioIndex: Record<string,SampleAudio> = Object.fromEntries(samples.flatMap(s => {
     const audio = currentAudio[s.article.id]; if (!audio?.detail) return [];
     return [[s.article.id, { ...audio, manifestHref: sampleDemoAudioHref(slug, s.article.id, "summary"), detail: { ...audio.detail, manifestHref: sampleDemoAudioHref(slug, s.article.id, "detail") } }]];

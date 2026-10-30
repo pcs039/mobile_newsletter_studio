@@ -1,11 +1,30 @@
-import { getHwaseongDemoData } from "@/lib/hwaseong-demo-render";
+import { getHwaseongDemoAccess, getHwaseongDemoData } from "@/lib/hwaseong-demo-render";
 import { demoHeaders } from "@/lib/demo-share";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const q = new URL(request.url).searchParams;
-  if ([...q.keys()].some(k => !["project","bucket","path"].includes(k)) || ["project","bucket","path"].some(k => q.getAll(k).length !== 1)) return new Response(null,{status:404,headers:demoHeaders});
+  if ([...q.keys()].some(k => !["project","bucket","path","variant"].includes(k)) || ["project","bucket","path"].some(k => q.getAll(k).length !== 1) || q.getAll("variant").length > 1) return new Response(null,{status:404,headers:demoHeaders});
+  const variant = q.get("variant");
+  if (variant !== null && !["thumbnail","map"].includes(variant)) return new Response(null,{status:404,headers:demoHeaders});
   try {
+    if (variant !== null) {
+      // Authenticate and revalidate the current seven-article snapshot BEFORE
+      // consulting the existing derived-byte cache. No public or signed URL.
+      const access = await getHwaseongDemoAccess(q.get("project")!);
+      const bucket=q.get("bucket")!,path=q.get("path")!;
+      const sample = access.samples.find(s => {
+        try {
+          const u = new URL(s.cover,"https://demo.invalid");
+          return u.pathname === "/api/project-files/preview" && u.searchParams.get("bucket") === bucket && u.searchParams.get("path") === path;
+        } catch { return false; }
+      });
+      if (bucket !== "design-production-assets" || !sample || (variant === "map" && sample.kind !== "tourism")) return new Response(null,{status:404,headers:demoHeaders});
+      const { prepareSampleMap, prepareSampleToc } = await import("@/lib/hwaseong-sample-toc-server");
+      const image = variant === "map" ? await prepareSampleMap(access.project.id,access.project.slug,[sample]) : (await prepareSampleToc(access.project.id,access.project.slug,[sample]))[sample.article.id];
+      if (!image?.startsWith("data:image/webp;base64,")) return new Response(null,{status:503,headers:demoHeaders});
+      return new Response(Buffer.from(image.slice("data:image/webp;base64,".length),"base64"),{headers:{...demoHeaders,"Content-Type":"image/webp","Content-Disposition":"inline"}});
+    }
     const { access, files, fontPaths } = await getHwaseongDemoData(q.get("project")!,false);
     const bucket=q.get("bucket")!,path=q.get("path")!;
     if (!files.has(`${bucket}:${path}`)) return new Response(null,{status:404,headers:demoHeaders});
