@@ -1,7 +1,7 @@
 import "server-only";
 import type { ComponentProps } from "react";
 import type { HwaseongProposalReader } from "@/components/hwaseong-proposal-reader";
-import { demoStep, type DemoTrace } from "@/lib/demo-share-diagnostics";
+import { demoStep, demoTimed, type DemoTrace } from "@/lib/demo-share-diagnostics";
 import { DemoError, getDemoAccess, getDemoSession } from "@/lib/demo-share";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
@@ -9,9 +9,8 @@ import { getFontAssets, makePublicStoragePreviewHref } from "@/lib/newsletter-re
 import { getArticleHeroBackgroundReferences, getArticleTextDesigns } from "@/lib/article-composition-repository";
 import { prepareSampleCover } from "@/lib/hwaseong-sample-cover-server";
 import { prepareSampleMap, prepareSampleToc } from "@/lib/hwaseong-sample-toc-server";
-import { splitAudioIndex, splitTtsDelivery } from "@/lib/hwaseong-sample-split-tts-server";
-import { qualityDelivery } from "@/lib/hwaseong-sample-quality-tts-server";
-import { actingDelivery } from "@/lib/hwaseong-cartoon-acting-server";
+import { splitAudioIndex } from "@/lib/hwaseong-sample-split-tts-server";
+import type { SampleAudioDeliveries } from "@/lib/sample-audio-delivery";
 import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 
 const projectId = "4cd5297e-a0fd-434c-84d4-fa4d3baf9389";
@@ -27,7 +26,7 @@ export function validateHwaseongDemoAccess(access: Awaited<ReturnType<typeof get
 }
 export async function getHwaseongDemoAccess(slug: string, trace?: DemoTrace) {
   if (!isHwaseongDemo(slug)) throw new DemoError(404,"시연 자료를 찾지 못했습니다.","PROJECT_MISMATCH");
-  return validateHwaseongDemoAccess(await getDemoSession(slug,trace),trace);
+  return validateHwaseongDemoAccess(await demoTimed(trace,"access",()=>getDemoSession(slug,trace)),trace);
 }
 export function sampleDemoAudioHref(slug: string, article: string, part: string, segment?: number) {
   return `/api/demo-share/sample-audio?${new URLSearchParams({ project: slug, article, part, ...(segment === undefined ? {} : { segment: String(segment) }) })}`;
@@ -38,7 +37,7 @@ export async function getHwaseongDemoData(slug: string, prepareMedia = true, tra
 // The URL bearer is authoritative here, even if another valid cookie exists.
 export async function getHwaseongDemoEntryData(token: string, trace?: DemoTrace) {
   if(!isHwaseongDemo(hwaseongSampleSlug))throw new DemoError(404,"시연 자료를 찾지 못했습니다.","PROJECT_MISMATCH");
-  const access=validateHwaseongDemoAccess(await getDemoAccess(token,hwaseongSampleSlug,trace),trace);
+  const access=validateHwaseongDemoAccess(await demoTimed(trace,"access",()=>getDemoAccess(token,hwaseongSampleSlug,trace)),trace);
   return buildHwaseongDemoData(access,true,trace);
 }
 async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseongDemoAccess>>, prepareMedia: boolean, trace?: DemoTrace) {
@@ -46,11 +45,15 @@ async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseo
   const ids = samples.map(s => s.article.id);
   const sourceCover = project.coverImagePath ? makePublicStoragePreviewHref("mobile-assets", project.coverImagePath) : project.coverImageUrl;
   demoStep(trace,"media_prepare","START");
-  const [fontData, textDesigns, references, currentAudio, inlineCover, thumbnailIndex, mapImage] = await Promise.all([
-    getFontAssets({ activeOnly: true }), getArticleTextDesigns(projectId, ids, true), getArticleHeroBackgroundReferences(projectId, ids, true),
-    prepareMedia ? splitAudioIndex(samples) : {} as Record<string,SampleAudio>, prepareMedia && sourceCover ? prepareSampleCover(projectId, slug, sourceCover) : null,
-    prepareMedia ? prepareSampleToc(projectId, slug, samples) : {}, prepareMedia ? prepareSampleMap(projectId, slug, samples) : undefined,
-  ]).catch(()=>{throw new DemoError(503,"미디어 준비 실패","MEDIA_PREPARATION_FAILED");});
+  const [fontData, textDesigns, references, currentAudio, inlineCover, thumbnailIndex, mapImage] = await demoTimed(trace,"media",()=>Promise.all([
+    demoTimed(trace,"fonts",()=>getFontAssets({ activeOnly: true })),
+    demoTimed(trace,"text_design",()=>getArticleTextDesigns(projectId, ids, true)),
+    demoTimed(trace,"backgrounds",()=>getArticleHeroBackgroundReferences(projectId, ids, true)),
+    prepareMedia ? demoTimed(trace,"audio_index",()=>splitAudioIndex(samples)) : {} as Record<string,SampleAudio>,
+    prepareMedia && sourceCover ? demoTimed(trace,"cover",()=>prepareSampleCover(projectId, slug, sourceCover)) : null,
+    prepareMedia ? demoTimed(trace,"thumbnails",()=>prepareSampleToc(projectId, slug, samples)) : {},
+    prepareMedia ? demoTimed(trace,"map",()=>prepareSampleMap(projectId, slug, samples)) : undefined,
+  ])).catch(()=>{throw new DemoError(503,"미디어 준비 실패","MEDIA_PREPARATION_FAILED");});
   demoStep(trace,"media_prepare","READY");
   demoStep(trace,"render","START");
   const usedFontIds = JSON.stringify([textDesigns, samples, project.bodyFontAssetId, project.titleFontAssetId]);
@@ -88,20 +91,23 @@ async function buildHwaseongDemoData(access: Awaited<ReturnType<typeof getHwaseo
   const cover = project.coverEnabled && sourceCover ? { coverImageSrc: inlineCover || rewrite(sourceCover), coverFit: project.coverFit, coverLayout: project.coverLayout, coverTitle: project.coverTitle || project.title, coverSubtitle: project.coverSubtitle, coverIssueText: project.coverIssueText || project.issue, masthead: project.title } : undefined;
   const props: Omit<ComponentProps<typeof HwaseongProposalReader>,"detail"|"width"> = { slug, samples: renderedSamples, fonts: fonts.map(f => ({...f,uploadedBy:"",sourceFileName:"",fileUrl:register("fonts",f.filePath)})), backgrounds, textDesigns, cover, audioIndex, thumbnailIndex, mapImage, demo:true };
   demoStep(trace,"render","READY");
-  return { access, props, files, fontPaths };
+  return { access, props, files, fontPaths, timings: trace?.timings };
 }
 
 // Only the currently connected reader audio is deliverable. QA/probes/pending
 // IDs and provider/generation endpoints are never accepted from the recipient.
-export async function deliverHwaseongDemoAudio(slug: string, article: string, part: string, segment: string | null, request: Request) {
-  const access = await getHwaseongDemoAccess(slug);
+export async function deliverHwaseongDemoAudio(slug: string, article: string, part: string, segment: string | null, request: Request, trace?: DemoTrace) {
+  const access = await getHwaseongDemoAccess(slug,trace);
   if (!access.samples.some(s => s.article.id === article) || !["summary","detail"].includes(part)) return new Response(null,{status:404});
-  const index = await splitAudioIndex(access.samples), source = index[article];
+  const deliveries: SampleAudioDeliveries = new Map();
+  const index = await demoTimed(trace,"audio_index",()=>splitAudioIndex(access.samples,deliveries)), source = index[article];
   const audio = part === "detail" ? source?.detail : source;
   if (!audio) return new Response(null,{status:404});
-  const url = new URL(audio.manifestHref,"https://demo.invalid"), id = url.searchParams.get("audio")!;
-  const result = url.pathname.endsWith("/acting") ? await actingDelivery(id,segment,request)
-    : url.searchParams.get("version") === "3" ? await qualityDelivery(id,segment,request,false) : await splitTtsDelivery(id,segment,request);
+  // The index registered a delivery only after matching the current script,
+  // approved DB row and active selection. No second source/status lookup.
+  const deliver=deliveries.get(audio.id);
+  if(!deliver)return new Response(null,{status:404});
+  const result=await demoTimed(trace,"audio_delivery",()=>deliver(segment,request));
   if (segment !== null || !result.ok) return result;
   const manifest = await result.json();
   return Response.json({...manifest,segments:manifest.segments.map((s:{index:number}) => ({index:s.index,url:sampleDemoAudioHref(slug,article,part,s.index)}))});

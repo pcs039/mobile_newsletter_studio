@@ -3,10 +3,11 @@ import { requestOpenAiSpeech } from "@/lib/article-tts-audio";
 import { inspectArticleMp3, readTtsBytes } from "@/lib/article-tts-media";
 import { createTtsDiagnostics, SpeechRequestError } from "@/lib/tts-request-diagnostics";
 import { getProjectContent } from "@/lib/newsletter-repository";
-import { hwaseongSampleSlug, proposalSample } from "@/lib/hwaseong-proposal-sample";
+import { hwaseongSampleSlug, proposalSample, type ProposalSample } from "@/lib/hwaseong-proposal-sample";
 import { stagingEnvironmentConfigured } from "@/lib/staging-environment";
 import { getSupabaseRestEndpoint, getSupabaseStorageEndpoint } from "@/lib/supabase-config";
 import { actingAdoptionProof, actingArticleId, actingModel, actingPrefix, actingRevisionPrefix, actingRevisionTitlePrefix, actingProjectId, actingTitlePrefix, allCartoonActingPlans, type AnyCartoonActingPlan } from "@/lib/hwaseong-cartoon-acting";
+import type { SampleAudioDeliveries } from "@/lib/sample-audio-delivery";
 import type { SampleAudio } from "@/lib/hwaseong-sample-narration";
 
 type Row = { id:string; project_id:string; article_id:string|null; title:string; file_path:string; script_text:string; script_status:string; ai_tts_voice:string; ai_tts_model:string; ai_tts_text_hash:string; ai_tts_audio_paths:string[]; ai_tts_generated_at:string|null; duration_seconds:number|null; pronunciation_note?:string|null };
@@ -16,10 +17,14 @@ function headers() {
 }
 function table(query="") { const endpoint=getSupabaseRestEndpoint("/rest/v1/newsletter_audio_files"+query); if(!endpoint)throw Error("Database unavailable");return endpoint; }
 function object(path:string) { if(![actingPrefix,actingRevisionPrefix].some(prefix=>path.startsWith(prefix))||path.includes(".."))throw Error("Pilot path required");const endpoint=getSupabaseStorageEndpoint("/object/audio-files/"+path.split("/").map(encodeURIComponent).join("/"));if(!endpoint)throw Error("Storage unavailable");return endpoint; }
-export async function actingPlans() {
-  headers();const content=await getProjectContent(hwaseongSampleSlug);
-  if(content.source!=="supabase")throw Error("Original source unavailable");
-  const article=content.articles.find(a=>a.id===actingArticleId),sample=article&&proposalSample(article,actingProjectId);
+export async function actingPlans(provided?: ProposalSample[]) {
+  headers();
+  let sample=provided?.find(s=>s.article.id===actingArticleId&&!s.editorTest);
+  if(!provided){
+    const content=await getProjectContent(hwaseongSampleSlug);
+    if(content.source!=="supabase")throw Error("Original source unavailable");
+    const article=content.articles.find(a=>a.id===actingArticleId);sample=article&&proposalSample(article,actingProjectId)||undefined;
+  }
   if(!sample)throw Error("Original cartoon unavailable");return allCartoonActingPlans(sample);
 }
 async function rows() {
@@ -38,10 +43,11 @@ function adopted(plans:AnyCartoonActingPlan[],stored:Row[]) {
   try {if(JSON.stringify(JSON.parse(row.pronunciation_note??"{}").adoption)!==JSON.stringify(actingAdoptionProof))return null;}catch{return null;}
   return plan;
 }
-export async function selectedCartoonAudio():Promise<SampleAudio|null> {
+export async function selectedCartoonAudio(provided?: ProposalSample[], deliveries?: SampleAudioDeliveries):Promise<SampleAudio|null> {
   if(!stagingEnvironmentConfigured())return null;
-  const [plans,stored]=await Promise.all([actingPlans(),rows()]),plan=adopted(plans,stored);
+  const [plans,stored]=await Promise.all([actingPlans(provided),rows()]),plan=adopted(plans,stored);
   if(!plan)return null;
+  deliveries?.set(plan.id,(segment,request)=>deliverActingPlan(plan,segment,request));
   const audio:SampleAudio={id:plan.id,voice:"coral",voiceLabel:"Coral · Marin",narrationLabel:"채택된 22초 만평 성우 음성 · 요약·상세 동일 음성",transcriptText:plan.script,manifestHref:`/api/projects/${hwaseongSampleSlug}/sample-tts/acting?audio=${plan.id}`};
   return {...audio,detail:{...audio}};
 }
@@ -80,6 +86,9 @@ export async function generateActingPart(variant:string,index:number,expectedHas
 export async function actingDelivery(id:string,segment:string|null,request:Request) {
   const [plans,stored]=await Promise.all([actingPlans(),rows()]),p=plans.find(p=>p.id===id),row=stored.find(r=>r.id===id);
   if(!p||!finalReady(row,p)||p.parts.some(part=>!complete(stored.find(r=>r.id===part.id),part)))return new Response(null,{status:404});
+  return deliverActingPlan(p,segment,request);
+}
+async function deliverActingPlan(p:AnyCartoonActingPlan,segment:string|null,request:Request) {
   const responseHeaders={"Cache-Control":"private, no-store"};
   if(segment===null)return Response.json({hasAudio:true,source:"ai_tts",stale:false,voice:p.voiceLabel,segments:[{index:0,url:`/api/projects/${hwaseongSampleSlug}/sample-tts/acting?audio=${p.id}&segment=0`}]},{headers:responseHeaders});
   if(segment!=="0")return new Response(null,{status:404});

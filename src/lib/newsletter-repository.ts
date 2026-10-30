@@ -6490,8 +6490,10 @@ async function fetchProjectPageNumbers(projectId: string, headers: Record<string
   return new Map(rows.map((row) => [row.id, row.page_number]));
 }
 
-export async function getProjectContent(projectSlug: string): Promise<ProjectContentResult> {
-  const workspace = await getProjectWorkspace(projectSlug);
+export async function getProjectContent(projectSlug: string, resolvedWorkspace?: ProjectWorkspaceResult): Promise<ProjectContentResult> {
+  // Request-local reuse by a caller that already resolved this exact slug.
+  const workspace = resolvedWorkspace?.ok && resolvedWorkspace.project.slug === projectSlug
+    ? resolvedWorkspace : await getProjectWorkspace(projectSlug);
 
   if (!workspace.ok) {
     return {

@@ -21,7 +21,7 @@ function fixture(){
   '@/lib/article-composition-repository':{getArticleTextDesigns:async()=>({}),getArticleHeroBackgroundReferences:async()=>({})},
   '@/lib/hwaseong-sample-cover-server':{prepareSampleCover:async()=>null},
   '@/lib/hwaseong-sample-toc-server':{prepareSampleMap:async()=>undefined,prepareSampleToc:async()=>({})},
-  '@/lib/hwaseong-sample-split-tts-server':{splitAudioIndex:async()=>{state.indexCalls++;return Object.fromEntries(articles.map(a=>[a.id,{id:'approved',voice:'coral',manifestHref:'/api/projects/private/sample-tts?version=3&audio=approved',detail:{id:'acting-approved',voice:'coral',manifestHref:'/api/projects/private/sample-tts/acting?audio=acting-approved'}}]));},splitTtsDelivery:()=>{throw Error('unexpected v2');}},
+  '@/lib/hwaseong-sample-split-tts-server':{splitAudioIndex:async(_samples,deliveries)=>{state.indexCalls++;if(deliveries)for(const id of ['approved','acting-approved'])deliveries.set(id,async(segment)=>{state.delivery.push([id,segment]);return Response.json({hasAudio:true,segments:[{index:0,url:'/api/projects/private'}]});});return Object.fromEntries(articles.map(a=>[a.id,{id:'approved',voice:'coral',manifestHref:'/api/projects/private/sample-tts?version=3&audio=approved',detail:{id:'acting-approved',voice:'coral',manifestHref:'/api/projects/private/sample-tts/acting?audio=acting-approved'}}]));},splitTtsDelivery:()=>{throw Error('unexpected v2');}},
   '@/lib/hwaseong-sample-quality-tts-server':{qualityDelivery:async(...args)=>{state.delivery.push(args);return Response.json({hasAudio:true,segments:[{index:0,url:'/api/projects/private'}]});}},
   '@/lib/hwaseong-cartoon-acting-server':{actingDelivery:async(...args)=>{state.delivery.push(args);return Response.json({hasAudio:true,segments:[{index:0,url:'/api/projects/private'}]});}},
  })('src/lib/hwaseong-demo-render.ts');
@@ -44,7 +44,7 @@ test('audio routes reuse only current approved reader audio; pending/QA IDs are 
  assert.equal(h.state.indexCalls,0);
  const summary=await h.mod.deliverHwaseongDemoAudio(slug,'article-0','summary',null,request);
  const body=await summary.json();assert.match(body.segments[0].url,/\/api\/demo-share\/sample-audio\?/);assert(!JSON.stringify(body).includes('/api/projects'));
- assert.equal(h.state.delivery[0][0],'approved');assert.equal(h.state.delivery[0][3],false);
+ assert.equal(h.state.delivery[0][0],'approved');assert.equal(h.state.indexCalls,1);
  await h.mod.deliverHwaseongDemoAudio(slug,'article-0','detail',null,request);assert.equal(h.state.delivery[1][0],'acting-approved');
  h.state.revoked=true;await assert.rejects(h.mod.deliverHwaseongDemoAudio(slug,'article-0','summary',null,request));assert.equal(h.state.delivery.length,2);
 });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDemoSession, getDemoAccess, demoCookieName, demoHeaders } from "@/lib/demo-share";
 import { requireImageSameOrigin } from "@/lib/article-image-api-origin";
-import { createDemoTrace, demoFailure, demoStep, type DemoTrace } from "@/lib/demo-share-diagnostics";
+import { createDemoTrace, demoFailure, demoStep, demoTimingHeader, type DemoTrace } from "@/lib/demo-share-diagnostics";
 import { isHwaseongDemo, validateHwaseongDemoAccess } from "@/lib/hwaseong-demo-render";
 export const dynamic = "force-dynamic";
 function failure(error: unknown, trace: DemoTrace) {
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const access=await getDemoSession(new URL(request.url).searchParams.get("project")??"",trace);
     if(isHwaseongDemo(access.project.slug))validateHwaseongDemoAccess(access,trace);
     demoStep(trace,"session_check");
-    return NextResponse.json({ok:true,shareId:access.share.id,expiresAt:access.share.expires_at,requestId:trace.requestId},{headers:demoHeaders});
+    return NextResponse.json({ok:true,shareId:access.share.id,expiresAt:access.share.expires_at,requestId:trace.requestId},{headers:{...demoHeaders,"Server-Timing":demoTimingHeader(trace)}});
   } catch(error) { return failure(error,trace); }
 }
 export async function POST(request: Request) {

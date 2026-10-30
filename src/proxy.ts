@@ -12,7 +12,10 @@ export function proxy(request: NextRequest) {
   forwarded.set("x-demo-request-id",trace.requestId);
   const response = NextResponse.next({request:{headers:forwarded}});
   const name = demoCookieName("hwaseong-2026-10-samples");
-  if (request.cookies.get(name)?.value !== token) {
+  // A known link-preview bot needs no browser session. User-agent never grants
+  // access: the server page still independently validates its bearer/source.
+  const preview=/kakaotalk-scrap|kakaostory-og-reader|facebookexternalhit|twitterbot|slackbot|discordbot|telegrambot/i.test(request.headers.get("user-agent")??"");
+  if (!preview && request.method === "GET" && request.cookies.get(name)?.value !== token) {
     // Transport only, never an authorization decision. SSR verifies the URL's
     // grant/snapshot/7 approved articles independently, and every API rechecks it.
     // No grant is consumed and no DB row is created by preview/reader GETs.
