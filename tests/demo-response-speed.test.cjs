@@ -31,8 +31,18 @@ test('server-prepared audio starts ready without a manifest request or autoplay;
  global.window={localStorage:{getItem:()=>null},setTimeout:f=>{f();return 1;},clearTimeout:()=>{}};
  global.fetch=async()=>{calls++;return Response.json({hasAudio:true,segments:[{index:0,url:'/protected.mp3'}]});};
  const Player=load({react:{...React,useRef:v=>({current:refs++===0?{pause(){},play:async()=>plays++,currentTime:0}:v}),useState:v=>{const i=cursor++;states[i]=typeof v==='function'?v():v;return [states[i],n=>states[i]=n];},useEffect:f=>effects.push(f),useCallback:f=>f}})('src/components/public-article-audio-player.tsx').PublicArticleAudioPlayer;
- Player({ariaLabel:'AI 음성',isAiGenerated:true,manifestUrl:'/manifest',...(prepared?{initialSegments:[{index:0,url:'/protected.mp3'}]}:{})});const clean=effects[2]();await new Promise(r=>setTimeout(r,5));assert.equal(calls,prepared?0:1);assert.equal(states[6],'ready');assert.equal(states[1][0].url,'/protected.mp3');assert.equal(plays,0);clean();
+ const element=Player({ariaLabel:'AI 음성',isAiGenerated:true,manifestUrl:'/manifest',...(prepared?{initialSegments:[{index:0,url:'/protected.mp3'}]}:{})});element.type(element.props);if(prepared){assert.equal(states[6],'ready');assert.equal(states[1][0].url,'/protected.mp3');}const clean=effects[2]();await new Promise(r=>setTimeout(r,5));assert.equal(calls,prepared?0:1);assert.equal(states[6],'ready');assert.equal(states[1][0].url,'/protected.mp3');assert.equal(plays,0);clean?.();
  }}finally{global.window=oldWindow;global.fetch=oldFetch;}
+});
+test('server metadata renders enabled controls immediately without downloading MP3; invalid metadata stays loading and source changes reset player identity',()=>{
+ const React=require('react'),render=require('react-dom/server').renderToStaticMarkup;
+ const Player=load()('src/components/public-article-audio-player.tsx').PublicArticleAudioPlayer;
+ const props={ariaLabel:'AI 음성',isAiGenerated:true,manifestUrl:'/manifest',initialSegments:[{index:0,url:'/protected.mp3'}]};
+ const html=render(React.createElement(Player,props));assert.match(html,/preload="none"/);assert.match(html,/src="\/protected.mp3"/);assert(!/<button[^>]*disabled=""/.test(html));assert(!html.includes('준비 중'));assert(!html.includes('autoPlay'));
+ for(const invalid of [[{index:1,url:'/wrong.mp3'}],[{index:0,url:'//foreign.invalid/audio'}],[{index:0,url:'/\\foreign.mp3'}]]){
+  const h=render(React.createElement(Player,{...props,initialSegments:invalid}));assert(h.includes('준비 중'));assert(/<button[^>]*disabled=""/.test(h));assert(!h.includes('src='));
+ }
+ assert.notEqual(Player(props).key,Player({...props,initialSegments:[{index:0,url:'/replacement.mp3'}]}).key);
 });
 test('bundled Staging snapshot is fresh per request and preserves expiry/revoke/source guards without a second project/content read',async()=>{
  const p='4cd5297e-a0fd-434c-84d4-fa4d3baf9389',slug='hwaseong-2026-10-samples',oldFetch=global.fetch,key=process.env.SUPABASE_SERVICE_ROLE_KEY;process.env.SUPABASE_SERVICE_ROLE_KEY='fixture';let reads=0;

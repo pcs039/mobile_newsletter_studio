@@ -7,7 +7,7 @@ test('summary/detail controls share one audio element, play/pause, seek and play
  const values=[1,[{index:0,url:'/existing.mp3'}],0,false,12,60,'ready'];let cursor=0,refs=0,portal;
  const hooks={...React,useState:init=>{const i=cursor++;if(!(i in values))values[i]=typeof init==='function'?init():init;return[values[i],v=>values[i]=typeof v==='function'?v(values[i]):v];},useRef:value=>({current:refs++===0?audio:value}),useEffect:()=>{},useCallback:fn=>fn};
  const Player=loader({react:hooks,'react-dom':{createPortal:(node,target)=>{portal={node,target};return React.createElement('div',{'data-portal':true},node);}}})('src/components/public-article-audio-player.tsx').PublicArticleAudioPlayer,target={};
- const render=()=>{cursor=0;refs=0;return Player({ariaLabel:'shared',src:'/existing.mp3',controlsPortalTarget:target});};
+ const render=()=>{cursor=0;refs=0;const element=Player({ariaLabel:'shared',src:'/existing.mp3',controlsPortalTarget:target});return element.type(element.props);};
  let tree=render();assert.equal(portal.target,target);
  assert.equal(find(portal.node,n=>n.type==='audio'),undefined);assert(find(tree,n=>n.type==='audio'));
  const summary=tree.props.children[1],mirror=portal.node.props.children;assert.equal(summary,mirror);

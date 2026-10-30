@@ -20,8 +20,8 @@ function fixture(){
   '@/lib/newsletter-repository':{getFontAssets:async()=>({fonts:[]}),makePublicStoragePreviewHref:()=>''},
   '@/lib/article-composition-repository':{getArticleTextDesigns:async()=>({}),getArticleHeroBackgroundReferences:async()=>({})},
   '@/lib/hwaseong-sample-cover-server':{prepareSampleCover:async()=>state.earlyImage??null},
-  '@/lib/hwaseong-sample-toc-server':{prepareSampleMap:async()=>undefined,prepareSampleToc:async()=>state.waitMedia?await state.waitMedia:{}},
-  '@/lib/hwaseong-sample-split-tts-server':{splitAudioIndex:async(_samples,deliveries)=>{state.indexCalls++;if(deliveries)for(const id of ['approved','acting-approved'])deliveries.set(id,async(segment)=>{state.delivery.push([id,segment]);return Response.json({hasAudio:true,segments:[{index:0,url:'/api/projects/private'}]});});return Object.fromEntries(articles.map(a=>[a.id,{id:'approved',voice:'coral',manifestHref:'/api/projects/private/sample-tts?version=3&audio=approved',detail:{id:'acting-approved',voice:'coral',manifestHref:'/api/projects/private/sample-tts/acting?audio=acting-approved'}}]));},splitTtsDelivery:()=>{throw Error('unexpected v2');}},
+  '@/lib/hwaseong-sample-toc-server':{prepareSampleMap:async()=>{throw Error('initial map download');},prepareSampleToc:async()=>{throw Error('initial thumbnail download');}},
+  '@/lib/hwaseong-sample-split-tts-server':{splitAudioIndex:async(_samples,deliveries)=>{if(state.waitMedia)await state.waitMedia;state.indexCalls++;if(deliveries)for(const id of ['approved','acting-approved'])deliveries.set(id,async(segment)=>{state.delivery.push([id,segment]);return Response.json({hasAudio:true,segments:[{index:0,url:'/api/projects/private'}]});});return Object.fromEntries(articles.map(a=>[a.id,{id:'approved',voice:'coral',manifestHref:'/api/projects/private/sample-tts?version=3&audio=approved',detail:{id:'acting-approved',voice:'coral',manifestHref:'/api/projects/private/sample-tts/acting?audio=acting-approved'}}]));},splitTtsDelivery:()=>{throw Error('unexpected v2');}},
   '@/lib/hwaseong-sample-quality-tts-server':{qualityDelivery:async(...args)=>{state.delivery.push(args);return Response.json({hasAudio:true,segments:[{index:0,url:'/api/projects/private'}]});}},
   '@/lib/hwaseong-cartoon-acting-server':{actingDelivery:async(...args)=>{state.delivery.push(args);return Response.json({hasAudio:true,segments:[{index:0,url:'/api/projects/private'}]});}},
  })('src/lib/hwaseong-demo-render.ts');
@@ -47,6 +47,23 @@ test('audio routes reuse only current approved reader audio; pending/QA IDs are 
  assert.equal(h.state.delivery[0][0],'approved');assert.equal(h.state.indexCalls,1);
  await h.mod.deliverHwaseongDemoAudio(slug,'article-0','detail',null,request);assert.equal(h.state.delivery[1][0],'acting-approved');
  h.state.revoked=true;await assert.rejects(h.mod.deliverHwaseongDemoAudio(slug,'article-0','summary',null,request));assert.equal(h.state.delivery.length,2);
+});
+test('initial render contains only gated thumbnail/map references and verified audio manifests, without preparing offscreen images',async()=>{
+ const h=fixture(),d=await h.mod.getHwaseongDemoEntryData('valid-link');
+ assert.equal(Object.keys(d.props.thumbnailIndex).length,7);
+ for(const url of Object.values(d.props.thumbnailIndex))assert.match(url,/^\/api\/demo-share\/sample-files\?.*&variant=thumbnail$/);
+ assert.match(d.props.mapImage,/variant=map$/);assert(!JSON.stringify(d.props.thumbnailIndex).includes('base64'));
+ assert.equal(d.props.audioIndex['article-0'].initialSegments[0].index,0);
+});
+test('derived images require fresh share/source membership, only current image paths and the tourism map are allowed',async()=>{
+ let revoked=false,reads=0,prepared=0;const samples=[{kind:'tourism',article:{id:'a'},cover:`/api/project-files/preview?bucket=design-production-assets&path=${prefix}map.webp`}];
+ const route=loader({'@/lib/hwaseong-demo-render':{getHwaseongDemoAccess:async()=>{reads++;if(revoked)throw Error('revoked');return{project:{id:p,slug},samples};}},'@/lib/demo-share':{demoHeaders:{'Cache-Control':'private, no-store'}},'@/lib/hwaseong-sample-toc-server':{prepareSampleMap:async(_p,_s,chosen)=>{prepared++;assert.equal(chosen.length,1);return 'data:image/webp;base64,d2VicA==';},prepareSampleToc:async()=>{prepared++;return{a:'data:image/webp;base64,d2VicA=='};}}})('src/app/api/demo-share/sample-files/route.ts');
+ const request=(path,variant)=>new Request(`https://stage.invalid/api/demo-share/sample-files?${new URLSearchParams({project:slug,bucket:'design-production-assets',path,variant})}`);
+ for(const variant of ['thumbnail','map']){const r=await route.GET(request(prefix+'map.webp',variant));assert.equal(r.status,200);assert.equal(r.headers.get('content-type'),'image/webp');assert.equal(r.headers.get('cache-control'),'private, no-store');assert.equal(await r.text(),'webp');}
+ const count=prepared;assert.equal((await route.GET(request(prefix+'foreign.webp','thumbnail'))).status,404);assert.equal(prepared,count);
+ samples[0].kind='policy';assert.equal((await route.GET(request(prefix+'map.webp','map'))).status,404);assert.equal(prepared,count);
+ revoked=true;assert.equal((await route.GET(request(prefix+'map.webp','thumbnail'))).status,410);assert.equal(prepared,count);
+ const previous=reads;for(const query of ['&variant=thumbnail','&extra=secret'])assert.equal((await route.GET(new Request(request(prefix+'map.webp','thumbnail').url+query))).status,404);assert.equal(reads,previous);
 });
 test('file endpoint denies guessed/unreferenced path and revoked session before any Storage lookup',async()=>{
  let storage=0;const old=global.fetch;global.fetch=async()=>{storage++;throw Error('must not fetch');};

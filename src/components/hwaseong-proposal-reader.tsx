@@ -31,13 +31,14 @@ import { sampleDemoHref, canUseSampleDemoHistory } from "@/lib/hwaseong-demo-nav
 const action = "inline-flex min-h-11 items-center justify-center rounded-xl border border-current px-4 py-3 text-center text-sm font-bold [overflow-wrap:anywhere]";
 
 function TocThumbnail({ sample, thumbnail, priority }: { sample: ProposalSample; thumbnail?: string; priority?: boolean }) {
-  const framed = thumbnail?.startsWith("data:image/webp;base64,") ? thumbnail : undefined;
+  const [failedSource,setFailedSource] = useState("");
+  const framed = thumbnail !== failedSource && (thumbnail?.startsWith("data:image/webp;base64,") || thumbnail?.startsWith("/api/demo-share/sample-files?")) ? thumbnail : undefined;
   // TOC-only crops: the summary and detail keep the complete original image.
   const position = sample.kind === "event" || sample.kind === "accessible"
     ? "center bottom" : sample.kind === "interview" ? "center top" : "center center";
   const comic = sample.kind === "cartoon" && sample.artDirectionVersion === 3;
   return <div data-sample-thumbnail={sample.kind} className="relative aspect-video overflow-hidden" style={{ backgroundColor: sample.pale }}>
-    <img src={framed || sample.cover} alt="" loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "low"} decoding="async" className="absolute inset-x-0 top-0 h-full w-full object-cover"
+    <img src={framed || sample.cover} alt="" loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "low"} decoding="async" onError={() => { if(framed)setFailedSource(framed); }} className="absolute inset-x-0 top-0 h-full w-full object-cover"
       style={framed ? undefined : comic
         // Three stacked scenes; show the first scene without the next panel's border.
         ? { height: "306%", objectPosition: "center top" }
@@ -57,7 +58,8 @@ export function TourismMap({ sample, detailHref, mapImage }: { sample: ProposalS
   const card = useRef<HTMLDivElement>(null);
   const map = useRef<HTMLDivElement>(null);
   const [zoomed, setZoomed] = useState(false);
-  const source = mapImage || sample.cover;
+  const [failedMap,setFailedMap] = useState("");
+  const source = mapImage && mapImage !== failedMap ? mapImage : sample.cover;
   const image = useRef<HTMLImageElement>(null);
   const [loadedSource, setLoadedSource] = useState("");
   const ready = loadedSource === source;
@@ -81,7 +83,7 @@ export function TourismMap({ sample, detailHref, mapImage }: { sample: ProposalS
     <div className="mb-3 flex items-center justify-between gap-2 px-5"><p className="text-xs font-bold tracking-wide text-[#125e7c]">바다 · 역사 · 초록<br /><span className="font-normal tracking-normal">그림 속 번호로 떠나는 여행</span></p><button className="min-h-11 rounded-full border border-sky-300 bg-white px-4 text-sm font-bold" aria-pressed={zoomed} onClick={() => { setZoomed(!zoomed); requestAnimationFrame(() => centerMap(selected)); }}>{zoomed ? "지도 전체 보기" : "지도 크게 보기"}</button></div>
     <div ref={map} tabIndex={-1} className="scroll-mt-4 overflow-auto border-y border-sky-200 bg-white" style={{ maxHeight: zoomed ? 420 : undefined }}><div data-tourism-map-frame className="relative" style={{ minWidth: zoomed ? 680 : undefined, aspectRatio: "1024 / 700" }}>
       {/* Original proportions and source polygons stay in the same coordinate system. */}
-      <img ref={image} src={source} alt="화성시 공식 관광 그림지도. 아래 큰 관광지 선택 버튼으로도 이용할 수 있습니다." width={1024} height={700} loading="eager" fetchPriority="high" draggable={false} onLoad={() => setLoadedSource(source)} onError={() => setLoadedSource("")} className="absolute inset-0 block h-full w-full" />
+      <img ref={image} src={source} alt="화성시 공식 관광 그림지도. 아래 큰 관광지 선택 버튼으로도 이용할 수 있습니다." width={1024} height={700} loading="eager" fetchPriority="high" draggable={false} onLoad={() => setLoadedSource(source)} onError={() => { setLoadedSource(""); if(source === mapImage)setFailedMap(source); }} className="absolute inset-0 block h-full w-full" />
       <div data-map-overlays style={{ visibility: ready ? "visible" : "hidden" }}>
       <svg viewBox="0 0 1024 700" className="pointer-events-none absolute inset-0 h-full w-full" role="group" aria-label="지도 관광지 터치 영역">
         {tourismPlaces.map(p => <g key={p.id}>

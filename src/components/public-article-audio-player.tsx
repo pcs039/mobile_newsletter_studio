@@ -65,7 +65,19 @@ function formatAudioTime(value: number) {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-export function PublicArticleAudioPlayer({
+function preparedSegments(value: PublicArticleAudioPlayerProps["initialSegments"]) {
+  return Array.isArray(value) && value.length > 0 && value.length <= 1000 && value.every((s,i) =>
+    s && typeof s === "object" && s.index === i && typeof s.url === "string" && s.url.startsWith("/") && !s.url.startsWith("//") && !/[\\\s\x00-\x1f]/.test(s.url)) ? value : [];
+}
+
+export function PublicArticleAudioPlayer(props: PublicArticleAudioPlayerProps) {
+  // A new source gets fresh state synchronously, never one render of the prior
+  // article's ready button/segments while an effect catches up.
+  const key = JSON.stringify([props.isAiGenerated,props.manifestUrl,props.src,props.initialSegments]);
+  return <ArticleAudioPlayer key={key} {...props} />;
+}
+
+function ArticleAudioPlayer({
   ariaLabel,
   className = "",
   controlsPortalTarget,
@@ -77,13 +89,14 @@ export function PublicArticleAudioPlayer({
 }: PublicArticleAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playbackRate, setPlaybackRate] = useState(readStoredPlaybackRate);
-  const [segments, setSegments] = useState<ArticleAudioManifest["segments"]>([]);
+  const readySegments = preparedSegments(initialSegments);
+  const [segments, setSegments] = useState<ArticleAudioManifest["segments"]>(() => isAiGenerated ? readySegments : src ? [{index:0,url:src}] : []);
   const [segmentIndex, setSegmentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [loadState, setLoadState] = useState<"idle" | "loading" | "ready" | "error">(
-    isAiGenerated ? "loading" : "ready",
+    isAiGenerated && !readySegments.length ? "loading" : "ready",
   );
   const shouldContinueSegmentRef = useRef(false);
   const hasNotifiedPlaybackStartRef = useRef(false);
@@ -146,6 +159,9 @@ export function PublicArticleAudioPlayer({
   }, [stopAudio]);
 
   useEffect(() => {
+    // Already verified server metadata is usable on the first render, with no
+    // timer or manifest round trip. It does not fetch/play the MP3 itself.
+    if (isAiGenerated && readySegments.length) return;
     let isMounted = true;
 
     const resetTimer = window.setTimeout(() => {
@@ -163,14 +179,6 @@ export function PublicArticleAudioPlayer({
 
       if (!isAiGenerated) {
         setSegments(src ? [{ index: 0, url: src }] : []);
-        return;
-      }
-
-      // An authenticated server render can supply the already verified manifest.
-      // The media URL still performs fresh access validation on every request.
-      if (initialSegments?.length) {
-        setSegments(initialSegments);
-        setLoadState("ready");
         return;
       }
 
@@ -203,7 +211,7 @@ export function PublicArticleAudioPlayer({
       isMounted = false;
       window.clearTimeout(resetTimer);
     };
-  }, [isAiGenerated, manifestUrl, initialSegments, playerSourceKey, src, stopAudio]);
+  }, [isAiGenerated, manifestUrl, readySegments.length, playerSourceKey, src, stopAudio]);
 
   async function toggleAudio() {
     const audio = audioRef.current;
@@ -352,7 +360,7 @@ export function PublicArticleAudioPlayer({
           }
         }}
         onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-        preload="metadata"
+        preload={isAiGenerated && readySegments.length ? "none" : "metadata"}
         src={currentSrc || undefined}
       />
       {controls}
