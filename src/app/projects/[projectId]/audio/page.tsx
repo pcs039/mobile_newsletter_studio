@@ -44,6 +44,7 @@ export default async function AudioManagementPage({ params }: { params: Promise<
       .filter(Boolean)
       .join("\n\n"),
     id: article.id,
+    audioSource: article.audioSource,
     label: getDisplayArticleTitle(article, `제목 없음 기사 ${index + 1}`),
     summary: article.summary,
   }));

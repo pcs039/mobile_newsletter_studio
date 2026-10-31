@@ -2,11 +2,13 @@ import Link from "next/link";
 import { ProjectClientReviewRecipient } from "@/components/project-client-review-recipient";
 import { ProjectAdminShell } from "@/components/project-admin-shell";
 import { ProjectCreateForm } from "@/components/project-create-form";
-import { getProjectBasicInfo } from "@/lib/newsletter-repository";
+import { getFontAssets, getProjectBasicInfo } from "@/lib/newsletter-repository";
 
 export default async function ProjectSettingsPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const basicInfoData = await getProjectBasicInfo(projectId);
+  const [basicInfoData, fontData] = await Promise.all([
+    getProjectBasicInfo(projectId), getFontAssets({ activeOnly: false }),
+  ]);
 
   return (
     <ProjectAdminShell
@@ -29,7 +31,7 @@ export default async function ProjectSettingsPage({ params }: { params: Promise<
     >
       {basicInfoData.project ? (
         <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
-          <ProjectCreateForm mode="edit" initialValues={basicInfoData.project} />
+          <ProjectCreateForm mode="edit" initialValues={basicInfoData.project} fonts={fontData.fonts} />
 
           <aside className="space-y-5">
             <ProjectClientReviewRecipient key={projectId} projectSlug={projectId} />
