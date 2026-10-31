@@ -6,6 +6,7 @@ import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import { ProjectFileDownloadLink } from "@/components/project-file-download-link";
 import { getValidExternalEbookUrl, normalizeEbookSource, type EbookSource } from "@/lib/ebook-source";
 import { getSelectableFontAssets } from "@/lib/font-css";
+import { getProjectFontOptions, projectFontFormValue } from "@/lib/project-font-options";
 import type { FontAsset, NewsletterCoverFit, NewsletterCoverLayout, ProjectType } from "@/lib/newsletter-repository";
 
 type SubmitState =
@@ -257,8 +258,8 @@ export function ProjectCreateForm({
             externalEbookUrl,
             estimatedHours: getFormText(formData, "estimatedHours"),
             designerHoursCap: getFormText(formData, "designerHoursCap"),
-            titleFontAssetId: getFormText(formData, "titleFontAssetId"),
-            bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
+            titleFontAssetId: projectFontFormValue(formData, "titleFontAssetId", initialValues.titleFontAssetId),
+            bodyFontAssetId: projectFontFormValue(formData, "bodyFontAssetId", initialValues.bodyFontAssetId),
             articleTtsVoice: getFormText(formData, "articleTtsVoice"),
             coverEnabled: false,
             coverLayout,
@@ -469,8 +470,8 @@ export function ProjectCreateForm({
           externalEbookUrl,
           estimatedHours: getFormText(formData, "estimatedHours"),
           designerHoursCap: getFormText(formData, "designerHoursCap"),
-          titleFontAssetId: getFormText(formData, "titleFontAssetId"),
-          bodyFontAssetId: getFormText(formData, "bodyFontAssetId"),
+          titleFontAssetId: projectFontFormValue(formData, "titleFontAssetId", initialValues.titleFontAssetId),
+          bodyFontAssetId: projectFontFormValue(formData, "bodyFontAssetId", initialValues.bodyFontAssetId),
           articleTtsVoice: getFormText(formData, "articleTtsVoice"),
           coverEnabled,
           coverLayout,
@@ -537,6 +538,8 @@ export function ProjectCreateForm({
 
   const isSaving = submitState.status === "saving";
   const selectableFonts = getSelectableFontAssets(fonts);
+  const titleFontOptions = getProjectFontOptions(fonts, initialValues.titleFontAssetId);
+  const bodyFontOptions = getProjectFontOptions(fonts, initialValues.bodyFontAssetId);
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
@@ -730,9 +733,9 @@ export function ProjectCreateForm({
                   className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
                 >
                   <option value="">시스템 기본 글꼴</option>
-                  {selectableFonts.map((font) => (
+                  {titleFontOptions.map((font) => (
                     <option key={font.id} value={font.id}>
-                      {font.name}
+                      {font.label}
                     </option>
                   ))}
                 </select>
@@ -745,9 +748,9 @@ export function ProjectCreateForm({
                   className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#184a88] focus:ring-4 focus:ring-sky-100"
                 >
                   <option value="">시스템 기본 글꼴</option>
-                  {selectableFonts.map((font) => (
+                  {bodyFontOptions.map((font) => (
                     <option key={font.id} value={font.id}>
-                      {font.name}
+                      {font.label}
                     </option>
                   ))}
                 </select>
@@ -770,9 +773,9 @@ export function ProjectCreateForm({
                 기사별 음색을 따로 고르지 않으면 이 기본 음색을 사용합니다.
               </p>
             </div>
-            {fonts.length === 0 ? (
+            {selectableFonts.length === 0 ? (
               <p className="mt-3 text-xs font-semibold text-slate-500">
-                활성화된 폰트가 없습니다. 관리자 계정으로 폰트 라이브러리에 먼저 업로드하세요.
+                선택 가능한 활성 웹폰트 목록이 없습니다. 기존 글꼴 선택은 유지됩니다. 폰트 관리에서 등록·활성 상태를 확인해 주세요.
               </p>
             ) : null}
           </div>

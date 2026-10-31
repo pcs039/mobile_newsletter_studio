@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Private local TTS editing artifacts; never commit audio or request receipts.
 /.private-tts/
+
+# Local environment audits and rollout details; never publish.
+/.private-reports/
