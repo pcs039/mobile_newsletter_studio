@@ -49,6 +49,9 @@ test('manual audio server/API boundaries',{concurrency:false},async t=>{
   await t.test('CAS and selected AI errors are distinct and safe',async()=>{
    for(const [message,code] of [['manual_audio_conflict','conflict'],['manual_audio_ai_selected','ai_selected']]){global.fetch=async()=>Response.json({message},{status:409});const r=await api().POST(request(input));assert.equal(r.status,409);assert.equal((await r.json()).code,code);}
   });
+  await t.test('explicit PostgreSQL deadlock/serialization aborts are known conflicts, not unknown outcomes',async()=>{
+   for(const code of ['40P01','40001']){let count=0;global.fetch=async()=>{count++;return Response.json({code,message:'aborted transaction'},{status:500});};const r=await api().POST(request(input));const body=await r.json();assert.equal(r.status,409);assert.equal(body.code,'conflict');assert.equal(body.uncertain,false);assert.equal(count,1);}
+  });
   await t.test('network, response body interruption and malformed response never retry automatically',async()=>{
    for(const response of [async()=>{throw Error('network');},async()=>({ok:true,text:async()=>{throw Error('body');}}),async()=>new Response('bad'),async()=>Response.json({ok:true})]){let count=0;global.fetch=async()=>{count++;return response();};const r=await api().POST(request(input));const data=await r.json();assert.equal(r.status,502);assert(data.uncertain);assert.equal(count,1);assert(!JSON.stringify(data).includes('mock-service-key'));}
   });

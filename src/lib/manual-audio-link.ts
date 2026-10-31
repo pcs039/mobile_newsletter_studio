@@ -40,6 +40,7 @@ async function call(input: ManualAudioLinkInput, articleId: string | null, revis
     if (/manual_audio_forbidden|service_role_required/.test(text)) throw new ManualAudioLinkError(403, "forbidden", "음성 연결을 변경할 권한이 없습니다.");
     if (/manual_audio_not_found/.test(text)) throw new ManualAudioLinkError(404, "not_found", "같은 프로젝트의 기사와 업로드 음성을 선택해 주세요.");
     if (/manual_audio_ai_selected/.test(text)) throw new ManualAudioLinkError(409, "ai_selected", "이 기사는 AI 음성을 사용 중입니다. 기사 작성 화면에서 직접 제작 음성으로 명시적으로 변경한 후 연결해 주세요.");
+    if (/"code"\s*:\s*"(?:40P01|40001)"/.test(text)) throw new ManualAudioLinkError(409, "conflict", "동시 저장 충돌로 작업이 취소됐습니다. 최신 상태를 불러온 뒤 다시 확인해 주세요.");
     if (/manual_audio_conflict/.test(text)) throw new ManualAudioLinkError(409, "conflict", "기사 또는 음성 연결이 변경됐습니다. 최신 상태를 불러온 뒤 다시 확인해 주세요.");
     if (/manual_audio_invalid/.test(text)) throw new ManualAudioLinkError(400, "invalid_input", "음성 연결과 대본 입력값을 확인해 주세요.");
     throw new ManualAudioLinkError(502, "result_unknown", "처리 결과를 확인하지 못했습니다. 같은 저장 요청으로 확인해 주세요.", changes !== null);

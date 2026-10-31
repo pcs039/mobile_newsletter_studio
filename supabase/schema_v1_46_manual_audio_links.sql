@@ -26,40 +26,55 @@ declare
   p public.newsletter_projects%rowtype;
   f public.newsletter_audio_files%rowtype;
   target public.newsletter_articles%rowtype;
+  snapshot record;
   old_id uuid; revision text; links jsonb; audio_links jsonb;
   script text; review text; note text; kind text; identical boolean;
 begin
   if coalesce(auth.role(),'') <> 'service_role' then raise sqlstate '42501' using message='service_role_required'; end if;
-  -- Same lock order as article authoring/publishing: project, articles, audio.
-  select * into p from public.newsletter_projects where id=p_project_id and deleted_at is null for update;
+  -- Read-only GET does not acquire tuple/write locks. Mutations retain the same
+  -- project -> articles -> audio lock order as authoring and TTS completion.
+  if p_changes is not null then
+    perform 1 from public.newsletter_projects where id=p_project_id and deleted_at is null for update;
+    if not found then raise sqlstate 'P0002' using message='manual_audio_not_found'; end if;
+    perform 1 from public.newsletter_articles where project_id=p_project_id order by id for update;
+    perform 1 from public.newsletter_audio_files where project_id=p_project_id order by id for update;
+  end if;
+  -- One statement / MVCC snapshot for project identity, file, edges, validation
+  -- and revision. Separate unlocked SELECTs could combine pre/post-edit data.
+  select project as project_row, file as audio_row, previous.old_id,
+    (select coalesce(jsonb_agg(jsonb_build_array(id,audio_id,audio_source,ai_audio_id,tts_generation_state,updated_at) order by id),'[]'::jsonb)
+      from public.newsletter_articles where project_id=project.id) as links,
+    (select coalesce(jsonb_agg(jsonb_build_array(id,article_id,source_type,updated_at) order by id),'[]'::jsonb)
+      from public.newsletter_audio_files where project_id=project.id) as audio_links,
+    (exists(select 1 from public.newsletter_articles where audio_id=file.id and
+        (project_id<>project.id or (file.article_id is not null and id<>file.article_id))) or
+      (select count(*) from public.newsletter_articles where audio_id=file.id)>1 or
+      (previous.old_id is not null and not exists(select 1 from public.newsletter_articles
+        where id=previous.old_id and project_id=project.id and (audio_id is null or audio_id=file.id))) or
+      (previous.old_id is not null and exists(select 1 from public.newsletter_audio_files
+        where article_id=previous.old_id and id<>file.id))) as invalid_edges
+    into snapshot
+    from public.newsletter_projects project
+    left join public.newsletter_audio_files file on file.id=p_audio_id and file.project_id=project.id
+    left join lateral (select coalesce(file.article_id,(select id from public.newsletter_articles
+      where project_id=project.id and audio_id=file.id order by id limit 1)) as old_id) previous on true
+    where project.id=p_project_id and project.deleted_at is null;
   if not found then raise sqlstate 'P0002' using message='manual_audio_not_found'; end if;
+  p:=snapshot.project_row;
+  f:=snapshot.audio_row;
+  old_id:=snapshot.old_id;
+  links:=snapshot.links;
+  audio_links:=snapshot.audio_links;
   if p.status='archived' or nullif(btrim(p_actor_id),'') is null or p_actor_role is null or
     (p_actor_role<>'admin' and (p_actor_role<>'user' or nullif(btrim(p.assignee_name),'') is null or
       regexp_replace(lower(p.assignee_name),'[[:space:]]','','g') not in
       (regexp_replace(lower(p_actor_id),'[[:space:]]','','g'),regexp_replace(lower(coalesce(p_actor_name,'')),'[[:space:]]','','g')))) then
     raise sqlstate '42501' using message='manual_audio_forbidden';
   end if;
-  perform 1 from public.newsletter_articles where project_id=p.id order by id for update;
-  perform 1 from public.newsletter_audio_files where project_id=p.id order by id for update;
-  select * into f from public.newsletter_audio_files where id=p_audio_id and project_id=p.id;
-  if not found then raise sqlstate 'P0002' using message='manual_audio_not_found'; end if;
+  if f.id is null then raise sqlstate 'P0002' using message='manual_audio_not_found'; end if;
   if coalesce(f.source_type,'uploaded')<>'uploaded' then raise sqlstate '22023' using message='manual_audio_invalid'; end if;
   -- Conflicting legacy/cross-project edges are not silently repaired or detached.
-  if exists(select 1 from public.newsletter_articles where audio_id=f.id and
-      (project_id<>p.id or (f.article_id is not null and id<>f.article_id))) or
-    (select count(*) from public.newsletter_articles where audio_id=f.id)>1 then
-    raise sqlstate 'PT409' using message='manual_audio_conflict';
-  end if;
-  old_id:=coalesce(f.article_id,(select id from public.newsletter_articles where project_id=p.id and audio_id=f.id));
-  if old_id is not null and not exists(select 1 from public.newsletter_articles where id=old_id and project_id=p.id
-    and (audio_id is null or audio_id=f.id)) then raise sqlstate 'PT409' using message='manual_audio_conflict'; end if;
-  if old_id is not null and exists(select 1 from public.newsletter_audio_files where article_id=old_id and id<>f.id) then
-    raise sqlstate 'PT409' using message='manual_audio_conflict';
-  end if;
-  select coalesce(jsonb_agg(jsonb_build_array(id,audio_id,audio_source,ai_audio_id,tts_generation_state,updated_at) order by id),'[]'::jsonb)
-    into links from public.newsletter_articles where project_id=p.id;
-  select coalesce(jsonb_agg(jsonb_build_array(id,article_id,source_type,updated_at) order by id),'[]'::jsonb)
-    into audio_links from public.newsletter_audio_files where project_id=p.id;
+  if snapshot.invalid_edges then raise sqlstate 'PT409' using message='manual_audio_conflict'; end if;
   revision:=md5(jsonb_build_array(links,audio_links,to_jsonb(f))::text);
   if p_changes is null then
     return jsonb_build_object('ok',true,'state',jsonb_build_object('revision',revision,'articleId',old_id,
